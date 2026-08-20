@@ -550,7 +550,9 @@
       var actSel = roleForm.querySelector('[name=action]');
       var candDl = document.getElementById('dl-role-candidates');
       function refreshRoleCandidates(){
-        var holders = (roleSel.value === 'committee' ? C.committeeNames : C.moderators)
+        var holders = (roleSel.value === 'committee' ? C.committeeNames
+                       : roleSel.value === 'editor' ? (C.editors || [])
+                       : C.moderators)
           .map(function(x){ return x.toLowerCase(); });
         var pool = actSel.value === 'granted'
           ? C.members.filter(function(m){ return holders.indexOf(m.toLowerCase()) < 0; })

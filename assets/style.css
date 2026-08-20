@@ -305,6 +305,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .role-committee{border-color:var(--accent);color:var(--accent-text);background:rgba(34,197,94,.10)}
 .role-moderator{border-color:var(--imported);color:var(--imported);background:rgba(124,58,237,.10)}
 .role-expert{border-color:var(--hairs);color:var(--muted)}
+.role-editor{border-color:var(--accent);color:var(--accent-text);background:rgba(34,197,94,.10)}
 .role-contrib{border-color:var(--accent);color:var(--accent-text);background:rgba(34,197,94,.10)}
 /* tiers: the same green, filling up. A badge that changes hue every milestone
    turns a roster into a sweet shop; this reads as more of the same thing. */
