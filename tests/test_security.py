@@ -124,11 +124,6 @@ def main():
                     {'user': 'NesExpert', 'scope': 'nes'},
                     {'user': 'GroupExpert', 'scope': 'group:fam'}],
             groups=[{'key': 'fam', 'title': 'Fam', 'games': ['nes/testgame']}])
-        # ratify only means something on a provisional game
-        for gj in seed.glob('games/*/*/game.json'):
-            g = json.loads(gj.read_text())
-            g['established'] = False
-            gj.write_text(json.dumps(g, indent=1) + '\n')
         shutil.copy2(REAL_ARCHIVE / 'validate.py', seed / 'validate.py')
         shutil.copytree(REAL_ARCHIVE / 'schema', seed / 'schema', dirs_exist_ok=True)
         for u in ('Member', 'Rep', 'SiteExpert', 'NesExpert'):
@@ -217,7 +212,9 @@ def main():
                                        'dry_run': '1'}),
                 ('/api/invalidate', {'run': 'M900401', 'kind': 'verification',
                                      'user': 'x', 'reason': 'y', 'dry_run': '1'}),
-                ('/api/game/ratify', {'game': 'nes/testgame', 'dry_run': '1'}),
+                ('/api/category/add', {'game': 'nes/testgame', 'label': 'X',
+                                       'rule': 'A rule for the csrf probe.',
+                                       'dry_run': '1'}),
                 ('/api/import/scan', {}),
                 ('/api/import/run', {}),
                 ('/api/discussion/reply', {'topic': '1', 'body': 'a reply here'}),
@@ -343,12 +340,8 @@ def main():
                 ck(f'{why} submits a new game', code == 200, str(r)[:160])
                 gj = work / 'games' / 'nes' / f'fresh-game-by-{who.lower()}' / 'game.json'
                 doc_ = json.loads(gj.read_text()) if gj.exists() else {}
-                ck(f'a game created by {why} is '
-                   f'{"established at once" if want else "provisional"}',
-                   bool(doc_.get('established')) is want, str(doc_))
-                if want:
-                    ck('and it names them as the one who vouched',
-                       doc_.get('ratifiedBy') == who and doc_.get('ratifiedAt'), str(doc_))
+                ck(f'a game created by {why} is real on arrival, no gate',
+                   gj.exists() and 'established' not in doc_, str(doc_))
 
             # An address is shown to the Committee to be recognised, not to be
             # read: the whole thing never leaves the forum, and neither form is
@@ -426,40 +419,26 @@ def main():
             ck('an encode whose thumbnail is not an image is refused', code == 400, str(r)[:140])
 
             # ---------------- expert scope ----------------
-            # a system-scoped expert may act inside their system only
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'NesExpert',
-                                                       'game': 'nes/testgame', 'dry_run': '1'})
-            ck('system expert may ratify inside their system', code == 200, str(r)[:140])
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'NesExpert',
-                                                       'game': 'dos/hardgame', 'dry_run': '1'})
-            ck('system expert may not ratify another system', code == 403, str(r)[:140])
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'SiteExpert',
-                                                       'game': 'dos/hardgame', 'dry_run': '1'})
-            ck('site expert may ratify anywhere', code == 200, str(r)[:140])
-            # a ratification that records no ratifier is not an act, it is a
-            # flag: the site log has to be able to say who vouched, and when.
-            # The checks above are all dry runs, so this one has to land.
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'SiteExpert',
-                                                       'game': 'dos/hardgame'})
-            ck('the ratification lands', code == 200, str(r)[:140])
-            gdoc = json.loads((work / 'games/dos/hardgame/game.json').read_text())
-            ck('ratifying records who did it and when',
-               gdoc.get('ratifiedBy') == 'SiteExpert'
-               and re.fullmatch(r'\d{4}-\d{2}-\d{2}', gdoc.get('ratifiedAt') or ''),
-               str(gdoc))
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'Member',
-                                                       'game': 'nes/testgame', 'dry_run': '1'})
-            ck('a member may not ratify', code == 403, str(r)[:140])
-            # a group scope reaches every game in the group, and nothing else
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'GroupExpert',
-                                                       'game': 'nes/testgame', 'dry_run': '1'})
-            ck('group expert may ratify a game in their group', code == 200, str(r)[:140])
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'GroupExpert',
-                                                       'game': 'dos/hardgame', 'dry_run': '1'})
-            ck('group expert may not ratify outside their group', code == 403, str(r)[:140])
-            code, r, _ = call(U + '/api/game/ratify', {'key': KEY, 'expert': 'SiteExpert',
-                                                       'game': 'nes/nosuchgame', 'dry_run': '1'})
-            ck('ratifying an unknown game is a 404', code == 404, str(r)[:140])
+            # scope is probed through category/add, the surviving scoped act
+            def addcat(expert, game):
+                return call(U + '/api/category/add',
+                            {'key': KEY, 'expert': expert, 'game': game,
+                             'label': 'Scope Probe', 'rule': 'A probe rule.',
+                             'dry_run': '1'})
+            code, r, _ = addcat('NesExpert', 'nes/testgame')
+            ck('system expert may act inside their system', code == 200, str(r)[:140])
+            code, r, _ = addcat('NesExpert', 'dos/hardgame')
+            ck('system expert may not act in another system', code == 403, str(r)[:140])
+            code, r, _ = addcat('SiteExpert', 'dos/hardgame')
+            ck('site expert may act anywhere', code == 200, str(r)[:140])
+            code, r, _ = addcat('Member', 'nes/testgame')
+            ck('a member holds no scope at all', code == 403, str(r)[:140])
+            code, r, _ = addcat('GroupExpert', 'nes/testgame')
+            ck('group expert may act on a game in their group', code == 200, str(r)[:140])
+            code, r, _ = addcat('GroupExpert', 'dos/hardgame')
+            ck('group expert may not act outside their group', code == 403, str(r)[:140])
+            code, r, _ = addcat('SiteExpert', 'nes/nosuchgame')
+            ck('acting on an unknown game is a 404', code == 404, str(r)[:140])
 
             # ---------------- branch coverage on rejections ----------------
             rejections = [
