@@ -75,9 +75,7 @@ function render(){
     }
     return true;
   });
-  if (sortf.value === 'frames') rs.sort(function(a,b){
-    return (a.secs === null ? Infinity : a.secs) - (b.secs === null ? Infinity : b.secs); });
-  else if (sortf.value === 'stars') rs.sort(function(a,b){ return b.stars - a.stars; });
+  if (sortf.value === 'stars') rs.sort(function(a,b){ return b.stars - a.stars; });
   else if (sortf.value === 'title') rs.sort(function(a,b){ return a.title.localeCompare(b.title); });
   else rs.sort(function(a,b){ return b.date.localeCompare(a.date); });
   count.textContent = rs.length + ' run' + (rs.length === 1 ? '' : 's');
@@ -109,7 +107,7 @@ body = f'''<header class="ghead"><div><h1>Movies</h1>
 <option value="pending">Pending</option><option value="imported">Imported</option>
 <option value="unclassified">Unclassified</option></select>
 <select id="bsort"><option value="date">Newest first</option>
-<option value="stars">Most stars</option><option value="frames">Fastest first</option>
+<option value="stars">Most stars</option>
 <option value="title">By title</option></select>
 <span id="bcount" class="bcount"></span></div>
 <table class="btable"><thead><tr><th>Game</th><th>System</th><th>Authors</th>
