@@ -375,6 +375,18 @@ def main():
             ck('and holds until the deploy lands when it does',
                notify_mod.wait_until_live(probe, time.time() + 10, poll=0.5) is True)
 
+            # a waiting notification survives the process: spooled to disk
+            # first, unspooled only after the delivery attempt
+            entry = {'id': 'spool-test', 'text': 'x', 'wait_for': None,
+                     'image': None, 'deadline': None}
+            notify_mod._spool_add(entry)
+            ck('a pending notification is spooled to disk',
+               any(x.get('id') == 'spool-test' for x in notify_mod._spool_read()),
+               str(notify_mod.SPOOL))
+            notify_mod._spool_drop('spool-test')
+            ck('and unspooled once delivered',
+               all(x.get('id') != 'spool-test' for x in notify_mod._spool_read()))
+
             # ---------------- files that lie ----------------
             code, r, _ = call(U + '/api/reproduce', {'key': KEY, 'user': 'Rep', 'run': 'M900401',
                                                     'dry_run': '1'},
