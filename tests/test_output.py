@@ -219,6 +219,9 @@ def main():
                                withdrawn={'by': 'Root', 'date': '2026-08-17',
                                           'role': 'expert', 'contentRemoved': True,
                                           'reason': 'Imported on one author\'s word.'}),
+            mkarchive.run_spec('M900109', frames=0, authors=['Vid'],
+                               videoOnly=True, duration=1317.419,
+                               submitted='2026-02-05T00:00:00Z'),
             mkarchive.run_spec('M900105', frames=5500, authors=['Eve'],
                                consoleVerifications=[{'user': 'Metal', 'date': '2026-02-07',
                                                       'proof': 'https://example.com/rec',
@@ -925,6 +928,33 @@ def main():
         ck('ratification is gone from the panel data',
            all('established' not in g for g in pd['games'])
            and all('established' not in gr for gr in pd['groups']), str(pd['games'][:2]))
+
+        # ---------- the browse script actually renders ----------
+        # It once threw on a video-only run's null frames and the movies page
+        # went empty for everybody; the fixture carries one, so the script is
+        # RUN here, not just syntax-checked.
+        node0 = shutil.which('node')
+        if node0:
+            bh = (out / 'browse' / 'index.html').read_text()
+            m0 = re.search(r'<script>\n?(var RUNS = .*?)</script>', bh, re.S)
+            stub = (
+                'const els = {};\n'
+                'function mk(){ return {value: "", textContent: "", innerHTML: "",'
+                ' addEventListener(){}, }; }\n'
+                'global.document = { getElementById: (i) => (els[i] = els[i] || mk()) };\n'
+                'global.location = { search: "" };\n')
+            r0 = subprocess.run([node0, '-e',
+                                 stub + m0.group(1)
+                                 + '\nconsole.log(JSON.stringify({rows: els.brows.innerHTML.length,'
+                                   ' video: els.brows.innerHTML.includes("video"),'
+                                   ' count: els.bcount.textContent}))'],
+                                capture_output=True, text=True, timeout=60)
+            ck('the browse script renders without throwing', r0.returncode == 0,
+               r0.stderr[-300:])
+            if r0.returncode == 0:
+                out0 = json.loads(r0.stdout.strip().splitlines()[-1])
+                ck('and every run lands, the video-only one as video',
+                   out0['rows'] > 0 and out0['video'], str(out0))
 
         # ---------- client app ----------
         js = (out / 'assets' / 'app.js').read_text()

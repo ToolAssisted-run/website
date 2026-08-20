@@ -213,16 +213,23 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
         rid = spec['id']
         rdir = gdir / 'runs' / rid
         rdir.mkdir(parents=True, exist_ok=True)
-        (rdir / f'{rid}.bk2').write_bytes(b'PK\x03\x04 test movie')
+        video_only = bool(spec.get('videoOnly'))
+        if not video_only:
+            (rdir / f'{rid}.bk2').write_bytes(b'PK\x03\x04 test movie')
         (rdir / 'thumb.png').write_bytes(PNG)
         run = {
             'id': rid, 'game': spec['game'], 'category': {'goal': spec['goal']},
             'authors': [{'user': a} for a in spec['authors']],
-            'movie': {'file': f'{rid}.bk2', 'format': 'bk2',
-                      'frames': spec['frames'], 'rerecords': 10, 'start': 'power-on'},
+            **({} if video_only else
+               {'movie': {'file': f'{rid}.bk2', 'format': 'bk2',
+                          'frames': spec['frames'], 'rerecords': 10,
+                          'start': 'power-on'}}),
             'thumbnail': 'thumb.png',
             'contract': {'emulator': 'BizHawk 2.11'},
-            'status': spec.get('status', {'reproduced': 'none', 'verified': 'none'}),
+            'status': spec.get('status',
+                               {'reproduced': 'not-applicable', 'verified': 'none',
+                                'console': 'not-applicable'} if video_only else
+                               {'reproduced': 'none', 'verified': 'none'}),
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF45'}],
             'submitted': spec.get('submitted', '2026-01-01T00:00:00Z'),
             'submittedBy': spec['authors'][0],
