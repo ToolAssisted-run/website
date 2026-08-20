@@ -1239,6 +1239,25 @@ def main():
                        for e in elog2), str(elog2[-3:]))
 
             # --- the editor: the library's shape, nothing else ---
+            c, r, _ = call(U + '/api/editor/appoint',
+                           {'key': KEY, 'expert': 'SiteOnly', 'user': 'TestAuthor',
+                            'reason': 'a site expert trying to seat an editor'})
+            ck('only a Committee seat grants the editor role', c == 403, str(r))
+            c, r, _ = call(U + '/api/editor/appoint',
+                           {'key': KEY, 'expert': 'CommitteeB', 'user': 'Shelver',
+                            'reason': 'they already hold it'})
+            ck('an editor is not seated twice', c == 409, str(r))
+            c, r, _ = call(U + '/api/editor/appoint',
+                           {'key': KEY, 'expert': 'CommitteeB', 'user': 'NewFriend',
+                            'reason': 'tireless and careful with the shelves'})
+            ck('a single Committee member seats an editor', c == 200
+               and r['user'] == 'NewFriend', str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rdoc = json.loads((work / 'roles.json').read_text())['events']
+            ck('the grant is a public role event with the reason',
+               any(e['role'] == 'editor' and e['user'] == 'NewFriend'
+                   and e['by'] == 'CommitteeB' and 'shelves' in e['reason']
+                   for e in rdoc), str(rdoc[-2:]))
             c, r, _ = call(U + '/api/category/add',
                            {'key': KEY, 'user': 'Shelver', 'game': 'nes/pinball',
                             'label': 'Editor Made', 'rule': 'A category the editor made.'})
