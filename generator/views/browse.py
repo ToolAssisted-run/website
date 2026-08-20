@@ -109,7 +109,7 @@ body = f'''<header class="ghead"><div><h1>Runs</h1>
 <option value="title">By title</option></select>
 <span id="bcount" class="bcount"></span></div>
 <table class="btable"><thead><tr><th>Game</th><th>System</th><th>Authors</th>
-<th>Metric</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
+<th>Goal</th><th class="num">Value</th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
 <tbody id="brows"></tbody></table>
 {browse_js}'''
 (OUT / 'browse').mkdir(exist_ok=True)

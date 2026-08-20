@@ -839,7 +839,7 @@ def category_add():
         dim = next((d for d in cats['dimensions'] if d['key'] == 'goal'),
                    cats['dimensions'][0] if cats['dimensions'] else None)
         if dim is None:
-            cats['dimensions'] = [{'key': 'goal', 'name': 'Goal', 'options': []}]
+            cats['dimensions'] = [{'key': 'goal', 'name': 'Category', 'options': []}]
             dim = cats['dimensions'][0]
         if any(o['key'] == okey for d in cats['dimensions'] for o in d['options']):
             return fail(f'{okey!r} already exists on this game', 409)
@@ -1311,7 +1311,7 @@ def game_delete():
                     {'title': 'Uncategorized', 'system': system},
                     indent=1) + '\n')
                 (hdir / 'categories.json').write_text(json.dumps(
-                    {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]},
+                    {'dimensions': [{'key': 'goal', 'name': 'Category', 'options': []}]},
                     indent=1) + '\n')
             for d in run_dirs:
                 dest = hdir / 'runs' / d.name
@@ -1558,7 +1558,7 @@ def game_create():
         gdir.mkdir(parents=True, exist_ok=True)
         (gdir / 'game.json').write_text(json.dumps(game, indent=1) + '\n')
         (gdir / 'categories.json').write_text(json.dumps(
-            {'dimensions': [{'key': 'goal', 'name': 'Goal',
+            {'dimensions': [{'key': 'goal', 'name': 'Category',
                              'options': [first_cat]}]}, indent=1) + '\n')
         (gdir / 'runs').mkdir(exist_ok=True)
         if gkey:

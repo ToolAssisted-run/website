@@ -69,7 +69,10 @@ for key, g in games.items():
         for d in dims:
             btns = ''.join(f'<button class="dimopt" data-dim="{esc(d["key"])}" data-opt="{esc(o["key"])}">'
                            f'{esc(o["label"])}</button>' for o in d['options'])
-            rows.append(f'<div class="dimrow"><span class="dimname">{esc(d["name"])}</span>{btns}</div>')
+            # the goal dimension is called a Category everywhere in the UI,
+            # whatever old data named it
+            dname = 'Category' if d['key'] == 'goal' else d['name']
+            rows.append(f'<div class="dimrow"><span class="dimname">{esc(dname)}</span>{btns}</div>')
         selector = f'<div class="dimsel">{"".join(rows)}</div>'
 
     sections = []
