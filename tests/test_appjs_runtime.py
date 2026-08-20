@@ -391,8 +391,8 @@ def main():
             ck('a site expert can close an open report',
                st.get('f-resolve-wrap', {}).get('hidden') is False,
                str(st.get('f-resolve-wrap')))
-            ck('a site expert can withdraw the run',
-               st.get('f-withdraw-wrap', {}).get('hidden') is False,
+            ck('withdrawal stays with the authors: even a site expert never '
+               'sees it', st.get('f-withdraw-wrap', {}).get('hidden') is True,
                str(st.get('f-withdraw-wrap')))
             ck('the expert notes stay with the game-scoped experts',
                st.get('f-expertnote-wrap', {}).get('hidden') is True,

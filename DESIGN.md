@@ -284,15 +284,18 @@ concerns use **contact@toolassisted.run** (§10).
 
 ### Leaving the archive
 
-- **Withdrawal**: any author of the run, or a covering expert, with a
-  mandatory public reason. The run leaves every listing; the page becomes a
-  tombstone; movie, record and history remain.
+- **Withdrawal**: a voluntary act of the run's own authors alone, with a
+  mandatory public reason (an expert who must remove a run deletes it, on
+  the record; historical expert withdrawals keep their `role: expert`
+  stamp). The run leaves every listing; the page becomes a tombstone;
+  movie file, record and history remain. The form is shown only to the
+  run's authors.
 - **Erasure**: only when **every** credited author asks (§3.1); movie, notes,
   thumbnail and record all go, permanently. Tombstoned withdrawals with
   `contentRemoved: true` mark works whose files were taken down while the id
   and record stay (ids are never reused).
 - **Deletion**: things that were never works — spam, tests, non-TAS,
-  mistakes (§3.1.1). Experts delete movies/games/groups outright from the
+  mistakes (§3.1.1). Experts delete runs/games/groups outright from the
   page (confirmation dialog + mandatory public reason); the Committee deletes
   member records (refused while they authored runs; a seated member is the
   Founder's alone; the Founder is nobody's). Every deletion lands in
@@ -566,6 +569,12 @@ archivist, module responsibilities). What matters designwise:
 
 ## 9. UI rules (apply to every future surface)
 
+- **The work is a "run", never a "movie"**, in every piece of copy: page
+  titles, nav ("Runs"), buttons, Discord lines, log headings ("Run
+  reports"), import flow ("Import my runs"). "Movie file" survives only as
+  the name of the input artifact (the recorded inputs a video-only run
+  lacks): "movie file", "movie format", "input movie". Member content and
+  stored field names (`movie` in run.json) are untouched, as always.
 - **Pick, never type**: anything registered (game, member, group) is chosen
   through a type-to-find selector (datalist or chips picker), never a bare
   text box. **A picker never offers what would be refused**: grant lists

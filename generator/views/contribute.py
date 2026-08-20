@@ -53,7 +53,6 @@ nv_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="window
 <td><b>{esc(r['_game']['title'])}</b><span class="bcat">{esc(cat_label(r))}</span></td>
 <td>{esc(systems[r['_game']['system']]['name'])}</td>
 <td>{', '.join(esc(a['user']) for a in r['authors'])}</td>
-<td>{'encode available' if r.get('encodes') else 'no encode yet'}</td>
 <td class="num"><b class="bounty">{PT_VERIFY}</b> pts</td></tr>''' for r in need_verify)
 worklist_systems = sorted({r['_game']['system'] for r in need_repro} |
                           {r['_game']['system'] for r in need_verify})
@@ -145,7 +144,7 @@ anytime; the first to finish earns the points.</p></div></header>
 <p class="rules">Watch the encode and confirm the run achieves its stated category goal. <b>One
 verification ranks the run</b>, shown as verified; a covering expert's makes it
 verified (expert), which is permanent.</p>
-{f'<table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Encode</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
+{f'<table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
 <section><h2>Needs reproduction</h2>
 <p class="rules">Load the movie file on your own setup, confirm it syncs to the end, and submit an
 ending screenshot as proof. Reproduction is the archive's assurance that the movie really

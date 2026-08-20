@@ -42,7 +42,7 @@ def wait_until_live(url, deadline, poll=15):
     return False
 
 def movie_md(r, title=None):
-    """The movie as people say it: [SNES] Prince of Persia by a, b — the
+    """The run as people say it: [SNES] Prince of Persia by a, b — the
     name carrying the link (brackets escaped so Discord keeps them as text)."""
     system, slug = r['game'].split('/')
     if title is None:

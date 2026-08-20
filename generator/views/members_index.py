@@ -38,12 +38,12 @@ committee_now = sorted({ev['user'].lower() for (u, role, scope), ev in ROLES_NOW
                         if role == 'committee'})
 body = f'''<header class="ghead"><div><h1>Members</h1>
 <p class="authline">Everybody who has logged in here at least once, sorted by author score:
-the stars their movies have earned. Click any column to re-sort.</p></div>
+the stars their runs have earned. Click any column to re-sort.</p></div>
 </header>
 <table class="sortable"><thead><tr><th>Member</th><th class="num"><span class="starglyph">★</span> Author score</th>
 <th class="num">Runs</th><th class="num">Contributor score</th></tr></thead>
 <tbody>{''.join(arows)}</tbody></table>
-<p class="legend">Do you come from another community? <a href="../claim/">Claim your name</a>.</p>
+<p class="legend">Do you come from another community? <a href="../claim/">Claim your name</a></p>
 '''
 (OUT / 'authors' / 'index.html').write_text(page('Members', body, '../', '', 'Members'))
 
