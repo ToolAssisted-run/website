@@ -105,6 +105,15 @@ def note_experts(game_key):
 
 def esc(s): return html.escape(str(s), quote=True)
 
+
+def moment(s):
+    """A stamp for log rows: the day, and the clock when the record carries
+    one ('2026-08-20 14:32:07', UTC). Day-only records show the day alone."""
+    s = str(s or '')
+    if 'T' in s:
+        return f'{s[:10]} {s[11:19]}'
+    return s[:10]
+
 def clock(frames, fps):
     total = frames / fps
     ms = int(round((total % 1) * 1000))

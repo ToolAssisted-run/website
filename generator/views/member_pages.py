@@ -33,6 +33,7 @@ from model import (
     withdrawn_runs,
 )
 from render import (
+    moment,
     author_chip,
     badge_chip,
     console_tick,
@@ -71,7 +72,7 @@ for uname, a in authors.items():
     contrib = points.get(uname)
     cpts = contrib['points'] if contrib else 0
     if contrib and contrib['acts']:
-        acts = ''.join(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r_['id']}/'"><td>{esc(d[:10])}</td><td>{esc(desc)}</td>
+        acts = ''.join(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r_['id']}/'"><td>{esc(moment(d))}</td><td>{esc(desc)}</td>
 <td><a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a></td>
 <td class="num">+{pts}</td></tr>''' for d, desc, pts, r_ in sorted(
             contrib['acts'],
@@ -119,7 +120,7 @@ for uname, a in authors.items():
                    member_chip(authors.get(by.lower(), {}).get('username', by), '../../'))
         proof = (f' · <a href="{esc(ev["proof"])}">where it was decided</a>'
                  if ev.get('proof') else '')
-        role_rows.append(f'<tr><td>{esc(ev["date"])}</td><td>{act}</td>'
+        role_rows.append(f'<tr><td>{esc(moment(ev.get("at") or ev["date"]))}</td><td>{act}</td>'
                          f'<td>{what}</td><td>{by_cell}</td>'
                          f'<td>{inline(ev["reason"], "../../")}{proof}</td></tr>')
     roles_html = (f'''<section><details class="secfold menufold"><summary><h2>Roles

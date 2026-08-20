@@ -30,6 +30,7 @@ from model import (
     systems,
 )
 from render import (
+    moment,
     badge_chip,
     esc,
     member_chip,
@@ -121,7 +122,7 @@ latest_items = ''.join(
                                      .replace("reproduction", "reproduced")
                                      .replace("verification", "verified"))} '
     f'<a href="../runs/{r["id"]}/">{esc(r["_game"]["title"])}</a>'
-    f'<span class="actmeta"> {esc(date[:10])} · +{pts}</span></p>'
+    f'<span class="actmeta"> {esc(moment(date))} · +{pts}</span></p>'
     for date, desc, pts, r, who in latest_acts)
 latest_box = (f'<div class="factbox"><h4>Latest contributions</h4>{latest_items}</div>'
               if latest_items else

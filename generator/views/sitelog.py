@@ -30,6 +30,7 @@ from model import (
     withdrawn_runs,
 )
 from render import (
+    moment,
     esc,
     inline,
     member_chip,
@@ -66,7 +67,7 @@ for rep, r_ in all_reports:
            if rep['status'] != 'open' else '')
     report_items.append(f'''<div class="act" id="R{rep['id']}">
 <div class="acthead"><b><a href="#R{rep['id']}">R{rep['id']}</a></b> {chip}
-<span class="actmeta">{esc(rep['date'])} · by {esc(rep['by'])}</span></div>
+<span class="actmeta">{esc(moment(rep.get('at') or rep['date']))} · by {esc(rep['by'])}</span></div>
 <p class="actnote">{esc(REPORT_LABELS.get(rep['kind'], rep['kind']))} ·
 <a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a>
 {(': ' + inline(rep.get('details', ''))) if rep.get('details') else ''}</p>{res}</div>''')
@@ -75,7 +76,7 @@ reports_html = (f'<section id="reports"><h2>Movie reports ({len(report_items)})<
                 f'{"".join(report_items)}</div></section>' if report_items else
                 '<section id="reports"><h2>Movie reports</h2><p class="emptynote">'
                 'No reports have been filed.</p></section>')
-mod_rows = ''.join(f'''<tr><td>{esc(d[:10])}</td><td>{esc(by)}</td>
+mod_rows = ''.join(f'''<tr><td>{esc(moment(d))}</td><td>{esc(by)}</td>
 <td>Invalidated a {kind} by {esc(target)} on
 <a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a></td>
 <td>{esc(reason)}</td></tr>'''
@@ -90,7 +91,7 @@ attestations = sorted(
      for a in authors.values()
      if a.get('claimMethod') == 'attested' and a.get('attestedBy')),
     reverse=True)
-att_rows = ''.join(f'''<tr><td>{esc(d[:10])}</td><td>{member_chip(by, '../../')}</td>
+att_rows = ''.join(f'''<tr><td>{esc(moment(d))}</td><td>{member_chip(by, '../../')}</td>
 <td>Attested that {member_chip(who, '../../')} is <b>{esc(name)}</b></td>
 <td>{inline(how, '../../')}</td></tr>'''
                    for d, by, name, who, how in attestations)
@@ -106,7 +107,7 @@ and the method, and can be challenged.</p>
 
 # ---- role changes: granted and taken away, site-wide, newest first ----
 role_rows_all = ''.join(
-    f'''<tr><td>{esc(ev['date'])}</td><td>{member_chip(ev['user'], '../../')}</td>
+    f'''<tr><td>{esc(moment(ev.get('at') or ev['date']))}</td><td>{member_chip(ev['user'], '../../')}</td>
 <td>{'<span class="chip verchip">Granted</span>' if ev['action'] == 'granted'
      else '<span class="chip pendchip">Removed</span>'}
 {esc(ROLE_LABEL.get(ev['role'], ev['role']))}{
@@ -127,7 +128,7 @@ groups are printed from it.</p>
 
 # ---- runs withdrawn, and the ones erased for good ----
 wd_rows = ''.join(
-    f'''<tr><td>{esc(r_['withdrawn'].get('date', ''))}</td>
+    f'''<tr><td>{esc(moment(r_['withdrawn'].get('at') or r_['withdrawn'].get('date', '')))}</td>
 <td>{member_chip(r_['withdrawn']['by'], '../../')}</td>
 <td><a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a>
 {' <span class="chip pendchip">movie erased</span>' if r_['withdrawn'].get('contentRemoved') else ''}
@@ -169,7 +170,7 @@ refused = sorted(
          'group · refused and dissolved', gr['rejected']['reason'])
         for gr in rejected_groups]), reverse=True)
 rat_rows = ''.join(
-    f'''<tr><td>{esc(when[:10])}</td><td>{member_chip(by, '../../')}</td>
+    f'''<tr><td>{esc(moment(when))}</td><td>{member_chip(by, '../../')}</td>
 <td>{f'<a href="../../{href}">{esc(title)}</a>' if href else f'<b>{esc(title)}</b>'}
 <span class="actmeta"> {esc(what)}</span>{f'<p class="actnote">{inline(why, "../../")}</p>' if why else ''}</td></tr>'''
     for when, by, title, href, what, why in
@@ -196,7 +197,7 @@ claim_reqs = []
 if (ARCHIVE / 'claims.json').exists():
     claim_reqs = json.loads((ARCHIVE / 'claims.json').read_text()).get('requests', [])
 claim_rows = ''.join(
-    f'''<tr><td>{esc(r['date'])}</td><td>{member_chip(r['member'], '../../')}</td>
+    f'''<tr><td>{esc(moment(r.get('at') or r['date']))}</td><td>{member_chip(r['member'], '../../')}</td>
 <td><b>{esc(r['identity'])}</b><p class="actnote">{inline(r['evidence'], '../../')}</p></td>
 <td>{REQ_CHIP_CLAIM[r['status']]}{
     f'<span class="actmeta"> by ' + member_chip(r.get('decidedBy', ''), '../../')
@@ -218,7 +219,7 @@ worked out when they look, written into neither this archive nor anywhere else.<
 
 # ---- edits: git carries the diff, this carries the account ----
 edit_rows = ''.join(
-    f'''<tr><td>{esc(e['date'])}</td><td>{member_chip(e['by'], '../../')}</td>
+    f'''<tr><td>{esc(moment(e.get('at') or e['date']))}</td><td>{member_chip(e['by'], '../../')}</td>
 <td><b>{esc(e['key'])}</b><span class="actmeta"> {esc(e['kind'])} \u00b7 {esc(e['field'])}</span>
 <p class="actnote">{esc((e.get('from') or '(empty)'))} \u2192 {esc((e.get('to') or '(empty)'))}</p></td>
 <td>{inline(e['reason'], '../../')}</td></tr>'''
@@ -238,7 +239,7 @@ if (ARCHIVE / 'deletions.json').exists():
     del_events = json.loads((ARCHIVE / 'deletions.json').read_text()).get('events', [])
 DEL_KIND = {'run': 'movie', 'game': 'game', 'group': 'group', 'member': 'member'}
 del_rows = ''.join(
-    f'''<tr><td>{esc(e['date'])}</td><td>{member_chip(e['by'], '../../')}</td>
+    f'''<tr><td>{esc(moment(e.get('at') or e['date']))}</td><td>{member_chip(e['by'], '../../')}</td>
 <td><b>{esc(e['title'])}</b><span class="actmeta"> {esc(DEL_KIND.get(e['kind'], e['kind']))} \u00b7 {esc(e['key'])}</span>{
     f'<span class="actmeta"> \u00b7 its movies moved to {esc(e["movedTo"])}</span>' if e.get('movedTo') else ''}</td>
 <td>{inline(e['reason'], '../../')}</td></tr>'''
@@ -275,7 +276,7 @@ def removal_row(r, title, href, kind):
                    f'on {esc(r.get("decidedAt", ""))}</span>')
     if r.get('note'):
         answer += f'<p class="actnote">{inline(r["note"], "../../")}</p>'
-    return (f'<tr><td>{esc(r["date"])}</td><td>{member_chip(r["by"], "../../")}</td>'
+    return (f'<tr><td>{esc(moment(r.get("at") or r["date"]))}</td><td>{member_chip(r["by"], "../../")}</td>'
             f'<td>{what}<span class="actmeta"> {esc(kind)}</span>'
             f'<p class="actnote">{inline(r["reason"], "../../")}</p></td>'
             f'<td>{answer}</td></tr>')
