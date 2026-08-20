@@ -315,29 +315,24 @@ def main():
             escaped = [p for p in work.rglob('*') if 'etc' in str(p) and 'passwd' in str(p)]
             ck('nothing was written outside the run tree', not escaped, str(escaped[:2]))
 
-            sub = {'key': KEY, 'submitter': 'Member', 'game': 'new', 'system': 'nes',
-                   'goal': 'new', 'new_goal_label': 'fastest', 'new_goal_rule': 'Be fast.',
+            sub = {'key': KEY, 'submitter': 'Member', 'game': 'nes/testgame',
+                   'goal': 'fastest',
                    'authors': 'Member', 'consent': 'yes', 'dry_run': '1',
                    'encode': 'https://youtu.be/goodvid12345'}
-            code, r, _ = call(U + '/api/submit', dict(sub, new_game_title='../../etc/passwd'),
-                              files={'movie': ('m.bk2', bk2())})
+            create = {'key': KEY, 'user': 'Member', 'system': 'nes', 'dry_run': '1'}
+            code, r, _ = call(U + '/api/game/create', dict(create, title='../../etc/passwd'))
             ck('a traversal game title cannot escape the tree',
-               code == 200 and '..' not in str(r.get('run', {}).get('game', '')), str(r)[:160])
-            code, r, _ = call(U + '/api/submit', dict(sub, new_game_title='!!!'),
-                              files={'movie': ('m.bk2', bk2())})
+               code == 200 and '..' not in str(r.get('would_create', '')), str(r)[:160])
+            code, r, _ = call(U + '/api/game/create', dict(create, title='!!!'))
             ck('a title with no usable characters is refused', code == 400, str(r)[:120])
 
-            # A game created by somebody with no authority is provisional and
-            # waits for an expert. A game created by the expert who would be
-            # asked is not: authority does not consult itself, and their name
-            # goes on it so the record reads the same either way.
-            for who, want, why in (('Member', False, 'a member'),
-                                   ('NesExpert', True, 'the system expert')):
-                code, r, _ = call(U + '/api/submit',
-                                  dict(sub, submitter=who, dry_run='',
-                                       new_game_title=f'Fresh Game By {who}'),
-                                  files={'movie': ('m.bk2', mkarchive.unique_movie())})
-                ck(f'{why} submits a new game', code == 200, str(r)[:160])
+            # Creation is everybody's; expert or member, the game is real on
+            # arrival and the record reads the same either way.
+            for who, why in (('Member', 'a member'), ('NesExpert', 'the system expert')):
+                code, r, _ = call(U + '/api/game/create',
+                                  {'key': KEY, 'user': who, 'system': 'nes',
+                                   'title': f'Fresh Game By {who}'})
+                ck(f'{why} creates a game', code == 200, str(r)[:160])
                 gj = work / 'games' / 'nes' / f'fresh-game-by-{who.lower()}' / 'game.json'
                 doc_ = json.loads(gj.read_text()) if gj.exists() else {}
                 ck(f'a game created by {why} is real on arrival, no gate',
@@ -419,11 +414,14 @@ def main():
             ck('an encode whose thumbnail is not an image is refused', code == 400, str(r)[:140])
 
             # ---------------- expert scope ----------------
-            # scope is probed through category/add, the surviving scoped act
+            # scope is probed through expert/edit (category creation is open
+            # to every member now; editing what exists is the scoped act)
             def addcat(expert, game):
-                return call(U + '/api/category/add',
-                            {'key': KEY, 'expert': expert, 'game': game,
-                             'label': 'Scope Probe', 'rule': 'A probe rule.',
+                return call(U + '/api/expert/edit',
+                            {'key': KEY, 'expert': expert, 'kind': 'game',
+                             'target': game, 'field': 'title',
+                             'value': 'Scope Probe Title',
+                             'reason': 'probing the scope wall',
                              'dry_run': '1'})
             code, r, _ = addcat('NesExpert', 'nes/testgame')
             ck('system expert may act inside their system', code == 200, str(r)[:140])

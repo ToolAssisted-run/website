@@ -37,11 +37,10 @@ from render import (
     console_tick,
     dl_games,
     esc,
-    frames_html,
     inline,
     member_chip,
     page,
-    run_clock,
+    primary_metric_html,
     thumb_html,
     thumb_url,
     tick,
@@ -96,13 +95,12 @@ if live_groups:
             rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r['id']}/'"><td><a href="../../games/{r['_game']['key']}/">{esc(r['_game']['title'])}</a></td>
 <td>{esc(cat_label(r))}</td>
 <td>{', '.join(author_chip(a['user'], '../../') for a in r['authors'])}</td>
-<td class="num"><a href="../../runs/{r['id']}/">{frames_html(r)}</a></td>
-<td class="num">{run_clock(r)}</td>
+<td class="num"><a href="../../runs/{r['id']}/">{primary_metric_html(r)}</a></td>
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
         table = ('' if gr.get('synthetic') else f'''<h2>Records across the group</h2>
 <table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
-<th class="num">Frames</th><th class="num">Time</th><th class="num">Stars</th>
+<th class="num"></th><th class="num">Stars</th>
 <th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table>
 <p class="legend">{FULL_TICK} verified (expert) &nbsp; {PROV_TICK} verified &nbsp;
@@ -326,9 +324,10 @@ games_acts = ('<script type="application/json" id="gamesactdata">'
               '<p id="gamesact-msg" class="actmsg" hidden></p></div>' + dl_games())
 
 body = f'''<header class="ghead"><div><h1>Games</h1>
-<p class="authline">{len(games)} games across {len(by_sys)} systems. Anyone can add a game at
-submission time; experts curate afterwards.</p></div>
-<div class="hbtns"><div class="dimrow"><span class="dimname">View</span>
+<p class="authline">{len(games)} games across {len(by_sys)} systems. Anyone can create a game;
+experts curate afterwards.</p></div>
+<div class="hbtns"><a class="btn" href="../create-game/">Create a game</a>
+<div class="dimrow"><span class="dimname">View</span>
 {'<button class="dimopt gview-btn" data-view="groups">Groups</button>' if grp_view else ''}
 <button class="dimopt gview-btn on" data-view="systems">Systems</button>
 <button class="dimopt gview-btn" data-view="list">List</button></div>

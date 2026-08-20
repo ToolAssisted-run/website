@@ -946,15 +946,15 @@ def main():
             r0 = subprocess.run([node0, '-e',
                                  stub + m0.group(1)
                                  + '\nconsole.log(JSON.stringify({rows: els.brows.innerHTML.length,'
-                                   ' video: els.brows.innerHTML.includes("video"),'
+                                   ' broken: /undefined|null|NaN/.test(els.brows.innerHTML),'
                                    ' count: els.bcount.textContent}))'],
                                 capture_output=True, text=True, timeout=60)
             ck('the browse script renders without throwing', r0.returncode == 0,
                r0.stderr[-300:])
             if r0.returncode == 0:
                 out0 = json.loads(r0.stdout.strip().splitlines()[-1])
-                ck('and every run lands, the video-only one as video',
-                   out0['rows'] > 0 and out0['video'], str(out0))
+                ck('and every run lands, none of the cells broken',
+                   out0['rows'] > 0 and not out0['broken'], str(out0))
 
         # ---------- client app ----------
         js = (out / 'assets' / 'app.js').read_text()

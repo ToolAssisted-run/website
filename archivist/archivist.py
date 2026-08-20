@@ -358,43 +358,17 @@ def submit():
                     'Privacy Policy, and confirming the information, especially '
                     'authorship, is complete and truthful')
 
-    # --- game: existing, or freely created ---
-    # Provisional until an expert ratifies it, unless the person creating it is
-    # already the expert who would be asked: authority does not need to consult
-    # itself. Their name goes on it as the ratifier, so the record reads the
-    # same either way and the site log shows who vouched.
-
-    new_game = False
+    # --- game and category exist beforehand (creation has its own flow) ---
     gsel = (f.get('game') or '').strip()
-    if gsel == 'new':
-        system = (f.get('system') or '').strip()
-        systems_reg = json.loads((ARCHIVE / 'systems.json').read_text())
-        if system not in systems_reg:
-            return fail(f'unknown system {system!r}: systems are curated; ask an expert to add one')
-        title = (f.get('new_game_title') or '').strip()[:120]
-        if not title:
-            return fail('a new game needs new_game_title')
-        slug = slugify(title)
-        if not slug:
-            return fail('game title yields an empty slug')
-        game, cats = load_game(system, slug)
-        if not game:
-            new_game = True
-            # real on arrival: ratification is gone as a mechanism; a bad
-            # creation is deleted by an expert, logged, reversible via git
-            game = {'title': title, 'system': system}
-            cats = {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}
-    else:
-        m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', gsel)
-        if not m:
-            return fail('game must be system/slug, or "new" with system + new_game_title')
-        system, slug = m.groups()
-        game, cats = load_game(system, slug)
-        if not game:
-            return fail(f'unknown game {system}/{slug}; pass game=new to create it')
+    m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', gsel)
+    if not m:
+        return fail('game must be system/slug; create the game first at '
+                    '/create-game/ if it is not archived yet')
+    system, slug = m.groups()
+    game, cats = load_game(system, slug)
+    if not game:
+        return fail(f'unknown game {system}/{slug}; create it first at /create-game/')
 
-    # --- category: existing option, Unclassified, or freely created ---
-    new_goal = False
     goal = (f.get('goal') or '').strip()
     goal_description = ''
     dim_keys = {}
@@ -410,23 +384,30 @@ def submit():
         if goal in {o['key'] for o in d['options']}:
             dim_keys[d['key']] = goal
     if not dim_keys:
-        label = (f.get('new_goal_label') or '').strip()[:80]
-        rule = (f.get('new_goal_rule') or '').strip()[:500]
-        if label and rule:
-            okey = slugify(label)
-            if not okey:
-                return fail('category label yields an empty key')
-            gdim = next((d for d in cats['dimensions'] if d['key'] == 'goal'),
-                        cats['dimensions'][0])
-            new_option = {'key': okey, 'label': label, 'rule': rule}
-            if okey not in {o['key'] for o in gdim['options']}:
-                gdim['options'].append(new_option)
-                new_goal = True
-            goal = okey
-            dim_keys = {gdim['key']: okey}
-        else:
-            return fail(f'unknown category {goal!r} for {system}/{slug}; supply '
-                        f'new_goal_label and new_goal_rule to create one')
+        return fail(f'unknown category {goal!r} for {system}/{slug}; create it '
+                    f'first from the game page')
+
+    # --- the category's metrics decide what the submitter must state ---
+    goal_opt = next((o for d in cats['dimensions'] for o in d['options']
+                     if o['key'] == goal), None)
+    metric_defs = (goal_opt or {}).get('metrics')
+    wants_time = metric_defs is None or any(mm['key'] == 'time'
+                                            for mm in metric_defs)
+    stated_metrics = {}
+    for mm in (metric_defs or []):
+        if mm['key'] == 'time':
+            continue                    # derived for movies, stated via `time`
+        raw = (f.get(f'metric_{mm["key"]}') or '').strip()
+        if raw == '':
+            return fail(f'this category ranks by {mm["label"]}: state its '
+                        f'value (metric_{mm["key"]})')
+        try:
+            val = float(raw)
+        except ValueError:
+            return fail(f'{mm["label"]} must be a number (seconds for times)')
+        if val < 0:
+            return fail(f'{mm["label"]} cannot be negative')
+        stated_metrics[mm['key']] = val
 
     authors = [a.strip() for a in (f.get('authors') or '').split(',') if a.strip()]
     if not authors:
@@ -443,16 +424,20 @@ def submit():
         if mov and mov.filename:
             return fail('you attached a movie file and called the run video-only; '
                         'pick one')
-        stated = (f.get('time') or '').strip()
-        m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated)
-        if not m_t:
-            return fail('a video-only run needs its time, stated as [h:]mm:ss or '
-                        '[h:]mm:ss.mmm')
-        h, mnt, sec, frac = m_t.groups()
-        duration = (int(h or 0) * 3600 + int(mnt) * 60 + int(sec)
-                    + (int(frac.ljust(3, "0")) / 1000 if frac else 0.0))
-        if duration <= 0:
-            return fail('a run that takes no time at all is not a run')
+        duration = None
+        if wants_time and goal != 'unclassified':
+            # the category ranks by time and there are no frames to derive it
+            # from, so the submitter states it
+            stated = (f.get('time') or '').strip()
+            m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated)
+            if not m_t:
+                return fail('a video-only run in a time-ranked category needs its '
+                            'time, stated as [h:]mm:ss or [h:]mm:ss.mmm')
+            h, mnt, sec, frac = m_t.groups()
+            duration = (int(h or 0) * 3600 + int(mnt) * 60 + int(sec)
+                        + (int(frac.ljust(3, "0")) / 1000 if frac else 0.0))
+            if duration <= 0:
+                return fail('a run that takes no time at all is not a run')
         ext = None
         movie_bytes = b''
         movie_sha1 = None
@@ -576,7 +561,9 @@ def submit():
             'id': run_id, 'game': f'{system}/{slug}', 'category': dim_keys,
             'authors': [{'user': a} for a in authors],
             'tools': [],
-            **({'videoOnly': True, 'duration': duration} if video_only else
+            **({'metrics': stated_metrics} if stated_metrics else {}),
+            **({'videoOnly': True,
+                **({'duration': duration} if duration else {})} if video_only else
                {'movie': {'file': f'{run_id}.{ext}', 'format': ext, 'sha1': movie_sha1,
                           'frames': parsed['frames'],
                           'rerecords': parsed['rerecords'],
@@ -597,25 +584,7 @@ def submit():
         }
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_be': run_id, 'run': run,
-                            'creates_game': new_game, 'creates_category': new_goal,
                             'game_key': f'{system}/{slug}'})
-
-        if new_game or new_goal:
-            # re-resolve against the fresh checkout: the game (or option) may have
-            # been created by a concurrent submission — merge, never clobber
-            fresh_g, fresh_c = load_game(system, slug)
-            if fresh_g:
-                game, cats = fresh_g, fresh_c
-                gdim = next((d for d in cats['dimensions'] if d['key'] == 'goal'),
-                            cats['dimensions'][0])
-                if goal not in {o['key'] for o in gdim['options']}:
-                    gdim['options'].append(new_option)
-                dim_keys = {gdim['key']: goal}
-                run['category'] = dim_keys
-            gdir = ARCHIVE / 'games' / system / slug
-            gdir.mkdir(parents=True, exist_ok=True)
-            (gdir / 'game.json').write_text(json.dumps(game, indent=1))
-            (gdir / 'categories.json').write_text(json.dumps(cats, indent=1))
         ensure_member(submitter)
         rdir.mkdir(parents=True)
         if not video_only:
@@ -639,9 +608,7 @@ def submit():
         commit_push(f'Archive {run_id}: {game["title"]} ({goal}) by {", ".join(authors)}\n\n'
                     f'Submitted-By: {submitter}\nVia: archivist')
         notify_discord(f'\U0001f3ac New movie archived: '
-                       + movie_md(run, game['title']) + f' ({goal})'
-                       + (f', in a new [game](<{SITE_URL}/games/{system}/{slug}/>)'
-                          if new_game else ''),
+                       + movie_md(run, game['title']) + f' ({goal})',
                        wait_for=f'{SITE_URL}/runs/{run_id}/',
                        image=f'{SITE_URL}/thumbs/{run_id}{thumb_ext}')
 
@@ -769,11 +736,58 @@ def invalidate():
                     'note': 'Logged in the open site log; appealable; '
                             'the act may be redone by any other member.'})
 
-def _category_gate(f):
+def parse_metric_defs(raw):
+    """The metric rows a creation form sends, validated: (defs, error).
+
+    JSON array, at most 4 entries of {key?, label, type, better, unit?};
+    keys derive from labels; 'time' is the reserved derived metric and may
+    appear as a bare {"key": "time"} row placed anywhere in the hierarchy.
+    An empty/absent value means the classic category (no metrics field)."""
+    raw = (raw or '').strip()
+    if not raw:
+        return None, None
+    try:
+        rows = json.loads(raw)
+    except ValueError:
+        return None, 'metrics must be a JSON array'
+    if not isinstance(rows, list) or len(rows) > 4:
+        return None, 'metrics: at most four, as a JSON array'
+    out, seen = [], set()
+    for row in rows:
+        if not isinstance(row, dict):
+            return None, 'each metric is an object'
+        if row.get('key') == 'time':
+            m = {'key': 'time', 'label': str(row.get('label') or 'Time')[:40],
+                 'type': 'time', 'better': 'lower'}
+        else:
+            label = str(row.get('label') or '').strip()[:40]
+            if not label:
+                return None, 'a metric needs a label'
+            key = slugify(str(row.get('key') or label))
+            if not key or key == 'unclassified':
+                return None, f'bad metric key for {label!r}'
+            mtype = row.get('type')
+            better = row.get('better')
+            if mtype not in ('time', 'number'):
+                return None, f'{label}: type must be time or number'
+            if better not in ('lower', 'higher'):
+                return None, f'{label}: better must be lower or higher'
+            m = {'key': key, 'label': label, 'type': mtype, 'better': better}
+            unit = str(row.get('unit') or '').strip()[:12]
+            if unit:
+                m['unit'] = unit
+        if m['key'] in seen:
+            return None, f'duplicate metric key {m["key"]!r}'
+        seen.add(m['key'])
+        out.append(m)
+    return (out or None), None
+
+
+def _category_gate(f, need_expert=True):
     """Shared by the category endpoints: who is asking, over which game, and
-    the game's categories document. Returns (expert, game_key, cfile, cats,
-    error)."""
-    expert, err_ = request_identity(f, 'expert')
+    the game's categories document. Creation is everybody's; everything else
+    needs a covering expert. Returns (actor, game_key, cfile, cats, error)."""
+    actor, err_ = request_identity(f, 'expert' if need_expert else 'user')
     if err_:
         return None, None, None, None, err_
     game_key = (f.get('game') or '').strip()
@@ -782,16 +796,17 @@ def _category_gate(f):
     cfile = ARCHIVE / 'games' / game_key / 'categories.json'
     if not cfile.exists():
         return None, None, None, None, fail(f'unknown game {game_key}', 404)
-    if not expert_covers(expert, game_key):
+    if need_expert and not expert_covers(actor, game_key):
         return None, None, None, None, fail(
-            f'{expert!r} is not an expert covering {game_key}', 403)
-    return expert, game_key, cfile, json.loads(cfile.read_text()), None
+            f'{actor!r} is not an expert covering {game_key}', 403)
+    return actor, game_key, cfile, json.loads(cfile.read_text()), None
 
 
 @app.post('/api/category/add')
 def category_add():
-    """An expert adds a category option to a game they cover. Made by
-    authority, it is simply a category; the edit log carries the act."""
+    """Any member adds a category (creation is everybody's; only experts
+    edit what exists). The creator defines its metrics; the edit log carries
+    the act."""
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
@@ -801,9 +816,12 @@ def category_add():
             return err0
         if not dry:
             checkout_branch()
-        expert, game_key, cfile, cats, err_ = _category_gate(f)
+        expert, game_key, cfile, cats, err_ = _category_gate(f, need_expert=False)
         if err_:
             return err_
+        mdefs, merr = parse_metric_defs(f.get('metrics'))
+        if merr:
+            return fail(merr)
         label = (f.get('label') or '').strip()
         rule = (f.get('rule') or '').strip()
         if not (1 <= len(label) <= 80):
@@ -827,13 +845,21 @@ def category_add():
             return fail(f'{okey!r} already exists on this game', 409)
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'key': okey})
-        dim['options'].append({'key': okey, 'label': label, 'rule': rule})
+        dim['options'].append({'key': okey, 'label': label, 'rule': rule,
+                               **({'metrics': mdefs} if mdefs else {})})
         cfile.write_text(json.dumps(cats, indent=1) + '\n')
         log_edit('category', f'{game_key}:{okey}', 'added', '', label, expert,
-                 (f.get('reason') or 'Created by a covering expert.').strip()[:500])
+                 (f.get('reason') or 'Created it.').strip()[:500])
         ensure_member(expert)
-        commit_push(f'Category add {game_key}:{okey}: by expert {expert}\n\n'
+        gtitle = json.loads((ARCHIVE / 'games' / game_key / 'game.json')
+                            .read_text()).get('title', game_key)
+        commit_push(f'Category add {game_key}:{okey}: by {expert}\n\n'
                     f'Label: {label}\nVia: archivist')
+        notify_discord(f'\U0001f5c2\ufe0f **{expert}** created the category '
+                       f'[{label}](<{SITE_URL}/games/{game_key}/>) in '
+                       f'[\\[{game_key.split("/")[0].upper()}\\] {gtitle}]'
+                       f'(<{SITE_URL}/games/{game_key}/>)',
+                       wait_for=f'{SITE_URL}/games/{game_key}/')
     return jsonify({'ok': True, 'game': game_key, 'key': okey, 'label': label})
 
 
@@ -896,7 +922,7 @@ def _deletion_gate(f, need='expert'):
 EXPERT_EDITABLE = {'run': ('duration', 'goal', 'encode', 'goalDescription',
                            'notes', 'movie'),
                    'game': ('title', 'thumbnail'),
-                   'category': ('label', 'rule'),
+                   'category': ('label', 'rule', 'metrics'),
                    'group': ('title',)}
 
 @app.post('/api/expert/edit')
@@ -920,7 +946,8 @@ def expert_edit():
         reason = (f.get('reason') or '').strip()
         if kind not in EXPERT_EDITABLE:
             return fail('kind must be run, game, category or group')
-        if field not in EXPERT_EDITABLE[kind]:
+        if field not in EXPERT_EDITABLE[kind] and not (
+                kind == 'run' and field.startswith('metric:')):
             return fail(f'{field!r} is not expert-editable on a {kind}; the record '
                         f'allows: {", ".join(EXPERT_EDITABLE[kind])}. Member content '
                         f'is never edited by anybody but its author.')
@@ -939,7 +966,18 @@ def expert_edit():
             if not expert_covers(actor, game_key):
                 return fail(f'{actor!r} is not an expert covering {game_key}', 403)
             r = json.loads((rdir / 'run.json').read_text())
-            if field == 'duration':
+            if field.startswith('metric:'):
+                mkey = field.split(':', 1)[1]
+                try:
+                    new_v = float(value)
+                except ValueError:
+                    return fail('value must be a number (seconds for times)')
+                if new_v < 0:
+                    return fail('a metric value cannot be negative')
+                old_v = (r.get('metrics') or {}).get(mkey, 0)
+                r.setdefault('metrics', {})[mkey] = new_v
+                value = str(new_v)
+            elif field == 'duration':
                 if not r.get('videoOnly'):
                     return fail('only a video-only run has a stated time to correct; '
                                 'a movie derives its time from its frames')
@@ -1095,6 +1133,49 @@ def expert_edit():
                         if o['key'] == okey), None)
             if not opt:
                 return fail(f'{game_key} defines no category {okey!r}', 404)
+            if field == 'metrics':
+                mdefs, merr = parse_metric_defs(value)
+                if merr:
+                    return fail(merr)
+                old_defs = opt.get('metrics')
+                old_v = json.dumps(old_defs) if old_defs else '(classic: time)'
+                new_v = json.dumps(mdefs) if mdefs else '(classic: time)'
+                if old_v == new_v:
+                    return fail('that is already its metric definition')
+                if dry:
+                    return jsonify({'ok': True, 'dry_run': True, 'field': field,
+                                    'from': old_v, 'to': new_v})
+                if mdefs:
+                    opt['metrics'] = mdefs
+                else:
+                    opt.pop('metrics', None)
+                cfile.write_text(json.dumps(cats, indent=1) + '\n')
+                # a freshly added metric writes the explicit empty value onto
+                # every run already in the category: nothing gets unranked,
+                # zeros rank last, and the experts fill them in from here
+                old_keys = {m['key'] for m in (old_defs or [])}
+                fresh = [m['key'] for m in (mdefs or [])
+                         if m['key'] != 'time' and m['key'] not in old_keys]
+                touched = 0
+                if fresh:
+                    for rj in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json'):
+                        rr = json.loads(rj.read_text())
+                        if (rr.get('category') or {}).get('goal') != okey:
+                            continue
+                        for kf in fresh:
+                            rr.setdefault('metrics', {}).setdefault(kf, 0)
+                        rj.write_text(json.dumps(rr, indent=1) + '\n')
+                        touched += 1
+                log_edit('category', key, field, old_v[:300], new_v[:300],
+                         actor, reason)
+                ensure_member(actor)
+                commit_push(f'Expert edit category {key}: metrics\n\n'
+                            f'By: {actor}\nReason: {reason}\n'
+                            f'Runs seeded with empty values: {touched}\n'
+                            f'Via: archivist')
+                return jsonify({'ok': True, 'kind': kind, 'key': key,
+                                'field': field, 'from': old_v, 'to': new_v,
+                                'runs_seeded': touched})
             limit = 80 if field == 'label' else 500
             if not (1 <= len(value) <= limit):
                 return fail(f'a {field} fits in {limit} characters')
@@ -1423,7 +1504,7 @@ def game_create():
         err0 = auth_precheck(f)
         if err0:
             return err0
-        expert, err_ = request_identity(f, 'expert')
+        expert, err_ = request_identity(f, 'user')
         if err_:
             return err_
         system = (f.get('system') or '').strip()
@@ -1447,22 +1528,29 @@ def game_create():
         # game lands in. A group expert creating into their own group is the
         # case this exists for, and the game is not in the group yet, so the
         # group is what has to be checked rather than the game.
-        if gr:
-            allowed = covers_group(expert, gr)
-            why = f'the {gr["title"]} group'
-        else:
-            allowed = any(s in ('site', system) for s in
-                          {e['scope'] for e in load_experts()
-                           if e['user'].lower() == expert.lower()})
-            why = f'{system}, and no group was named'
-        if not allowed:
-            return fail(f'{expert} holds no scope covering {why}', 403)
+        # creation is everybody's (good faith; experts moderate). Placing
+        # the game into a group is curation and still needs scope over it.
+        if gr and not covers_group(expert, gr):
+            return fail(f'{expert} holds no scope covering the '
+                        f'{gr["title"]} group', 403)
         today_ = time.strftime('%Y-%m-%d', time.gmtime())
         game = {'title': title, 'system': system, 'createdBy': expert,
                 'createdAt': today_}
+        cat_label = (f.get('cat_label') or 'fastest completion').strip()[:80]
+        cat_rule = (f.get('cat_rule')
+                    or 'Complete the game as fast as possible.').strip()[:500]
+        cat_key = slugify(f.get('cat_key') or cat_label)
+        mdefs, merr = parse_metric_defs(f.get('metrics'))
+        if merr:
+            return fail(merr)
+        if not cat_key or cat_key == 'unclassified':
+            return fail('bad first-category key')
+        first_cat = {'key': cat_key, 'label': cat_label, 'rule': cat_rule,
+                     **({'metrics': mdefs} if mdefs else {})}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': game_key,
-                            'game': game, 'group': gkey or None})
+                            'game': game, 'category': first_cat,
+                            'group': gkey or None})
         checkout_branch()
         gdir = ARCHIVE / 'games' / system / slug
         if (gdir / 'game.json').exists():
@@ -1470,7 +1558,8 @@ def game_create():
         gdir.mkdir(parents=True, exist_ok=True)
         (gdir / 'game.json').write_text(json.dumps(game, indent=1) + '\n')
         (gdir / 'categories.json').write_text(json.dumps(
-            {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}, indent=1) + '\n')
+            {'dimensions': [{'key': 'goal', 'name': 'Goal',
+                             'options': [first_cat]}]}, indent=1) + '\n')
         (gdir / 'runs').mkdir(exist_ok=True)
         if gkey:
             doc = load_groups()
@@ -1479,13 +1568,14 @@ def game_create():
             save_groups(doc)
         ensure_member(expert)
         ensure_game_topic(*game_key.split('/'), title)
-        commit_push(f'Create {game_key}: by expert {expert}\n\n'
-                    f'Title: {title}\nGroup: {gkey or "none"}\nVia: archivist')
+        commit_push(f'Create {game_key}: by {expert}\n\n'
+                    f'Title: {title}\nFirst category: {cat_key}\n'
+                    f'Group: {gkey or "none"}\nVia: archivist')
         notify_discord(f'\U0001f5c2\ufe0f **{expert}** created the '
                        f'[game](<{SITE_URL}/games/{game_key}/>) {title}'
                        + (f' in the {gkey} group' if gkey else ''),
                        wait_for=f'{SITE_URL}/games/{game_key}/')
-    return jsonify({'ok': True, 'game': game_key,
+    return jsonify({'ok': True, 'game': game_key, 'category': cat_key,
                     'group': gkey or None,
                     'note': 'It has no runs yet, so it shows as an empty game until '
                             'somebody archives one.'})
@@ -1964,6 +2054,19 @@ def edit_run():
         if 'emulator' in f:
             r.setdefault('contract', {})['emulator'] = (f.get('emulator') or '').strip()[:120]
             changed.append('emulator')
+        for fk in list(f.keys()):
+            if not fk.startswith('metric_'):
+                continue
+            mkey = fk[len('metric_'):]
+            try:
+                mval = float((f.get(fk) or '').strip())
+            except ValueError:
+                return fail(f'{mkey} must be a number (seconds for times)')
+            if mval < 0:
+                return fail(f'{mkey} cannot be negative')
+            befores[f'metric:{mkey}'] = str((r.get('metrics') or {}).get(mkey, 0))
+            r.setdefault('metrics', {})[mkey] = mval
+            changed.append(f'metric:{mkey}')
         if 'completed' in f:
             cv = (f.get('completed') or '').strip()
             if cv:
@@ -2028,7 +2131,9 @@ def edit_run():
             log_edit('run', run_id, field,
                      befores.get(field, '(previous value in git history)'),
                      ('(see the run)' if field in ('notes', 'authors') else
-                      str({'emulator': r.get('contract', {}).get('emulator', ''),
+                      str((r.get('metrics') or {}).get(field.split(':', 1)[1], '')
+                          if field.startswith('metric:') else
+                          {'emulator': r.get('contract', {}).get('emulator', ''),
                            'completed': r.get('completed', ''),
                            'goalDescription': r.get('goalDescription', ''),
                            'encode': (r.get('encodes') or [{}])[0].get('url', ''),

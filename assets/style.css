@@ -468,6 +468,24 @@ footer a{color:var(--accent-text);text-decoration:none}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .expertmenu>h2{color:#FDBA74}}
 :root[data-theme=dark] .expertmenu>h2{color:#FDBA74}
 
+/* the category's own metrics: a dashed box below the video-only mark */
+.metricsbox{border:2.5px dashed var(--hairs);border-radius:10px;padding:12px 16px 16px;margin:10px 0}
+.metricsbox input[type=number]{max-width:220px}
+/* the metrics editor on the creation pages */
+.metriced .mrow{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+.metriced .mrow input,.metriced .mrow select{margin:0}
+.metriced .mlabel{flex:2;min-width:140px}
+.metriced .munit{flex:1;min-width:80px;max-width:120px}
+.metriced .mfixed{flex:2;font-family:ui-monospace,monospace;font-size:.85rem;color:var(--faint)}
+.metriced .mmove{padding:6px 10px;font-size:.8rem}
+.metriced .medbtns{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}
+/* selector + "not there? create" question, side by side */
+.pickrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pickrow .gamepick,.pickrow select{flex:1;min-width:min(320px,100%)}
+.createq{font-size:.85rem;color:var(--faint);white-space:nowrap;display:flex;align-items:center;gap:8px}
+.createq .btn{padding:6px 12px;font-size:.8rem}
+.createq [aria-disabled=true]{opacity:.45;pointer-events:none}
+
 /* stated-time picker: four boxes, a mistake is not possible */
 .timepick{display:flex;gap:10px}
 .tseg{display:flex;flex-direction:column;align-items:center;gap:2px}

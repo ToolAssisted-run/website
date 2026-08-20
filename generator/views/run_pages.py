@@ -29,8 +29,11 @@ from model import (
     is_ranked,
     is_unclassified,
     live,
+    metric_value,
     nlikes,
     repro_bounty,
+    run_metric_defs,
+    run_seconds,
     runs,
     systems,
 )
@@ -40,6 +43,7 @@ from render import (
     author_chip,
     console_chip,
     esc,
+    fmt_metric,
     inline,
     member_chip,
     note_experts,
@@ -511,7 +515,11 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <div class="factbox"><h4>Run</h4><dl>
     {'<dt>Kind</dt><dd>Video-only: no input movie exists</dd>' if r.get('videoOnly') else
      f'<dt>Frames</dt><dd class="big">{r["movie"]["frames"]:,}</dd>'}
-    <dt>Time</dt><dd>{t}{' (stated by the submitter)' if r.get('videoOnly') else ''}</dd>
+    {f'<dt>Time</dt><dd>{t}{" (stated by the submitter)" if r.get("videoOnly") else ""}</dd>'
+     if run_seconds(r) is not None else ''}
+    {''.join(f'<dt>{esc(m["label"])}</dt><dd>{fmt_metric(metric_value(r, m), m)}'
+             f'{"" if metric_value(r, m) is not None else " (not yet stated)"}</dd>'
+             for m in run_metric_defs(r) if m['key'] != 'time')}
     {'' if r.get('videoOnly') else
      f'<dt>Rerecords</dt><dd>{(r["movie"].get("rerecords") or 0):,}</dd>'
      f'<dt>Format</dt><dd>{esc(r["movie"]["format"])}</dd>'}

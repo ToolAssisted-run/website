@@ -44,9 +44,11 @@ from model import (
     is_ranked,
     is_unclassified,
     live,
+    metric_value,
     points,
     profile_slug,
     roles_of,
+    run_metric_defs,
     run_seconds,
     runs,
     scopes_over,
@@ -123,13 +125,58 @@ def clock(frames, fps):
     body = f'{m:02d}:{s:02d}.{ms:03d}'
     return (f'{h}:' + body) if h else body
 
-def run_clock(r):
-    s = run_seconds(r)
+# the metrics editor skeleton the creation pages and the game editor share;
+# app.js (initMetricsEd) builds the rows and keeps the hidden input as JSON
+METRICS_ED = '''<div class="metricsbox metriced">
+  <p class="rules fullw">What does this category rank by? Up to 4 metrics; their order is the
+  tie-break hierarchy and the first one is shown everywhere a time shows today. Skip this
+  entirely for a classic category: real time, lower is better.</p>
+  <div class="mrows"></div>
+  <div class="medbtns">
+    <button type="button" class="btn quiet med-add">+ Add a metric</button>
+    <label class="cwlab"><input type="checkbox" class="med-time"> Include real time
+    (derived from the movie or the video; never typed by authors)</label>
+  </div>
+  <input type="hidden" name="metrics">
+</div>'''
+
+def sec_clock(s):
     if s is None:
         return '—'
     ms = int(round((s % 1) * 1000))
     body = f'{int(s) // 60 % 60:02d}:{int(s) % 60:02d}.{ms:03d}'
     return f'{int(s) // 3600}:{body}' if s >= 3600 else body
+
+def run_clock(r):
+    return sec_clock(run_seconds(r))
+
+def fmt_metric(v, mdef):
+    """One metric value for display: a clock for time-typed metrics, a
+    unit-suffixed number otherwise, the dash when nothing is stated."""
+    if v is None:
+        return '—'
+    if mdef['type'] == 'time':
+        return sec_clock(v)
+    n = f'{v:,.3f}'.rstrip('0').rstrip('.')
+    unit = mdef.get('unit')
+    return f'{n}<span class="u"> {esc(unit)}</span>' if unit else n
+
+def primary_metric_html(r):
+    """The run's primary metric, rendered: what the coalesced browse column,
+    thumbnail badges and leaderboards lead with."""
+    m = run_metric_defs(r)[0]
+    return fmt_metric(metric_value(r, m), m)
+
+def primary_metric_text(r):
+    """Same, plain text (thumbnail badges, meta descriptions)."""
+    m = run_metric_defs(r)[0]
+    v = metric_value(r, m)
+    if v is None:
+        return '—'
+    if m['type'] == 'time':
+        return sec_clock(v)
+    n = f'{v:,.3f}'.rstrip('0').rstrip('.')
+    return f'{n} {m["unit"]}' if m.get('unit') else n
 
 def frames_html(r):
     """The frames cell: a count for a movie, a dash for a video-only run,
@@ -254,8 +301,10 @@ def resolve_refs(s, rel):
         rid = 'M' + m.group(1)
         r = RUN_BY_ID.get(rid)
         if r:
-            label = (f"{r['_game']['title']} · {cat_label(r)} in {run_clock(r)} "
-                     f"by {', '.join(a['user'] for a in r['authors'])}")
+            pm = primary_metric_text(r)
+            label = (f"{r['_game']['title']} · {cat_label(r)}"
+                     + (f' in {pm}' if pm != '—' else '')
+                     + f" by {', '.join(a['user'] for a in r['authors'])}")
             tu = thumb_url(r)
             card = (f'<span class="refcard"><img src="{esc(tu)}" loading="lazy" alt=""></span>'
                     if tu else '')

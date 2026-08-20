@@ -14,18 +14,22 @@ from config import (
     OUT,
 )
 from model import (
+    CLASSIC_METRICS,
     covering_experts,
     eff_state,
     games,
     is_ranked,
     is_unclassified,
+    metric_value,
     nlikes,
+    rank_key,
     run_seconds,
     systems,
 )
 from render import (
     FULL_TICK,
     IMPORTED_TICK,
+    METRICS_ED,
     NONE_TICK,
     PROV_TICK,
     SHIPPED_GAME_THUMBS,
@@ -33,6 +37,7 @@ from render import (
     console_tick,
     esc,
     expert_line,
+    fmt_metric,
     frames_html,
     group_chip,
     inline,
@@ -74,8 +79,14 @@ for key, g in games.items():
         label = ' × '.join(o['label'] for _, o in combo)
         rules = ' '.join(o['rule'] for _, o in combo)
         allrs = [r for r in g['runs'] if all(r['category'][d['key']] == o['key'] for d, o in combo)]
-        ranked_all = sorted([r for r in allrs if is_ranked(r)],
-                            key=lambda r: run_seconds(r) or 0)
+        mdefs = next((o.get('metrics') for _, o in combo if o.get('metrics')),
+                     None) or CLASSIC_METRICS
+        mth = ''.join(f'<th class="num">{esc(m["label"])}</th>' for m in mdefs)
+
+        def mcells(r):
+            return ''.join(f'<td class="num">{fmt_metric(metric_value(r, m), m)}</td>'
+                           for m in mdefs)
+        ranked_all = sorted([r for r in allrs if is_ranked(r)], key=rank_key)
         # one run per author (set) per category: fastest counts, rest is history
         table_runs, history, seen_sets = [], [], set()
         for r in ranked_all:
@@ -95,7 +106,7 @@ for key, g in games.items():
             rows.append(f'''<tr class="{'lead' if i==0 else ''}" onclick="if(!event.target.closest('a'))location='{rel}runs/{r['id']}/'">
 <td class="rank">{i+1}</td><td>{au}</td>
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
-<td class="num">{run_clock(r)}</td>
+{mcells(r)}
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
 <td>{esc((r.get('submitted') or '')[:10])}</td>
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
@@ -105,7 +116,7 @@ for key, g in games.items():
             au = ' · '.join(author_chip(a['user'], rel) for a in r['authors'])
             prows.append(f'''<tr onclick="if(!event.target.closest('a'))location='{rel}runs/{r['id']}/'"><td class="rank">·</td><td>{au}</td>
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
-<td class="num">{run_clock(r)}</td>
+{mcells(r)}
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
 <td>{esc((r.get('submitted') or '')[:10])}</td>
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
@@ -114,27 +125,41 @@ for key, g in games.items():
             best = next(t for t in table_runs
                         if frozenset(a['user'].lower() for a in t['authors'])
                         == frozenset(a['user'].lower() for a in r['authors']))
-            # frames against frames when both sides have them; otherwise the
-            # honest unit is seconds
-            if r.get('videoOnly') or best.get('videoOnly'):
-                delta = None
-                delta_s = (run_seconds(r) or 0) - (run_seconds(best) or 0)
+            # how far behind the same authors' best this sits, on the
+            # primary metric: frames against frames when both sides have
+            # them and time rules; otherwise the metric's own unit
+            prim = mdefs[0]
+            pv, bv = metric_value(r, prim), metric_value(best, prim)
+            if (prim['key'] == 'time' and not r.get('videoOnly')
+                    and not best.get('videoOnly')):
+                dtxt = f"+{r['movie']['frames'] - best['movie']['frames']:,}f"
+            elif pv is None or bv is None:
+                dtxt = '—'
             else:
-                delta = r['movie']['frames'] - best['movie']['frames']
+                behind = (pv - bv) if prim['better'] == 'lower' else (bv - pv)
+                dtxt = (f'+{behind:.2f}s' if prim['type'] == 'time'
+                        else f'{behind:+g}'
+                        + (f' {esc(prim["unit"])}' if prim.get('unit') else ''))
             au = ' · '.join(author_chip(a['user'], rel) for a in r['authors'])
             hrows.append(f'''<tr onclick="if(!event.target.closest('a'))location='{rel}runs/{r['id']}/'"><td class="rank">·</td><td>{au}</td>
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
-<td class="num muted">{f'+{delta:,}f' if delta is not None else f'+{delta_s:.2f}s'}</td>
+<td class="num muted">{dtxt}</td>
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
 <td>{esc((r.get('submitted') or '')[:10])}</td>
 <td class="ctr">{tick(eff_state(r)[0])}</td><td class="ctr">{tick(eff_state(r)[1])}</td><td class="ctr">{console_tick(r)}</td></tr>''')
+        ranked_by = ''
+        if mdefs is not CLASSIC_METRICS:
+            ranked_by = ('<p class="rules"><b>Ranked by:</b> '
+                         + ', then '.join(
+                             f'{esc(m["label"])} ({"lower" if m["better"] == "lower" else "higher"} is better)'
+                             for m in mdefs) + '</p>')
         if allrs:
-            content = f'''<p class="rules"><b>Rules:</b> {esc(rules)}</p>
-{'<table><thead><tr><th>#</th><th>Author</th><th class="num">Frames</th><th class="num">Time</th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead><tbody>' + ''.join(rows) + '</tbody></table>' if rows else '<p class="emptynote">No ranked runs yet in this category.</p>'}
+            content = f'''<p class="rules"><b>Rules:</b> {esc(rules)}</p>{ranked_by}
+{'<table><thead><tr><th>#</th><th>Author</th><th class="num">Frames</th>' + mth + '<th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead><tbody>' + ''.join(rows) + '</tbody></table>' if rows else '<p class="emptynote">No ranked runs yet in this category.</p>'}
 {f'<h3 class="pendh">Pending: awaiting reproduction and verification</h3><table><tbody>' + ''.join(prows) + '</tbody></table>' if prows else ''}
 {f'<h3 class="histh">History: earlier runs superseded by the same authors</h3><table><tbody>' + ''.join(hrows) + '</tbody></table>' if hrows else ''}'''
         else:
-            content = (f'<p class="rules"><b>Rules:</b> {esc(rules)}</p>'
+            content = (f'<p class="rules"><b>Rules:</b> {esc(rules)}</p>{ranked_by}'
                        '<p class="emptynote">No runs archived yet in this combination.</p>')
         sections.append(f'<section class="combo" data-combo="{esc(ckey)}"><h2>{esc(label)}</h2>{content}</section>')
 
@@ -251,6 +276,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 <h1>{esc(g['title'])}</h1>{group_chip(g['key'], rel)}
 {expert_line(g['key'], rel)}</div>
 <div class="hbtns">{f'<img class="gface" src="/thumbs/{esc(SHIPPED_GAME_THUMBS[g["key"]])}" alt="">' if g['key'] in SHIPPED_GAME_THUMBS else ''}<a class="btn" href="{rel}submit/?game={esc(g['key'])}">Submit a run</a>
+<a class="btn quiet" href="{rel}create-category/?game={esc(g['key'])}">Create a category</a>
 <a class="btn quiet" href="{FORUM}/tags/c/games/12/{g['system']}-{g['key'].split('/')[1]}">Discuss on the forum</a></div></header>
 {selector}
 {''.join(sections)}
@@ -270,6 +296,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
         for o in d_['options']:
             opt_data.append({
                 'key': o['key'], 'label': o['label'], 'rule': o.get('rule', ''),
+                'metrics': o.get('metrics'),
                 'runs': sum(1 for r_ in g['runs']
                             if (r_.get('category') or {}).get('goal') == o['key'])})
     edit_data = {'game': g['key'], 'title': g['title'],
@@ -308,6 +335,7 @@ is logged in the open with your name, the old value and the new.</p></div>
 <section><h2>Categories</h2>
 <p class="rules">The label is what the rankings say; the rule is what a verifier holds a
 run to. A category with runs in it cannot be deleted: it is their home.</p>
+<template id="med-skeleton">{METRICS_ED}</template>
 <div id="ge-cats"></div>
 <form id="f-ge-add" class="actform gecard">
   <h3>Add a category</h3>
@@ -316,6 +344,7 @@ run to. A category with runs in it cannot be deleted: it is their home.</p>
   <label>Rule <input name="rule" required maxlength="500"
     placeholder="what a verifier holds a run to"></label>
   <label>Key (optional; derived from the label) <input name="option_key" pattern="[a-z0-9-]*"></label>
+  {METRICS_ED}
   <button class="btn">Add</button>
 </form></section>
 <section><h2>Governance</h2>

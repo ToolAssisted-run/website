@@ -13,7 +13,6 @@ from config import (
     OUT,
 )
 from model import (
-    run_seconds,
     archived_at,
     cat_label,
     eff_state,
@@ -26,7 +25,7 @@ from model import (
 from render import (
     esc,
     page,
-    run_clock,
+    primary_metric_html,
 )
 
 # ---- browse page (client-side search / facets / sort) ----
@@ -42,9 +41,7 @@ for r in sorted(runs, key=archived_at, reverse=True):
         'id': r['id'], 'title': g['title'], 'sys': g['system'],
         'sysname': systems[g['system']]['name'], 'cat': cat_label(r),
         'authors': [a['user'] for a in r['authors']],
-        'frames': (None if r.get('videoOnly') else r['movie']['frames']),
-        'secs': run_seconds(r),
-        'time': run_clock(r),
+        'result': primary_metric_html(r),
         'stars': nlikes(r),
         'date': archived_at(r)[:10], 'state': state,
     })
@@ -84,9 +81,7 @@ function render(){
       '<td><b>' + r.title + '</b><span class="bcat">' + r.cat + '</span></td>' +
       '<td class="bsys">' + r.sysname + '</td>' +
       '<td>' + r.authors.join(', ') + '</td>' +
-      '<td class="num">' + (r.frames === null ? '<span class="u">video</span>'
-                                  : r.frames.toLocaleString() + '<span class="u">f</span>') + '</td>' +
-      '<td class="num">' + r.time + '</td>' +
+      '<td class="num">' + r.result + '</td>' +
       '<td class="num"><span class="starglyph">★</span>' + r.stars + '</td>' +
       '<td>' + r.date + '</td>' +
       '<td>' + chip(r.state) + '</td></tr>';
@@ -111,7 +106,7 @@ body = f'''<header class="ghead"><div><h1>Movies</h1>
 <option value="title">By title</option></select>
 <span id="bcount" class="bcount"></span></div>
 <table class="btable"><thead><tr><th>Game</th><th>System</th><th>Authors</th>
-<th class="num">Frames</th><th class="num">Time</th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
+<th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
 <tbody id="brows"></tbody></table>
 {browse_js}'''
 (OUT / 'browse').mkdir(exist_ok=True)

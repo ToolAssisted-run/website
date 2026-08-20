@@ -487,33 +487,57 @@ def main():
             c, r, _ = call(U + '/api/submit', sub, {'movie': ('junk.bk2', b'not a movie')})
             ck('unparseable movie rejected', c == 400 and 'did not parse' in r.get('error', ''))
 
-            # --- free game/category creation (provisional until ratified) ---
-            c, r, _ = call(U + '/api/submit', dict(sub, game='new', system='fakesys',
-                                                   new_game_title='Ghost Game'), uniq_files())
-            ck('unknown system rejected', c == 400 and 'system' in r.get('error', ''))
+            # --- games and categories exist beforehand; creation is its own
+            # flow, open to every member ---
             c, r, _ = call(U + '/api/submit', dict(sub, game='new', system='nes',
-                                                   new_game_title="Solomon's Key",
-                                                   goal='new', new_goal_label='fastest completion',
-                                                   new_goal_rule='Complete the game as fast as possible.'),
-                           uniq_files())
-            ck('new game dry-run', c == 200 and r.get('creates_game')
-               and r['game_key'] == 'nes/solomons-key', str(r))
+                                                   new_game_title='Ghost Game'), uniq_files())
+            ck('the submit form no longer creates games',
+               c == 400 and 'create the game first' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball', goal='no-such-goal'),
                            uniq_files())
-            ck('unknown category needs label+rule', c == 400 and 'new_goal_label' in r.get('error', ''))
-            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball', goal='new',
-                                                   new_goal_label='pacifist',
-                                                   new_goal_rule='Never destroy anything.'),
-                           uniq_files())
-            ck('new category dry-run', c == 200 and r.get('creates_category')
-               and r['run']['category'] == {'goal': 'pacifist'}, str(r))
-            # real creation: pushed state must validate (schema + provisional flags)
-            newsub = dict(sub, game='new', system='nes', new_game_title="Solomon's Key",
-                          goal='new', new_goal_label='fastest completion',
-                          new_goal_rule='Complete the game as fast as possible.')
+            ck('an unknown category points at the creation flow',
+               c == 400 and 'create it first' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/game/create',
+                           {'key': KEY, 'user': 'TestAuthor', 'system': 'fakesys',
+                            'title': 'Ghost Game'})
+            ck('unknown system rejected at creation', c == 400
+               and 'system' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/game/create',
+                           {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
+                            'title': "Solomon's Key",
+                            'cat_label': 'fastest completion',
+                            'cat_rule': 'Complete the game as fast as possible.'})
+            ck('any member creates a game, first category born with it',
+               c == 200 and r['game'] == 'nes/solomons-key'
+               and r['category'] == 'fastest-completion', str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'label': 'pacifist', 'rule': 'Never destroy anything.',
+                            'metrics': '[{"label": "Score", "type": "number", '
+                                       '"better": "higher", "unit": "pts"}, '
+                                       '{"key": "time"}]'})
+            ck('any member creates a category, defining its metrics',
+               c == 200 and r['key'] == 'pacifist', str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            pac = next(o for d in cj_['dimensions'] for o in d['options']
+                       if o['key'] == 'pacifist')
+            ck('the metric hierarchy is stored as defined',
+               [m['key'] for m in pac['metrics']] == ['score', 'time']
+               and pac['metrics'][0]['better'] == 'higher', str(pac))
+            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball',
+                                                   goal='pacifist'), uniq_files())
+            ck('a metric-bearing category demands its values',
+               c == 400 and 'metric_score' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball',
+                                                   goal='pacifist',
+                                                   metric_score='1250'), uniq_files())
+            ck('stated values ride the dry run',
+               c == 200 and r['run']['metrics'] == {'score': 1250.0}, str(r))
+            newsub = dict(sub, game='nes/solomons-key', goal='fastest-completion')
             del newsub['dry_run']
             c, r, _ = call(U + '/api/submit', newsub, uniq_files())
-            ck('new game created for real', c == 200 and r.get('ok'), str(r))
+            ck('submission lands in the pre-created game', c == 200 and r.get('ok'), str(r))
             created_id = r.get('id')
 
             # --- unclassified: no goal, needs a description, never verified ---
@@ -1093,7 +1117,7 @@ def main():
 
             # --- a group expert fills out their own series ---
             c, r, _ = call(U + '/api/game/create',
-                           {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
+                           {'key': KEY, 'user': 'groupexpert', 'group': 'test-family',
                             'system': 'nes', 'title': 'Brand New Game'})
             ck('an expert creates a game inside a series they cover',
                c == 200 and r['game'] == 'nes/brand-new-game', str(r))
@@ -1109,27 +1133,35 @@ def main():
             ck('and it landed in the series it was made for',
                'nes/brand-new-game' in fam['games'], str(fam))
             c, r, _ = call(U + '/api/game/create',
-                           {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
+                           {'key': KEY, 'user': 'groupexpert', 'group': 'test-family',
                             'system': 'nes', 'title': 'Brand New Game'})
             ck('the same game is not created twice', c == 409, str(r))
             c, r, _ = call(U + '/api/game/create',
-                           {'key': KEY, 'expert': 'TestAuthor', 'group': 'test-family',
+                           {'key': KEY, 'user': 'TestAuthor', 'group': 'test-family',
                             'system': 'nes', 'title': 'Not Yours'})
             ck('somebody with no scope over the series may not fill it', c == 403, str(r))
 
-            # --- the category manager: add, edit-covered elsewhere, ratify,
-            # delete only when unused ---
+            # --- the category manager: add (open to any member), delete
+            # only when unused ---
             c, r, _ = call(U + '/api/category/add',
-                           {'key': KEY, 'expert': 'nobody9', 'game': 'nes/pinball',
-                            'label': 'Any%', 'rule': 'Finish the game by any means.'})
-            ck('adding a category needs a covering expert', c == 403, str(r))
+                           {'key': KEY, 'user': 'nobody9', 'game': 'nes/pinball',
+                            'label': 'Any%', 'rule': 'Finish the game by any means.',
+                            'metrics': 'this is not a JSON array'})
+            ck('a broken metric definition is refused', c == 400
+               and 'metric' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/category/add',
-                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                           {'key': KEY, 'user': 'nobody9', 'game': 'nes/pinball',
+                            'label': 'Any Percent', 'rule': 'Finish the game by any means.',
+                            'metrics': '[{"label": "Score", "type": "points", '
+                                       '"better": "higher"}]'})
+            ck('a metric type outside time/number is refused', c == 400, str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'groupexpert', 'game': 'nes/pinball',
                             'label': 'Any Percent', 'rule': 'Finish the game by any means.'})
-            ck('an expert adds a category', c == 200 and r['key'] == 'any-percent',
+            ck('a member adds a category', c == 200 and r['key'] == 'any-percent',
                str(r))
             c, r, _ = call(U + '/api/category/add',
-                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                           {'key': KEY, 'user': 'groupexpert', 'game': 'nes/pinball',
                             'label': 'Any Percent', 'rule': 'Duplicate.'})
             ck('the same key is refused', c == 409, str(r))
             c, r, _ = call(U + '/api/category/delete',

@@ -28,6 +28,7 @@ from model import (
 from render import (
     esc,
     page,
+    primary_metric_text,
     run_clock,
     thumb_html,
 )
@@ -51,7 +52,7 @@ for r in fresh_selection(runs):
           '<span class="provsm">Verified</span>' if is_ranked(r) else
           '<span class="pendsm">Pending</span>')
     cards.append(f'''<a class="card" href="runs/{r['id']}/">
-{thumb_html(r, f'<span class="dur">{run_clock(r)}</span>')}
+{thumb_html(r, f'<span class="dur">{esc(primary_metric_text(r))}</span>')}
 <span class="cbody"><b>{esc(g['title'])}</b><span class="ccat">{esc(cat_label(r))}</span>
 <span class="cauth">{esc(au)}</span>
 <span class="cfoot"><span>{run_clock(r) if r.get('videoOnly') else f"{r['movie']['frames']:,}f"}</span><span><span class="starglyph">★</span>{nlikes(r)}</span>{sm}</span></span></a>''')
