@@ -13,6 +13,7 @@ from config import (
     OUT,
 )
 from model import (
+    run_seconds,
     archived_at,
     cat_label,
     eff_state,
@@ -42,6 +43,7 @@ for r in sorted(runs, key=archived_at, reverse=True):
         'sysname': systems[g['system']]['name'], 'cat': cat_label(r),
         'authors': [a['user'] for a in r['authors']],
         'frames': (None if r.get('videoOnly') else r['movie']['frames']),
+        'secs': run_seconds(r),
         'time': run_clock(r),
         'stars': nlikes(r),
         'date': archived_at(r)[:10], 'state': state,
@@ -73,7 +75,8 @@ function render(){
     }
     return true;
   });
-  if (sortf.value === 'frames') rs.sort(function(a,b){ return a.frames - b.frames; });
+  if (sortf.value === 'frames') rs.sort(function(a,b){
+    return (a.secs === null ? Infinity : a.secs) - (b.secs === null ? Infinity : b.secs); });
   else if (sortf.value === 'stars') rs.sort(function(a,b){ return b.stars - a.stars; });
   else if (sortf.value === 'title') rs.sort(function(a,b){ return a.title.localeCompare(b.title); });
   else rs.sort(function(a,b){ return b.date.localeCompare(a.date); });
@@ -83,7 +86,8 @@ function render(){
       '<td><b>' + r.title + '</b><span class="bcat">' + r.cat + '</span></td>' +
       '<td class="bsys">' + r.sysname + '</td>' +
       '<td>' + r.authors.join(', ') + '</td>' +
-      '<td class="num">' + r.frames.toLocaleString() + '<span class="u">f</span></td>' +
+      '<td class="num">' + (r.frames === null ? '<span class="u">video</span>'
+                                  : r.frames.toLocaleString() + '<span class="u">f</span>') + '</td>' +
       '<td class="num">' + r.time + '</td>' +
       '<td class="num"><span class="starglyph">★</span>' + r.stars + '</td>' +
       '<td>' + r.date + '</td>' +
