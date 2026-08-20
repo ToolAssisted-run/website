@@ -97,6 +97,7 @@ from notify import (
     movie_md,
     member_md,
     notify_discord,
+    replay_spool,
 )
 from records import (
     already_covers,
@@ -3501,6 +3502,7 @@ def reconcile_loop():
 if __name__ == '__main__':
     if RECONCILE_SECONDS > 0:
         threading.Thread(target=reconcile_loop, daemon=True).start()
+    replay_spool()   # notifications a restart interrupted mid-wait
     cert = os.environ.get('TLS_CERT')
     key = os.environ.get('TLS_KEY')
     ctx = (cert, key) if cert and key else None

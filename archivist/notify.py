@@ -68,6 +68,61 @@ def movie_md(r, title=None):
             + (f' by {who}' if who else ''))
 
 
+# A notification that waits for a deploy is a daemon thread, and a service
+# restart (every code deploy) used to take the waiting message with it: the
+# run stayed archived, Discord never heard. The spool file beside the
+# checkout carries every pending message across restarts; startup replays
+# whatever a previous process left behind.
+SPOOL = pathlib.Path(os.environ.get('NOTIFY_SPOOL',
+                                    str(ARCHIVE.parent / 'notify-spool.json')))
+_spool_lock = threading.Lock()
+
+def _spool_read():
+    try:
+        return json.loads(SPOOL.read_text())
+    except (OSError, ValueError):
+        return []
+
+def _spool_write(items):
+    try:
+        SPOOL.write_text(json.dumps(items))
+    except OSError as exc:
+        LOG.warning('notify spool not writable: %s', exc)
+
+def _spool_add(entry):
+    with _spool_lock:
+        _spool_write(_spool_read() + [entry])
+
+def _spool_drop(eid):
+    with _spool_lock:
+        _spool_write([x for x in _spool_read() if x.get('id') != eid])
+
+def _deliver(entry):
+    """One spooled message: hold for its page, post, unspool. The attempt
+    is made exactly once past the deadline; a failure is logged and the entry
+    still leaves the spool, so a broken webhook cannot pile up retries."""
+    wait_for = entry.get('wait_for')
+    if wait_for and entry.get('deadline'):
+        if not wait_until_live(wait_for, entry['deadline']):
+            LOG.warning('posting to discord with %s still unreachable',
+                        wait_for)
+    try:
+        req = urllib.request.Request(
+            DISCORD_WEBHOOK, method='POST',
+            headers={'Content-Type': 'application/json',
+                     'User-Agent': 'toolAssisted.run archivist'},
+            data=json.dumps({'content': entry['text'][:1900],
+                             # nothing we post should ever ping anybody
+                             'allowed_mentions': {'parse': []},
+                             # a picture where there is one: the run's
+                             # thumbnail, served by the site itself
+                             **({'embeds': [{'image': {'url': entry['image']}}]}
+                                if entry.get('image') else {})}).encode())
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:                                 # noqa: BLE001
+        LOG.warning('discord notification failed: %s', e)
+    _spool_drop(entry['id'])
+
 def notify_discord(text, wait_for=None, image=None):
     """Tell the Discord server something happened, best effort.
 
@@ -79,29 +134,25 @@ def notify_discord(text, wait_for=None, image=None):
     wait_for is the page the message links to: the post is held until that
     page actually answers, so a link in Discord is never a 404. If the deploy
     pipeline is stuck the message still goes out at the deadline, with a
-    warning in our log: the event is real either way.
+    warning in our log: the event is real either way. The message is spooled
+    first, so a restart mid-wait delays it instead of losing it.
     """
     if not DISCORD_WEBHOOK:
         return
-    def work():
-        if wait_for and NOTIFY_LINK_WAIT > 0:
-            if not wait_until_live(wait_for, time.time() + NOTIFY_LINK_WAIT):
-                LOG.warning('posting to discord with %s still unreachable '
-                                   'after %ss', wait_for, NOTIFY_LINK_WAIT)
-        try:
-            req = urllib.request.Request(
-                DISCORD_WEBHOOK, method='POST',
-                headers={'Content-Type': 'application/json',
-                         'User-Agent': 'toolAssisted.run archivist'},
-                data=json.dumps({'content': text[:1900],
-                                 # nothing we post should ever ping anybody
-                                 'allowed_mentions': {'parse': []},
-                                 # a picture where there is one: the run's
-                                 # thumbnail, served by the site itself
-                                 **({'embeds': [{'image': {'url': image}}]}
-                                    if image else {})}).encode())
-            urllib.request.urlopen(req, timeout=10).read()
-        except Exception as e:                                 # noqa: BLE001
-            LOG.warning('discord notification failed: %s', e)
-    threading.Thread(target=work, daemon=True).start()
+    entry = {'id': secrets.token_hex(8), 'text': text, 'wait_for': wait_for,
+             'image': image,
+             'deadline': (time.time() + NOTIFY_LINK_WAIT
+                          if wait_for and NOTIFY_LINK_WAIT > 0 else None)}
+    _spool_add(entry)
+    threading.Thread(target=_deliver, args=(entry,), daemon=True).start()
+
+def replay_spool():
+    """Deliver whatever a previous process left waiting; called at startup.
+    Stored deadlines are absolute, so a message whose page deployed during
+    the restart posts immediately."""
+    if not DISCORD_WEBHOOK:
+        return
+    for entry in _spool_read():
+        LOG.info('replaying spooled discord notification %s', entry.get('id'))
+        threading.Thread(target=_deliver, args=(entry,), daemon=True).start()
 
