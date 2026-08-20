@@ -516,6 +516,10 @@ def badge_chip(pts):
 
 EXPERT_NAMES_JS = json.dumps(sorted({e['user'].lower() for e in experts_reg}))
 
+EDITOR_NAMES_JS = json.dumps(sorted({ev['user'].lower()
+                                     for (u, role, sc), ev in ROLES_NOW.items()
+                                     if role == 'editor'}))
+
 COMMITTEE_NAMES_JS = json.dumps(sorted({ev['user'].lower()
                                         for (u, role, sc), ev in ROLES_NOW.items()
                                         if role == 'committee'}))
@@ -587,7 +591,7 @@ def page(title, body, rel='', crumb='', active='', head_extra='', wide=False):
 <input type="search" name="q" placeholder="Search runs…" aria-label="Search runs"></form>
 <span id="navauth"></span>
 <button id="navoffline" class="nl navoff" hidden title="This site cannot reach the archivist right now, so logging in, submitting and contributing will not work. Reading works fine. It is usually a firewall, a VPN or a content blocker between you and forum.toolassisted.run. Click to try again.">archivist unreachable</button></nav>
-<script>window.TAR = {{api: '{ARCHIVIST}', rel: '{rel}', v: '{SITE_COMMIT or 'dev'}', experts: {EXPERT_NAMES_JS}, committee: {COMMITTEE_NAMES_JS}, founders: {FOUNDER_NAMES_JS}}}</script>
+<script>window.TAR = {{api: '{ARCHIVIST}', rel: '{rel}', v: '{SITE_COMMIT or 'dev'}', experts: {EXPERT_NAMES_JS}, editors: {EDITOR_NAMES_JS}, committee: {COMMITTEE_NAMES_JS}, founders: {FOUNDER_NAMES_JS}}}</script>
 <script src="{rel}assets/app.js?v={SITE_COMMIT or 'dev'}" defer></script>
 <div class="wrap{' wrapfull' if wide else ''}">{f'<div class="crumb">{crumb}</div>' if crumb else ''}
 {body}</div>

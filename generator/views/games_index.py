@@ -120,6 +120,7 @@ if live_groups:
         gopen = next((r for r in gr.get('removalRequests', [])
                       if r['status'] == 'open'), None)
         gact_data = {'group': gr['key'], 'experts': gexperts,
+                     'editorZone': True,
                      'system_options': [{'key': s, 'name': systems[s]['name']}
                                         for s in sorted(systems)],
                      'openRequest': bool(gopen)}
@@ -128,8 +129,8 @@ if live_groups:
                  + json.dumps(gact_data).replace('<', chr(92) + 'u003c') + '</script>'
                  + '<div id="groupacts" class="actzone expertmenu" hidden>'
                  '<h2>Expert menu</h2>'
-                 '<p class="rules">Only experts whose scope covers this group see this '
-                 'box; every action here is logged in the open.</p>'
+                 '<p class="rules">Only experts whose scope covers this group, and editors, '
+                 'see this box; every action here is logged in the open.</p>'
                  '<details class="actform"><summary>Add a game to this group</summary>'
                  '<form id="f-groupaddgame">'
                  '<p class="rules">Creates the game inside this group; it exists the '
@@ -309,9 +310,9 @@ list_view = f'''<table class="rtab"><thead><tr><th>Game</th><th>System</th><th>G
 
 site_experts_now = sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'})
 games_acts = ('<script type="application/json" id="gamesactdata">'
-              + json.dumps({'siteExperts': site_experts_now}) + '</script>'
+              + json.dumps({'siteExperts': site_experts_now, 'editorZone': True}) + '</script>'
               + '<div id="gamesacts" class="actzone" hidden>'
-              '<details class="actform"><summary>Start a group (site experts)</summary>'
+              '<details class="actform"><summary>Start a group (site experts and editors)</summary>'
               '<form id="f-newgroup">'
               '<p class="rules">One family of games, across every system it appeared on. '
               'It exists the moment you make it.</p>'

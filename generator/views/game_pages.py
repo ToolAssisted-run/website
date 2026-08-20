@@ -224,14 +224,15 @@ its own. Never verified; ranked purely by ★ likes.</p>
     # removal mechanism; the old ask-then-decide request flow is retired
     open_removal = next((r for r in g.get('removalRequests', [])
                          if r['status'] == 'open'), None)
-    gameact_data = {'game': g['key'], 'experts': covering_experts(g['key'])}
+    gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
+                    'editorZone': True}
     gameacts = (
         '<script type="application/json" id="gameactdata">'
         + json.dumps(gameact_data).replace('<', chr(92) + 'u003c') + '</script>'
         + '<div id="f-gameremove-wrap" class="actzone expertmenu" hidden>'
         '<h2>Expert menu</h2>'
-        '<p class="rules">Only experts whose scope covers this game see this box; '
-        'every action here is logged in the open.</p>'
+        '<p class="rules">Only experts whose scope covers this game, and editors, '
+        'see this box; every action here is logged in the open.</p>'
         '<p class="statline"><a class="btn" href="edit/">Edit this game</a> '
         'Title, thumbnail and categories are edited on their own page.</p>'
         '<details class="actform"><summary>Delete this game</summary>'
@@ -297,7 +298,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
     ebody = f"""<header class="ghead"><div>
 <div class="chips"><span class="chip">{esc(systems[g['system']]['name'])}</span></div>
 <h1>Edit {esc(g['title'])}</h1>
-<p class="authline">Everything a covering expert may change about this game. Every edit
+<p class="authline">Everything a covering expert, or an editor, may change about this game. Every edit
 is logged in the open with your name, the old value and the new.</p></div>
 <div class="hbtns"><a class="btn quiet" href="../">Back to the game</a></div></header>
 <script type="application/json" id="gameeditdata">{json.dumps(edit_data).replace('<', chr(92) + 'u003c')}</script>
