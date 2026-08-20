@@ -922,9 +922,9 @@ def main():
            str(acts))
         ck('the panel knows who is a member, so it can offer names',
            isinstance(pd.get('members'), list) and pd['members'], str(pd)[:200])
-        ck('and knows which games and series are still waiting',
-           all('established' in g for g in pd['games'])
-           and all('established' in gr for gr in pd['groups']), str(pd['games'][:2]))
+        ck('ratification is gone from the panel data',
+           all('established' not in g for g in pd['games'])
+           and all('established' not in gr for gr in pd['groups']), str(pd['games'][:2]))
 
         # ---------- client app ----------
         js = (out / 'assets' / 'app.js').read_text()

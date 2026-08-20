@@ -177,11 +177,10 @@ rat_rows = ''.join(
     sorted([(w, b, ti, h, wh, '') for w, b, ti, h, wh in ratified] + refused,
            reverse=True))
 ratify_html = (f'''<section id="ratifications"><h2>Game and group decisions ({len(ratified) + len(refused)})</h2>
-<p class="authline">A game created here is provisional until an expert whose scope covers it
-confirms it is a real, distinct game, and a group is provisional until an expert confirms it
-is a real family rather than one person's filing preference. Games that came in with the
-seeding import were established before this archive existed and were ratified by nobody here,
-so they are not listed as if they had been.</p>
+<p class="authline">Historical: while ratification existed as a mechanism, experts vouched
+here for games and groups being real, distinct things. Creations are real on arrival now,
+and a mistaken one is deleted on the record; these acts remain the record of who vouched
+for what.</p>
 <table><thead><tr><th>Date</th><th>Expert</th><th>Game</th></tr></thead>
 <tbody>{rat_rows}</tbody></table></section>''' if (ratified or refused) else
     '<section id="ratifications"><h2>Game and group decisions</h2>'

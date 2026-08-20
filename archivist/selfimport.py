@@ -281,7 +281,7 @@ def import_one(dumps, archive, p, sub, username, today, thumb_base,
     else:
         gdir.mkdir(parents=True, exist_ok=True)
         (gdir / 'game.json').write_text(json.dumps(
-            {'title': gname, 'system': sys_slug, 'established': True,
+            {'title': gname, 'system': sys_slug,
              'tasvideosGameId': p.get('gameId')}, indent=1) + '\n')
         cats = {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}
     goal_dim = next((d for d in cats['dimensions'] if d['key'] == 'goal'), None)

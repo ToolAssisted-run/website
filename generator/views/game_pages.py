@@ -192,29 +192,11 @@ its own. Never verified; ranked purely by ★ likes.</p>
 })();
 </script>'''.replace('DEFAULT_COMBO', default_combo)
 
-    # ratifying is an expert act on the game itself, so it belongs on this page
-
-    # An expert never deletes a game: they ask, in public, and a site-wide
-    # expert answers. The movies inside it are other people's work.
+    # An expert never deletes a game through a request path: they ask, in
+    # public, and a site-wide expert answers. The movies inside it are other
+    # people's work.
     open_removal = next((r for r in g.get('removalRequests', [])
                          if r['status'] == 'open'), None)
-    ratify_box = ''
-    if not g.get('established', True):
-        ratify_data = {'game': g['key'], 'experts': covering_experts(g['key'])}
-        ratify_box = (
-            '<script type="application/json" id="ratifydata">'
-            + json.dumps(ratify_data).replace('<', chr(92) + 'u003c') + '</script>'
-            + '<div id="f-ratify-wrap" hidden>'
-            '<form id="f-ratify" class="actform">'
-            '<h3>Ratify this game</h3>'
-            '<p class="rules">Anyone may create a game at submission time; it stays '
-            'provisional until an expert confirms it is a real, distinct game with a '
-            'sensible title, unless the person who created it already covered it. '
-            'Ratifying does not judge any run in it.</p>'
-            f'<input type="hidden" name="game" value="{esc(g["key"])}">'
-            '<button class="btn">Ratify</button></form>'
-            '<p id="ratify-msg" class="actmsg" hidden></p></div>')
-
     gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
                     'openRequest': bool(open_removal) or bool(g.get('removed'))}
     gameacts = (
@@ -245,7 +227,6 @@ its own. Never verified; ranked purely by ★ likes.</p>
         '<label>Why <input name="reason" required minlength="8" maxlength="500" '
         'placeholder="a test, spam, a duplicate record, …"></label>'
         '<button class="btn danger">Delete</button></form></details>'
-        + ratify_box +
         '<p id="gameact-msg" class="actmsg" hidden></p></div>')
     removal_note = ''
     if g.get('removed'):
@@ -266,7 +247,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 <div class="chips"><span class="chip">{esc(systems[g['system']]['name'])}</span>
 <span class="chip">{len(g['runs'])} run{'s' if len(g['runs'])!=1 else ''}</span>
 <span class="chip starchip"><span class="starglyph">★</span> {sum(nlikes(r) for r in g['runs'])}</span>
-{'' if g.get('established', True) else '<span class="chip pendchip">Provisional game</span>'}</div>
+</div>
 <h1>{esc(g['title'])}</h1>{group_chip(g['key'], rel)}
 {expert_line(g['key'], rel)}</div>
 <div class="hbtns">{f'<img class="gface" src="/thumbs/{esc(SHIPPED_GAME_THUMBS[g["key"]])}" alt="">' if g['key'] in SHIPPED_GAME_THUMBS else ''}<a class="btn" href="{rel}submit/?game={esc(g['key'])}">Submit a run</a>
@@ -289,12 +270,10 @@ its own. Never verified; ranked purely by ★ likes.</p>
         for o in d_['options']:
             opt_data.append({
                 'key': o['key'], 'label': o['label'], 'rule': o.get('rule', ''),
-                'provisional': bool(o.get('provisional')),
                 'runs': sum(1 for r_ in g['runs']
                             if (r_.get('category') or {}).get('goal') == o['key'])})
     edit_data = {'game': g['key'], 'title': g['title'],
                  'experts': covering_experts(g['key']),
-                 'provisional': not g.get('established', True),
                  'options': opt_data}
     erel = rel + '../'
     ebody = f"""<header class="ghead"><div>
@@ -340,7 +319,7 @@ run to. A category with runs in it cannot be deleted: it is their home.</p>
   <button class="btn">Add</button>
 </form></section>
 <section><h2>Governance</h2>
-{'<form id="f-ge-ratify" class="actform"><p class="rules">This game is provisional: nobody with authority has vouched for it yet.</p><input type="hidden" name="game" value="' + esc(g['key']) + '"><button class="btn">Ratify</button></form>' if not g.get('established', True) else '<p class="rules">Established' + (f", ratified by {esc(g.get('ratifiedBy', ''))} on {esc(g.get('ratifiedAt', ''))}" if g.get('ratifiedBy') else ' (arrived established with the seeding import)') + '.</p>'}
+{f'<p class="rules">Ratified by {esc(g["ratifiedBy"])} on {esc(g["ratifiedAt"])} (historical; ratification is no longer a mechanism).</p>' if g.get('ratifiedBy') else ''}
 <form id="f-ge-remove" class="actform">
   <p class="rules">Files a request; a site-wide expert answers it. Runs are untouched.</p>
   <input type="hidden" name="game" value="{esc(g['key'])}">

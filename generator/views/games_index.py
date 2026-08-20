@@ -134,8 +134,8 @@ if live_groups:
                  'box; every action here is logged in the open.</p>'
                  '<details class="actform"><summary>Add a game to this group</summary>'
                  '<form id="f-groupaddgame">'
-                 '<p class="rules">Creates the game inside this group, established as you '
-                 'make it: you are the expert a ratification would be asked of. It has no '
+                 '<p class="rules">Creates the game inside this group; it exists the '
+                 'moment you make it. It has no '
                  'runs until somebody archives one.</p>'
                  f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
                  '<label>System <select name="system" id="ga-system"></select></label>'
@@ -173,8 +173,7 @@ if live_groups:
 <span class="chip">{len(grunts)} run{'s' if len(grunts)!=1 else ''}</span>
 <span class="chip starchip"><span class="starglyph">★</span> {gstars}</span></div>
 <h1>{esc(gr['title'])}</h1>
-{'' if gr.get('established', True) else
- '<span class="chip pendchip">Provisional group</span> '}
+
 <p class="authline">{blurb}</p>{expline}</div></header>
 {'<div class="grid">' + cards + '</div>' if ggames else
  '<p class="emptynote">No games in this group yet. Experts covering it add them '
@@ -317,7 +316,7 @@ games_acts = ('<script type="application/json" id="gamesactdata">'
               '<details class="actform"><summary>Start a group (site experts)</summary>'
               '<form id="f-newgroup">'
               '<p class="rules">One family of games, across every system it appeared on. '
-              'Made by a site-wide expert it is established as you make it.</p>'
+              'It exists the moment you make it.</p>'
               '<label>Key <input name="group" required pattern="[a-z0-9]+(-[a-z0-9]+)*" '
               'placeholder="lowercase-with-hyphens"></label>'
               '<label>Title <input name="title" required maxlength="80" '
@@ -328,7 +327,7 @@ games_acts = ('<script type="application/json" id="gamesactdata">'
 
 body = f'''<header class="ghead"><div><h1>Games</h1>
 <p class="authline">{len(games)} games across {len(by_sys)} systems. Anyone can add a game at
-submission time; experts ratify it afterwards.</p></div>
+submission time; experts curate afterwards.</p></div>
 <div class="hbtns"><div class="dimrow"><span class="dimname">View</span>
 {'<button class="dimopt gview-btn" data-view="groups">Groups</button>' if grp_view else ''}
 <button class="dimopt gview-btn on" data-view="systems">Systems</button>

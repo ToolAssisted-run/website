@@ -380,11 +380,9 @@ def submit():
         game, cats = load_game(system, slug)
         if not game:
             new_game = True
-            game = {'title': title, 'system': system, 'established': False}
-            if expert_covers(submitter, f'{system}/{slug}'):
-                game.update(established=True, ratifiedBy=submitter,
-                            ratifiedAt=time.strftime('%Y-%m-%d', time.gmtime()),
-                            ratifiedAtTime=now_iso())
+            # real on arrival: ratification is gone as a mechanism; a bad
+            # creation is deleted by an expert, logged, reversible via git
+            game = {'title': title, 'system': system}
             cats = {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}
     else:
         m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', gsel)
@@ -420,7 +418,7 @@ def submit():
                 return fail('category label yields an empty key')
             gdim = next((d for d in cats['dimensions'] if d['key'] == 'goal'),
                         cats['dimensions'][0])
-            new_option = {'key': okey, 'label': label, 'rule': rule, 'provisional': True}
+            new_option = {'key': okey, 'label': label, 'rule': rule}
             if okey not in {o['key'] for o in gdim['options']}:
                 gdim['options'].append(new_option)
                 new_goal = True
@@ -793,7 +791,7 @@ def _category_gate(f):
 @app.post('/api/category/add')
 def category_add():
     """An expert adds a category option to a game they cover. Made by
-    authority, it arrives established; the edit log carries the act."""
+    authority, it is simply a category; the edit log carries the act."""
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
@@ -839,39 +837,6 @@ def category_add():
     return jsonify({'ok': True, 'game': game_key, 'key': okey, 'label': label})
 
 
-@app.post('/api/category/ratify')
-def category_ratify():
-    """Provisional option -> established, by an expert who covers the game."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
-    refresh_archive()
-    with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
-            checkout_branch()
-        expert, game_key, cfile, cats, err_ = _category_gate(f)
-        if err_:
-            return err_
-        okey = (f.get('option') or '').strip()
-        opt = next((o for d in cats['dimensions'] for o in d['options']
-                    if o['key'] == okey), None)
-        if not opt:
-            return fail(f'{game_key} defines no category {okey!r}', 404)
-        if not opt.get('provisional'):
-            return fail('that category is already established')
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True})
-        opt.pop('provisional', None)
-        cfile.write_text(json.dumps(cats, indent=1) + '\n')
-        log_edit('category', f'{game_key}:{okey}', 'ratified', 'provisional',
-                 'established', expert,
-                 (f.get('reason') or 'Ratified by a covering expert.').strip()[:500])
-        ensure_member(expert)
-        commit_push(f'Category ratify {game_key}:{okey}: by expert {expert}\n\n'
-                    f'Via: archivist')
-    return jsonify({'ok': True, 'game': game_key, 'key': okey})
 
 
 @app.post('/api/category/delete')
@@ -916,55 +881,6 @@ def category_delete():
     return jsonify({'ok': True, 'game': game_key, 'removed': okey})
 
 
-@app.post('/api/game/ratify')
-def ratify():
-    """An expert ratifies a provisional game (provisional -> established)."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
-    refresh_archive()
-    with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
-            checkout_branch()
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', (f.get('game') or '').strip())
-        if not m:
-            return fail('game must be system/slug')
-        game_key = m.group(0)
-        gfile = ARCHIVE / 'games' / m.group(1) / m.group(2) / 'game.json'
-        if not gfile.exists():
-            return fail(f'unknown game {game_key}', 404)
-        if not expert_covers(expert, game_key):
-            return fail(f'{expert!r} is not an expert covering {game_key}', 403)
-        game = json.loads(gfile.read_text())
-        if game.get('established'):
-            return fail(f'{game_key} is already established')
-        if game.get('rejected'):
-            return fail(f'{game_key} was refused by {game["rejected"]["by"]} on '
-                        f'{game["rejected"]["date"]}; that decision has to be undone '
-                        f'before it can be approved', 409)
-        # 'established' alone says a game is real but not who vouched for it,
-        # which left the act readable only in a commit message. An act of
-        # authority belongs in the archive with a name and a date on it.
-        game['established'] = True
-        game['ratifiedBy'] = expert
-        game['ratifiedAt'] = time.strftime('%Y-%m-%d', time.gmtime())
-        game['ratifiedAtTime'] = now_iso()
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_establish': game_key,
-                            'by': expert})
-        gfile.write_text(json.dumps(game, indent=1))
-        ensure_member(expert)
-        ensure_game_topic(*game_key.split('/'), game.get('title', game_key))
-        commit_push(f'Ratify {game_key}: by expert {expert}\n\nVia: archivist')
-        notify_discord(f'\U0001f5c2\ufe0f **{expert}** ratified the '
-                       f'[game](<{SITE_URL}/games/{game_key}/>) {game_key}',
-                       wait_for=f'{SITE_URL}/games/{game_key}/')
-    return jsonify({'ok': True, 'game': game_key, 'established': True})
 
 def _deletion_gate(f, need='expert'):
     """Common to every delete: who is asking, and why, said properly."""
@@ -1311,7 +1227,7 @@ def game_delete():
             if not (hdir / 'game.json').exists():
                 (hdir / 'runs').mkdir(parents=True, exist_ok=True)
                 (hdir / 'game.json').write_text(json.dumps(
-                    {'title': 'Uncategorized', 'system': system, 'established': True},
+                    {'title': 'Uncategorized', 'system': system},
                     indent=1) + '\n')
                 (hdir / 'categories.json').write_text(json.dumps(
                     {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]},
@@ -1497,8 +1413,8 @@ def game_create():
 
     Submitting a movie has always been able to create a game; this is the other
     way round, for an expert filling out a group before anybody has archived a
-    run of it. It is established as it is created, since the person making it is
-    the person a ratification would be asked of.
+    run of it. Real on arrival, like every creation here; a mistaken one is
+    deleted on the record.
     """
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
@@ -1542,8 +1458,8 @@ def game_create():
         if not allowed:
             return fail(f'{expert} holds no scope covering {why}', 403)
         today_ = time.strftime('%Y-%m-%d', time.gmtime())
-        game = {'title': title, 'system': system, 'established': True,
-                'ratifiedBy': expert, 'ratifiedAt': today_}
+        game = {'title': title, 'system': system, 'createdBy': expert,
+                'createdAt': today_}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': game_key,
                             'game': game, 'group': gkey or None})
@@ -1569,7 +1485,7 @@ def game_create():
                        f'[game](<{SITE_URL}/games/{game_key}/>) {title}'
                        + (f' in the {gkey} group' if gkey else ''),
                        wait_for=f'{SITE_URL}/games/{game_key}/')
-    return jsonify({'ok': True, 'game': game_key, 'established': True,
+    return jsonify({'ok': True, 'game': game_key,
                     'group': gkey or None,
                     'note': 'It has no runs yet, so it shows as an empty game until '
                             'somebody archives one.'})
@@ -1760,119 +1676,11 @@ def removal_decide():
     return jsonify({'ok': True, 'kind': kind, 'key': key, 'action': action,
                     'released': released, 'request': req})
 
-@app.post('/api/game/reject')
-def game_reject():
-    """An expert refuses a provisional game: it is not a real, distinct game.
 
-    A refusal is recorded, never a deletion. A game created at submission time
-    always holds at least one run, and that run is somebody's work: the game
-    record being wrong (a duplicate, a nonsense title) says nothing about the
-    movie inside it. So the game keeps its page, carrying the refusal and the
-    reason, drops out of the listings and the rankings, and the run stays
-    reachable while somebody sorts out where it belongs.
-    """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
-    refresh_archive()
-    with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', (f.get('game') or '').strip())
-        if not m:
-            return fail('game must be system/slug')
-        game_key = m.group(0)
-        reason = (f.get('reason') or '').strip()
-        if len(reason) < 8:
-            return fail('say why: a refusal that gives no reason cannot be answered')
-        if len(reason) > 500:
-            return fail('reason must be under 500 characters')
-        gfile = ARCHIVE / 'games' / m.group(1) / m.group(2) / 'game.json'
-        if not gfile.exists():
-            return fail(f'unknown game {game_key}', 404)
-        if not expert_covers(expert, game_key):
-            return fail(f'{expert!r} is not an expert covering {game_key}', 403)
-        game = json.loads(gfile.read_text())
-        if game.get('established'):
-            return fail(f'{game_key} is established; refusing it now would need the '
-                        f'ratification undone first', 409)
-        if game.get('rejected'):
-            return fail(f'{game_key} was already refused', 409)
-        entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                 'reason': reason}
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_reject': game_key,
-                            'rejected': entry})
-        checkout_branch()
-        game = json.loads(gfile.read_text())
-        game['rejected'] = entry
-        gfile.write_text(json.dumps(game, indent=1))
-        ensure_member(expert)
-        commit_push(f'Refuse {game_key}: by expert {expert}\n\n'
-                    f'Reason: {reason}\nVia: archivist')
-    return jsonify({'ok': True, 'game': game_key, 'rejected': entry,
-                    'note': 'The game keeps its page and its runs, marked refused. '
-                            'It is out of the listings and the rankings.'})
-
-@app.post('/api/group/reject')
-def group_reject():
-    """An expert refuses a provisional group. The grouping is dissolved: its
-    games go back to being ungrouped, and the entry stays, marked, so the log
-    can say who refused it and why."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
-    refresh_archive()
-    with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        key = (f.get('group') or '').strip().lower()
-        reason = (f.get('reason') or '').strip()
-        if len(reason) < 8:
-            return fail('say why: a refusal that gives no reason cannot be answered')
-        if len(reason) > 500:
-            return fail('reason must be under 500 characters')
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr:
-            return fail(f'no group with the key {key!r}', 404)
-        if gr.get('established'):
-            return fail(f'the {gr["title"]} group is established; refusing it now '
-                        f'would need the ratification undone first', 409)
-        if gr.get('rejected'):
-            return fail(f'the {gr["title"]} group was already refused', 409)
-        if not covers_group(expert, gr):
-            return fail(f'{expert} holds no scope covering the {gr["title"]} group', 403)
-        entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                 'reason': reason}
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_reject': key,
-                            'would_release': gr.get('games', []), 'rejected': entry})
-        checkout_branch()
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr or gr.get('rejected'):
-            return fail(f'the {key} group is gone or already refused', 409)
-        released = gr.get('games', [])
-        gr['games'] = []
-        gr['rejected'] = entry
-        save_groups(doc)
-        ensure_member(expert)
-        commit_push(f'Refuse group {key}: by expert {expert}\n\n'
-                    f'Reason: {reason}\nReleased: {", ".join(released) or "no games"}\n'
-                    f'Via: archivist')
-    return jsonify({'ok': True, 'group': key, 'rejected': entry, 'released': released,
-                    'note': 'The group is dissolved; its games are ungrouped again.'})
 
 @app.post('/api/group/create')
 def group_create():
-    """Create a group. Provisional until an expert ratifies it, exactly like a
+    """Create a group, real on arrival, exactly like a
     game: naming a family of games is a curatorial claim, not a fact.
 
     You may only gather games you already have authority over, which is the same
@@ -1913,13 +1721,9 @@ def group_create():
                         f'{"every game listed" if games else "an empty group"}; '
                         f'a group gathers games you already speak for', 403)
         today_ = time.strftime('%Y-%m-%d', time.gmtime())
-        entry = {'key': key, 'title': title, 'games': games, 'established': False,
+        # real on arrival: ratification is gone as a mechanism
+        entry = {'key': key, 'title': title, 'games': games,
                  'createdBy': expert, 'createdAt': today_}
-        # A group spans systems, so the scope that covers one is site scope.
-        # Somebody holding it is the person a ratification would be asked of.
-        if is_site_expert(expert):
-            entry.update(established=True, ratifiedBy=expert, ratifiedAt=today_,
-                         ratifiedAtTime=now_iso())
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': entry})
         checkout_branch()
@@ -1936,13 +1740,9 @@ def group_create():
                        f'[group](<{SITE_URL}/groups/{key}/>) {title}, '
                        f'{len(games) or "no"} game{"s" if len(games) != 1 else ""} in it',
                        wait_for=f'{SITE_URL}/groups/{key}/')
-    return jsonify({'ok': True, 'group': key, 'established': entry['established'],
-                    'games': games,
-                    'note': 'Established on creation: you hold site scope, so the '
-                            'ratification would have been yours to give.'
-                            if entry['established'] else
-                            'The group is provisional until an expert covering it '
-                            'ratifies it. It shows on the site either way.'})
+    return jsonify({'ok': True, 'group': key, 'games': games,
+                    'note': 'The group exists. A mistaken one is deleted by an '
+                            'expert, on the record.'})
 
 @app.post('/api/group/edit')
 def group_edit():
@@ -2015,52 +1815,6 @@ def group_edit():
                        wait_for=f'{SITE_URL}/groups/{key}/')
     return jsonify({'ok': True, 'group': key, 'games': gr['games'], 'title': gr['title']})
 
-@app.post('/api/group/ratify')
-def group_ratify():
-    """An expert confirms a group is a real family of games, not one person's
-    filing preference. Same shape as ratifying a game, and logged the same."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
-    refresh_archive()
-    with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        key = (f.get('group') or '').strip().lower()
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr:
-            return fail(f'no group with the key {key!r}', 404)
-        if gr.get('established'):
-            return fail(f'the {gr["title"]} group is already established', 409)
-        if gr.get('rejected'):
-            return fail(f'the {gr["title"]} group was refused by '
-                        f'{gr["rejected"]["by"]} on {gr["rejected"]["date"]}; that '
-                        f'decision has to be undone before it can be approved', 409)
-        if not covers_group(expert, gr):
-            return fail(f'{expert} holds no scope covering the {gr["title"]} group', 403)
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_establish': key,
-                            'by': expert})
-        checkout_branch()
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr or gr.get('established') or gr.get('rejected'):
-            return fail(f'the {key} group is gone, already established, or refused', 409)
-        gr['established'] = True
-        gr['ratifiedBy'] = expert
-        gr['ratifiedAt'] = time.strftime('%Y-%m-%d', time.gmtime())
-        gr['ratifiedAtTime'] = now_iso()
-        save_groups(doc)
-        ensure_member(expert)
-        commit_push(f'Group {key}: ratified by {expert}\n\nVia: archivist')
-        notify_discord(f'\U0001f5c2\ufe0f **{expert}** ratified the '
-                       f'[group](<{SITE_URL}/groups/{key}/>) {key}',
-                       wait_for=f'{SITE_URL}/groups/{key}/')
-    return jsonify({'ok': True, 'group': key, 'established': True, 'by': expert})
 
 REPORT_KINDS = {'missing-content-warnings', 'spam-malicious', 'miscredited',
                 'licensing', 'other'}
