@@ -400,7 +400,7 @@ to this run.</p>
     expert_menu = f'''
 <div id="expertmenu" class="expertmenu" hidden><h2>Expert menu</h2>
 <p class="rules">Only experts whose scope covers this game see this box; every action here is logged in the open.</p>
-<div id="f-runedit-wrap" hidden><details class="actform"><summary>Edit this run (experts)</summary>
+<div id="f-runedit-wrap" hidden><details class="actform"><summary>Edit this run</summary>
 <form id="f-runedit">
   <p class="rules">Structural facts only: the goal it sits under, its encode
   link{" and its stated time" if r.get('videoOnly') else ""}. The author's own work, the movie, the notes,
@@ -423,7 +423,7 @@ to this run.</p>
     placeholder="published in the site log beside your name"></label>
   <button class="btn">Save</button>
 </form></details></div>
-<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this movie (experts)</summary>
+<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this movie</summary>
 <form id="f-rundelete">
   <p class="rules">Outright and permanent: for tests, spam, things that are not tool-assisted
   runs, and mistakes. A genuine work is withdrawn or erased through its own procedures, never
@@ -433,7 +433,7 @@ to this run.</p>
             placeholder="e.g. a test submission, not a real run"></textarea>
   <button class="btn danger">Delete</button>
 </form></details></div>
-<div id="f-invalidate-wrap" hidden><details class="actform"><summary>Invalidate a contribution (experts)</summary>
+<div id="f-invalidate-wrap" hidden><details class="actform"><summary>Invalidate a contribution</summary>
 <form id="f-invalidate">
   <p class="rules">For a reproduction, verification or console verification that does not
   hold up. The act stays on the record, marked invalidated, with your reason next to it.
@@ -447,7 +447,7 @@ to this run.</p>
             placeholder="e.g. the screenshot is from a different run"></textarea>
   <button class="btn">Invalidate</button>
 </form></details></div>
-<div id="f-resolve-wrap" hidden><details class="actform"><summary>Close a report (experts)</summary>
+<div id="f-resolve-wrap" hidden><details class="actform"><summary>Close a report</summary>
 <form id="f-resolve">
   <p class="rules">Resolve it if something was done, dismiss it if nothing needed doing.
   Either way your text is published with the report in the moderation log.</p>

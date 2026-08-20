@@ -795,7 +795,7 @@ def main():
         runp_ = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('the run page carries the expert delete, hidden until armed',
            'id="f-rundelete-wrap" hidden' in runp_
-           and 'Delete this movie (experts)' in runp_, runp_[:200])
+           and 'Delete this movie' in runp_, runp_[:200])
         ck('the game page carries the expert delete',
            'f-gamedelete' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the group page carries the expert delete',
