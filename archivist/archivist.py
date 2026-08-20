@@ -94,6 +94,7 @@ from gitstore import (
 )
 from notify import (
     movie_md,
+    member_md,
     notify_discord,
 )
 from records import (
@@ -672,7 +673,7 @@ def reproduce():
             {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Reproduce {r["id"]}: by {user}\n\nVia: archivist')
-        notify_discord(f'\u21bb **{user}** reproduced ' + movie_md(r),
+        notify_discord(f'\u21bb **{member_md(user)}** reproduced ' + movie_md(r),
                        wait_for=f'{SITE_URL}/runs/{r["id"]}/')
     return jsonify({'ok': True, 'run': r['id'], 'status': r['status'],
                     'reproductions': len([a for a in r['reproductions'] if not a.get('invalidated')])})
@@ -855,9 +856,9 @@ def category_add():
                             .read_text()).get('title', game_key)
         commit_push(f'Category add {game_key}:{okey}: by {expert}\n\n'
                     f'Label: {label}\nVia: archivist')
-        notify_discord(f'\U0001f5c2\ufe0f **{expert}** created the category '
+        notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** created the category '
                        f'[{label}](<{SITE_URL}/games/{game_key}/>) in '
-                       f'[\\[{game_key.split("/")[0].upper()}\\] {gtitle}]'
+                       f'[[{game_key.split("/")[0].upper()}] {gtitle}]'
                        f'(<{SITE_URL}/games/{game_key}/>)',
                        wait_for=f'{SITE_URL}/games/{game_key}/')
     return jsonify({'ok': True, 'game': game_key, 'key': okey, 'label': label})
@@ -1571,7 +1572,7 @@ def game_create():
         commit_push(f'Create {game_key}: by {expert}\n\n'
                     f'Title: {title}\nFirst category: {cat_key}\n'
                     f'Group: {gkey or "none"}\nVia: archivist')
-        notify_discord(f'\U0001f5c2\ufe0f **{expert}** created the '
+        notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** created the '
                        f'[game](<{SITE_URL}/games/{game_key}/>) {title}'
                        + (f' in the {gkey} group' if gkey else ''),
                        wait_for=f'{SITE_URL}/games/{game_key}/')
@@ -1826,7 +1827,7 @@ def group_create():
         commit_push(f'Group {key}: created by {expert}\n\n'
                     f'Title: {title}\nGames: {", ".join(games) or "none yet"}\n'
                     f'Via: archivist')
-        notify_discord(f'\U0001f5c2\ufe0f **{expert}** created the '
+        notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** created the '
                        f'[group](<{SITE_URL}/groups/{key}/>) {title}, '
                        f'{len(games) or "no"} game{"s" if len(games) != 1 else ""} in it',
                        wait_for=f'{SITE_URL}/groups/{key}/')
@@ -1900,7 +1901,7 @@ def group_edit():
                  expert, f'Changed from the group form: {what}')
         ensure_member(expert)
         commit_push(f'Group {key}: {what}\n\nBy: {expert}\nVia: archivist')
-        notify_discord(f'\U0001f5c2\ufe0f **{expert}** changed the '
+        notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** changed the '
                        f'[group](<{SITE_URL}/groups/{key}/>) {gr["title"]}: {what}',
                        wait_for=f'{SITE_URL}/groups/{key}/')
     return jsonify({'ok': True, 'group': key, 'games': gr['games'], 'title': gr['title']})
@@ -2460,7 +2461,7 @@ def discourse_hook():
     excerpt = (excerpt[:140] + '\u2026') if len(excerpt) > 140 else excerpt
     link = (f'{DISCOURSE_URL}/t/{post.get("topic_id")}/{post.get("post_number")}'
             if post.get('topic_id') else DISCOURSE_URL)
-    notify_discord(f'\U0001f4ac **{who}** posted in [{title}](<{link}>): {excerpt}')
+    notify_discord(f'\U0001f4ac **{member_md(who)}** posted in [{title}](<{link}>): {excerpt}')
     return jsonify({'ok': True})
 
 @app.post('/api/roles/publish')
@@ -3053,7 +3054,7 @@ def import_run():
         shown = ', '.join(f'[{i}](<{SITE_URL}/runs/{i}/>)' for i in ids[:3])
         more = f' +{len(ids) - 3} more' if len(ids) > 3 else ''
         word = 'movie' if len(ids) == 1 else f'{len(ids)} movies'
-        notify_discord(f'\U0001f4e5 **{user}** imported {word}: {shown}{more}',
+        notify_discord(f'\U0001f4e5 **{member_md(user)}** imported {word}: {shown}{more}',
                        wait_for=f'{SITE_URL}/runs/{ids[0]}/')
     return jsonify({'ok': True, 'user': user, **res})
 
@@ -3102,7 +3103,7 @@ def verify():
             {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Verify {r["id"]}: by {user}\n\nVia: archivist')
-        notify_discord(f'\u2713 **{user}** verified'
+        notify_discord(f'\u2713 **{member_md(user)}** verified'
                        + (' (expert)' if entry.get('expert') else '') + ' '
                        + movie_md(r),
                        wait_for=f'{SITE_URL}/runs/{r["id"]}/')
@@ -3223,7 +3224,7 @@ def console_verify():
             {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Console-verify {r["id"]}: by {user}\n\nProof: {proof}\nVia: archivist')
-        notify_discord(f'\U0001f579\ufe0f **{user}** played ' + movie_md(r)
+        notify_discord(f'\U0001f579\ufe0f **{member_md(user)}** played ' + movie_md(r)
                        + ' back on original hardware',
                        wait_for=f'{SITE_URL}/runs/{r["id"]}/')
     return jsonify({'ok': True, 'run': r['id'], 'proof': proof,
