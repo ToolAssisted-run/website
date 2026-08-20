@@ -86,7 +86,7 @@ function render(){
       '<td class="bsys">' + r.metric + '</td>' +
       '<td class="num">' + r.result + '</td>' +
       '<td class="num"><span class="starglyph">★</span>' + r.stars + '</td>' +
-      '<td class="bsys">' + r.date + '</td>' +
+      '<td class="bsys bdate">' + r.date + '</td>' +
       '<td>' + chip(r.state) + '</td></tr>';
   }).join('');
 }
