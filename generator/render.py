@@ -594,7 +594,6 @@ def page(title, body, rel='', crumb='', active='', head_extra='', wide=False):
 <footer><div class="fmain">toolAssisted.run{' · beta' if BETA else ''} · generated from
 <a href="https://github.com/ToolAssisted-run/archive">the archive</a>{f' · build <a href="https://github.com/ToolAssisted-run/website/commit/{SITE_COMMIT}">{SITE_COMMIT}</a>' if SITE_COMMIT else ''}</div>
 <div class="fsoc">
-<a class="soc soc-x" href="https://x.com/toolAssistedRun" title="X" aria-label="X"></a>
 <a class="soc soc-bluesky" href="https://bsky.app/profile/toolassisted.run" title="Bluesky" aria-label="Bluesky"></a>
 <a class="soc soc-github" href="https://github.com/ToolAssisted-run" title="GitHub" aria-label="GitHub"></a>
 <a class="soc soc-discord" href="https://discord.gg/VsKDT9XB6u" title="Discord" aria-label="Discord"></a>
