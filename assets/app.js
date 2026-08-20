@@ -600,6 +600,28 @@
           } else note(cmsg, res.j.error || 'something went wrong', false);
         });
       });
+      // the editor seat: everyone who does not already hold it
+      var esel = document.getElementById('editorrole-user');
+      C.members.forEach(function(m){
+        if ((C.editors || []).map(function(x){ return x.toLowerCase(); })
+            .indexOf(m.toLowerCase()) >= 0) return;
+        var o = document.createElement('option');
+        o.value = m;
+        o.textContent = m;
+        esel.appendChild(o);
+      });
+      var eform = document.getElementById('f-editorrole');
+      eform.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        post('/api/editor/appoint', new FormData(eform),
+             eform.querySelector('button')).then(function(res){
+          if (res.ok && res.j.ok) {
+            note(cmsg, res.j.user + ' is now an editor. The badge shows on the ' +
+                       'site in a few minutes.', true);
+            eform.reset();
+          } else note(cmsg, res.j.error || 'something went wrong', false);
+        });
+      });
     });
   }
 

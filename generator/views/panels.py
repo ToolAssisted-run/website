@@ -280,6 +280,18 @@ much.</p>
     placeholder="what makes them the right person for the whole site"></label>
   <button class="btn">Appoint</button>
 </form></details></section>
+<section><details class="secfold menufold"><summary><h2>Appoint an editor</h2></summary>
+<form id="f-editorrole" class="actform">
+  <p class="rules">The library's shape, nothing else: categories, groups, game identity,
+  and which category a run sits in. No power over people and none over the runs
+  themselves. A single Committee seat grants it, and your name and reason are
+  published; taking it away is a Committee poll like any role removal. Members who
+  already hold it are not listed.</p>
+  <label>Member <select name="user" id="editorrole-user"></select></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="what makes them the right curator for the library"></label>
+  <button class="btn">Appoint</button>
+</form></details></section>
 <section><details class="secfold menufold"><summary><h2>Record a Committee decision</h2></summary>
 <p class="rules">The Committee votes on the forum; this writes the result into the
 archive, which is the only place a role is recorded. Point it at the post carrying the

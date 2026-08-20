@@ -2504,6 +2504,53 @@ def expert_appoint():
                             'members list and in the role log on their own page, '
                             'with your name and your reason.'})
 
+@app.post('/api/editor/appoint')
+def editor_appoint():
+    """A single Committee seat grants the editor role, in the open.
+
+    The library's shape, nothing else (see is_editor). Unscoped, so there is
+    no downward door: only the Committee gives it. Taking it away is a role
+    removal like any other: a Committee poll through /api/role/decide."""
+    f = request.form
+    appointer, err_ = request_identity(f, 'expert')
+    if err_:
+        return err_
+    user = (f.get('user') or '').strip()
+    reason = (f.get('reason') or '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', user):
+        return fail('user must be the forum account being appointed')
+    if len(reason) < 8:
+        return fail('say why, publicly: the appointment is published with your name')
+    if len(reason) > 500:
+        return fail('reason must be under 500 characters')
+    dry = f.get('dry_run') in ('1', 'true', 'yes')
+
+    refresh_archive()
+    with lock:
+        if not dry:
+            checkout_branch()
+        if not is_committee(appointer):
+            return fail(f'{appointer} holds no Committee seat; the editor role '
+                        f'is the Committee\'s to give', 403)
+        if is_editor(user):
+            return fail(f'{user} is already an editor', 409)
+        if forum_account_exists(user) is False:
+            return fail(f'no forum account named {user}; they need one before a '
+                        f'role means anything', 404)
+        entry = {'user': user, 'role': 'editor', 'action': 'granted',
+                 'by': appointer, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+                 'at': now_iso(), 'reason': reason}
+        if dry:
+            return jsonify({'ok': True, 'dry_run': True, 'would_append': entry})
+        append_role_event(entry)
+        ensure_member(user)
+        commit_push(f'Appoint {user} as editor\n\n'
+                    f'By: {appointer}\nReason: {reason}\nVia: archivist')
+    return jsonify({'ok': True, 'user': user, 'by': appointer,
+                    'note': 'The appointment is public: an Editor badge on the '
+                            'members list and a line in the role log on their '
+                            'page, with your name and your reason.'})
+
 ANNUL_WORDS = ('annul', 'remove', 'revoke', 'yes')
 
 @app.post('/api/hooks/discourse')
