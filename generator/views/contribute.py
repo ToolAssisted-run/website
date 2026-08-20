@@ -43,13 +43,13 @@ need_repro = sorted([r for r in runs if eff_state(r)[0] == 'none'],
 need_verify = [r for r in runs
                if eff_state(r)[0] != 'imported' and not is_unclassified(r)
                and eff_state(r)[1] != 'confirmed']
-nr_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="location='../runs/{r['id']}/'">
+nr_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="window.open('../runs/{r['id']}/', '_blank')">
 <td><b>{esc(r['_game']['title'])}</b><span class="bcat">{esc(cat_label(r))}</span></td>
 <td>{esc(systems[r['_game']['system']]['name'])}</td>
 <td>{', '.join(esc(a['user']) for a in r['authors'])}</td>
 <td>{days_pending(r)} day{'s' if days_pending(r)!=1 else ''}</td>
 <td class="num"><b class="bounty">{repro_bounty(r)}</b> pts</td></tr>''' for r in need_repro)
-nv_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="location='../runs/{r['id']}/'">
+nv_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="window.open('../runs/{r['id']}/', '_blank')">
 <td><b>{esc(r['_game']['title'])}</b><span class="bcat">{esc(cat_label(r))}</span></td>
 <td>{esc(systems[r['_game']['system']]['name'])}</td>
 <td>{', '.join(esc(a['user']) for a in r['authors'])}</td>
