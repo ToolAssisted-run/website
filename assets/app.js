@@ -318,7 +318,12 @@
     mep.then(function(d){
       if (d.unreachable || !d.loggedIn) return;
       var who = d.user.toLowerCase();
-      if ((D.experts || D.siteExperts || []).indexOf(who) < 0) return;
+      var isExpertHere = (D.experts || D.siteExperts || []).indexOf(who) >= 0;
+      // an editor shapes the library: zones that are library shape open for
+      // them too, minus the forms marked as the experts' alone
+      var isEditorHere = D.editorZone
+        && ((window.TAR || {}).editors || []).indexOf(who) >= 0;
+      if (!isExpertHere && !isEditorHere) return;
       var zone = document.getElementById(zoneId);
       var msg = document.getElementById(msgId);
       zone.hidden = false;
@@ -336,6 +341,11 @@
       forms.forEach(function(spec){
         var form = document.getElementById(spec.id);
         if (!form) return;
+        if (spec.expertOnly && !isExpertHere) {
+          var fold = form.closest('details');
+          (fold || form).hidden = true;
+          return;
+        }
         form.addEventListener('submit', function(ev){
           ev.preventDefault();
           if (spec.confirm && !window.confirm(spec.confirm)) return;
@@ -358,7 +368,7 @@
      done: function(){ return 'Thumbnail set.'; }},
     {id: 'f-gamecat', path: '/api/expert/edit',
      done: function(j){ return 'Changed to ' + j.to + '.'; }},
-    {id: 'f-gamedelete', path: '/api/game/delete',
+    {id: 'f-gamedelete', path: '/api/game/delete', expertOnly: true,
      confirm: 'Delete this game outright? Its runs survive, moved to the ' +
               'Uncategorized game of this system. This cannot be undone.',
      done: function(j){ return 'Deleted. ' + (j.runs_moved && j.runs_moved.length
@@ -366,7 +376,7 @@
   armZone('groupactdata', 'groupacts', 'groupact-msg', [
     {id: 'f-groupaddgame', path: '/api/game/create',
      done: function(j){ return j.game + ' is in this group.'; }},
-    {id: 'f-groupremove', path: '/api/group/request-removal',
+    {id: 'f-groupremove', path: '/api/group/request-removal', expertOnly: true,
      done: function(){ return 'Filed. A site-wide expert answers it.'; }},
     {id: 'f-groupdelete', path: '/api/group/delete',
      confirm: 'Delete this group outright? Its games become ungrouped. ' +
@@ -1131,9 +1141,10 @@
           '<a href="' + api + '/login">Log in</a> to see whether it is yours.';
         return;
       }
-      if ((GE.experts || []).indexOf(d.user.toLowerCase()) < 0) {
-        gate.textContent = 'This page is for the experts covering this game, ' +
-          'and you hold no scope over it.';
+      if ((GE.experts || []).indexOf(d.user.toLowerCase()) < 0
+          && ((window.TAR || {}).editors || []).indexOf(d.user.toLowerCase()) < 0) {
+        gate.textContent = 'This page is for the experts covering this game ' +
+          'and for editors, and you are neither.';
         return;
       }
       gate.hidden = true;
