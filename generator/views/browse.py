@@ -19,6 +19,7 @@ from model import (
     is_ranked,
     is_unclassified,
     nlikes,
+    run_metric_defs,
     runs,
     systems,
 )
@@ -41,6 +42,7 @@ for r in sorted(runs, key=archived_at, reverse=True):
         'id': r['id'], 'title': g['title'], 'sys': g['system'],
         'sysname': systems[g['system']]['name'], 'cat': cat_label(r),
         'authors': [a['user'] for a in r['authors']],
+        'metric': run_metric_defs(r)[0]['label'],
         'result': primary_metric_html(r),
         'stars': nlikes(r),
         'date': archived_at(r)[:10], 'state': state,
@@ -81,9 +83,10 @@ function render(){
       '<td><b>' + r.title + '</b><span class="bcat">' + r.cat + '</span></td>' +
       '<td class="bsys">' + r.sysname + '</td>' +
       '<td>' + r.authors.join(', ') + '</td>' +
+      '<td class="bsys">' + r.metric + '</td>' +
       '<td class="num">' + r.result + '</td>' +
       '<td class="num"><span class="starglyph">★</span>' + r.stars + '</td>' +
-      '<td>' + r.date + '</td>' +
+      '<td class="bsys">' + r.date + '</td>' +
       '<td>' + chip(r.state) + '</td></tr>';
   }).join('');
 }
@@ -106,7 +109,7 @@ body = f'''<header class="ghead"><div><h1>Movies</h1>
 <option value="title">By title</option></select>
 <span id="bcount" class="bcount"></span></div>
 <table class="btable"><thead><tr><th>Game</th><th>System</th><th>Authors</th>
-<th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
+<th>Metric</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
 <tbody id="brows"></tbody></table>
 {browse_js}'''
 (OUT / 'browse').mkdir(exist_ok=True)
