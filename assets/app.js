@@ -970,10 +970,12 @@
             .then(function(txt){ ta.value = txt; }).catch(function(){});
         });
       } else if (!D.imported) {
-        if (!D.videoOnly && D.reproduced.indexOf(u) < 0) arm('f-repro', '/api/reproduce');
-        else arm('f-note-repro', '/api/note', function(form){
-          form.querySelector('[name=notes]').value = D.roleNotes.reproducer || '';
-        });
+        if (!D.videoOnly) {
+          if (D.reproduced.indexOf(u) < 0) arm('f-repro', '/api/reproduce');
+          else arm('f-note-repro', '/api/note', function(form){
+            form.querySelector('[name=notes]').value = D.roleNotes.reproducer || '';
+          });
+        }
         if (D.hasEncode && D.verified.indexOf(u) < 0) arm('f-verify', '/api/verify');
         if (!D.videoOnly && (D.consoled || []).indexOf(u) < 0) arm('f-console', '/api/console-verify');
         if (D.verified.indexOf(u) >= 0) arm('f-note-verify', '/api/note', function(form){
