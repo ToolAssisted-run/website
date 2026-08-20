@@ -698,8 +698,9 @@ def main():
                h.count('expertmenu') >= 1 and 'Expert menu</h2>' in h
                and h.rfind('expertmenu') < h.find('<footer'), h[:120])
         gh = all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
-        ck('a game page asks for removal rather than offering deletion',
-           'request-removal' not in gh and 'Ask for this game to be removed' in gh,
+        ck('a game page offers deletion, not the retired removal request',
+           'request-removal' not in gh and 'Ask for this game' not in gh
+           and 'f-gamedelete' in gh,
            'the path is chosen by the script, the words by the page')
         grh = all_html[out / 'groups' / 'test-family' / 'index.html']
         ck('a group page can add a game and ask for its own removal',

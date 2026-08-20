@@ -220,13 +220,11 @@ its own. Never verified; ranked purely by ★ likes.</p>
 })();
 </script>'''.replace('DEFAULT_COMBO', default_combo)
 
-    # An expert never deletes a game through a request path: they ask, in
-    # public, and a site-wide expert answers. The runs inside it are other
-    # people's work.
+    # deletion (public reason, runs survive in Uncategorized) is the one
+    # removal mechanism; the old ask-then-decide request flow is retired
     open_removal = next((r for r in g.get('removalRequests', [])
                          if r['status'] == 'open'), None)
-    gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
-                    'openRequest': bool(open_removal) or bool(g.get('removed'))}
+    gameact_data = {'game': g['key'], 'experts': covering_experts(g['key'])}
     gameacts = (
         '<script type="application/json" id="gameactdata">'
         + json.dumps(gameact_data).replace('<', chr(92) + 'u003c') + '</script>'
@@ -234,16 +232,6 @@ its own. Never verified; ranked purely by ★ likes.</p>
         '<h2>Expert menu</h2>'
         '<p class="rules">Only experts whose scope covers this game see this box; '
         'every action here is logged in the open.</p>'
-        '<details class="actform"><summary>Ask for this game to be removed</summary>'
-        '<form id="f-gameremove">'
-        '<p class="rules">This files a request; it never removes anything by itself. '
-        'A site-wide expert answers it, and both the asking and the answer are public. '
-        'The runs inside a removed game keep their pages: the runs were never what '
-        'was in question.</p>'
-        f'<input type="hidden" name="game" value="{esc(g["key"])}">'
-        '<label>Why <input name="reason" required minlength="8" maxlength="500" '
-        'placeholder="a duplicate of another game, a nonsense title, …"></label>'
-        '<button class="btn quiet">File</button></form></details>'
         '<p class="statline"><a class="btn" href="edit/">Edit this game</a> '
         'Title, thumbnail and categories are edited on their own page.</p>'
         '<details class="actform"><summary>Delete this game</summary>'
@@ -349,21 +337,6 @@ run to. A category with runs in it cannot be deleted: it is their home.</p>
   <label>Key (optional; derived from the label) <input name="option_key" pattern="[a-z0-9-]*"></label>
   {METRICS_ED}
   <button class="btn">Add</button>
-</form></section>
-<section><h2>Governance</h2>
-{f'<p class="rules">Ratified by {esc(g["ratifiedBy"])} on {esc(g["ratifiedAt"])} (historical; ratification is no longer a mechanism).</p>' if g.get('ratifiedBy') else ''}
-<form id="f-ge-remove" class="actform">
-  <p class="rules">Files a request; a site-wide expert answers it. Runs are untouched.</p>
-  <input type="hidden" name="game" value="{esc(g['key'])}">
-  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
-  <button class="btn quiet">File</button>
-</form>
-<form id="f-ge-delete" class="actform">
-  <p class="rules">Outright: the record goes; every run survives, moved to this
-  system's Uncategorized game. Your reason is public and permanent.</p>
-  <input type="hidden" name="game" value="{esc(g['key'])}">
-  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
-  <button class="btn danger">Delete</button>
 </form></section>
 <p class="msg" id="ge-msg" hidden></p>
 </div>"""

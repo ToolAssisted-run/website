@@ -304,16 +304,22 @@ concerns use **contact@toolassisted.run** (§10).
 
 ### Edits (the record can be corrected; the history always shows)
 
-- **Authors** revise their own runs (`/api/edit`): notes, emulator, completion
-  date, goal description, encode, stated time (video-only), and the author
-  list (refused if it would credit somebody who already acted on the run).
-- **Experts** correct anything in their jurisdiction (`/api/expert/edit`),
-  field by field: a run's stated time, goal (existing options; unclassified
-  refused while live verifications exist), encode, goal description, notes,
-  movie file (re-parsed, sha1 logged); a game's title and thumbnail
-  (validated image ≤256 KB, shown on the page and preferred by the game
-  card); a category option's label or rule (target `sys/slug:option`); a
-  group's title and composition.
+- **One "Edit run" panel serves authors and covering experts** (`/api/edit`):
+  notes, emulator, completion date, goal description, encode, stated time
+  (video-only), metric values. Authors alone may also revise the author list
+  (refused if it would credit somebody who already acted on the run) and
+  upload **supplementary files** (same validation and caps as submission's
+  attachments, counted together; stored under `attachments/` with role
+  `supplementary`; a taken name is refused). An expert using the panel must
+  state a public reason (8–500 chars) and can never touch the author list or
+  the uploads; their changes log exactly like `/api/expert/edit` ones.
+- **Experts** additionally correct structural facts through
+  `/api/expert/edit` (API; the old per-field run form is retired from the
+  page): a run's goal (existing options; unclassified refused while live
+  verifications exist), movie file (re-parsed, sha1 logged); a game's title
+  and thumbnail (validated image ≤256 KB, shown on the page and preferred by
+  the game card); a category option's label, rule or metrics (target
+  `sys/slug:option`); a group's title and composition.
 - Every edit, both kinds, is an event in `edits.json` (who/from/to/why;
   author revisions auto-reason "The author's own revision.") and reversible
   through git. Run pages carry a small "change history · N revisions" link to
@@ -341,10 +347,12 @@ concerns use **contact@toolassisted.run** (§10).
   existed; the validator keeps only their internal consistency.
 - **Groups are acts, not hand edits**: `/api/group/create` (only games you
   already speak for) and `/api/group/edit`; every change logged.
-- **Removal is a request, never an act**: filed with a reason, decided by a
-  site-wide expert, both names and both reasons public. Granted removal
-  unlists; runs and pages stay. (Outright deletion exists separately for
-  non-works, §4.)
+- **A game leaves through deletion** (public reason; its runs survive in the
+  system's Uncategorized game): the old ask-then-decide removal-request flow
+  is retired from the UI for games (`/api/game/request-removal` and
+  `/api/removal/decide` survive for the record, and pages still show
+  historical removal notes). Groups keep the request flow: filed with a
+  reason, decided by a site-wide expert, both names public.
 - **The game editor** (`/games/<key>/edit/`, linked from the game page's
   Expert menu, revealed only to covering experts, enforced server-side):
   identity (rename, thumbnail) and the **category manager**: one card per
@@ -353,9 +361,8 @@ concerns use **contact@toolassisted.run** (§10).
   unused options deletable (a category with runs in it is their home and
   cannot be deleted), new options simply added. Endpoints:
   `/api/category/add` (option_key field: 'key' is the auth field) and
-  `/api/category/delete`; every act lands in edits.json. Governance acts
-  (removal request, delete) appear on both the editor and the game page's
-  Expert menu.
+  `/api/category/delete`; every act lands in edits.json. The editor carries
+  no governance acts: deletion lives on the game page's Expert menu alone.
 - Every game and group page ends with the **Expert menu** (§9) holding the
   governance acts for those entitled; content editing lives on the editor.
 

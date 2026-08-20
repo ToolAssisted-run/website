@@ -954,6 +954,44 @@ def main():
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                                              'authors': 'TestAuthor, NewFriend'})
             ck('author list editable', c == 200 and 'authors' in r['changed'], str(r))
+            # the same panel serves a covering expert, reason required
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'eien86',
+                                             'run': 'M900010', 'emulator': 'FCEUX 2.6'})
+            ck('an expert edit without a public reason is refused',
+               c == 400 and 'reason' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'eien86',
+                                             'run': 'M900010', 'emulator': 'FCEUX 2.6',
+                                             'reason': 'The stated core was wrong.'})
+            ck('a covering expert edits through the same panel',
+               c == 200 and r['changed'] == ['emulator'], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'eien86',
+                                             'run': 'M900010', 'authors': 'eien86',
+                                             'reason': 'Trying to take the credit.'})
+            ck("an author list is never an expert's edit", c == 403, str(r))
+            # supplementary files: the authors' own uploads, after the fact
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010'},
+                           {'attachments': ('extra.txt', b'supplementary data')})
+            ck('an author uploads a supplementary file after the fact',
+               c == 200 and r['changed'] == ['attachments'], str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rj_ = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('the file joins the run record and the tree',
+               any(a['file'] == 'attachments/extra.txt'
+                   and a['role'] == 'supplementary'
+                   for a in rj_.get('attachments', []))
+               and (work / 'games/nes/pinball/runs/M900010/attachments/extra.txt').exists(),
+               str(rj_.get('attachments')))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010'},
+                           {'attachments': ('extra.txt', b'same name again')})
+            ck('the same attachment name is not taken twice', c == 400, str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'eien86',
+                                             'run': 'M900010',
+                                             'reason': 'An expert bearing gifts.'},
+                           {'attachments': ('gift.txt', b'not mine to add')})
+            ck("supplementary files are the authors' own",
+               c == 403 and 'authors' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'helper', 'run': 'M900010',
                                              'role': 'reproducer', 'notes': 'Shared repro knowledge.'})
             ck('reproducer notes update', c == 200 and r['editors'] == ['helper'], str(r))
