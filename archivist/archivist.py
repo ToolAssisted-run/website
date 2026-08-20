@@ -57,6 +57,7 @@ from settings import (
     LOG,
     MOVIE_EXTS,
     MOVIE_MAX,
+    VISITS_FILE,
     NOTES_MAX,
     RECONCILE_SECONDS,
     SELF_URL,
@@ -616,6 +617,32 @@ def submit():
     return jsonify({'ok': True, 'id': run_id,
                     'archive': f'https://github.com/ToolAssisted-run/archive/tree/{BRANCH}/games/{system}/{slug}/runs/{run_id}',
                     'forum': (run.get('forum') or {}).get('url')})
+
+# ---- visit counter: a public tally, not an archive fact ----
+# Counted when the run page's script pings in, so plain crawlers do not
+# inflate it. No auth: a visit is anonymous by nature and nothing but a
+# number is stored.
+_visits_lock = threading.Lock()
+try:
+    _visits = json.loads(VISITS_FILE.read_text())
+except (OSError, ValueError):
+    _visits = {}
+
+@app.post('/api/visit')
+def visit():
+    rid = (request.form.get('run') or '').strip()
+    if not re.fullmatch(r'M[0-9]+', rid):
+        return fail('run must be an id like M100001')
+    if not find_run(rid):
+        return fail(f'unknown run {rid}', 404)
+    with _visits_lock:
+        _visits[rid] = _visits.get(rid, 0) + 1
+        n = _visits[rid]
+        try:
+            VISITS_FILE.write_text(json.dumps(_visits))
+        except OSError as exc:
+            LOG.warning('visits file not writable: %s', exc)
+    return jsonify({'ok': True, 'run': rid, 'visits': n})
 
 @app.post('/api/reproduce')
 def reproduce():

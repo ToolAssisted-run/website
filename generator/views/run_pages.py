@@ -490,7 +490,8 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
     body = f'''
 <header class="ghead"><div>
   <div class="chips"><span class="chip">{esc(systems[g['system']]['name'])}</span>
-  <span class="chip">{esc(cl)}</span>{state_chip(r)}{console_chip(r)}{'<span class="chip pendchip">Under dispute</span>' if open_case else ''}</div>
+  <span class="chip">{esc(cl)}</span>{state_chip(r)}{console_chip(r)}{'<span class="chip pendchip">Under dispute</span>' if open_case else ''}
+  <span class="visits" id="visitbadge" title="number of visits" hidden><svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>&nbsp;<span id="visitnum"></span></span></div>
   <h1>{esc(g['title'])}</h1>
   <p class="authline">by {auth_html}</p>
   {f'<p class="gdesc">“{esc(r["goalDescription"])}”</p>' if r.get('goalDescription') else ''}</div>

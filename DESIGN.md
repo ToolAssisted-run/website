@@ -510,6 +510,13 @@ archivist, module responsibilities). What matters designwise:
   forum every 600 s. Reached publicly through the forum's nginx at
   `https://forum.toolassisted.run/archivist/` (port 8100 is docker-subnet
   only).
+- **Run visit counters are operational state, not archive facts**: the run
+  page's script POSTs `/api/visit` (no auth; a visit is anonymous, and
+  counting from the script keeps plain crawlers out), the archivist tallies
+  into `visits.json` **beside** the checkout (`VISITS_FILE`; never inside
+  it, where refresh's `git clean` would erase it), and the page shows the
+  number live in a small grey eye badge in the header chips. Best-effort by
+  design: no dedup, lost on VPS loss, never committed.
 - **The generator** builds the whole site from the archive checkout
   (`generator/build.py <archive> <out>`; `ARCHIVE_REF` names the branch in
   links, `SITE_BETA` gates the beta bar). Frontend is real files
