@@ -388,9 +388,48 @@ A category will define what it ranks by. Settled in discussion, to build:
 - **Full-hierarchy tie**: earlier arrival wins (second-exact arrival times).
 - Editor: the category manager grows metric rows (label, type, direction,
   unit, reorder, add/remove), logged like every category edit.
-- Still under discussion: remainder of the submission corner case (new
-  inline categories and metrics; video-only runs in categories without a
-  time metric), tie display, per-surface sweep details.
+- **Creation is everybody's; curation is the experts'**: any logged-in
+  member creates a game or a category (never a system or group). Good faith;
+  experts moderate, and only experts edit what exists. Entry points: a
+  "Create Game" button on /games/ for all; "Create Category" on every game
+  page for all; and beside the submit form's selectors a text question +
+  button ("Game not there? Create" / "Category not there? Create", the
+  latter disabled until a game is picked) that OPEN IN A NEW TAB so the
+  half-filled submission survives; success links back to /submit/?game=.
+  The dropdowns themselves never create ("+ new game/category" rows die).
+- **The creation forms**: /create-game/ (title, system, plus the first
+  category: label, rule, metrics) and /create-category/?game=<key> (game
+  locked like submit context). Metric rows: up to 4 (label, type, direction,
+  unit), reorderable; the derived real-time metric is a checkbox + position,
+  never a typed row; keys derive from labels; 'unclassified' refused.
+  Skipping metrics yields the classic category (real time, lower better).
+  Both creations notify Discord (one line, link on the name).
+- **Video-only in a time-less category stores no time at all** (schema's
+  videoOnly⇄duration coupling relaxes to: duration exists iff the
+  category's metrics include time); Time cells show the dash; the display
+  rule everywhere is "the metric of most interest, dash when nothing
+  applies".
+- **The final tie-break is the submission date, earlier wins** (imports:
+  original publication). It resolves every tie, so ranks display plain
+  1,2,3, never shared.
+- **Thumbnail badges show the primary metric** (time by default, exactly as
+  today; "1,250 pts" where points rule).
+- **Surface sweep**: browse (coalesced untitled column) · leaderboards +
+  History deltas (direction-aware) · home shelf badges · contribute tables ·
+  member-page run lists. The run page's fact box keeps everything: frames,
+  derived time when it exists, every stated metric with its label.
+- **Build order** (for a cold session): schema+validator → archivist
+  (member-gated game/category creation with metrics, metric-aware submit
+  requiring every stated metric, run-value edit paths author+expert,
+  category metrics-edit expert-only via /api/expert/edit field='metrics'
+  writing 0-values onto existing runs in the same commit, Discord lines) →
+  generator model helpers (category_metrics, primary display, comparator:
+  direction-aware, 0=unset sorts last at level, then next metric, then
+  submitted asc) → surface sweep → submit dashed metrics box (id
+  s-metrics; time input only when 'time' is a metric AND the run is
+  video-only) → creation pages + buttons → editor metrics manager → tests
+  (comparator in derivation suite, fixtures with a score category, browse
+  runtime guard) → deploy archivist + verify live.
 
 ---
 
