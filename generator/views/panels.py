@@ -292,7 +292,8 @@ group grants nothing.</p>
   <datalist id="dl-role-candidates"></datalist>
   <label>Role <select name="role">
     <option value="committee">Steering Committee</option>
-    <option value="moderator">Moderator</option></select></label>
+    <option value="moderator">Moderator</option>
+    <option value="editor">Editor</option></select></label>
   <label>Decision <select name="action">
     <option value="granted">Grant</option>
     <option value="revoked">Remove</option></select></label>
@@ -309,6 +310,8 @@ group grants nothing.</p>
     'members': sorted((a['username'] for a in authors.values()), key=str.lower),
     'moderators': sorted({ev['user'] for (u, role, sc), ev in ROLES_NOW.items()
                           if role == 'moderator'}, key=str.lower),
+    'editors': sorted({ev['user'] for (u, role, sc), ev in ROLES_NOW.items()
+                       if role == 'editor'}, key=str.lower),
     'committeeNames': sorted({ev['user'] for (u, role, sc), ev in ROLES_NOW.items()
                               if role == 'committee'}, key=str.lower),
     'siteExperts': sorted({e['user'].lower() for e in experts_reg

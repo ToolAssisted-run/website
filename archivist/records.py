@@ -301,6 +301,13 @@ def is_committee(user):
     return any(u == user.lower() and role == 'committee'
                for (u, role, scope) in held_roles())
 
+def is_editor(user):
+    """The editor role: full control over the library's shape (groups,
+    categories, game identity, which category a run sits in), no power over
+    people and none over the runs themselves."""
+    return any(u == user.lower() and role == 'editor'
+               for (u, role, scope) in held_roles())
+
 def load_claims():
     p_ = ARCHIVE / 'claims.json'
     if not p_.exists():

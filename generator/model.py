@@ -88,7 +88,7 @@ experts_reg = [{'user': ev['user'], 'scope': ev.get('scope', '')}
                for (u, role, scope), ev in ROLES_NOW.items() if role == 'expert']
 
 ROLE_LABEL = {'committee': 'Steering Committee', 'moderator': 'Moderator',
-              'expert': 'Expert', 'founder': 'Founder'}
+              'expert': 'Expert', 'editor': 'Editor', 'founder': 'Founder'}
 
 edit_events = []
 
@@ -119,7 +119,7 @@ def scope_words(scope):
         return g['title'] if g else scope
     return systems.get(scope, {}).get('name', scope)
 
-BADGED_ROLES = ('expert', )
+BADGED_ROLES = ('expert', 'editor')
 
 def roles_of(name):
     """Every role this member holds today, widest first."""
@@ -128,7 +128,7 @@ def roles_of(name):
     for (u, role, scope), ev in ROLES_NOW.items():
         if u == low:
             out.append((role, scope))
-    order = {'committee': 0, 'moderator': 1, 'expert': 2}
+    order = {'committee': 0, 'moderator': 1, 'expert': 2, 'editor': 3}
     return sorted(out, key=lambda rs: (order.get(rs[0], 9), rs[1]))
 
 def role_events_of(name):

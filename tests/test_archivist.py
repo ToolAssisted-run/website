@@ -151,6 +151,14 @@ def main():
         ex['events'].append({'user': 'SiteOnly', 'role': 'expert', 'scope': 'site',
                              'action': 'granted', 'by': 'eien86', 'date': '2026-08-17',
                              'reason': 'fixture: site scope without a committee seat'})
+        # an editor: full control over the library's shape, none over people
+        # or the runs themselves
+        ex['events'].append({'user': 'Shelver', 'role': 'editor',
+                             'action': 'granted', 'by': 'committee',
+                             'date': '2026-08-17',
+                             'reason': 'fixture: the library editor'})
+        (seed / 'authors' / 'shelver.json').write_text(json.dumps(
+            {'username': 'Shelver', 'claimed': True}, indent=1) + '\n')
         for who in ('CommitteeB', 'CommitteeC', 'CommitteeD'):
             ex['events'].append({'user': who, 'role': 'committee', 'action': 'granted',
                                  'by': 'founder', 'date': '2026-08-17',
@@ -1229,6 +1237,64 @@ def main():
                any(e['kind'] == 'category' and e['field'] == 'added' for e in elog2)
                and any(e['kind'] == 'category' and e['field'] == 'removed'
                        for e in elog2), str(elog2[-3:]))
+
+            # --- the editor: the library's shape, nothing else ---
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'Shelver', 'game': 'nes/pinball',
+                            'label': 'Editor Made', 'rule': 'A category the editor made.'})
+            ck('an editor adds a category', c == 200 and r['key'] == 'editor-made',
+               str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'kind': 'category',
+                            'target': 'nes/pinball:editor-made', 'field': 'rule',
+                            'value': 'A sharper rule.',
+                            'reason': 'Tightening the wording.'})
+            ck('an editor rewrites a category rule', c == 200, str(r))
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'Shelver', 'game': 'nes/pinball',
+                            'option': 'editor-made'})
+            ck('an editor deletes an unused category',
+               c == 200 and r['removed'] == 'editor-made', str(r))
+            c, r, _ = call(U + '/api/group/create',
+                           {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
+                            'title': 'Shelf', 'games': 'nes/solomons-key'})
+            ck('an editor creates a group over games they hold no scope on',
+               c == 200, str(r))
+            c, r, _ = call(U + '/api/group/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
+                            'remove': 'nes/solomons-key', 'title': 'Shelf Renamed'})
+            ck('an editor reshapes a group', c == 200
+               and r['title'] == 'Shelf Renamed', str(r))
+            c, r, _ = call(U + '/api/group/delete',
+                           {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
+                            'reason': 'The shelf was a fixture experiment.'})
+            ck('an editor deletes a group', c == 200, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
+                            'target': 'M900010', 'field': 'goal',
+                            'value': '100k-glitched',
+                            'reason': 'It already sits there; probing the gate.'})
+            ck('an editor may move a run between categories (the gate opens)',
+               c == 400 and 'already' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
+                            'target': 'M900010', 'field': 'notes',
+                            'value': 'not mine to touch',
+                            'reason': 'Probing the run wall.'})
+            ck('an editor may not touch the run itself',
+               c == 403 and 'editor' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'Shelver', 'run': 'M900010',
+                            'emulator': 'nope', 'reason': 'Probing the panel.'})
+            ck('the Edit run panel stays closed to an editor', c == 403, str(r))
+            c, r, _ = call(U + '/api/run/delete',
+                           {'key': KEY, 'expert': 'Shelver', 'run': 'M900010',
+                            'reason': 'Probing the deletion wall.', 'dry_run': '1'})
+            ck('an editor deletes no runs', c == 403, str(r))
+            c, r, _ = call(U + '/api/game/delete',
+                           {'key': KEY, 'expert': 'Shelver', 'game': 'nes/pinball',
+                            'reason': 'Probing the deletion wall.', 'dry_run': '1'})
+            ck('an editor deletes no games', c == 403, str(r))
 
             # --- removal is asked for, never taken ---
             c, r, _ = call(U + '/api/game/request-removal',

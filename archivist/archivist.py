@@ -107,6 +107,7 @@ from records import (
     expert_covers,
     held_roles,
     is_committee,
+    is_editor,
     is_founder,
     is_site_expert,
     is_uncl_run,
@@ -835,9 +836,10 @@ def _category_gate(f, need_expert=True):
     cfile = ARCHIVE / 'games' / game_key / 'categories.json'
     if not cfile.exists():
         return None, None, None, None, fail(f'unknown game {game_key}', 404)
-    if need_expert and not expert_covers(actor, game_key):
+    if need_expert and not expert_covers(actor, game_key) \
+            and not is_editor(actor):
         return None, None, None, None, fail(
-            f'{actor!r} is not an expert covering {game_key}', 403)
+            f'{actor!r} is not an expert covering {game_key}, nor an editor', 403)
     return actor, game_key, cfile, json.loads(cfile.read_text()), None
 
 
@@ -1003,7 +1005,12 @@ def expert_edit():
                 return fail(f'unknown run {key}', 404)
             game_key = f'{rdir.parent.parent.parent.name}/{rdir.parent.parent.name}'
             if not expert_covers(actor, game_key):
-                return fail(f'{actor!r} is not an expert covering {game_key}', 403)
+                # an editor shapes the library, not the runs: the one run
+                # field that is library shape is which category it sits in
+                if not (is_editor(actor) and field == 'goal'):
+                    return fail(f'{actor!r} is not an expert covering {game_key}'
+                                f' (an editor may only move a run between '
+                                f'categories)', 403)
             r = json.loads((rdir / 'run.json').read_text())
             if field.startswith('metric:'):
                 mkey = field.split(':', 1)[1]
@@ -1118,8 +1125,9 @@ def expert_edit():
             gfile = ARCHIVE / 'games' / key / 'game.json'
             if not gfile.exists():
                 return fail(f'unknown game {key}', 404)
-            if not expert_covers(actor, key):
-                return fail(f'{actor!r} is not an expert covering {key}', 403)
+            if not expert_covers(actor, key) and not is_editor(actor):
+                return fail(f'{actor!r} is not an expert covering {key}, '
+                            f'nor an editor', 403)
             game = json.loads(gfile.read_text())
             if field == 'title':
                 if not (1 <= len(value) <= 120):
@@ -1165,8 +1173,9 @@ def expert_edit():
             cfile = ARCHIVE / 'games' / game_key / 'categories.json'
             if not cfile.exists():
                 return fail(f'unknown game {game_key}', 404)
-            if not expert_covers(actor, game_key):
-                return fail(f'{actor!r} is not an expert covering {game_key}', 403)
+            if not expert_covers(actor, game_key) and not is_editor(actor):
+                return fail(f'{actor!r} is not an expert covering {game_key}, '
+                            f'nor an editor', 403)
             cats = json.loads(cfile.read_text())
             opt = next((o for d in cats['dimensions'] for o in d['options']
                         if o['key'] == okey), None)
@@ -1233,7 +1242,7 @@ def expert_edit():
             gr = next((g for g in doc['groups'] if g['key'] == key.lower()), None)
             if not gr:
                 return fail(f'no group with the key {key!r}', 404)
-            if not covers_group(actor, gr):
+            if not covers_group(actor, gr) and not is_editor(actor):
                 return fail(f'{actor} holds no scope covering the {gr["title"]} group',
                             403)
             if not (1 <= len(value) <= 80):
@@ -1431,7 +1440,7 @@ def group_delete():
         gr = next((g for g in doc['groups'] if g['key'] == key), None)
         if not gr:
             return fail(f'no group with the key {key!r}', 404)
-        if not covers_group(actor, gr):
+        if not covers_group(actor, gr) and not is_editor(actor):
             return fail(f'{actor} holds no scope covering the {gr["title"]} group', 403)
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_delete': key,
@@ -1569,7 +1578,7 @@ def game_create():
         # group is what has to be checked rather than the game.
         # creation is everybody's (good faith; experts moderate). Placing
         # the game into a group is curation and still needs scope over it.
-        if gr and not covers_group(expert, gr):
+        if gr and not covers_group(expert, gr) and not is_editor(expert):
             return fail(f'{expert} holds no scope covering the '
                         f'{gr["title"]} group', 403)
         today_ = time.strftime('%Y-%m-%d', time.gmtime())
@@ -1845,7 +1854,7 @@ def group_create():
                 return fail(f'{g} already belongs to the {other["title"]} group; a game '
                             f'belongs to one', 409)
         holder = {'key': key, 'games': games}
-        if not covers_group(expert, holder):
+        if not covers_group(expert, holder) and not is_editor(expert):
             return fail(f'{expert} holds no scope covering '
                         f'{"every game listed" if games else "an empty group"}; '
                         f'a group gathers games you already speak for', 403)
@@ -1895,14 +1904,14 @@ def group_edit():
         gr = next((g for g in doc['groups'] if g['key'] == key), None)
         if not gr:
             return fail(f'no group with the key {key!r}', 404)
-        if not covers_group(expert, gr):
+        if not covers_group(expert, gr) and not is_editor(expert):
             return fail(f'{expert} holds no scope covering the {gr["title"]} group', 403)
         for g in add:
             if not (ARCHIVE / 'games' / g / 'game.json').is_file():
                 return fail(f'no such game: {g!r}', 404)
-            if not expert_covers(expert, g):
+            if not expert_covers(expert, g) and not is_editor(expert):
                 return fail(f'{expert} holds no scope covering {g}; a group cannot '
-                            f'reach a game its editor may not speak for', 403)
+                            f'reach a game its curator may not speak for', 403)
             if g in gr['games']:
                 return fail(f'{g} is already in this group', 409)
             other = next((x for x in doc['groups'] if x['key'] != key and g in x.get('games', [])),
@@ -2646,9 +2655,9 @@ def role_decide():
     action = (f.get('action') or '').strip()
     post_id = (f.get('post') or '').strip()
     reason = (f.get('reason') or '').strip()
-    if role not in ('committee', 'moderator'):
-        return fail('role must be committee or moderator; an expert scope is '
-                    'appointed downward instead, and annulled by /api/expert/annul')
+    if role not in ('committee', 'moderator', 'editor'):
+        return fail('role must be committee, moderator or editor; an expert scope '
+                    'is appointed downward instead, and annulled by /api/expert/annul')
     if action not in ('granted', 'revoked'):
         return fail('action must be granted or revoked')
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', target):
@@ -2683,7 +2692,8 @@ def role_decide():
                     f'{"2.3.3" if action == "granted" else "2.3.5"})', 409)
     dry = f.get('dry_run') in ('1', 'true', 'yes')
     proof = f'{DISCOURSE_URL}/p/{post_id}'
-    label = {'committee': 'the Steering Committee', 'moderator': 'moderator'}[role]
+    label = {'committee': 'the Steering Committee', 'moderator': 'moderator',
+             'editor': 'editor'}[role]
 
     refresh_archive()
     with lock:
