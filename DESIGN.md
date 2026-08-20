@@ -323,7 +323,10 @@ concerns use **contact@toolassisted.run** (§10).
 - **Creation is free and real on arrival**: anyone creates a game (at
   submission or via the combobox) or a category option; it exists the moment
   it is made. **Ratification is retired as a mechanism** (2026-08-20):
-  nothing is provisional, nothing waits for a vouch. The counterweight is
+  nothing is provisional, nothing waits for a vouch. This is about content
+  taxonomy only: **a name claim still waits for the Steering Committee**
+  (§6), and removal requests still wait for a site-wide expert; identity and
+  removals are judgements, not creations. The counterweight is
   the fast lane: a creation that should not exist is deleted by an expert,
   logged, and reversible through git. Historical `ratifiedBy/At` (and
   `rejected`) fields survive on old records and in the site log's
