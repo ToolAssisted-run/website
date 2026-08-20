@@ -283,10 +283,10 @@ def import_one(dumps, archive, p, sub, username, today, thumb_base,
         (gdir / 'game.json').write_text(json.dumps(
             {'title': gname, 'system': sys_slug,
              'tasvideosGameId': p.get('gameId')}, indent=1) + '\n')
-        cats = {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}
+        cats = {'dimensions': [{'key': 'goal', 'name': 'Category', 'options': []}]}
     goal_dim = next((d for d in cats['dimensions'] if d['key'] == 'goal'), None)
     if goal_dim is None:
-        goal_dim = {'key': 'goal', 'name': 'Goal', 'options': []}
+        goal_dim = {'key': 'goal', 'name': 'Category', 'options': []}
         cats['dimensions'].append(goal_dim)
     if okey not in {o['key'] for o in goal_dim['options']}:
         goal_dim['options'].append({'key': okey, 'label': label, 'rule': rule})
