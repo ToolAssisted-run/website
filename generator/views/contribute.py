@@ -38,7 +38,7 @@ from render import (
 )
 
 # ---- contribute page ----
-need_repro = sorted([r for r in runs if eff_state(r)[0] == 'none'],
+need_repro = sorted([r for r in runs if eff_state(r)[0] == 'none' and not r.get('videoOnly')],
                     key=lambda r: repro_bounty(r), reverse=True)
 need_verify = [r for r in runs
                if eff_state(r)[0] != 'imported' and not is_unclassified(r)
