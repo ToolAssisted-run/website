@@ -1,0 +1,18 @@
+# Force HTTPS everywhere. Infomaniak terminates TLS at its proxy: Apache
+# always sees %{HTTPS}=off and port 80, and the ONLY reliable signal is
+# X-Forwarded-Proto — set to "https" on secure requests, absent on plain
+# HTTP. So: redirect whenever it is not exactly "https". Never test
+# %{HTTPS} here (it loops).
+RewriteEngine On
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# The beta moved from /stage/ to the root (2026-08-15); keep old links alive.
+# Absolute https target: Apache sits behind the TLS-terminating proxy and
+# would otherwise emit http:// Locations (extra redirect hop).
+RewriteRule ^stage/(.*)$ https://%{HTTP_HOST}/$1 [L,R=301]
+RewriteRule ^stage$ https://%{HTTP_HOST}/ [L,R=301]
+
+<IfModule mod_headers.c>
+Header always set Strict-Transport-Security "max-age=31536000"
+</IfModule>

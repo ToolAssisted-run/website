@@ -1,0 +1,201 @@
+name: Build and deploy
+
+# Website-side deploy: every push to main rebuilds the LIVE SITE at
+# toolassisted.run (the beta went live at the root on 2026-08-15; the old
+# /stage indirection is gone). The archive repo has the twin workflow that
+# fires on content changes.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: why this rebuild was asked for
+        required: false
+        default: manual
+  # The archive changes without this repository changing: a submission, a
+  # reproduction, an expert act. Pages can only be published from the repo
+  # that owns it, so the archive repo dispatches this workflow the moment
+  # content lands (reason=archive-content). The schedule is only a safety
+  # net: the dispatch token can expire, and a token that expired is a
+  # dispatch that silently never came.
+  schedule:
+    - cron: '23 */6 * * *'
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  # Gate: nothing deploys unless the full test suite passes. Skipped when no
+  # code changed, i.e. on the scheduled rebuild and on the archive's own
+  # content dispatch: the same commit already passed it, the archive repo ran
+  # its content tests before dispatching, and the build-completeness check
+  # below still guards the output.
+  test:
+    if: github.event_name != 'schedule' && github.event.inputs.reason != 'archive-content'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+        with:
+          path: website
+          ref: main
+
+      - name: Checkout archive
+        uses: actions/checkout@v4
+        with:
+          repository: ToolAssisted-run/archive
+          path: archive
+          ref: main
+          fetch-depth: 0   # the generator reads arrival times from git history
+
+      - name: Install test dependencies
+        run: pip install --quiet flask jsonschema
+
+      - uses: actions/setup-node@v4      # for app.js syntax checking
+        with:
+          node-version: '20'
+
+      - name: Install the browser driver      # for the layout tests
+        run: npm install --silent --no-save puppeteer-core
+
+      - name: Generator tests
+        run: python3 website/tests/test_generator.py archive
+
+      - name: Output invariant tests
+        run: python3 website/tests/test_output.py archive
+
+      - name: Validator negative tests
+        run: python3 website/tests/test_validate.py archive
+
+      - name: Movie parser tests
+        run: python3 website/tests/test_movieparse.py
+
+      - name: Derivation tests
+        run: python3 website/tests/test_derivation.py
+
+      - name: Security tests
+        run: PYTHONPATH=$(python3 -m site --user-site) python3 website/tests/test_security.py archive
+
+      - name: Preview parity tests
+        run: python3 website/tests/test_preview_parity.py
+
+      - name: News feed tests
+        run: python3 website/tests/test_bskyfeed.py
+
+      - name: Video platform tests
+        run: python3 website/tests/test_providers.py
+
+      - name: Layout tests
+        # ubuntu-latest ships Chrome; the suite skips itself if that changes,
+        # so a missing browser never silently turns into a green build lie
+        env:
+          SCRATCH_NODE_MODULES: ${{ github.workspace }}
+        run: python3 website/tests/test_layout.py
+
+      - name: Client runtime tests
+        run: python3 website/tests/test_appjs_runtime.py
+
+      - name: Robustness tests
+        run: PYTHONPATH=$(python3 -m site --user-site) python3 website/tests/test_robustness.py archive
+
+      - name: Archivist tests
+        # The suite launches the archivist with a stripped env (fresh HOME), so
+        # user-site packages vanish; hand them over via PYTHONPATH, which the
+        # test forwards to the subprocess.
+        run: PYTHONPATH=$(python3 -m site --user-site) python3 website/tests/test_archivist.py archive
+
+  deploy:
+    needs: test
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url || steps.pages_retry.outputs.page_url }}
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+        with:
+          path: website
+          ref: main
+
+      - name: Checkout archive
+        uses: actions/checkout@v4
+        with:
+          repository: ToolAssisted-run/archive
+          path: archive
+          ref: main
+          fetch-depth: 0   # the generator reads arrival times from git history
+
+      - name: Build site from archive
+        env:
+          ARCHIVE_REF: main
+        run: python3 website/generator/build.py archive site-build
+
+      - name: Refuse to deploy an incomplete build
+        # a Pages deployment replaces the whole site at once, so a partial
+        # build must never reach it: every run in the archive has to have a
+        # page, and the site's own entry points have to exist.
+        run: |
+          test -f site-build/index.html
+          test -f site-build/assets/app.js
+          test -f site-build/assets/style.css
+          test -f site-build/404.html
+          test -f site-build/CNAME
+          runs=$(find archive/games -name run.json | wc -l)
+          built=$(find site-build/runs -mindepth 1 -maxdepth 1 -type d | wc -l)
+          pages=$(find site-build -name index.html | wc -l)
+          echo "archive runs=$runs · run pages=$built · pages total=$pages"
+          test "$runs" -gt 0
+          test "$built" -eq "$runs"
+          test "$pages" -ge 20
+
+      # ---- GitHub Pages ----
+      # The site moved here on 2026-08-17: the old plan's 10 MB quota had
+      # become the binding limit on a site that grows with the archive.
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Re-run the WORKFLOW, never just this job: a job re-run uploads a second
+      # artifact called github-pages into the same run, and deploy-pages then
+      # refuses with "Multiple artifacts named github-pages" — which looks like
+      # a new fault and is really the retry.
+      - name: Upload the built site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site-build
+
+      # GitHub answers 503 to the deployment API often enough to matter: it cost
+      # a day's worth of deploys during the 2026-08-17 outage. One attempt, then
+      # a wait, then a second: a transient refusal heals itself instead of
+      # leaving the site a version behind until somebody notices.
+      - name: Publish to Pages
+        id: pages
+        uses: actions/deploy-pages@v4      # this IS the deploy since 2026-08-17
+        continue-on-error: true
+
+      - name: Wait out a transient refusal
+        if: steps.pages.outcome == 'failure'
+        run: sleep 120
+
+      - name: Publish to Pages (second attempt)
+        id: pages_retry
+        if: steps.pages.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      - name: Verify
+        run: |
+          # Pages serves the new deployment from its CDN; give the edges a
+          # moment rather than calling a deploy broken on the first miss
+          code=$(curl -s -o /dev/null -m 20 --retry 6 --retry-all-errors --retry-delay 10 \
+                 -w "%{http_code}" https://toolassisted.run/)
+          echo "https://toolassisted.run/ -> $code"
+          test "$code" = "200"
+          curl -s -m 20 --retry 3 --retry-all-errors https://toolassisted.run/ | grep -q betabar
+          echo "beta banner present"

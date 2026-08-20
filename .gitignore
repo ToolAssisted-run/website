@@ -1,0 +1,5 @@
+stage-build/
+
+# Python bytecode from the test suites
+__pycache__/
+*.pyc

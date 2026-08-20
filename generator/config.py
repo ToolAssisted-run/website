@@ -1,0 +1,56 @@
+"""Deployment configuration: where the archive is, where the site goes,
+and the constants that name the deployment (URLs, refs, today).
+Everything else imports from here; this imports from nothing local."""
+import datetime
+import html
+import os
+import json
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import urllib.parse
+
+# the archivist's provider registry (accepted video platforms) is shared by
+# the generator; the archivist directory joins the path once, here
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
+
+def urlencode_q(s):
+    return urllib.parse.quote(s, safe='')
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+ARCHIVE_REF = os.environ.get('ARCHIVE_REF', 'main')
+
+# The open-beta notice on every page. It used to ride on ARCHIVE_REF being a
+# beta branch; the archive works on main now, so the beta is its own switch.
+# Flip to False when the beta ends.
+BETA = os.environ.get('SITE_BETA', '1') != '0'
+
+ARCHIVE_RAW = f'https://raw.githubusercontent.com/ToolAssisted-run/archive/{ARCHIVE_REF}'
+
+ARCHIVE_TREE = f'https://github.com/ToolAssisted-run/archive/blob/{ARCHIVE_REF}'
+
+FORUM = 'https://forum.toolassisted.run'
+
+ARCHIVIST = 'https://forum.toolassisted.run/archivist'
+
+ARCHIVE = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path.home() / 'ToolAssisted-archive')
+
+OUT = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else 'stage-build')
+
+TODAY = datetime.date.today()
+
+def site_commit():
+    """Short hash of the website repo commit this build came from — shown in
+    the footer, linked to GitHub, so any page identifies its exact code."""
+    try:
+        return subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                              cwd=pathlib.Path(__file__).resolve().parent,
+                              capture_output=True, text=True, check=True).stdout.strip()
+    except Exception:
+        return None
+
+SITE_COMMIT = site_commit()
+
