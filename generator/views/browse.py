@@ -104,8 +104,8 @@ body = f'''<header class="ghead"><div><h1>Movies</h1>
 <option value="verified">Verified (expert)</option><option value="provisional">Verified</option>
 <option value="pending">Pending</option><option value="imported">Imported</option>
 <option value="unclassified">Unclassified</option></select>
-<select id="bsort"><option value="stars">Most stars</option>
-<option value="date">Newest first</option><option value="frames">Fastest first</option>
+<select id="bsort"><option value="date">Newest first</option>
+<option value="stars">Most stars</option><option value="frames">Fastest first</option>
 <option value="title">By title</option></select>
 <span id="bcount" class="bcount"></span></div>
 <table class="btable"><thead><tr><th>Game</th><th>System</th><th>Authors</th>
