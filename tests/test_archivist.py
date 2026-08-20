@@ -568,6 +568,15 @@ def main():
             ck('verify on unclassified rejected', c == 400 and 'Unclassified' in r.get('error', ''))
 
             # --- likes: one per member, never own runs, imported allowed ---
+            # --- the categories feed: fresh from the checkout, no CDN lag ---
+            c, r, _ = call(U + '/api/categories?game=nes/pinball', method='GET')
+            ck('the submit form reads categories from the archivist',
+               c == 200 and any(o['key'] == '100k-glitched'
+                                for d_ in r['dimensions'] for o in d_['options']),
+               str(r)[:200])
+            c, r, _ = call(U + '/api/categories?game=nes/nosuchgame', method='GET')
+            ck('unknown game categories are a 404', c == 404, str(r))
+
             # --- the visit tally: public, anonymous, not an archive fact ---
             c, r, _ = call(U + '/api/visit', {'run': 'not-an-id'})
             ck('a visit needs a run id', c == 400, str(r))

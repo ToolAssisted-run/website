@@ -844,6 +844,22 @@ def _category_gate(f, need_expert=True):
     return actor, game_key, cfile, json.loads(cfile.read_text()), None
 
 
+@app.get('/api/categories')
+def categories_of_game():
+    """A game's category definitions, fresh from the checkout (refreshed at
+    most 20 s old). The submit form asks here instead of the raw-file CDN,
+    whose 5-minute cache showed a renamed category under its old label."""
+    game_key = (request.args.get('game') or '').strip()
+    if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', game_key):
+        return fail('game must be system/slug')
+    refresh_archive()
+    cfile = ARCHIVE / 'games' / game_key / 'categories.json'
+    if not cfile.exists():
+        return fail(f'unknown game {game_key}', 404)
+    resp = jsonify({'ok': True, **json.loads(cfile.read_text())})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
 @app.post('/api/category/add')
 def category_add():
     """Any member adds a category (creation is everybody's; only experts

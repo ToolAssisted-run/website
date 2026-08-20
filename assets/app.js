@@ -327,6 +327,10 @@
       var zone = document.getElementById(zoneId);
       var msg = document.getElementById(msgId);
       zone.hidden = false;
+      if (!isExpertHere && isEditorHere) {
+        var zh = zone.querySelector('h2');
+        if (zh && /Expert menu/.test(zh.textContent)) zh.textContent = 'Editor menu';
+      }
       var zbtn = document.getElementById(dataId + '-btn');
       if (zbtn) zbtn.hidden = false;
       var sysSel = document.getElementById('ga-system');
@@ -1577,8 +1581,14 @@
         if (goalCache[gsel.value]) { fillGoals(goalCache[gsel.value]); return; }
         var key = gsel.value;
         fillGoals([]);
-        fetch(GD.raw + '/games/' + key + '/categories.json')
-          .then(function(r){ return r.ok ? r.json() : null; })
+        // the archivist serves its checkout, at most ~20 s old; the raw-file
+        // CDN (5-minute cache) is only the fallback when it is unreachable
+        fetch(api + '/api/categories?game=' + encodeURIComponent(key))
+          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+          .catch(function(){
+            return fetch(GD.raw + '/games/' + key + '/categories.json')
+              .then(function(r){ return r.ok ? r.json() : null; });
+          })
           .then(function(c){
             if (!c || gsel.value !== key) return;
             var goals = [];
