@@ -32,7 +32,9 @@ from gitstore import (
     refresh_archive,
 )
 from notify import (
+    member_md,
     notify_discord,
+    profile_slug,
 )
 
 def record_member_once(username):
@@ -54,9 +56,8 @@ def record_member_once(username):
             return False
         ensure_member(username)
         commit_push(f'Member: {username} arrived\n\nVia: archivist (first login)')
-        notify_discord(f'\U0001f195 [{username}](<{SITE_URL}/authors/'
-                       f'{selfimport.slugify(username)}/>) joined toolAssisted.run',
-                       wait_for=f'{SITE_URL}/authors/{selfimport.slugify(username)}/')
+        notify_discord(f'\U0001f195 {member_md(username)} joined toolAssisted.run',
+                       wait_for=f'{SITE_URL}/authors/{profile_slug(username)}/')
     return True
 
 def note_new_member(username):

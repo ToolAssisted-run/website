@@ -1474,8 +1474,12 @@ def main():
                            {'key': KEY, 'user': 'NotifyGuy', 'run': 'M900010'})
             ck('a real verification lands', c == 200, str(r))
             ck('and Discord hears of it, as one line with the link in a word',
-               discord_saw('**NotifyGuy** verified '
-                           '[\\[NES\\] Pinball'),
+               discord_saw('**[NotifyGuy](<https://toolassisted.run/authors/'
+                           'notifyguy/>)** verified [[NES] Pinball'),
+               str(DISCORD_MSGS[-3:]))
+            ck('the author names carry their profile links',
+               discord_saw('by [TestAuthor](<https://toolassisted.run/authors/'
+                           'testauthor/>)'),
                str(DISCORD_MSGS[-3:]))
             ck('a notification is one line',
                all('\n' not in m for m in DISCORD_MSGS), str(DISCORD_MSGS[-3:]))
@@ -1510,7 +1514,8 @@ def main():
             # the topic link points at the mock forum here and the real one in
             # production, so the assertion holds the shape, not the host
             ck('and it reaches Discord, tags stripped, the title carrying the link',
-               discord_saw('**chatter** posted in [Hello there](<')
+               discord_saw(')** posted in [Hello there](<')
+               and discord_saw('**[chatter](<')
                and discord_saw('/t/5/2>): first post!'),
                str(DISCORD_MSGS[-3:]))
             c, r = hook({'post': {'username': 'chatter',

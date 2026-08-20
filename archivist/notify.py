@@ -41,9 +41,21 @@ def wait_until_live(url, deadline, poll=15):
         time.sleep(min(poll, max(1.0, deadline - time.time())))
     return False
 
+def profile_slug(name):
+    """URL segment of a member profile: mirror of the generator's
+    model.profile_slug, so the links land on the pages it builds."""
+    return re.sub(r'[^a-z0-9._-]+', '-', name.lower()).strip('-.') or 'author'
+
+
+def member_md(name):
+    """A member's name carrying the link to their profile."""
+    return f'[{name}](<{SITE_URL}/authors/{profile_slug(name)}/>)'
+
+
 def movie_md(r, title=None):
     """The run as people say it: [SNES] Prince of Persia by a, b — the
-    name carrying the link (brackets escaped so Discord keeps them as text)."""
+    name carrying the link. Discord keeps nested brackets in a link label
+    as text on its own; escaping them shows literal backslashes."""
     system, slug = r['game'].split('/')
     if title is None:
         gfile = ARCHIVE / 'games' / system / slug / 'game.json'
@@ -51,8 +63,8 @@ def movie_md(r, title=None):
             title = json.loads(gfile.read_text()).get('title', slug)
         except OSError:
             title = slug
-    who = ', '.join(a['user'] for a in r.get('authors', []))
-    return (f'[\\[{system.upper()}\\] {title}](<{SITE_URL}/runs/{r["id"]}/>)'
+    who = ', '.join(member_md(a['user']) for a in r.get('authors', []))
+    return (f'[[{system.upper()}] {title}](<{SITE_URL}/runs/{r["id"]}/>)'
             + (f' by {who}' if who else ''))
 
 
