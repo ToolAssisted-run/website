@@ -92,6 +92,11 @@ def slugify(s):
 
 REFRESH_MAX_AGE = float(os.environ.get('ARCHIVE_REFRESH_SECONDS', '20'))
 
+# run visit counters: operational state, not an archive fact, so the file
+# sits beside the checkout, never inside it (refresh git-cleans the tree)
+VISITS_FILE = pathlib.Path(os.environ.get('VISITS_FILE',
+                                          str(ARCHIVE.parent / 'visits.json')))
+
 EXPERT_GROUP = 'experts'
 
 COMMITTEE_GROUP = 'committee'

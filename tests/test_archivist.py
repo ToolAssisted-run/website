@@ -560,6 +560,17 @@ def main():
             ck('verify on unclassified rejected', c == 400 and 'Unclassified' in r.get('error', ''))
 
             # --- likes: one per member, never own runs, imported allowed ---
+            # --- the visit tally: public, anonymous, not an archive fact ---
+            c, r, _ = call(U + '/api/visit', {'run': 'not-an-id'})
+            ck('a visit needs a run id', c == 400, str(r))
+            c, r, _ = call(U + '/api/visit', {'run': 'M999999'})
+            ck('a visit to an unknown run is a 404', c == 404, str(r))
+            c, r, _ = call(U + '/api/visit', {'run': uncl_id})
+            ck('the first visit counts', c == 200 and r['visits'] == 1, str(r))
+            c, r, _ = call(U + '/api/visit', {'run': uncl_id})
+            ck('and the tally climbs, no auth needed',
+               c == 200 and r['visits'] == 2, str(r))
+
             c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'TestAuthor', 'run': uncl_id})
             ck('self-like rejected', c == 400)
             c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'fan', 'run': uncl_id})

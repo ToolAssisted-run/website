@@ -921,6 +921,18 @@
   var dataEl = document.getElementById('actdata');
   if (dataEl) {
     var D = JSON.parse(dataEl.textContent);
+    // the visit tally: counted here so plain crawlers stay out of it
+    if (api) {
+      var vfd = new FormData();
+      vfd.append('run', D.run);
+      fetch(api + '/api/visit', {method: 'POST', body: vfd})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          if (!j.ok) return;
+          document.getElementById('visitnum').textContent = j.visits.toLocaleString();
+          document.getElementById('visitbadge').hidden = false;
+        }).catch(function(){});
+    }
     mep.then(function(d){
       var zone = document.getElementById('actzone');
       if (!zone || d.unreachable) return;

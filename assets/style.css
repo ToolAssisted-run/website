@@ -425,6 +425,9 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .bcat{display:block;font-family:ui-monospace,monospace;font-size:.72rem;color:var(--accent-text)}
 .bsys{font-size:.84rem;color:var(--muted)}
 .bdate{white-space:nowrap}
+/* the visit tally: small, grey, an eye and a number */
+.visits{display:inline-flex;align-items:center;font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint);padding:3px 2px;cursor:default}
+.eyeic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2}
 .factbox{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow)}
 .factbox h4{font-family:ui-monospace,monospace;font-size:.64rem;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:500;margin-bottom:9px}
 .factbox dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
