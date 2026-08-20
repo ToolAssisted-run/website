@@ -223,6 +223,15 @@ subsection with frame deltas. A faster submission supersedes; nothing is
 erased. Ranked tables sort by seconds (`run_seconds()` unifies frames/fps and
 stated duration).
 
+**Every event carries its arrival second**: beside the human-readable
+`date` (day), event records (acts, invalidations, withdrawals, reports,
+cases, role events, edits, deletions, claims, removal requests; and
+`ratifiedAtTime`/`claimedAtTime` on games, groups and author records) carry
+an optional `at` (ISO seconds, UTC), stamped by the archivist at write time.
+Boards and logs sort by the moment (`at` falling back to `date`) and display
+the day; run arrivals were always second-exact via git commit times. Events
+predating the history collapse share the day-only date honestly.
+
 ### Acts (all: any member except the run's authors, one per member per
 roster, spent forever — invalidation does not refund the slot)
 

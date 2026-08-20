@@ -27,7 +27,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import mkarchive  # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-ARCHIVIST = REPO / 'archivist' / 'archivist.py'
+# the archivist's derivations live in its records layer since the MVC split
+ARCHIVIST = REPO / 'archivist' / 'records.py'
 VALIDATOR = pathlib.Path.home() / 'ToolAssisted-archive' / 'validate.py'
 
 # weights mirrored from generator/build.py; if they change there, these

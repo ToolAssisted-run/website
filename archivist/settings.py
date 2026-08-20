@@ -111,3 +111,9 @@ RECONCILE_SECONDS = float(os.environ.get('ROLE_RECONCILE_SECONDS', '600'))
 # archive repo's CI dispatch alone carries it, ~15 s slower
 WEBSITE_DISPATCH_TOKEN = os.environ.get('WEBSITE_DISPATCH_TOKEN', '')
 
+
+
+def now_iso():
+    """The arrival moment, seconds, UTC: every event record carries it
+    beside its human-readable date, and the site orders by it."""
+    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())

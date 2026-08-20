@@ -71,7 +71,7 @@ for uname, a in authors.items():
     contrib = points.get(uname)
     cpts = contrib['points'] if contrib else 0
     if contrib and contrib['acts']:
-        acts = ''.join(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r_['id']}/'"><td>{esc(d)}</td><td>{esc(desc)}</td>
+        acts = ''.join(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r_['id']}/'"><td>{esc(d[:10])}</td><td>{esc(desc)}</td>
 <td><a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a></td>
 <td class="num">+{pts}</td></tr>''' for d, desc, pts, r_ in sorted(
             contrib['acts'],

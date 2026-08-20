@@ -44,14 +44,18 @@ for r in runs:
         for a in r.get(kind, []):
             inv = a.get('invalidated')
             if inv and inv.get('by') != 'case' and inv['by'].lower() != a['user'].lower():
-                mod_entries.append((inv.get('date', ''), inv['by'], kind[:-1], a['user'],
+                mod_entries.append((inv.get('at') or inv.get('date', ''), inv['by'], kind[:-1], a['user'],
                                     inv.get('reason', ''), r))
 REPORT_LABELS = {'missing-content-warnings': 'Missing content warnings',
                  'spam-malicious': 'Spam / malicious / deceitful',
                  'miscredited': 'Not credited correctly',
                  'licensing': 'Licensing / copyright problem', 'other': 'Other'}
+def _arrival_desc(rep):
+    # newest arrival first; the id breaks a same-second tie
+    return (rep.get('at') or rep['date'], rep['id'])
 all_reports = sorted(((rep, r) for r in runs for rep in r.get('reports', [])),
-                     key=lambda x: (x[0]['status'] != 'open', -x[0]['id']))
+                     key=lambda x: _arrival_desc(x[0]), reverse=True)
+all_reports.sort(key=lambda x: x[0]['status'] != 'open')
 report_items = []
 for rep, r_ in all_reports:
     chip = {'open': '<span class="chip pendchip">Open</span>',
@@ -71,7 +75,7 @@ reports_html = (f'<section id="reports"><h2>Movie reports ({len(report_items)})<
                 f'{"".join(report_items)}</div></section>' if report_items else
                 '<section id="reports"><h2>Movie reports</h2><p class="emptynote">'
                 'No reports have been filed.</p></section>')
-mod_rows = ''.join(f'''<tr><td>{esc(d)}</td><td>{esc(by)}</td>
+mod_rows = ''.join(f'''<tr><td>{esc(d[:10])}</td><td>{esc(by)}</td>
 <td>Invalidated a {kind} by {esc(target)} on
 <a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a></td>
 <td>{esc(reason)}</td></tr>'''
@@ -81,12 +85,12 @@ mod_rows = ''.join(f'''<tr><td>{esc(d)}</td><td>{esc(by)}</td>
 # given author. It is the one place the site accepts human judgement instead of
 # proof, so it is logged like any other act of authority.
 attestations = sorted(
-    ((a.get('claimedAt', ''), a.get('attestedBy', ''), a['username'],
+    ((a.get('claimedAtTime') or a.get('claimedAt', ''), a.get('attestedBy', ''), a['username'],
       a.get('claimedBy', ''), a.get('attestation', ''))
      for a in authors.values()
      if a.get('claimMethod') == 'attested' and a.get('attestedBy')),
     reverse=True)
-att_rows = ''.join(f'''<tr><td>{esc(d)}</td><td>{member_chip(by, '../../')}</td>
+att_rows = ''.join(f'''<tr><td>{esc(d[:10])}</td><td>{member_chip(by, '../../')}</td>
 <td>Attested that {member_chip(who, '../../')} is <b>{esc(name)}</b></td>
 <td>{inline(how, '../../')}</td></tr>'''
                    for d, by, name, who, how in attestations)
@@ -111,7 +115,7 @@ role_rows_all = ''.join(
      'a Committee vote' if ev['by'] == 'committee' else member_chip(ev['by'], '../../')}</td>
 <td>{inline(ev['reason'], '../../')}{
     f' · <a href="{esc(ev["proof"])}">where it was decided</a>' if ev.get('proof') else ''}</td></tr>'''
-    for ev in sorted(role_events, key=lambda e: e['date'], reverse=True))
+    for ev in sorted(role_events, key=lambda e: e.get('at') or e['date'], reverse=True))
 roles_html = (f'''<section id="roles"><h2>Role changes ({len(role_events)})</h2>
 <p class="authline">Every grant and every removal, with the reason given at the time. Roles
 are not a status somebody has always had, and this is the only record of them: the forum's
@@ -129,7 +133,9 @@ wd_rows = ''.join(
 {' <span class="chip pendchip">movie erased</span>' if r_['withdrawn'].get('contentRemoved') else ''}
 <span class="actmeta"> as {esc(r_['withdrawn'].get('role') or 'author')}</span></td>
 <td>{inline(r_['withdrawn'].get('reason', ''), '../../')}</td></tr>'''
-    for r_ in sorted(withdrawn_runs, key=lambda x: x['withdrawn'].get('date', ''), reverse=True))
+    for r_ in sorted(withdrawn_runs,
+                     key=lambda x: x['withdrawn'].get('at') or x['withdrawn'].get('date', ''),
+                     reverse=True))
 withdrawn_html = (f'''<section id="withdrawn"><h2>Withdrawals and erasures ({len(withdrawn_runs)})</h2>
 <p class="authline">A withdrawn run keeps its page as a tombstone, because a hole in the
 record is worse than an honest gap. Where every author asked for it, the movie file itself
@@ -144,10 +150,10 @@ was permanently erased, and that is marked here.</p>
 # no ratifier and appear nowhere below. A group has no ratification act at all
 # yet: groups are edited straight in the archive, by hand.
 ratified = sorted(
-    ([(g.get('ratifiedAt', ''), g['ratifiedBy'], g['title'],
+    ([(g.get('ratifiedAtTime') or g.get('ratifiedAt', ''), g['ratifiedBy'], g['title'],
        f'games/{g["slugpath"]}/', systems[g['system']]['name'])
       for g in games.values() if g.get('ratifiedBy')]
-     + [(gr.get('ratifiedAt', ''), gr['ratifiedBy'], gr['title'],
+     + [(gr.get('ratifiedAtTime') or gr.get('ratifiedAt', ''), gr['ratifiedBy'], gr['title'],
          # a group with no games in it has no page of its own to point at
          f'groups/{gr["key"]}/' if any(l['key'] == gr['key'] for l in live_groups) else '',
          'group')
@@ -156,14 +162,14 @@ ratified = sorted(
 # refusals belong beside the approvals: they are the same decision, answered
 # the other way, and only reading both tells you what the experts actually did
 refused = sorted(
-    ([(g['rejected']['date'], g['rejected']['by'], g['title'],
+    ([(g['rejected'].get('at') or g['rejected']['date'], g['rejected']['by'], g['title'],
        f'games/{g["slugpath"]}/', f'{systems[g["system"]]["name"]} · refused',
        g['rejected']['reason']) for g in rejected_games]
-     + [(gr['rejected']['date'], gr['rejected']['by'], gr['title'], '',
+     + [(gr['rejected'].get('at') or gr['rejected']['date'], gr['rejected']['by'], gr['title'], '',
          'group · refused and dissolved', gr['rejected']['reason'])
         for gr in rejected_groups]), reverse=True)
 rat_rows = ''.join(
-    f'''<tr><td>{esc(when)}</td><td>{member_chip(by, '../../')}</td>
+    f'''<tr><td>{esc(when[:10])}</td><td>{member_chip(by, '../../')}</td>
 <td>{f'<a href="../../{href}">{esc(title)}</a>' if href else f'<b>{esc(title)}</b>'}
 <span class="actmeta"> {esc(what)}</span>{f'<p class="actnote">{inline(why, "../../")}</p>' if why else ''}</td></tr>'''
     for when, by, title, href, what, why in
@@ -197,7 +203,8 @@ claim_rows = ''.join(
     + ' on ' + esc(r.get('decidedAt', '')) + '</span>' if r.get('decidedBy') else ''}{
     f'<p class="actnote">' + inline(r.get('note', ''), '../../') + '</p>' if r.get('note') else ''}
 </td></tr>'''
-    for r in sorted(claim_reqs, key=lambda r: (r['status'] != 'open', r['date']),
+    for r in sorted(claim_reqs,
+                    key=lambda r: (r['status'] != 'open', r.get('at') or r['date']),
                     reverse=True))
 claims_html = (f'''<section id="claims"><h2>Name claims ({len(claim_reqs)})</h2>
 <p class="authline">A name held for an author elsewhere is handed over when the Steering
@@ -215,7 +222,7 @@ edit_rows = ''.join(
 <td><b>{esc(e['key'])}</b><span class="actmeta"> {esc(e['kind'])} \u00b7 {esc(e['field'])}</span>
 <p class="actnote">{esc((e.get('from') or '(empty)'))} \u2192 {esc((e.get('to') or '(empty)'))}</p></td>
 <td>{inline(e['reason'], '../../')}</td></tr>'''
-    for e in sorted(edit_events, key=lambda e: e['date'], reverse=True))
+    for e in sorted(edit_events, key=lambda e: e.get('at') or e['date'], reverse=True))
 edits_html = (f'''<section id="edits"><h2>Edits ({len(edit_events)})</h2>
 <p class="authline">Authors revise their own runs; experts may correct anything inside their
 jurisdiction, member content included, and answer for it. Every revision says who, what it
@@ -235,7 +242,7 @@ del_rows = ''.join(
 <td><b>{esc(e['title'])}</b><span class="actmeta"> {esc(DEL_KIND.get(e['kind'], e['kind']))} \u00b7 {esc(e['key'])}</span>{
     f'<span class="actmeta"> \u00b7 its movies moved to {esc(e["movedTo"])}</span>' if e.get('movedTo') else ''}</td>
 <td>{inline(e['reason'], '../../')}</td></tr>'''
-    for e in sorted(del_events, key=lambda e: e['date'], reverse=True))
+    for e in sorted(del_events, key=lambda e: e.get('at') or e['date'], reverse=True))
 deletions_html = (f'''<section id="deletions"><h2>Deletions ({len(del_events)})</h2>
 <p class="authline">Deleted outright by an expert (movies, games, groups) or the Steering
 Committee (members): tests, spam, mistakes, things that were never really works. The thing
@@ -257,7 +264,8 @@ all_removals = sorted(
          'group')
         for gr in groups + removed_groups + rejected_groups
         for r in gr.get('removalRequests', [])]),
-    key=lambda x: (x[0]['status'] != 'open', x[0]['date']), reverse=True)
+    key=lambda x: (x[0]['status'] != 'open', x[0].get('at') or x[0]['date']),
+    reverse=True)
 
 def removal_row(r, title, href, kind):
     what = (f'<a href="../../{href}">{esc(title)}</a>' if href else f'<b>{esc(title)}</b>')

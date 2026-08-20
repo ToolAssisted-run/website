@@ -40,6 +40,7 @@ import providers
 import selfimport
 
 from settings import (
+    now_iso,
     ACT_NOTES_MAX,
     ARCHIVE,
     ATTACH_EXTS,
@@ -382,7 +383,8 @@ def submit():
             game = {'title': title, 'system': system, 'established': False}
             if expert_covers(submitter, f'{system}/{slug}'):
                 game.update(established=True, ratifiedBy=submitter,
-                            ratifiedAt=time.strftime('%Y-%m-%d', time.gmtime()))
+                            ratifiedAt=time.strftime('%Y-%m-%d', time.gmtime()),
+                            ratifiedAtTime=now_iso())
             cats = {'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}
     else:
         m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', gsel)
@@ -687,7 +689,7 @@ def reproduce():
 
         n = len(r.get('reproductions', [])) + 1
         shot_rel = f'reproductions/{n}-{user}{ext}'
-        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'screenshot': shot_rel}
         if (f.get('emulator') or '').strip():
             entry['emulator'] = f.get('emulator').strip()[:120]
@@ -754,7 +756,7 @@ def invalidate():
                     and not a.get('invalidated')), None)
         if not act:
             return fail(f'no live {kind} by {target!r} on {run_id}', 404)
-        act['invalidated'] = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+        act['invalidated'] = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                               'reason': reason}
         sync_status(r)
         if dry:
@@ -806,6 +808,7 @@ def ratify():
         game['established'] = True
         game['ratifiedBy'] = expert
         game['ratifiedAt'] = time.strftime('%Y-%m-%d', time.gmtime())
+        game['ratifiedAtTime'] = now_iso()
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_establish': game_key,
                             'by': expert})
@@ -1194,7 +1197,7 @@ def game_delete():
                     if not v_.get('invalidated'):
                         v_['invalidated'] = {
                             'by': 'system',
-                            'date': time.strftime('%Y-%m-%d', time.gmtime()),
+                            'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                             'reason': f'The game {game_key} was deleted; the goal '
                                       f'this verification was bound to went with it.'}
                 if rdoc.get('status', {}).get('verified') not in ('imported',):
@@ -1216,7 +1219,7 @@ def game_delete():
             if role == 'expert' and scope == game_key:
                 append_role_event({'user': ev['user'], 'role': 'expert',
                                    'scope': scope, 'action': 'revoked', 'by': actor,
-                                   'date': today_,
+                                   'date': today_, 'at': now_iso(),
                                    'reason': f'The game was deleted. {reason}'})
         log_deletion('game', game_key, game.get('title', game_key), actor, reason,
                      moved_to=hold_key if moved else None)
@@ -1265,7 +1268,7 @@ def group_delete():
             if role == 'expert' and scope == f'group:{key}':
                 append_role_event({'user': ev['user'], 'role': 'expert',
                                    'scope': scope, 'action': 'revoked', 'by': actor,
-                                   'date': today_,
+                                   'date': today_, 'at': now_iso(),
                                    'reason': f'The group was deleted. {reason}'})
         log_deletion('group', key, gr.get('title', key), actor, reason)
         ensure_member(actor)
@@ -1330,7 +1333,7 @@ def member_delete():
         today_ = time.strftime('%Y-%m-%d', time.gmtime())
         for role, scope in target_roles:
             ev = {'user': target, 'role': role, 'action': 'revoked', 'by': actor,
-                  'date': today_, 'reason': f'Member deleted. {reason}'}
+                  'date': today_, 'at': now_iso(), 'reason': f'Member deleted. {reason}'}
             if scope:
                 ev['scope'] = scope
             append_role_event(ev)
@@ -1434,7 +1437,7 @@ def file_removal_request(holder, kind, name, expert, reason):
         return None, fail(f'a removal request for {name} is already open', 409)
     if holder.get('removed'):
         return None, fail(f'{name} has already been removed', 409)
-    entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+    entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
              'reason': reason, 'status': 'open'}
     reqs.append(entry)
     return entry, None
@@ -1595,7 +1598,7 @@ def removal_decide():
         req.update(status=action, decidedBy=expert, decidedAt=today_, note=note_)
         released = []
         if action == 'granted':
-            holder['removed'] = {'by': expert, 'date': today_,
+            holder['removed'] = {'by': expert, 'date': today_, 'at': now_iso(),
                                  'reason': req['reason'], 'requestedBy': req['by']}
             if kind == 'group':
                 released = holder.get('games', [])
@@ -1653,7 +1656,7 @@ def game_reject():
                         f'ratification undone first', 409)
         if game.get('rejected'):
             return fail(f'{game_key} was already refused', 409)
-        entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+        entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'reason': reason}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_reject': game_key,
@@ -1701,7 +1704,7 @@ def group_reject():
             return fail(f'the {gr["title"]} group was already refused', 409)
         if not covers_group(expert, gr):
             return fail(f'{expert} holds no scope covering the {gr["title"]} group', 403)
-        entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+        entry = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'reason': reason}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_reject': key,
@@ -1770,7 +1773,8 @@ def group_create():
         # A group spans systems, so the scope that covers one is site scope.
         # Somebody holding it is the person a ratification would be asked of.
         if is_site_expert(expert):
-            entry.update(established=True, ratifiedBy=expert, ratifiedAt=today_)
+            entry.update(established=True, ratifiedBy=expert, ratifiedAt=today_,
+                         ratifiedAtTime=now_iso())
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': entry})
         checkout_branch()
@@ -1904,6 +1908,7 @@ def group_ratify():
         gr['established'] = True
         gr['ratifiedBy'] = expert
         gr['ratifiedAt'] = time.strftime('%Y-%m-%d', time.gmtime())
+        gr['ratifiedAtTime'] = now_iso()
         save_groups(doc)
         ensure_member(expert)
         commit_push(f'Group {key}: ratified by {expert}\n\nVia: archivist')
@@ -1944,7 +1949,7 @@ def report():
             return fail("an 'other' report needs details")
         r = json.loads((rdir / 'run.json').read_text())
         rep = {'id': next_report_id(), 'by': user,
-               'date': time.strftime('%Y-%m-%d', time.gmtime()),
+               'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                'kind': kind, 'status': 'open'}
         if details:
             rep['details'] = details
@@ -2187,7 +2192,7 @@ def role_note():
         if mine:
             mine['date'] = today
         else:
-            entry['editors'].append({'user': user, 'date': today})
+            entry['editors'].append({'user': user, 'date': today, 'at': now_iso()})
         rn[role] = entry
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'role': role})
@@ -2234,7 +2239,7 @@ def like():
             liked = False
         else:
             r.setdefault('likes', []).append(
-                {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime())})
+                {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso()})
             liked = True
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'liked': liked,
@@ -2272,7 +2277,7 @@ def case_open():
             return fail('this run already has an open case')
         case = {'id': max([c['id'] for c in r.get('cases', [])] + [0]) + 1,
                 'openedBy': user,
-                'date': time.strftime('%Y-%m-%d', time.gmtime()),
+                'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                 'reason': reason,
                 'verifiers': [a['user'] for a in live_v],
                 'reaffirmations': [],
@@ -2316,14 +2321,14 @@ def case_vote():
             return fail('you have already voted on this case')
         reaffirm = f.get('reaffirm') in ('1', 'true', 'yes')
         today = time.strftime('%Y-%m-%d', time.gmtime())
-        vote = {'user': user, 'date': today, 'reaffirm': reaffirm}
+        vote = {'user': user, 'date': today, 'at': now_iso(), 'reaffirm': reaffirm}
         if (f.get('notes') or '').strip():
             vote['notes'] = f.get('notes').strip()
         case.setdefault('reaffirmations', []).append(vote)
         if not reaffirm:
             for a in r.get('verifications', []):
                 if a['user'].lower() == user.lower() and not a.get('invalidated'):
-                    a['invalidated'] = {'by': user, 'date': today,
+                    a['invalidated'] = {'by': user, 'date': today, 'at': now_iso(),
                                         'reason': f'withdrew during case {case_id}'}
         case['status'] = case_derived_status(case)
         if case['status'] != 'open':
@@ -2336,7 +2341,7 @@ def case_vote():
             snapshot = {u.lower() for u in case['verifiers']}
             for a in r.get('verifications', []):
                 if a['user'].lower() in snapshot and not a.get('invalidated'):
-                    a['invalidated'] = {'by': 'case', 'date': today,
+                    a['invalidated'] = {'by': 'case', 'date': today, 'at': now_iso(),
                                         'reason': f'case {case_id} upheld'}
         sync_status(r)
         if dry:
@@ -2400,7 +2405,7 @@ def expert_appoint():
             return fail(f'no forum account named {user}; they need one before they '
                         f'can act as an expert', 404)
         entry = {'user': user, 'role': 'expert', 'scope': scope, 'action': 'granted',
-                 'by': appointer, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+                 'by': appointer, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'reason': reason}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_append': entry})
@@ -2524,7 +2529,7 @@ def founder_committee():
             return fail(f'no forum account named {target}; they need one before a '
                         f'seat means anything', 404)
         entry = {'user': target, 'role': 'committee', 'action': action,
-                 'by': caller, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+                 'by': caller, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'reason': f'{"Seated" if action == "granted" else "Unseated"} by the '
                            f'Founder. {reason}'}
         if dry:
@@ -2620,7 +2625,7 @@ def role_decide():
                         f'role means anything', 404)
         said = f' {reason}' if reason else ''
         entry = {'user': target, 'role': role, 'action': action, 'by': 'committee',
-                 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'proof': proof,
+                 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'proof': proof,
                  'reason': (f'{"Joined" if action == "granted" else "Left"} {label} '
                             f'by a Committee vote, {votes} of {size}.{said}')}
         if dry:
@@ -2686,7 +2691,7 @@ def expert_annul():
         for e in mine:
             append_role_event({
                 'user': target, 'role': 'expert', 'scope': e['scope'],
-                'action': 'revoked', 'by': 'committee', 'date': today, 'proof': proof,
+                'action': 'revoked', 'by': 'committee', 'date': today, 'at': now_iso(), 'proof': proof,
                 'reason': f'Annulled by a Committee vote, {for_annul} of {size}.'})
         commit_push(f'Annul: {target} loses {scope or "every scope"}\n\n'
                     f'Committee vote: {for_annul} of {size}\nProof: {proof}\n'
@@ -2719,7 +2724,7 @@ def expert_resign():
         today = time.strftime('%Y-%m-%d', time.gmtime())
         for e in mine:
             append_role_event({'user': user, 'role': 'expert', 'scope': e['scope'],
-                               'action': 'revoked', 'by': user, 'date': today,
+                               'action': 'revoked', 'by': user, 'date': today, 'at': now_iso(),
                                'reason': 'Stepped down of their own accord.'})
         commit_push(f'Resign: {user} steps down from '
                     f'{scope or "every scope"}\n\nVia: archivist')
@@ -2759,7 +2764,7 @@ def claim_request():
                for r in doc['requests']):
             return fail('you already have a claim open; it has to be answered first', 409)
         entry = {'member': member, 'identity': identity, 'evidence': evidence,
-                 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'status': 'open'}
+                 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'status': 'open'}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_file': entry})
         checkout_branch()
@@ -2850,7 +2855,7 @@ def claim_decide():
                 return fail(f'{req["identity"]} is already claimed by '
                             f'{rec.get("claimedBy")}', 409)
             rec.update({'username': rec.get('username') or req['identity'],
-                        'claimed': True, 'claimedBy': member, 'claimedAt': today_,
+                        'claimed': True, 'claimedBy': member, 'claimedAt': today_, 'claimedAtTime': now_iso(),
                         'claimMethod': 'committee', 'attestedBy': caller,
                         'attestation': (f'Claim approved by the Steering Committee. '
                                         f'{req["evidence"]}')[:1000]})
@@ -2935,6 +2940,7 @@ def claim_attest():
                     'claimed': True,
                     'claimedBy': member,
                     'claimedAt': time.strftime('%Y-%m-%d', time.gmtime()),
+                    'claimedAtTime': now_iso(),
                     'claimMethod': 'attested',
                     'attestedBy': expert,
                     'attestation': method})
@@ -3076,7 +3082,7 @@ def verify():
         if not r.get('encodes'):
             return fail('this run has no encode linked; verification needs one to judge from')
 
-        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime())}
+        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso()}
         game_key_v = f'{rdir.parent.parent.parent.name}/{rdir.parent.parent.name}'
         if expert_covers(user, game_key_v):
             entry['expert'] = True
@@ -3136,7 +3142,7 @@ def withdraw():
         if len(reason) > ACT_NOTES_MAX:
             return fail(f'reason exceeds {ACT_NOTES_MAX} characters')
 
-        r['withdrawn'] = {'by': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+        r['withdrawn'] = {'by': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                           'reason': reason, 'role': 'author' if is_author else 'expert'}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_withdraw': r['withdrawn']})
@@ -3175,7 +3181,7 @@ def console_verify():
             return fail('a link to the recording of the console playing this run '
                         'is required as proof')
 
-        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'proof': proof}
         if (f.get('hardware') or '').strip():
             entry['hardware'] = f.get('hardware').strip()[:120]

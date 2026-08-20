@@ -20,6 +20,7 @@ import urllib.request
 
 import selfimport
 from settings import (
+    now_iso,
     ARCHIVE,
     LOG,
     SITE_URL,
@@ -212,7 +213,7 @@ def log_deletion(kind, key, title, by, reason, moved_to=None):
                             'itself is gone; this is where the act stays readable.',
                  'events': []})
     entry = {'kind': kind, 'key': key, 'title': title, 'by': by,
-             'date': time.strftime('%Y-%m-%d', time.gmtime()), 'reason': reason}
+             'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'reason': reason}
     if moved_to:
         entry['movedTo'] = moved_to
     doc['events'].append(entry)
@@ -228,7 +229,7 @@ def log_edit(kind, key, field, old_v, new_v, by, reason):
                             'the account.', 'events': []})
     doc['events'].append({'kind': kind, 'key': key, 'field': field,
                           'from': str(old_v)[:300], 'to': str(new_v)[:300],
-                          'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
+                          'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                           'reason': reason})
     p_.write_text(json.dumps(doc, indent=1) + '\n')
 

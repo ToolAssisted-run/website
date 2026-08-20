@@ -420,13 +420,16 @@ for r in runs:
             ad = parse_date(act.get('date'))
             neglect = min((ad - sub).days * PT_NEGLECT_PER_DAY, PT_NEGLECT_CAP) if ad and sub and ad > sub else 0
             award(act['user'], PT_REPRO_FIRST + hard_bonus(r) + neglect,
-                  'first reproduction', r, act.get('date'))
+                  'first reproduction', r, act.get('at') or act.get('date'))
         else:
-            award(act['user'], PT_REPRO_LATER + hard_bonus(r), 'reproduction', r, act.get('date'))
+            award(act['user'], PT_REPRO_LATER + hard_bonus(r), 'reproduction', r,
+              act.get('at') or act.get('date'))
     for act in live(r.get('verifications', [])):
-        award(act['user'], PT_VERIFY, 'verification', r, act.get('date'))
+        award(act['user'], PT_VERIFY, 'verification', r,
+              act.get('at') or act.get('date'))
     for act in live(r.get('consoleVerifications', [])):
-        award(act['user'], PT_CONSOLE, 'console verification', r, act.get('date'))
+        award(act['user'], PT_CONSOLE, 'console verification', r,
+              act.get('at') or act.get('date'))
 
 # ---- author news: events on your runs (reproduced / verified / liked) ----
 author_news = {}
