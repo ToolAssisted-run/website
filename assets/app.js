@@ -1084,6 +1084,155 @@
     });
   }
 
+  // ---- the game editor (covering experts) ----
+  var geEl = document.getElementById('gameeditdata');
+  if (geEl) {
+    var GE = JSON.parse(geEl.textContent);
+    mep.then(function(d){
+      var gate = document.getElementById('ge-gate');
+      if (d.unreachable) {
+        gate.textContent = 'The archivist is unreachable, so who you are cannot ' +
+          'be checked right now. Reading works; editing will not.';
+        return;
+      }
+      if (!d.loggedIn) {
+        gate.innerHTML = 'This page is for the experts covering this game. ' +
+          '<a href="' + api + '/login">Log in</a> to see whether it is yours.';
+        return;
+      }
+      if ((GE.experts || []).indexOf(d.user.toLowerCase()) < 0) {
+        gate.textContent = 'This page is for the experts covering this game, ' +
+          'and you hold no scope over it.';
+        return;
+      }
+      gate.hidden = true;
+      document.getElementById('geditor').hidden = false;
+      var msg = document.getElementById('ge-msg');
+      function ok(text){
+        note(msg, text + ' The site rebuilds from the archive; it shows in a ' +
+                  'few minutes.', true);
+      }
+      function wire(id, path, confirmText, done){
+        var form = document.getElementById(id);
+        if (!form) return;
+        form.addEventListener('submit', function(ev){
+          ev.preventDefault();
+          if (confirmText && !window.confirm(confirmText)) return;
+          post(path, new FormData(form), form.querySelector('button'))
+            .then(function(res){
+              if (res.ok && res.j.ok) ok(done(res.j));
+              else note(msg, res.j.error || 'something went wrong', false);
+            });
+        });
+      }
+      wire('f-ge-title', '/api/expert/edit', null,
+           function(j){ return 'Renamed to ' + j.to + '.'; });
+      wire('f-ge-thumb', '/api/expert/edit', null,
+           function(){ return 'Thumbnail set.'; });
+      wire('f-ge-ratify', '/api/game/ratify', null,
+           function(){ return 'Ratified.'; });
+      wire('f-ge-remove', '/api/game/request-removal', null,
+           function(){ return 'Filed. A site-wide expert answers it.'; });
+      wire('f-ge-delete', '/api/game/delete',
+           'Delete this game outright? Its movies survive, moved to the ' +
+           'Uncategorized game of this system. This cannot be undone.',
+           function(j){ return 'Deleted.'; });
+      wire('f-ge-add', '/api/category/add', null,
+           function(j){ return 'Added ' + j.key + '.'; });
+
+      // one card per category option: edit in place, ratify, delete-if-empty
+      var box = document.getElementById('ge-cats');
+      (GE.options || []).forEach(function(o){
+        var card = el('div', 'gecard');
+        var head = el('div', 'gehead');
+        head.appendChild(el('b', '', o.key));
+        head.appendChild(el('span', 'actmeta',
+          ' ' + o.runs + ' run' + (o.runs === 1 ? '' : 's')
+          + (o.provisional ? ' · provisional' : '')));
+        card.appendChild(head);
+        function field(labelText, tag){
+          var lab = el('label', '', labelText + ' ');
+          var inp = el(tag === 'textarea' ? 'textarea' : 'input');
+          lab.appendChild(inp);
+          card.appendChild(lab);
+          return inp;
+        }
+        var labIn = field('Label');
+        labIn.value = o.label;
+        var ruleIn = field('Rule', 'textarea');
+        ruleIn.value = o.rule;
+        ruleIn.rows = 2;
+        var whyIn = field('Why (published with the change)');
+        whyIn.placeholder = 'required to save a change';
+        var row = el('div', 'gebtns');
+        var save = el('button', 'btn', 'Save');
+        save.type = 'button';
+        save.addEventListener('click', function(){
+          var jobs = [];
+          if (labIn.value.trim() !== o.label) jobs.push(['label', labIn.value.trim()]);
+          if (ruleIn.value.trim() !== o.rule) jobs.push(['rule', ruleIn.value.trim()]);
+          if (!jobs.length) { note(msg, 'Nothing changed on ' + o.key + '.', false); return; }
+          function step(){
+            if (!jobs.length) {
+              o.label = labIn.value.trim();
+              o.rule = ruleIn.value.trim();
+              ok('Saved ' + o.key + '.');
+              return;
+            }
+            var job = jobs.shift();
+            var fd = new FormData();
+            fd.append('kind', 'category');
+            fd.append('target', GE.game + ':' + o.key);
+            fd.append('field', job[0]);
+            fd.append('value', job[1]);
+            fd.append('reason', whyIn.value.trim());
+            post('/api/expert/edit', fd, save).then(function(res){
+              if (res.ok && res.j.ok) step();
+              else note(msg, res.j.error || 'something went wrong', false);
+            });
+          }
+          step();
+        });
+        row.appendChild(save);
+        if (o.provisional) {
+          var rat = el('button', 'btn quiet', 'Ratify');
+          rat.type = 'button';
+          rat.addEventListener('click', function(){
+            var fd = new FormData();
+            fd.append('game', GE.game);
+            fd.append('option', o.key);
+            post('/api/category/ratify', fd, rat).then(function(res){
+              if (res.ok && res.j.ok) ok('Ratified ' + o.key + '.');
+              else note(msg, res.j.error || 'something went wrong', false);
+            });
+          });
+          row.appendChild(rat);
+        }
+        if (!o.runs) {
+          var del = el('button', 'btn danger', 'Delete');
+          del.type = 'button';
+          del.addEventListener('click', function(){
+            if (!window.confirm('Delete the unused category ' + o.key + '?')) return;
+            var fd = new FormData();
+            fd.append('game', GE.game);
+            fd.append('option', o.key);
+            post('/api/category/delete', fd, del).then(function(res){
+              if (res.ok && res.j.ok) { card.remove(); ok('Removed ' + o.key + '.'); }
+              else note(msg, res.j.error || 'something went wrong', false);
+            });
+          });
+          row.appendChild(del);
+        }
+        card.appendChild(row);
+        box.appendChild(card);
+      });
+      if (!(GE.options || []).length) {
+        box.appendChild(el('p', 'emptynote',
+          'No categories yet: add the first one below.'));
+      }
+    });
+  }
+
   // ---- file a claim: anybody logged in, one at a time ----
   var claimForm = document.getElementById('f-claim');
   if (claimForm) {

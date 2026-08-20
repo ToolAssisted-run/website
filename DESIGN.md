@@ -338,8 +338,19 @@ concerns use **contact@toolassisted.run** (§10).
   site-wide expert, both names and both reasons public. Granted removal
   unlists; runs and pages stay. (Outright deletion exists separately for
   non-works, §4.)
-- Every game and group page ends with the **Expert menu** (§9) holding all of
-  the above for those entitled.
+- **The game editor** (`/games/<key>/edit/`, linked from the game page's
+  Expert menu, revealed only to covering experts, enforced server-side):
+  identity (rename, thumbnail) and the **category manager**: one card per
+  option with label and rule edited in place (public reason required),
+  provisional options ratified in place, unused options deletable (a
+  category with runs in it is their home and cannot be deleted), new
+  options added established (expert authority). Endpoints:
+  `/api/category/add` (option_key field: 'key' is the auth field),
+  `/api/category/ratify`, `/api/category/delete`; every act lands in
+  edits.json. Governance acts (ratify game, removal request, delete) appear
+  on both the editor and the game page's Expert menu.
+- Every game and group page ends with the **Expert menu** (§9) holding the
+  governance acts for those entitled; content editing lives on the editor.
 
 ---
 
