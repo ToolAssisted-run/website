@@ -88,7 +88,7 @@ for uname, a in authors.items():
     st_ = author_stats[uname]
     header_btn = (f'<div class="hbtns"><a class="btn" id="selfimport" hidden '
                   f'data-author="{esc(a["username"])}" href="../../import/">'
-                  f'Import movies</a></div>')
+                  f'Import runs</a></div>')
     selfimport_html = header_btn
     NEWS_ICON = {'reproduced': '↻', 'verified': '✓', 'liked': '★'}
     news_items = ''.join(
@@ -156,7 +156,7 @@ are not a status somebody has always had: this is where that is visible.</p>
 <h1>{esc(a['username'])} {('🇨🇭' if a.get('country')=='CH' else '')}</h1>{role_badges(a['username'])}{badge}</div>{selfimport_html}</header>
 {memberact}
 <div class="statstrip">
-<div class="stat"><b>{st_['runs']}</b><span>movies published</span></div>
+<div class="stat"><b>{st_['runs']}</b><span>runs published</span></div>
 <div class="stat"><b><span class="starglyph">★</span>{st_['author']}</b><span>author score</span></div>
 <div class="stat"><b>{st_['contrib']}</b><span>contributor score</span></div>
 </div>
@@ -180,7 +180,7 @@ for r in withdrawn_runs:
 <p class="statline">Withdrawn by {member_chip(w['by'], '../../')} on {esc(w['date'])}
 ({esc(w.get('role') or 'author')}).</p>
 <p class="actnote">{inline(w['reason'], '../../')}</p>
-{'''<p class="rules">The movie, the notes and the thumbnail were taken down with
+{'''<p class="rules">The movie file, the notes and the thumbnail were taken down with
 this withdrawal, because publishing them was the problem. The record above stays,
 so the id is never reused and the history stays legible, and any of the authors
 can bring the work back by importing it with the others' agreement.</p>'''
@@ -192,5 +192,5 @@ simply no longer listed or ranked.</p>'''}</div>
     d = OUT / 'runs' / r['id']
     d.mkdir(parents=True, exist_ok=True)
     (d / 'index.html').write_text(page(f"{g['title']} (withdrawn)", body, '../../',
-                                       f'<a href="../../browse/">Movies</a> / {esc(r["id"])}'))
+                                       f'<a href="../../browse/">Runs</a> / {esc(r["id"])}'))
 

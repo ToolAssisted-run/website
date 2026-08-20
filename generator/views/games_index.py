@@ -153,7 +153,7 @@ if live_groups:
                  '<form id="f-groupdelete">'
                  '<p class="rules">Outright: the grouping goes, and every game in it becomes '
                  'ungrouped, gathered by Unclassified until somebody re-homes it. No game and '
-                 'no movie is deleted. Your reason is public and permanent.</p>'
+                 'no run is deleted. Your reason is public and permanent.</p>'
                  f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
                  '<label>Why <input name="reason" required minlength="8" maxlength="500" '
                  'placeholder="a test, a mistake, …"></label>'
@@ -326,14 +326,14 @@ games_acts = ('<script type="application/json" id="gamesactdata">'
 body = f'''<header class="ghead"><div><h1>Games</h1>
 <p class="authline">{len(games)} games across {len(by_sys)} systems. Anyone can create a game;
 experts curate afterwards.</p></div>
-<div class="hbtns"><a class="btn" href="../create-game/">Create a game</a>
-<div class="dimrow"><span class="dimname">View</span>
+<div class="hbtns"><div class="dimrow"><span class="dimname">View</span>
 {'<button class="dimopt gview-btn" data-view="groups">Groups</button>' if grp_view else ''}
 <button class="dimopt gview-btn on" data-view="systems">Systems</button>
 <button class="dimopt gview-btn" data-view="list">List</button></div>
 <div class="dimrow" id="gsortrow"><span class="dimname">Sort</span>
 <button class="dimopt gsort on" data-mode="stars"><span class="starglyph">★</span> Stars</button>
-<button class="dimopt gsort" data-mode="title">By title</button></div></div></header>
+<button class="dimopt gsort" data-mode="title">By title</button></div>
+<a class="btn" href="../create-game/">Create a game</a></div></header>
 {f'<div class="gview" id="v-groups" hidden>{grp_view}</div>' if grp_view else ''}
 <div class="gview gsects" id="v-systems">{''.join(sys_sections)}</div>
 <div class="gview" id="v-list" hidden>{list_view}</div>

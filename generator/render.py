@@ -524,7 +524,7 @@ FOUNDER_NAMES_JS = json.dumps(sorted({ev['user'].lower()
                                       for (u, role, sc), ev in ROLES_NOW.items()
                                       if role == 'founder'}))
 
-NAV_LINKS = [('browse/', 'Movies'), ('games/', 'Games'), ('authors/', 'Members'),
+NAV_LINKS = [('browse/', 'Runs'), ('games/', 'Games'), ('authors/', 'Members'),
              ('contribute/', 'Contribute'), ('tools/', 'Tools'), ('submit/', 'Submit'),
              ('|', ''),   # separator: in-site links end here
              (FORUM, 'Forum'), ('https://discord.gg/VsKDT9XB6u', 'Discord')]

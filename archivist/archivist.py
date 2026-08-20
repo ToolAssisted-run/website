@@ -607,7 +607,7 @@ def submit():
             (rdir / 'run.json').write_text(json.dumps(run, indent=1))
         commit_push(f'Archive {run_id}: {game["title"]} ({goal}) by {", ".join(authors)}\n\n'
                     f'Submitted-By: {submitter}\nVia: archivist')
-        notify_discord(f'\U0001f3ac New movie archived: '
+        notify_discord(f'\U0001f3ac New run archived: '
                        + movie_md(run, game['title']) + f' ({goal})',
                        wait_for=f'{SITE_URL}/runs/{run_id}/',
                        image=f'{SITE_URL}/thumbs/{run_id}{thumb_ext}')
@@ -3113,10 +3113,11 @@ def verify():
 def withdraw():
     """Take a run out of the listings.
 
-    Its authors may withdraw their own run; a covering expert may withdraw
-    any run in their scope. Nothing is erased: the record, the movie file and
-    the reason stay in the archive, because the principles forbid erasing a
-    contribution (1.2, 2.7.2). The site stops listing it and says why."""
+    Withdrawing is a voluntary act: only the run's own authors may do it (an
+    expert who must remove a run deletes it, on the record). Nothing is
+    erased: the record, the movie file and the reason stay in the archive,
+    because the principles forbid erasing a contribution (1.2, 2.7.2). The
+    site stops listing it and says why."""
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
@@ -3135,9 +3136,9 @@ def withdraw():
             return fail(f'unknown run {run_id}', 404)
         r = json.loads((rdir / 'run.json').read_text())
         is_author = current_name(user).lower() in run_authors_now(r)
-        is_expert = expert_covers(user, r['game'])
-        if not (is_author or is_expert):
-            return fail("only the run's authors or a covering expert may withdraw it", 403)
+        if not is_author:
+            return fail("withdrawing is the author's own voluntary act; an expert "
+                        "who must remove a run deletes it instead", 403)
         if r.get('withdrawn'):
             return fail(f'{run_id} is already withdrawn')
         reason = (f.get('reason') or '').strip()
@@ -3147,7 +3148,7 @@ def withdraw():
             return fail(f'reason exceeds {ACT_NOTES_MAX} characters')
 
         r['withdrawn'] = {'by': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                          'reason': reason, 'role': 'author' if is_author else 'expert'}
+                          'reason': reason, 'role': 'author'}
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_withdraw': r['withdrawn']})
         (rdir / 'run.json').write_text(json.dumps(

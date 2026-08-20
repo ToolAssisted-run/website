@@ -897,8 +897,8 @@ def main():
             c, r, _ = call(U + '/api/withdraw', {'key': KEY, 'user': 'eien86',
                                                  'run': 'M900010',
                                                  'reason': 'Expert cleanup.', 'dry_run': '1'})
-            ck('a covering expert can withdraw a run',
-               c == 200 and r['would_withdraw']['role'] == 'expert', str(r)[:160])
+            ck('withdrawing is voluntary: even a covering expert may not '
+               '(they delete instead)', c == 403, str(r)[:160])
 
             # --- console verification: the optional third signal ---
             cv = {'key': KEY, 'user': 'ConsoleFan', 'run': 'M900010'}

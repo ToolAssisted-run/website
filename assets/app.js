@@ -206,7 +206,7 @@
       .then(function(all){
         var s = all[d.user.toLowerCase()] || {runs: 0, author: 0, contrib: 0};
         statsRow.innerHTML = '';
-        [[String(s.runs), 'movies', ''], ['<span class="starglyph">★</span>' + s.author, 'author score', ''],
+        [[String(s.runs), 'runs', ''], ['<span class="starglyph">★</span>' + s.author, 'author score', ''],
          [String(s.contrib), 'contributor score', '']]
           .forEach(function(pair){
             var box = el('span', 'am-stat');
@@ -361,10 +361,10 @@
     {id: 'f-gamecat', path: '/api/expert/edit',
      done: function(j){ return 'Changed to ' + j.to + '.'; }},
     {id: 'f-gamedelete', path: '/api/game/delete',
-     confirm: 'Delete this game outright? Its movies survive, moved to the ' +
+     confirm: 'Delete this game outright? Its runs survive, moved to the ' +
               'Uncategorized game of this system. This cannot be undone.',
      done: function(j){ return 'Deleted. ' + (j.runs_moved && j.runs_moved.length
-       ? j.runs_moved.length + ' movie(s) moved to ' + j.to + '.' : 'It held no movies.'); }}]);
+       ? j.runs_moved.length + ' run(s) moved to ' + j.to + '.' : 'It held no runs.'); }}]);
   armZone('groupactdata', 'groupacts', 'groupact-msg', [
     {id: 'f-groupaddgame', path: '/api/game/create',
      done: function(j){ return j.game + ' is in this group.'; }},
@@ -542,7 +542,7 @@
                        cmsg);
 
       // recording a Committee decision (moved here from the members page:
-      // governance tools live in panels, the members page is about the movies)
+      // governance tools live in panels, the members page is about the runs)
       var roleForm = document.getElementById('f-role');
       var roleMsg = document.getElementById('role-msg');
       // who can be granted a role is whoever lacks it; who can lose one is
@@ -976,8 +976,7 @@
         });
         if (D.hasEncode && D.verified.indexOf(u) < 0) arm('f-verify', '/api/verify');
         if (!D.videoOnly && (D.consoled || []).indexOf(u) < 0) arm('f-console', '/api/console-verify');
-        if ((D.experts || []).indexOf(u) >= 0) arm('f-withdraw', '/api/withdraw');
-        else if (D.verified.indexOf(u) >= 0) arm('f-note-verify', '/api/note', function(form){
+        if (D.verified.indexOf(u) >= 0) arm('f-note-verify', '/api/note', function(form){
           form.querySelector('[name=notes]').value = D.roleNotes.verifier || '';
         });
         if (D.openCase) {
@@ -1017,7 +1016,7 @@
         arm('f-rundelete', '/api/run/delete');
         var rdel = document.getElementById('f-rundelete');
         if (rdel) rdel.addEventListener('submit', function(ev){
-          if (!window.confirm('Delete this movie outright? This cannot be undone, ' +
+          if (!window.confirm('Delete this run outright? This cannot be undone, ' +
                               'and only your reason remains.')) {
             ev.stopImmediatePropagation();
             ev.preventDefault();
@@ -1120,7 +1119,7 @@
       wire('f-ge-remove', '/api/game/request-removal', null,
            function(){ return 'Filed. A site-wide expert answers it.'; });
       wire('f-ge-delete', '/api/game/delete',
-           'Delete this game outright? Its movies survive, moved to the ' +
+           'Delete this game outright? Its runs survive, moved to the ' +
            'Uncategorized game of this system. This cannot be undone.',
            function(j){ return 'Deleted.'; });
       wire('f-ge-add', '/api/category/add', null,
@@ -2114,7 +2113,7 @@
   }
 
   // ---- self-service TASVideos import ----
-  // profile: reveal the owner-only "Import movies" button
+  // profile: reveal the owner-only "Import runs" button
   var sib = document.getElementById('selfimport');
   if (sib && api) {
     mep.then(function(me){
@@ -2163,7 +2162,7 @@
         return;
       }
       if (!me.loggedIn) {
-        note(impMsg, 'Log in (top right) to import your movies.', false);
+        note(impMsg, 'Log in (top right) to import your runs.', false);
         return;
       }
       // the member presses the source to check it: nothing runs unasked.
@@ -2181,7 +2180,7 @@
     function paintRun(){
       var n = chosen().length;
       runBtn.hidden = n === 0;
-      runBtn.textContent = 'Import ' + n + ' selected movie' + (n !== 1 ? 's' : '');
+      runBtn.textContent = 'Import ' + n + ' selected run' + (n !== 1 ? 's' : '');
     }
     soloBtn.addEventListener('click', function(){
       boxes.forEach(function(b){ b.box.checked = !b.multi && !b.box.disabled; });
@@ -2286,7 +2285,7 @@
           if (r.remaining > 0 && r.imported.length) { step(); return; }
           logLine('');
           logLine('Done: ' + done + ' imported' + (skips ? ', ' + skips + ' need attention (see above)' : '') + '.');
-          logLine('The site rebuilds from the archive; your movies appear in a few minutes.');
+          logLine('The site rebuilds from the archive; your runs appear in a few minutes.');
           runBtn.hidden = true;
           busy(runBtn, false);
         });

@@ -218,7 +218,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 </script>'''.replace('DEFAULT_COMBO', default_combo)
 
     # An expert never deletes a game through a request path: they ask, in
-    # public, and a site-wide expert answers. The movies inside it are other
+    # public, and a site-wide expert answers. The runs inside it are other
     # people's work.
     open_removal = next((r for r in g.get('removalRequests', [])
                          if r['status'] == 'open'), None)
@@ -235,7 +235,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
         '<form id="f-gameremove">'
         '<p class="rules">This files a request; it never removes anything by itself. '
         'A site-wide expert answers it, and both the asking and the answer are public. '
-        'The runs inside a removed game keep their pages: the movies were never what '
+        'The runs inside a removed game keep their pages: the runs were never what '
         'was in question.</p>'
         f'<input type="hidden" name="game" value="{esc(g["key"])}">'
         '<label>Why <input name="reason" required minlength="8" maxlength="500" '
@@ -245,7 +245,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
         'Title, thumbnail and categories are edited on their own page.</p>'
         '<details class="actform"><summary>Delete this game</summary>'
         '<form id="f-gamedelete">'
-        '<p class="rules">Outright: the game record goes, and every movie in it survives, '
+        '<p class="rules">Outright: the game record goes, and every run in it survives, '
         'moved to this system\'s Uncategorized game where it ranks by likes until somebody '
         're-homes it. Your reason is public and permanent.</p>'
         f'<input type="hidden" name="game" value="{esc(g["key"])}">'
@@ -275,9 +275,9 @@ its own. Never verified; ranked purely by ★ likes.</p>
 </div>
 <h1>{esc(g['title'])}</h1>{group_chip(g['key'], rel)}
 {expert_line(g['key'], rel)}</div>
-<div class="hbtns">{f'<img class="gface" src="/thumbs/{esc(SHIPPED_GAME_THUMBS[g["key"]])}" alt="">' if g['key'] in SHIPPED_GAME_THUMBS else ''}<a class="btn" href="{rel}submit/?game={esc(g['key'])}">Submit a run</a>
+<div class="hbtns">{f'<img class="gface" src="/thumbs/{esc(SHIPPED_GAME_THUMBS[g["key"]])}" alt="">' if g['key'] in SHIPPED_GAME_THUMBS else ''}<div class="btnrow"><a class="btn" href="{rel}submit/?game={esc(g['key'])}">Submit a run</a>
 <a class="btn quiet" href="{rel}create-category/?game={esc(g['key'])}">Create a category</a>
-<a class="btn quiet" href="{FORUM}/tags/c/games/12/{g['system']}-{g['key'].split('/')[1]}">Discuss on the forum</a></div></header>
+<a class="btn quiet" href="{FORUM}/tags/c/games/12/{g['system']}-{g['key'].split('/')[1]}">Discuss on the forum</a></div></div></header>
 {selector}
 {''.join(sections)}
 {sel_js if multi else ''}
@@ -356,7 +356,7 @@ run to. A category with runs in it cannot be deleted: it is their home.</p>
   <button class="btn quiet">File</button>
 </form>
 <form id="f-ge-delete" class="actform">
-  <p class="rules">Outright: the record goes; every movie survives, moved to this
+  <p class="rules">Outright: the record goes; every run survives, moved to this
   system's Uncategorized game. Your reason is public and permanent.</p>
   <input type="hidden" name="game" value="{esc(g['key'])}">
   <label>Why <input name="reason" required minlength="8" maxlength="500"></label>

@@ -95,7 +95,7 @@ function render(){
 });
 render();
 </script>'''.replace('INDEX_JSON', json.dumps(index).replace('<', chr(92) + 'u003c'))
-body = f'''<header class="ghead"><div><h1>Movies</h1>
+body = f'''<header class="ghead"><div><h1>Runs</h1>
 <p class="authline">Every run in the archive, the moment it arrives.</p></div></header>
 <div class="filters">
 <input id="bq" type="search" placeholder="Search game, category, author…">
@@ -113,5 +113,5 @@ body = f'''<header class="ghead"><div><h1>Movies</h1>
 <tbody id="brows"></tbody></table>
 {browse_js}'''
 (OUT / 'browse').mkdir(exist_ok=True)
-(OUT / 'browse' / 'index.html').write_text(page('Movies', body, '../', '', 'Movies'))
+(OUT / 'browse' / 'index.html').write_text(page('Runs', body, '../', '', 'Runs'))
 

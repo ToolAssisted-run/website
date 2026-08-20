@@ -70,7 +70,7 @@ BizHawk, searching inputs from inside the emulator itself, by toca.
 your emulator records. If your tool is missing, tell us on the forum; adding a format is easy.</p>
 <table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th></tr></thead>
 <tbody>{emu_rows}</tbody></table>
-<p class="rules fullw">Movies are parsed mechanically at submission: frames, rerecords and start
+<p class="rules fullw">Movie files are parsed mechanically at submission: frames, rerecords and start
 type are read straight from your file. Our parsers are re-implemented from
 <a href="https://github.com/TASVideos/tasvideos">TASVideos\' movie parsers</a>, whose
 contributors are the primary authors of the source material; that module is accordingly

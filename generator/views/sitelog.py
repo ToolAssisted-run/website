@@ -71,10 +71,10 @@ for rep, r_ in all_reports:
 <p class="actnote">{esc(REPORT_LABELS.get(rep['kind'], rep['kind']))} ·
 <a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a>
 {(': ' + inline(rep.get('details', ''))) if rep.get('details') else ''}</p>{res}</div>''')
-reports_html = (f'<section id="reports"><h2>Movie reports ({len(report_items)})</h2>'
+reports_html = (f'<section id="reports"><h2>Run reports ({len(report_items)})</h2>'
                 f'<div class="roster">'
                 f'{"".join(report_items)}</div></section>' if report_items else
-                '<section id="reports"><h2>Movie reports</h2><p class="emptynote">'
+                '<section id="reports"><h2>Run reports</h2><p class="emptynote">'
                 'No reports have been filed.</p></section>')
 mod_rows = ''.join(f'''<tr><td>{esc(moment(d))}</td><td>{esc(by)}</td>
 <td>Invalidated a {kind} by {esc(target)} on
@@ -131,7 +131,7 @@ wd_rows = ''.join(
     f'''<tr><td>{esc(moment(r_['withdrawn'].get('at') or r_['withdrawn'].get('date', '')))}</td>
 <td>{member_chip(r_['withdrawn']['by'], '../../')}</td>
 <td><a href="../../runs/{r_['id']}/">{esc(r_['_game']['title'])} ({r_['id']})</a>
-{' <span class="chip pendchip">movie erased</span>' if r_['withdrawn'].get('contentRemoved') else ''}
+{' <span class="chip pendchip">movie file erased</span>' if r_['withdrawn'].get('contentRemoved') else ''}
 <span class="actmeta"> as {esc(r_['withdrawn'].get('role') or 'author')}</span></td>
 <td>{inline(r_['withdrawn'].get('reason', ''), '../../')}</td></tr>'''
     for r_ in sorted(withdrawn_runs,
@@ -240,11 +240,11 @@ DEL_KIND = {'run': 'movie', 'game': 'game', 'group': 'group', 'member': 'member'
 del_rows = ''.join(
     f'''<tr><td>{esc(moment(e.get('at') or e['date']))}</td><td>{member_chip(e['by'], '../../')}</td>
 <td><b>{esc(e['title'])}</b><span class="actmeta"> {esc(DEL_KIND.get(e['kind'], e['kind']))} \u00b7 {esc(e['key'])}</span>{
-    f'<span class="actmeta"> \u00b7 its movies moved to {esc(e["movedTo"])}</span>' if e.get('movedTo') else ''}</td>
+    f'<span class="actmeta"> \u00b7 its runs moved to {esc(e["movedTo"])}</span>' if e.get('movedTo') else ''}</td>
 <td>{inline(e['reason'], '../../')}</td></tr>'''
     for e in sorted(del_events, key=lambda e: e.get('at') or e['date'], reverse=True))
 deletions_html = (f'''<section id="deletions"><h2>Deletions ({len(del_events)})</h2>
-<p class="authline">Deleted outright by an expert (movies, games, groups) or the Steering
+<p class="authline">Deleted outright by an expert (runs, games, groups) or the Steering
 Committee (members): tests, spam, mistakes, things that were never really works. The thing
 is gone; who deleted it and why is not, and never will be.</p>
 <table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
@@ -284,7 +284,7 @@ removal_rows = ''.join(removal_row(*x) for x in all_removals)
 removals_html = (f'''<section id="removals"><h2>Removal requests ({len(all_removals)})</h2>
 <p class="authline">An expert never deletes a game or a group: they ask, and a site-wide
 expert answers. A granted removal takes the thing out of the index and leaves every page and
-every run exactly where it was, because the movies inside were never what was in question.</p>
+every run exactly where it was, because the runs inside were never what was in question.</p>
 <table><thead><tr><th>Date</th><th>Asked by</th><th>What</th><th>Answer</th></tr></thead>
 <tbody>{removal_rows}</tbody></table></section>''' if removal_rows else
     '<section id="removals"><h2>Removal requests</h2>'
@@ -311,7 +311,7 @@ is ever removed: an act of authority that cannot be read back is not accountable
 anyone.</p>
 <p class="statline"><a href="#roles">Role changes</a> · <a href="#attestations">Identity
 attestations</a> · <a href="#claims">Name claims</a> ·
-<a href="#reports">Movie reports</a> ·
+<a href="#reports">Run reports</a> ·
 <a href="#ratifications">Ratifications</a> · <a href="#removals">Removal requests</a> ·
 <a href="#edits">Expert edits</a> · <a href="#deletions">Deletions</a> · <a href="#withdrawn">Withdrawals</a> ·
 <a href="#cases">Cases</a> · <a href="#moderation">Moderation</a></p></div></header>

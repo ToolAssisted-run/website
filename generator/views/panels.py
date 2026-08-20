@@ -246,7 +246,7 @@ deciding by poll, exists alongside this and keeps its thresholds.</p></div></hea
 # people entitled to see it, and lives in the browser for as long as they look.
 body = f'''<header class="ghead"><div><h1>Steering Committee</h1>
 <p class="authline">Claims to held names, waiting to be answered. Approving hands the name
-over, renames the forum account and lets that person import their own movies; denying asks
+over, renames the forum account and lets that person import their own runs; denying asks
 for a reason. Either way they are told, and the answer is public in the
 <a href="../policy/site-log/#claims">site log</a>.</p></div></header>
 <p class="msg" id="cpanel-gate">Checking who you are…</p>

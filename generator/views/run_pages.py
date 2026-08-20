@@ -301,9 +301,9 @@ Log in (top right) to reply from here.</p></section>'''
     withdraw_form = '''
 <div id="f-withdraw-wrap" hidden><details class="actform"><summary>Withdraw</summary>
 <form id="f-withdraw">
-  <p class="rules">For a mistake: a duplicate, the wrong file, a submission that
-  should not have been made. The run leaves the listings; nothing is erased, and
-  the reason you give is shown on its page.</p>
+  <p class="rules">Your own voluntary act as an author. For a mistake: a duplicate,
+  the wrong file, a submission that should not have been made. The run leaves the
+  listings; nothing is erased, and the reason you give is shown on its page.</p>
   <label>Reason (public, required)</label><input name="reason" required
    placeholder="e.g. duplicate of M100002, submitted twice by accident">
   <button class="btn warn">Withdraw</button>
@@ -407,7 +407,7 @@ to this run.</p>
 <div id="f-runedit-wrap" hidden><details class="actform"><summary>Edit this run</summary>
 <form id="f-runedit">
   <p class="rules">Structural facts only: the goal it sits under, its encode
-  link{" and its stated time" if r.get('videoOnly') else ""}. The author's own work, the movie, the notes,
+  link{" and its stated time" if r.get('videoOnly') else ""}. The author's own work, the movie file, the notes,
   the goal description, is theirs alone; problems with it go through moderation. Every edit
   is logged with your name, the old value and the new.</p>
   <input type="hidden" name="kind" value="run">
@@ -427,7 +427,7 @@ to this run.</p>
     placeholder="published in the site log beside your name"></label>
   <button class="btn">Save</button>
 </form></details></div>
-<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this movie</summary>
+<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this run</summary>
 <form id="f-rundelete">
   <p class="rules">Outright and permanent: for tests, spam, things that are not tool-assisted
   runs, and mistakes. A genuine work is withdrawn or erased through its own procedures, never
@@ -558,9 +558,9 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <a class="btn quiet" href="../../games/{g['key']}/">View leaderboard</a>
 </aside></div>
 {expert_menu}'''
-    crumb = (f'<a href="../../browse/">Movies</a> / '
+    crumb = (f'<a href="../../browse/">Runs</a> / '
              f'<a href="../../games/{g["key"]}/">{esc(g["title"])}</a> / {r["id"]}')
     (OUT / 'runs' / r['id']).mkdir(parents=True, exist_ok=True)
     (OUT / 'runs' / r['id'] / 'index.html').write_text(
-        page(f'{g["title"]} · {cl}', body, '../../', crumb, 'Movies', wide=True))
+        page(f'{g["title"]} · {cl}', body, '../../', crumb, 'Runs', wide=True))
 

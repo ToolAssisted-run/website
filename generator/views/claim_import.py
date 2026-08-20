@@ -31,7 +31,7 @@ site_experts = sorted({ev['user'].lower() for (u, role, sc), ev in ROLES_NOW.ite
 body = f'''<header class="ghead"><div><h1>Claim your identity</h1>
 <p class="authline">To protect the identity of authors from other TAS sites, their names are
 held for them here: nobody else can take one. Claiming links yours to your account, hands
-you the held username, and lets you bring your own movies over.</p></div></header>
+you the held username, and lets you bring your own runs over.</p></div></header>
 <div class="policy">
 <p><b>Ask here, and the Steering Committee answers.</b> Say what shows the name is yours: a
 post from the account that name belongs to, a channel hosting your encodes, an account we have
@@ -56,7 +56,7 @@ here.</p>
 (<a href="https://github.com/ToolAssisted-run#1-community-principles">Principles 1.4,
 1.5</a>).</p>
 <p><b>Once claimed</b>, the username is yours. If the name comes from a site we can read
-from, your profile also grows an <b>Import my movies</b> button. You pick which of your
+from, your profile also grows an <b>Import my runs</b> button. You pick which of your
 publications come over, co-authored ones included; importing a co-authored work is your
 responsibility (<a href="https://github.com/ToolAssisted-run#3-terms-of-use">Terms
 3.7</a>).</p>
@@ -100,8 +100,8 @@ claim a name</a></p>
 (OUT / 'claim' / 'index.html').write_text(page('Claim your identity', body, '../'))
 
 # ---- self-service import page ----
-body = '''<header class="ghead"><div><h1>Import my movies</h1>
-<p class="authline">Bring your published movies from other TAS / speedrun sites into the
+body = '''<header class="ghead"><div><h1>Import my runs</h1>
+<p class="authline">Bring your published runs from other TAS / speedrun sites into the
 archive. Voluntary, repeatable, yours.</p></div></header>
 <div class="policy fullw">
 <p><b>What happens.</b> Your movie files and your own submission notes enter this archive
@@ -110,10 +110,10 @@ Commons license and linking back to where they were published. Judge and staff t
 stripped at the boundary; only your words travel. Publication descriptions are never used,
 and the import reads from a maintained snapshot, never from the source site itself.</p>
 <p><b>You pick.</b> Nothing is imported unpicked: the scan lists what the snapshot holds
-for you, and only the movies you tick come over. Only movies not yet archived are ever
-added; nothing is overwritten or duplicated. Come back any time to pick up movies you
+for you, and only the runs you tick come over. Only runs not yet archived are ever
+added; nothing is overwritten or duplicated. Come back any time to pick up runs you
 publish elsewhere later.</p>
-<p><b>Co-authored works are yours to answer for.</b> You can tick a movie you made with
+<p><b>Co-authored works are yours to answer for.</b> You can tick a run you made with
 others, and importing it is <b>your responsibility</b>: you are saying your co-authors are
 fine with it being here. The run credits every author and records you as the importer. If a
 co-author objects, any author can have it withdrawn, and all authors together can have it
@@ -128,7 +128,7 @@ identity</a> first.</p>
 <div id="imp-ctl" hidden>
 <p class="statline" id="imp-scanline"></p>
 <p class="impstart">
-  <button class="btn quiet" id="imp-solo" hidden>Select my solo movies</button>
+  <button class="btn quiet" id="imp-solo" hidden>Select my solo runs</button>
   <button class="btn quiet" id="imp-clear" hidden>Clear</button>
   <button class="btn" id="imp-run" hidden></button></p>
 <div class="rules fullw implist" id="imp-list" hidden></div>
@@ -139,5 +139,5 @@ identity</a> first.</p>
 <pre class="implog" id="imp-log"></pre>
 </div>'''
 (OUT / 'import').mkdir(exist_ok=True)
-(OUT / 'import' / 'index.html').write_text(page('Import my movies', body, '../'))
+(OUT / 'import' / 'index.html').write_text(page('Import my runs', body, '../'))
 

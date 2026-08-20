@@ -798,7 +798,7 @@ def main():
         runp_ = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('the run page carries the expert delete, hidden until armed',
            'id="f-rundelete-wrap" hidden' in runp_
-           and 'Delete this movie' in runp_, runp_[:200])
+           and 'Delete this run' in runp_, runp_[:200])
         editp_ = all_html.get(out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html') \
             or (out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html').read_text()
         ck('every game has its editor page, gated and data-carrying',
@@ -837,7 +837,7 @@ def main():
         # else's work, and they belong in one place that is never pruned.
         log_page = all_html[out / 'policy' / 'site-log' / 'index.html']
         order = [log_page.find(f'<h2>{h}') for h in
-                 ('Role changes', 'Identity attestations', 'Movie reports',
+                 ('Role changes', 'Identity attestations', 'Run reports',
                   'Game and group decisions', 'Removal requests',
                   'Withdrawals and erasures', 'Moderation actions')]
         ck('the site log carries every kind of act', all(i >= 0 for i in order), str(order))
