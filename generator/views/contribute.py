@@ -103,7 +103,10 @@ if open_cases:
 # The board says who has done the most; this says what was done last. A
 # worklist with nothing moving on it looks abandoned, and the contribution
 # that lands today is the best argument that the next one is worth making.
-LATEST_N = 5
+# Ten, not five: act dates are day-granular, so a busy day ties and the
+# oldest ids fall off first; five was small enough for one day to evict a
+# member's act before anybody saw it.
+LATEST_N = 10
 ACT_ICON = {'first reproduction': ('reproduced', '↻'), 'reproduction': ('reproduced', '↻'),
             'verification': ('verified', '✓'), 'console verification': ('console', '✓')}
 latest_acts = sorted(((date, desc, pts, r, p['user'])

@@ -869,7 +869,7 @@ def main():
         feed = aside[aside.find('Latest contributions'):]
         feed = feed[:feed.find('Contributor board')]
         entries = re.findall(r'<p class="statline newsline">(.*?)</p>', feed, re.S)
-        ck('it shows a handful, not a history', 0 < len(entries) <= 5, str(len(entries)))
+        ck('it shows a handful, not a history', 0 < len(entries) <= 10, str(len(entries)))
         dates = [re.search(r'(\d{4}-\d{2}-\d{2})', e).group(1) for e in entries
                  if re.search(r'(\d{4}-\d{2}-\d{2})', e)]
         ck('newest first', dates == sorted(dates, reverse=True), str(dates))
