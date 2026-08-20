@@ -352,8 +352,6 @@
     });
   }
   armZone('gameactdata', 'f-gameremove-wrap', 'gameact-msg', [
-    {id: 'f-gameremove', path: '/api/game/request-removal',
-     done: function(){ return 'Filed. A site-wide expert answers it.'; }},
     {id: 'f-gamerename', path: '/api/expert/edit',
      done: function(j){ return 'Renamed to ' + j.to + '.'; }},
     {id: 'f-gamethumb', path: '/api/expert/edit',
@@ -972,16 +970,31 @@
         return;
       }
       if (isAuthor) arm('f-withdraw', '/api/withdraw');
-      if (isAuthor) {
+      if (isAuthor || isExpert) {
         arm('f-edit', '/api/edit', function(form){
-          initAuthorPick(form.querySelector('.authpick'), D.authorsDisplay);
+          if (isAuthor) {
+            initAuthorPick(form.querySelector('.authpick'), D.authorsDisplay);
+          } else {
+            // the author list and their supplementary files are never an
+            // expert's to touch; an expert edit states its public reason
+            var fa = document.getElementById('fe-authors');
+            fa.hidden = true;
+            fa.querySelector('[name=authors]').disabled = true;
+            var fat = document.getElementById('fe-attach');
+            fat.hidden = true;
+            fat.querySelector('[name=attachments]').disabled = true;
+            var why = document.getElementById('fe-why');
+            why.hidden = false;
+            why.querySelector('[name=reason]').required = true;
+          }
           form.querySelector('[name=emulator]').value = D.emulator;
           form.querySelector('[name=completed]').value = D.completed;
           var ta = form.querySelector('[name=notes]');
           fetch(D.notesUrl).then(function(r){ return r.ok ? r.text() : ''; })
             .then(function(txt){ ta.value = txt; }).catch(function(){});
         });
-      } else if (!D.imported) {
+      }
+      if (!isAuthor && !D.imported) {
         if (!D.videoOnly) {
           if (D.reproduced.indexOf(u) < 0) arm('f-repro', '/api/reproduce');
           else arm('f-note-repro', '/api/note', function(form){
@@ -1020,13 +1033,6 @@
         }
       }
       if (isExpert) {
-        arm('f-runedit', '/api/expert/edit');
-        var reField = document.getElementById('re-field');
-        if (reField) reField.addEventListener('change', function(){
-          var isMovie = reField.value === 'movie';
-          document.getElementById('re-valuewrap').hidden = isMovie;
-          document.getElementById('re-moviewrap').hidden = !isMovie;
-        });
         arm('f-rundelete', '/api/run/delete');
         var rdel = document.getElementById('f-rundelete');
         if (rdel) rdel.addEventListener('submit', function(ev){
@@ -1130,12 +1136,6 @@
            function(j){ return 'Renamed to ' + j.to + '.'; });
       wire('f-ge-thumb', '/api/expert/edit', null,
            function(){ return 'Thumbnail set.'; });
-      wire('f-ge-remove', '/api/game/request-removal', null,
-           function(){ return 'Filed. A site-wide expert answers it.'; });
-      wire('f-ge-delete', '/api/game/delete',
-           'Delete this game outright? Its runs survive, moved to the ' +
-           'Uncategorized game of this system. This cannot be undone.',
-           function(j){ return 'Deleted.'; });
       wire('f-ge-add', '/api/category/add', null,
            function(j){ return 'Added ' + j.key + '.'; });
       var addMed = document.querySelector('#f-ge-add .metriced');

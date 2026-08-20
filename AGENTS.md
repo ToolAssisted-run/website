@@ -22,8 +22,10 @@ Working rules:
 - **UNBREAKABLE, amended 2026-08-19 by Sergio: member content is edited only
   by a responsible person, never by us.** An **expert acting inside their
   jurisdiction** may modify member content (movie files, notes, goal
-  descriptions) one item at a time through `/api/expert/edit`: every edit is
-  logged in `edits.json` with who/from/to/why and is reversible through git.
+  descriptions) one item at a time through the logged expert edit paths
+  (`/api/expert/edit`, or the shared `/api/edit` run panel, which demands
+  their public reason): every edit is logged in `edits.json` with
+  who/from/to/why and is reversible through git.
   What remains forbidden, absolutely: edits by us or our tooling on our own
   initiative, bulk sweeps over member content (style passes, renames), any
   unlogged alteration, and any change to an author list (honest attribution is

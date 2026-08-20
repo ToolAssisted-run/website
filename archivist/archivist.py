@@ -348,6 +348,45 @@ You cannot verify your own run.</p>
 <label>Notes (optional)</label><textarea name="notes" rows="3"></textarea>
 <button>Record verification</button></form></body></html>'''
 
+def read_attachments(existing=None):
+    """Validate the request's uploaded 'attachments': text configs (UTF-8,
+    size-capped) or additional movie files. `existing` counts a run's
+    current attachments against the caps. Returns ([(name, bytes)], error)."""
+    existing = existing or []
+    atts = []
+    total = 0
+    movie_atts = sum(1 for a in existing
+                     if pathlib.Path(a['file']).suffix.lower().lstrip('.') in MOVIE_EXTS)
+    for fs in request.files.getlist('attachments'):
+        if not fs.filename:
+            continue
+        name = re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(fs.filename).name)
+        suffix = pathlib.Path(name).suffix.lower()
+        data = fs.read()
+        if suffix.lstrip('.') in MOVIE_EXTS:
+            if len(data) > MOVIE_MAX:
+                return None, fail(f'movie attachment {name!r} exceeds 16 MB')
+            movie_atts += 1
+        elif suffix in ATTACH_EXTS:
+            total += len(data)
+            if len(data) > ATTACH_MAX_EACH:
+                return None, fail(f'attachment {name!r} exceeds 128 KB')
+            try:
+                data.decode('utf-8')
+            except UnicodeDecodeError:
+                return None, fail(f'attachment {name!r} is not valid UTF-8 text')
+        else:
+            return None, fail(f'attachment {name!r}: only text/config files or '
+                              f'movie formats are allowed')
+        atts.append((name, data))
+    if len(atts) + len(existing) > ATTACH_MAX_COUNT:
+        return None, fail('too many attachments (max 8)')
+    if movie_atts > 4:
+        return None, fail('too many movie attachments (max 4)')
+    if total > ATTACH_MAX_TOTAL:
+        return None, fail('text attachments exceed 512 KB total')
+    return atts, None
+
 @app.post('/api/submit')
 def submit():
     f = request.form
@@ -478,37 +517,9 @@ def submit():
                     f'derived from it)')
 
     # --- attachments: text configs, or additional movie files ---
-    atts = []
-    total = 0
-    movie_atts = 0
-    for fs in request.files.getlist('attachments'):
-        if not fs.filename:
-            continue
-        name = re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(fs.filename).name)
-        suffix = pathlib.Path(name).suffix.lower()
-        data = fs.read()
-        if suffix.lstrip('.') in MOVIE_EXTS:
-            if len(data) > MOVIE_MAX:
-                return fail(f'movie attachment {name!r} exceeds 16 MB')
-            movie_atts += 1
-        elif suffix in ATTACH_EXTS:
-            total += len(data)
-            if len(data) > ATTACH_MAX_EACH:
-                return fail(f'attachment {name!r} exceeds 128 KB')
-            try:
-                data.decode('utf-8')
-            except UnicodeDecodeError:
-                return fail(f'attachment {name!r} is not valid UTF-8 text')
-        else:
-            return fail(f'attachment {name!r}: only text/config files or movie '
-                        f'formats are allowed')
-        atts.append((name, data))
-    if len(atts) > ATTACH_MAX_COUNT:
-        return fail('too many attachments (max 8)')
-    if movie_atts > 4:
-        return fail('too many movie attachments (max 4)')
-    if total > ATTACH_MAX_TOTAL:
-        return fail('text attachments exceed 512 KB total')
+    atts, att_err = read_attachments()
+    if att_err:
+        return att_err
 
     completed = (f.get('completed') or '').strip()
     if completed:
@@ -2035,8 +2046,11 @@ def report_resolve():
 
 @app.post('/api/edit')
 def edit_run():
-    """Authors may revise their run's notes and declared details (emulator,
-    tools) after the fact. Git history is the audit trail — nothing is erased."""
+    """The run's authors revise their own work freely; a covering expert may
+    correct the same details, one run at a time, always with a public reason
+    (the same logged, git-reversible trail as /api/expert/edit; the author
+    list and supplementary uploads stay the authors' alone). Git history is
+    the audit trail — nothing is erased."""
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
     with lock:
@@ -2053,11 +2067,19 @@ def edit_run():
         if not rdir:
             return fail(f'unknown run {run_id}', 404)
         r = json.loads((rdir / 'run.json').read_text())
-        if current_name(user).lower() not in run_authors_now(r):
-            return fail("only the run's authors may edit it", 403)
+        is_author = current_name(user).lower() in run_authors_now(r)
+        if not is_author and not expert_covers(user, r['game']):
+            return fail("only the run's authors or a covering expert may edit it", 403)
+        reason = (f.get('reason') or '').strip()
+        if not is_author and not (8 <= len(reason) <= 500):
+            return fail('an expert edit states its public reason (8 to 500 '
+                        'characters), published in the edit log')
         changed = []
         befores = {'emulator': r.get('contract', {}).get('emulator', '')}
         if 'authors' in f:
+            if not is_author:
+                return fail("an author list is never an expert's edit: who made "
+                            "a thing is moderation's question", 403)
             new_authors = [a.strip() for a in (f.get('authors') or '').split(',') if a.strip()]
             if not new_authors:
                 return fail('a run needs at least one author')
@@ -2143,13 +2165,32 @@ def edit_run():
             befores['duration'] = str(r.get('duration'))
             r['duration'] = dur
             changed.append('duration')
+        new_atts, att_err = read_attachments(r.get('attachments') or [])
+        if att_err:
+            return att_err
+        if new_atts:
+            if not is_author:
+                return fail("supplementary files are the authors' own uploads", 403)
+            have = {a['file'] for a in r.get('attachments') or []}
+            clash = [n for n, _ in new_atts if f'attachments/{n}' in have]
+            if clash:
+                return fail(f'attachment {clash[0]!r} already exists on this run')
+            r.setdefault('attachments', []).extend(
+                {'file': f'attachments/{n}', 'role': 'supplementary'}
+                for n, _ in new_atts)
+            changed.append('attachments')
         if not changed:
             return fail('nothing to change: send notes, emulator, completed, '
-                        'goalDescription, encode, or (video-only) time')
+                        'goalDescription, encode, attachments, or '
+                        '(video-only) time')
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_change': changed})
         if 'notes' in changed:
             (rdir / 'notes.md').write_text(f.get('notes').rstrip() + '\n')
+        if new_atts:
+            (rdir / 'attachments').mkdir(exist_ok=True)
+            for n, data in new_atts:
+                (rdir / 'attachments' / n).write_bytes(data)
         (rdir / 'run.json').write_text(json.dumps(
             {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
         # every revision joins the same history the expert edits live in: the
@@ -2166,9 +2207,11 @@ def edit_run():
                            'goalDescription': r.get('goalDescription', ''),
                            'encode': (r.get('encodes') or [{}])[0].get('url', ''),
                            'duration': r.get('duration', ''),
+                           'attachments': ', '.join(n for n, _ in new_atts),
                            }.get(field, ''))[:300]),
-                     user, "The author's own revision.")
-        commit_push(f'Edit {run_id}: {", ".join(changed)} by author {user}\n\nVia: archivist')
+                     user, "The author's own revision." if is_author else reason)
+        commit_push(f'Edit {run_id}: {", ".join(changed)} by '
+                    f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
     return jsonify({'ok': True, 'run': run_id, 'changed': changed})
 
 @app.post('/api/note')

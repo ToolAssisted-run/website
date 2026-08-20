@@ -378,10 +378,12 @@ Log in (top right) to reply from here.</p></section>'''
 <div id="actzone" class="actzone" hidden>
 <h2>Contribute to this run</h2>
 <div class="actforms">
-<div id="f-edit-wrap" hidden><details class="actform"><summary>Edit my run (authors only)</summary>
+<div id="f-edit-wrap" hidden><details class="actform"><summary>Edit run</summary>
 <form id="f-edit">
-  <p class="rules">Revise your run's details. Every edit is a public commit;
-  history is never erased.</p>
+  <p class="rules">Revise the run's details. Every edit is a public commit;
+  history is never erased. Authors revise their own work freely; a covering
+  expert's change carries a public reason.</p>
+  <div id="fe-authors">
   <label>Authors (every human, honestly; type to search, click to add)</label>
   <div class="authpick">
     <div class="authchips"></div>
@@ -389,10 +391,19 @@ Log in (top right) to reply from here.</p></section>'''
     <div class="authlist" hidden></div>
     <input type="hidden" name="authors">
   </div>
+  </div>
   <label>Emulator / core (optional)</label><input name="emulator">
   <label>When was the run completed? (optional; shown beside the submission date)</label>
   <input name="completed" type="date" max="{datetime.date.today().isoformat()}">
   <label>Notes (<a href="../../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="12"></textarea>
+  <div id="fe-attach">
+  <label>Add supplementary files (optional: text configs, or additional movie
+  files; they join the run's attached files)</label>
+  <input name="attachments" type="file" multiple>
+  </div>
+  <label id="fe-why" hidden>Why (public, shown in the edit log)
+  <input name="reason" minlength="8" maxlength="500"
+   placeholder="published in the site log beside your name"></label>
   <button class="btn">Save</button>
 </form></details></div>
 {withdraw_form}{community_forms}
@@ -408,29 +419,6 @@ to this run.</p>
     expert_menu = f'''
 <div id="expertmenu" class="expertmenu" hidden><h2>Expert menu</h2>
 <p class="rules">Only experts whose scope covers this game see this box; every action here is logged in the open.</p>
-<div id="f-runedit-wrap" hidden><details class="actform"><summary>Edit this run</summary>
-<form id="f-runedit">
-  <p class="rules">Structural facts only: the goal it sits under, its encode
-  link{" and its stated time" if r.get('videoOnly') else ""}. The author's own work, the movie file, the notes,
-  the goal description, is theirs alone; problems with it go through moderation. Every edit
-  is logged with your name, the old value and the new.</p>
-  <input type="hidden" name="kind" value="run">
-  <input type="hidden" name="target" value="{r['id']}">
-  <label>Field <select name="field" id="re-field">
-    {'<option value="duration">Stated time</option>' if r.get('videoOnly') else ''}
-    <option value="goal">Goal (existing options only)</option>
-    <option value="encode">Encode link</option>
-    <option value="goalDescription">Goal description</option>
-    <option value="notes">Notes (replaces the whole file)</option>
-    {'' if r.get('videoOnly') else '<option value="movie">Movie file (replacement upload)</option>'}
-    </select></label>
-  <label id="re-valuewrap">New value <textarea name="value" rows="2"></textarea></label>
-  <label id="re-moviewrap" hidden>Replacement movie file
-    <input type="file" name="movie"></label>
-  <label>Why <input name="reason" required minlength="8" maxlength="500"
-    placeholder="published in the site log beside your name"></label>
-  <button class="btn">Save</button>
-</form></details></div>
 <div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this run</summary>
 <form id="f-rundelete">
   <p class="rules">Outright and permanent: for tests, spam, things that are not tool-assisted
