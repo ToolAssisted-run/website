@@ -38,12 +38,11 @@ from render import (
     badge_chip,
     console_tick,
     esc,
-    frames_html,
     inline,
     member_chip,
     page,
+    primary_metric_html,
     role_badges,
-    run_clock,
     tick,
 )
 
@@ -64,8 +63,7 @@ for uname, a in authors.items():
         rs_, vs_ = eff_state(r)
         rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r['id']}/'"><td><a href="../../games/{g['key']}/">{esc(g['title'])}</a></td>
 <td>{esc(cat_label(r))}</td>
-<td class="num"><a href="../../runs/{r['id']}/">{frames_html(r)}</a></td>
-<td class="num">{run_clock(r)}</td>
+<td class="num"><a href="../../runs/{r['id']}/">{primary_metric_html(r)}</a></td>
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
 <td>{esc((r.get('submitted') or '')[:10])}</td>
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
@@ -164,7 +162,7 @@ are not a status somebody has always had: this is where that is visible.</p>
 </div>
 {news_html}
 <section><details class="secfold" open><summary><h2>Runs ({len(mine)})</h2></summary>
-<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num">Frames</th><th class="num">Time</th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead>
+<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></details></section>{contrib_html}{roles_html}'''
     (OUT / 'authors' / profile_slug(uname)).mkdir(parents=True, exist_ok=True)
     (OUT / 'authors' / profile_slug(uname) / 'index.html').write_text(

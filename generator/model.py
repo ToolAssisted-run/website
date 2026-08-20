@@ -281,6 +281,47 @@ def parse_date(s):
     m = re.match(r'(\d{4})-(\d{2})-(\d{2})', s or '')
     return datetime.date(*map(int, m.groups())) if m else None
 
+# ---- per-category metrics ----
+# A category option may define `metrics`: an ordered hierarchy of what it
+# ranks by. Absent means the classic implicit metric: real time, lower is
+# better. The reserved key 'time' is always derived (frames/fps or stated
+# duration), never typed for movie runs.
+CLASSIC_METRICS = [{'key': 'time', 'label': 'Time', 'type': 'time',
+                    'better': 'lower'}]
+
+def run_metric_defs(r):
+    """The metric hierarchy of the run's category. The first entry is the
+    primary metric, shown wherever time shows classically."""
+    if is_unclassified(r):
+        return CLASSIC_METRICS
+    for d in r['_game']['categories']['dimensions']:
+        o = next((o for o in d['options']
+                  if o['key'] == r['category'].get(d['key'])), None)
+        if o and o.get('metrics'):
+            return o['metrics']
+    return CLASSIC_METRICS
+
+def metric_value(r, mdef):
+    """One run's value for one metric: derived seconds for the reserved
+    'time' key, the stated number otherwise. None means not stated; a stored
+    0 also means "not yet stated" and is folded into None here."""
+    if mdef['key'] == 'time':
+        return run_seconds(r)
+    return (r.get('metrics') or {}).get(mdef['key']) or None
+
+def rank_key(r):
+    """Leaderboard order within one category: walk the metric hierarchy in
+    order, direction-aware; an unstated value sorts after every real value at
+    its level whichever way the metric points (a blank is never a winning
+    result) and falls through to the next metric. The final tie-break is the
+    submission date, earlier wins, so ranks are always plain 1, 2, 3."""
+    parts = []
+    for m in run_metric_defs(r):
+        v = metric_value(r, m)
+        parts.append((1, 0) if v is None else
+                     (0, v if m['better'] == 'lower' else -v))
+    return (parts, r.get('submitted') or '9999-99-99', r['id'])
+
 RUN_BY_ID = {r['id']: r for r in runs}
 
 def is_unclassified(r):

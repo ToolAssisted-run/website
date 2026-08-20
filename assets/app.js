@@ -1125,6 +1125,8 @@
            function(j){ return 'Deleted.'; });
       wire('f-ge-add', '/api/category/add', null,
            function(j){ return 'Added ' + j.key + '.'; });
+      var addMed = document.querySelector('#f-ge-add .metriced');
+      if (addMed) initMetricsEd(addMed, null);
 
       // one card per category option: edit in place, delete-if-empty
       var box = document.getElementById('ge-cats');
@@ -1147,6 +1149,14 @@
         var ruleIn = field('Rule', 'textarea');
         ruleIn.value = o.rule;
         ruleIn.rows = 2;
+        // the category's metrics, editable like label and rule; adding one
+        // writes an explicit 0 onto every run here, for experts to fill
+        var medRoot = el('div');
+        medRoot.innerHTML = document.getElementById('med-skeleton').innerHTML;
+        var medBox = medRoot.firstElementChild;
+        card.appendChild(medBox);
+        var med = initMetricsEd(medBox, o.metrics || null);
+        var med0 = med.value();
         var whyIn = field('Why (published with the change)');
         whyIn.placeholder = 'required to save a change';
         var row = el('div', 'gebtns');
@@ -1156,11 +1166,13 @@
           var jobs = [];
           if (labIn.value.trim() !== o.label) jobs.push(['label', labIn.value.trim()]);
           if (ruleIn.value.trim() !== o.rule) jobs.push(['rule', ruleIn.value.trim()]);
+          if (med.value() !== med0) jobs.push(['metrics', med.value()]);
           if (!jobs.length) { note(msg, 'Nothing changed on ' + o.key + '.', false); return; }
           function step(){
             if (!jobs.length) {
               o.label = labIn.value.trim();
               o.rule = ruleIn.value.trim();
+              med0 = med.value();
               ok('Saved ' + o.key + '.');
               return;
             }
@@ -1419,22 +1431,76 @@
       tsegs.forEach(function(seg){
         if (seg) seg.addEventListener('input', composeTime);
       });
+      var gsel = document.getElementById('s-game'), csel = document.getElementById('s-goal');
+      // the category's stated metrics: fields appear on category pick, in
+      // the dashed box; the derived real time is never typed for movie runs
+      var mbox = document.getElementById('s-metrics');
+      var mfields = document.getElementById('s-mfields');
+      var curMetrics = null;   // null = classic (real time, lower is better)
+      function wantsTime(){
+        if (csel.value === 'unclassified') return true;
+        return !curMetrics || curMetrics.some(function(m){ return m.key === 'time'; });
+      }
+      function statedDefs(){
+        if (csel.value === 'unclassified') return [];
+        return (curMetrics || []).filter(function(m){ return m.key !== 'time'; });
+      }
+      function secsOf(v){ return v === '' ? 0 : (parseFloat(v) || 0); }
+      function buildMetricFields(){
+        mfields.innerHTML = '';
+        statedDefs().forEach(function(m){
+          var lab = document.createElement('label');
+          lab.textContent = m.label + (m.unit ? ' (' + m.unit + ')' : '')
+            + ' — ' + (m.better === 'higher' ? 'higher' : 'lower') + ' is better';
+          mfields.appendChild(lab);
+          var hid = document.createElement('input');
+          hid.type = 'hidden'; hid.name = 'metric_' + m.key;
+          if (m.type === 'time') {
+            // segmented h/m/s/ms, composed into seconds
+            var wrap = document.createElement('div');
+            wrap.className = 'timepick';
+            var segs = [['h', 999], ['m', 59], ['s', 59], ['ms', 999]].map(function(sp){
+              var span = document.createElement('span'); span.className = 'tseg';
+              var inp = document.createElement('input');
+              inp.type = 'number'; inp.inputMode = 'numeric';
+              inp.min = 0; inp.max = sp[1]; inp.placeholder = sp[0] === 'h' ? '0' : '00';
+              var sl = document.createElement('label'); sl.textContent = sp[0];
+              span.appendChild(inp); span.appendChild(sl); wrap.appendChild(span);
+              return inp;
+            });
+            function compose(){
+              var v = segs.map(function(s_){ return Math.max(0, parseInt(s_.value, 10) || 0); });
+              hid.value = String(v[0] * 3600 + v[1] * 60 + v[2] + v[3] / 1000);
+            }
+            segs.forEach(function(s_){ s_.addEventListener('input', compose); });
+            segs[2].required = true;
+            compose();
+            mfields.appendChild(wrap);
+          } else {
+            var num = document.createElement('input');
+            num.type = 'number'; num.min = 0; num.step = 'any';
+            num.required = true; num.inputMode = 'decimal';
+            num.addEventListener('input', function(){ hid.value = String(secsOf(num.value)); });
+            mfields.appendChild(num);
+          }
+          mfields.appendChild(hid);
+        });
+      }
       function paintKind(){
         var v = vonly.checked;
         mwrap.hidden = v;
-        twrap.hidden = !v;
+        var wt = wantsTime();
+        twrap.hidden = !(v && wt);
+        mbox.hidden = statedDefs().length === 0 && twrap.hidden;
         mwrap.querySelector('input').required = !v;
         var secs = document.getElementById('t-s');
-        if (secs) secs.required = v;
+        if (secs) secs.required = v && wt;
         composeTime();
       }
       vonly.addEventListener('change', paintKind);
       paintKind();
-      var gsel = document.getElementById('s-game'), csel = document.getElementById('s-goal');
       var goalCache = {};
       function fillGoals(goals){
-        var isNew = gsel.value === 'new';
-        document.getElementById('s-newgame').hidden = !isNew;
         csel.innerHTML = '';
         (goals || []).forEach(function(g){
           var o = document.createElement('option');
@@ -1444,15 +1510,22 @@
         var u = document.createElement('option');
         u.value = 'unclassified'; u.textContent = 'Unclassified (no goal; ranked by likes)';
         csel.appendChild(u);
-        var n = document.createElement('option');
-        n.value = 'new'; n.textContent = '+ new category…';
-        csel.appendChild(n);
-        fillNewGoal();
+        paintCategory();
       }
       function loadGoals(){
         // categories arrive from the archive itself when a game is picked:
         // the page ships no per-game payload up front
-        if (gsel.value === 'new' || !gsel.value) { fillGoals([]); return; }
+        var ccbtn = document.getElementById('s-createcat');
+        if (ccbtn) {
+          if (gsel.value) {
+            ccbtn.href = '../create-category/?game=' + encodeURIComponent(gsel.value);
+            ccbtn.removeAttribute('aria-disabled');
+          } else {
+            ccbtn.removeAttribute('href');
+            ccbtn.setAttribute('aria-disabled', 'true');
+          }
+        }
+        if (!gsel.value) { fillGoals([]); return; }
         if (goalCache[gsel.value]) { fillGoals(goalCache[gsel.value]); return; }
         var key = gsel.value;
         fillGoals([]);
@@ -1463,18 +1536,22 @@
             var goals = [];
             (c.dimensions || []).forEach(function(d_){
               (d_.options || []).forEach(function(o){
-                goals.push({key: o.key, label: o.label});
+                goals.push({key: o.key, label: o.label, metrics: o.metrics || null});
               });
             });
             goalCache[key] = goals;
             fillGoals(goals);
           }).catch(function(){});
       }
-      function fillNewGoal(){
-        document.getElementById('s-newgoal').hidden = csel.value !== 'new';
+      function paintCategory(){
         document.getElementById('s-uncldesc').hidden = csel.value !== 'unclassified';
+        var goals = goalCache[gsel.value] || [];
+        var picked = goals.filter(function(g){ return g.key === csel.value; })[0];
+        curMetrics = (picked && picked.metrics) || null;
+        buildMetricFields();
+        paintKind();
       }
-      csel.addEventListener('change', fillNewGoal);
+      csel.addEventListener('change', paintCategory);
 
       // the game picker: type to find, nothing rendered until you type, and
       // the way out is always offered ("Add a new game")
@@ -1485,7 +1562,7 @@
       var KEYS = Object.keys(G);
       function pickGame(key){
         gsel.value = key;
-        gsearch.value = key === 'new' ? '' : G[key];
+        gsearch.value = G[key];
         glist.hidden = true;
         loadGoals();
       }
@@ -1501,12 +1578,9 @@
             glist.appendChild(row);
           });
         }
-        var add = el('div', 'authopt authnew', 'Game not found? Add a new game');
-        add.addEventListener('mousedown', function(ev){ ev.preventDefault(); pickGame('new'); });
-        glist.appendChild(add);
         glist.hidden = false;
       }
-      gsearch.addEventListener('input', function(){ if (gsel.value !== 'new') fillGameList(); else { gsel.value = ''; fillGameList(); } });
+      gsearch.addEventListener('input', fillGameList);
       gsearch.addEventListener('focus', fillGameList);
       gsearch.addEventListener('blur', function(){ setTimeout(function(){ glist.hidden = true; }, 150); });
 
@@ -1693,11 +1767,8 @@
       document.getElementById('s-preview-btn').addEventListener('click', function(){
         var pv = document.getElementById('s-preview');
         pv.hidden = false;
-        var gameLabel = gsel.value === 'new'
-          ? (sform.querySelector('[name=new_game_title]').value || 'New game')
-          : (gsel.options[gsel.selectedIndex] ? gsel.options[gsel.selectedIndex].text : '');
+        var gameLabel = G[gsel.value] || '';
         var goalLabel = csel.value === 'unclassified' ? 'Unclassified'
-          : csel.value === 'new' ? (document.getElementById('s-goallabel').value || 'new category')
           : (csel.options[csel.selectedIndex] ? csel.options[csel.selectedIndex].text : '');
         document.getElementById('pv-title').textContent = gameLabel;
         document.getElementById('pv-chips').innerHTML =
@@ -1739,6 +1810,162 @@
         });
       });
     });
+  }
+
+  // ---- create-game / create-category pages ----
+  // The metrics editor both forms share: up to 4 rows, order = tie-break
+  // hierarchy; the derived real-time metric is a checkbox, never a typed row.
+  function initMetricsEd(root, initial){
+    var rowsEl = root.querySelector('.mrows');
+    var addBtn = root.querySelector('.med-add');
+    var timeCb = root.querySelector('.med-time');
+    var out = root.querySelector('[name=metrics]');
+    var rows = [];   // {time:true} or {label,type,better,unit}
+    function serialize(){
+      var arr = rows.map(function(r){
+        if (r.time) return {key: 'time'};
+        return {label: r.label.value.trim(), type: r.type.value,
+                better: r.better.value,
+                unit: r.type.value === 'number' && r.unit.value.trim()
+                      ? r.unit.value.trim() : undefined};
+      }).filter(function(m){ return m.key === 'time' || m.label; });
+      out.value = arr.length ? JSON.stringify(arr) : '';
+    }
+    function paint(){
+      rowsEl.innerHTML = '';
+      rows.forEach(function(r, i){
+        var div = el('div', 'mrow');
+        if (r.time) {
+          div.appendChild(el('span', 'mfixed', 'Real time (derived) — lower is better'));
+        } else {
+          div.appendChild(r.label); div.appendChild(r.type);
+          div.appendChild(r.better); div.appendChild(r.unit);
+          r.unit.hidden = r.type.value === 'time';
+        }
+        [['↑', -1], ['↓', 1]].forEach(function(mv){
+          var b = el('button', 'btn quiet mmove', mv[0]);
+          b.type = 'button';
+          b.disabled = (i + mv[1] < 0) || (i + mv[1] >= rows.length);
+          b.addEventListener('click', function(){
+            rows.splice(i + mv[1], 0, rows.splice(i, 1)[0]);
+            paint();
+          });
+          div.appendChild(b);
+        });
+        if (!r.time) {
+          var rm = el('button', 'btn quiet mmove', '×');
+          rm.type = 'button';
+          rm.addEventListener('click', function(){ rows.splice(i, 1); paint(); });
+          div.appendChild(rm);
+        }
+        rowsEl.appendChild(div);
+      });
+      addBtn.disabled = rows.length >= 4;
+      timeCb.disabled = !timeCb.checked && rows.length >= 4;
+      serialize();
+    }
+    function makeRow(def){
+      var r = {
+        label: el('input', 'mlabel'), type: document.createElement('select'),
+        better: document.createElement('select'), unit: el('input', 'munit')
+      };
+      r.label.placeholder = 'Metric name, e.g. Score';
+      [['number', 'number'], ['time', 'time (h:mm:ss)']].forEach(function(o){
+        var op = document.createElement('option');
+        op.value = o[0]; op.textContent = o[1]; r.type.appendChild(op);
+      });
+      [['higher', 'higher is better'], ['lower', 'lower is better']].forEach(function(o){
+        var op = document.createElement('option');
+        op.value = o[0]; op.textContent = o[1]; r.better.appendChild(op);
+      });
+      r.unit.placeholder = 'unit, e.g. pts';
+      if (def) {
+        r.label.value = def.label || '';
+        r.type.value = def.type || 'number';
+        r.better.value = def.better || 'lower';
+        r.unit.value = def.unit || '';
+      }
+      [r.label, r.type, r.better, r.unit].forEach(function(inp){
+        inp.addEventListener('input', serialize);
+        inp.addEventListener('change', function(){ paint(); });
+      });
+      return r;
+    }
+    addBtn.addEventListener('click', function(){
+      if (rows.length >= 4) return;
+      rows.push(makeRow(null));
+      paint();
+    });
+    timeCb.addEventListener('change', function(){
+      if (timeCb.checked) { if (rows.length < 4) rows.push({time: true}); else timeCb.checked = false; }
+      else rows = rows.filter(function(r){ return !r.time; });
+      paint();
+    });
+    (initial || []).forEach(function(def){
+      if (def.key === 'time') { rows.push({time: true}); timeCb.checked = true; }
+      else rows.push(makeRow(def));
+    });
+    paint();
+    return {value: function(){ return out.value; }};
+  }
+  function wireCreateForm(form, loginEl, msgEl, endpoint, done){
+    mep.then(function(d){
+      if (d.unreachable) { note(msgEl, 'The archivist is not reachable right now; try again later.', false); return; }
+      if (!d.loggedIn) { loginEl.hidden = false; return; }
+      form.hidden = false;
+      initMetricsEd(form.querySelector('.metriced'));
+      var busy = false;
+      form.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        if (busy) return;
+        busy = true;
+        var btn = form.querySelector('button.btn:not(.quiet):not(.mmove)');
+        if (btn) btn.disabled = true;
+        note(msgEl, 'Creating…', true);
+        post(endpoint, new FormData(form), btn).then(function(res){
+          busy = false;
+          if (btn) btn.disabled = false;
+          if (res.ok && res.j.ok) { form.hidden = true; done(res.j); }
+          else note(msgEl, res.j.error || 'something went wrong', false);
+        });
+      });
+    });
+  }
+  var cgform = document.getElementById('creategameform');
+  if (cgform) {
+    var cgmsg = document.getElementById('cg-msg');
+    wireCreateForm(cgform, document.getElementById('cg-login'), cgmsg,
+                   '/api/game/create', function(j){
+      note(cgmsg, 'Created. The game page appears after the next rebuild (about a minute). ' +
+                  'Submit the run now: ../submit/?game=' + j.game, true);
+      var a = document.createElement('a');
+      a.className = 'btn'; a.href = '../submit/?game=' + j.game;
+      a.textContent = 'Submit a run to ' + j.game;
+      cgmsg.appendChild(document.createElement('br'));
+      cgmsg.appendChild(a);
+    });
+  }
+  var ccform = document.getElementById('createcatform');
+  if (ccform) {
+    var ccG = JSON.parse(document.getElementById('ccgamedata').textContent);
+    var ccKey = null;
+    try { ccKey = new URLSearchParams(location.search).get('game'); } catch (e) {}
+    if (!ccKey || !ccG[ccKey]) {
+      document.getElementById('cc-nogame').hidden = false;
+    } else {
+      document.getElementById('cc-game').value = ccKey;
+      document.getElementById('cc-gamename').textContent = ccG[ccKey];
+      var ccmsg = document.getElementById('cc-msg');
+      wireCreateForm(ccform, document.getElementById('cc-login'), ccmsg,
+                     '/api/category/add', function(j){
+        note(ccmsg, 'Created. Submit the run now: ../submit/?game=' + ccKey, true);
+        var a = document.createElement('a');
+        a.className = 'btn'; a.href = '../submit/?game=' + ccKey;
+        a.textContent = 'Submit a run';
+        ccmsg.appendChild(document.createElement('br'));
+        ccmsg.appendChild(a);
+      });
+    }
   }
 
   // ---- claim page ----

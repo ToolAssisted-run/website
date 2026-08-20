@@ -403,6 +403,73 @@ def main():
         ck('author name list is complete and canonical',
            {'Ada', 'Bo', 'Rep', 'Ver', 'Fan'} <= set(names), str(names[:8]))
 
+        # ---------------- per-category metrics ranking ----------------
+        # A category ranks by its own metric hierarchy: score (higher wins),
+        # then real time, then earlier submission; an unstated value (0)
+        # sorts last at its level whichever way the metric points.
+        SCORE_TIME = [{'key': 'score', 'label': 'Score', 'type': 'number',
+                       'better': 'higher', 'unit': 'pts'},
+                      {'key': 'time', 'label': 'Time', 'type': 'time',
+                       'better': 'lower'}]
+        ver = lambda n: {'status': {'reproduced': 'none', 'verified': 'provisional'},   # noqa: E731
+                         'verifications': [{'user': f'V{n}', 'date': d(2)}]}
+        m_runs = [
+            mkarchive.run_spec('M900351', game='nes/scored', goal='high-score',
+                               goal_metrics=SCORE_TIME, authors=['Ada'],
+                               frames=2000, metrics={'score': 5000},
+                               submitted=d(30) + 'T00:00:00Z', **ver(1)),
+            mkarchive.run_spec('M900352', game='nes/scored', goal='high-score',
+                               goal_metrics=SCORE_TIME, authors=['Bo'],
+                               frames=9000, metrics={'score': 9000},
+                               submitted=d(30) + 'T00:00:00Z', **ver(2)),
+            mkarchive.run_spec('M900353', game='nes/scored', goal='high-score',
+                               goal_metrics=SCORE_TIME, authors=['Cy'],
+                               frames=500, metrics={'score': 0},
+                               submitted=d(30) + 'T00:00:00Z', **ver(3)),
+            mkarchive.run_spec('M900354', game='nes/scored', goal='high-score',
+                               goal_metrics=SCORE_TIME, authors=['Dee'],
+                               frames=1000, metrics={'score': 5000},
+                               submitted=d(30) + 'T00:00:00Z', **ver(4)),
+            # identical on every metric, submitted 20 days later: loses the tie
+            mkarchive.run_spec('M900355', game='nes/scored', goal='high-score',
+                               goal_metrics=SCORE_TIME, authors=['Ed'],
+                               frames=1000, metrics={'score': 5000},
+                               submitted=d(10) + 'T00:00:00Z', **ver(5)),
+            # a time-less category: video-only with no stated duration at all
+            mkarchive.run_spec('M900356', game='nes/scoreonly', goal='most-points',
+                               goal_metrics=[SCORE_TIME[0]], authors=['Fay'],
+                               videoOnly=True, metrics={'score': 1250},
+                               submitted=d(5) + 'T00:00:00Z', **ver(6)),
+        ]
+        arch = mkarchive.make_archive(td / 'a9', m_runs)
+        out = td / 'o9'
+        r = build(arch, out)
+        ck('metrics build succeeds', r.returncode == 0, r.stderr[-400:])
+        if r.returncode == 0:
+            game = (out / 'games/nes/scored/index.html').read_text()
+            order = [rid for rid in rows_of(game.split('Pending:')[0])
+                     if rid.startswith('M9003')]
+            first_of = {rid: order.index(rid) for rid in dict.fromkeys(order)}
+            want = ['M900352', 'M900354', 'M900355', 'M900351', 'M900353']
+            ck('score rules, time breaks ties, earlier submission unties, '
+               'unset sorts last',
+               [x for x, _ in sorted(first_of.items(), key=lambda kv: kv[1])] == want,
+               str(order))
+            ck('the unstated score renders as the dash',
+               '—' in game.split('M900353')[-1].split('</tr>')[0], '')
+            ck('the ranking header names the metrics',
+               '<th class="num">Score</th>' in game and 'Ranked by:' in game, '')
+            browse = (out / 'browse' / 'index.html').read_text()
+            ck('browse leads with the primary metric',
+               '9,000' in browse and 'pts' in browse, '')
+            solo = (out / 'games/nes/scoreonly/index.html').read_text()
+            ck('a time-less video-only run ranks by its score alone',
+               'M900356' in rows_of(solo.split('Pending:')[0])
+               and '1,250' in solo, '')
+            fact = (out / 'runs/M900356/index.html').read_text()
+            ck('the fact box states the score and no time',
+               '1,250' in fact and '<dt>Time</dt>' not in fact, '')
+
         # ---------------- case resolution parity ----------------
         if ARCHIVIST.exists() and VALIDATOR.exists():
             a_fn = extract_function(ARCHIVIST, 'case_derived_status')

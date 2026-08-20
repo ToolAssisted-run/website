@@ -165,10 +165,13 @@ run on need-to-know: no roster tables to browse.
 ### Submission (`/submit/`, session-authenticated)
 
 Arrives with: game (type-to-find combobox; game context pre-filled and locked
-when coming from a game page via `/submit/?game=<key>`; "Game not found? Add a
-new game" creates a provisional one) · category (fetched per game from the
-archive's raw URL on pick; "+ new category" creates a provisional option) ·
-authors (chips picker; may credit non-members as text) · **encode link,
+when coming from a game page via `/submit/?game=<key>`; a question + button
+beside the selector points at `/create-game/` in a new tab — the selector
+never creates) · category (fetched per game from the archive's raw URL on
+pick, metric definitions included; "Category not there?" points at
+`/create-category/?game=<key>`) · the category's stated metrics, required,
+in a dashed box (§5) · authors (chips picker; may credit non-members as
+text) · **encode link,
 mandatory** (six platforms; the run's thumbnail derives from it) · emulator/
 core (optional) · ROM name+sha1 (optional, hashed locally, **the ROM never
 leaves the machine**) · movie file, parsed mechanically (25 TASVideos formats,
@@ -191,9 +194,10 @@ Caps: 32 MB at intake (a human decides past that), 100 MB in the validator
 whose own frame rate differs from the system default carries `movie.fps`
 (times and ranks derive from frames over the movie's own rate).
 
-**Video-only runs**: no input movie exists; the encode IS the run. The
-submitter states the time through a segmented h/m/s/ms picker (a format
-mistake is impossible; stored as `duration` seconds). Nothing exists to
+**Video-only runs**: no input movie exists; the encode IS the run. When the
+category's metrics include real time, the submitter states it through a
+segmented h/m/s/ms picker (a format mistake is impossible; stored as
+`duration` seconds); in a time-less category no duration exists at all (§5). Nothing exists to
 reproduce, in emulator or on console: both gates are marked `not-applicable`
 (a status only video-only runs may carry), the endpoints refuse the acts, and
 the page says so plainly. Verification ranks it exactly like any other run.
@@ -320,9 +324,9 @@ concerns use **contact@toolassisted.run** (§10).
 
 ## 5. Games and groups: lifecycle
 
-- **Creation is free and real on arrival**: anyone creates a game (at
-  submission or via the combobox) or a category option; it exists the moment
-  it is made. **Ratification is retired as a mechanism** (2026-08-20):
+- **Creation is free and real on arrival**: anyone creates a game or a
+  category through the dedicated creation pages (never from inside the
+  submit selectors; see §5 metrics); it exists the moment it is made. **Ratification is retired as a mechanism** (2026-08-20):
   nothing is provisional, nothing waits for a vouch. This is about content
   taxonomy only: **a name claim still waits for the Steering Committee**
   (§6), and removal requests still wait for a site-wide expert; identity and
@@ -341,7 +345,8 @@ concerns use **contact@toolassisted.run** (§10).
 - **The game editor** (`/games/<key>/edit/`, linked from the game page's
   Expert menu, revealed only to covering experts, enforced server-side):
   identity (rename, thumbnail) and the **category manager**: one card per
-  option with label and rule edited in place (public reason required),
+  option with label, rule and metric definitions edited in place (public
+  reason required),
   unused options deletable (a category with runs in it is their home and
   cannot be deleted), new options simply added. Endpoints:
   `/api/category/add` (option_key field: 'key' is the auth field) and
@@ -351,85 +356,67 @@ concerns use **contact@toolassisted.run** (§10).
 - Every game and group page ends with the **Expert menu** (§9) holding the
   governance acts for those entitled; content editing lives on the editor.
 
-### Planned: per-category metrics (decisions locked, build pending)
+### Per-category metrics (shipped 2026-08-20)
 
-A category will define what it ranks by. Settled in discussion, to build:
+A category defines what it ranks by.
 
-- **Model**: a category option gains `metrics: [{key, label, type: time|number,
-  better: lower|higher, unit?}]`; array order IS the tie-break hierarchy and
-  the first entry is the primary metric, shown wherever time shows today.
-  A reserved key `time` means the derived real time (movie frames/fps or
-  stated duration) and is never typed for movie runs. **Absent `metrics`
+- **Model**: a category option may carry `metrics: [{key, label, type:
+  time|number, better: lower|higher, unit?}]` (schema-checked, at most 4).
+  Array order IS the tie-break hierarchy; the first entry is the primary
+  metric, shown wherever time shows classically (browse, thumbnails, home
+  shelf, member lists, group records). The reserved key `time` means the
+  derived real time (movie frames/fps, or the stated duration of a
+  video-only run) and is never typed for movie runs. **Absent `metrics`
   means the implicit classic metric** (real time, lower better): zero
   migration. Runs store stated values in `run.json` `metrics: {key: number}`
-  (times as seconds).
-- **Adding a metric to a category with runs**: every existing run gets an
-  explicit empty value (0 / 00:00.000); experts fill them through the logged
-  edit paths and the ranking re-sorts as values land. Nothing is unranked.
-  `0` renders as the "—" placeholder and sorts LAST at its level regardless
-  of direction (a zero is never a winning result), falling through to the
-  next metric. **Removing a metric**: the comparator uses what remains;
-  stored values are never deleted, they just stop being read.
+  (times as seconds); `0` means "not yet stated", renders as the dash and
+  sorts LAST at its level regardless of direction, falling through to the
+  next metric. The final tie-break is the submission date (imports: original
+  publication), earlier wins, so ranks are always plain 1, 2, 3.
 - **Verification is untouched by metrics, absolutely**: it attests the
-  category's goal was achieved; metrics only order the achievers. No value
-  edit (author's or expert's) voids a verification; dishonest values are a
-  moderation matter like any other.
-- **Browse**: the Frames and Time columns coalesce into one untitled column
-  showing each run's own primary metric; the "Fastest first" sort is
-  REMOVED (shipped 2026-08-21): a flat cross-category list has no honest
-  metric ordering. Hierarchy ranking lives on the leaderboards.
-- **Submission**: every author-stated metric the category defines is
-  required. On category pick, the metric fields appear in a
-  **dashed-edge box just below the video-only checkbox**: segmented
-  h/m/s/ms inputs for time-types, number boxes with the unit for numbers.
-  The video-only stated-time input appears **only if `time` is among the
-  category's metrics**; if the category defines no time metric, time is
-  never asked for, and movie runs never type time at all (derived).
-- **Full-hierarchy tie**: earlier arrival wins (second-exact arrival times).
-- Editor: the category manager grows metric rows (label, type, direction,
-  unit, reorder, add/remove), logged like every category edit.
+  category's goal; metrics only order the achievers. No value edit voids a
+  verification; dishonest values are a moderation matter.
+- **Derivation lives in the generator only**: `model.py` `run_metric_defs`
+  / `metric_value` / `rank_key` (comparator), `render.py` `fmt_metric` /
+  `primary_metric_html` / `primary_metric_text`. The archive stores facts;
+  nothing ranking-shaped is written.
+- **Submission**: the category's stated metrics are required fields; they
+  appear on category pick in a **dashed-edge box** below the video-only
+  checkbox (segmented h/m/s/ms for time-types, number+unit otherwise; posted
+  as `metric_<key>`, times as seconds). The stated-time input appears only
+  when `time` is among the category's metrics AND the run is video-only; a
+  time-less category stores no duration at all (schema + validator enforce).
 - **Creation is everybody's; curation is the experts'**: any logged-in
-  member creates a game or a category (never a system or group). Good faith;
-  experts moderate, and only experts edit what exists. Entry points: a
-  "Create Game" button on /games/ for all; "Create Category" on every game
-  page for all; and beside the submit form's selectors a text question +
-  button ("Game not there? Create" / "Category not there? Create", the
-  latter disabled until a game is picked) that OPEN IN A NEW TAB so the
-  half-filled submission survives; success links back to /submit/?game=.
-  The dropdowns themselves never create ("+ new game/category" rows die).
-- **The creation forms**: /create-game/ (title, system, plus the first
-  category: label, rule, metrics) and /create-category/?game=<key> (game
-  locked like submit context). Metric rows: up to 4 (label, type, direction,
-  unit), reorderable; the derived real-time metric is a checkbox + position,
-  never a typed row; keys derive from labels; 'unclassified' refused.
-  Skipping metrics yields the classic category (real time, lower better).
-  Both creations notify Discord (one line, link on the name).
-- **Video-only in a time-less category stores no time at all** (schema's
-  videoOnly⇄duration coupling relaxes to: duration exists iff the
-  category's metrics include time); Time cells show the dash; the display
-  rule everywhere is "the metric of most interest, dash when nothing
-  applies".
-- **The final tie-break is the submission date, earlier wins** (imports:
-  original publication). It resolves every tie, so ranks display plain
-  1,2,3, never shared.
-- **Thumbnail badges show the primary metric** (time by default, exactly as
-  today; "1,250 pts" where points rule).
-- **Surface sweep**: browse (coalesced untitled column) · leaderboards +
-  History deltas (direction-aware) · home shelf badges · contribute tables ·
-  member-page run lists. The run page's fact box keeps everything: frames,
-  derived time when it exists, every stated metric with its label.
-- **Build order** (for a cold session): schema+validator → archivist
-  (member-gated game/category creation with metrics, metric-aware submit
-  requiring every stated metric, run-value edit paths author+expert,
-  category metrics-edit expert-only via /api/expert/edit field='metrics'
-  writing 0-values onto existing runs in the same commit, Discord lines) →
-  generator model helpers (category_metrics, primary display, comparator:
-  direction-aware, 0=unset sorts last at level, then next metric, then
-  submitted asc) → surface sweep → submit dashed metrics box (id
-  s-metrics; time input only when 'time' is a metric AND the run is
-  video-only) → creation pages + buttons → editor metrics manager → tests
-  (comparator in derivation suite, fixtures with a score category, browse
-  runtime guard) → deploy archivist + verify live.
+  member creates a game (`/create-game/`: title, system, plus the first
+  category) or a category (`/create-category/?game=<key>`, game locked).
+  Both forms share the **metrics editor** (up to 4 rows: label, type,
+  direction, unit, reorder; derived real time is a checkbox, never a typed
+  row; keys derive from labels; `unclassified` refused; skipping metrics
+  yields the classic category). Entry points: "Create a game" on `/games/`,
+  "Create a category" on every game page, and a question + button BESIDE
+  the submit form's selectors ("Game not there? Create it") opening in a
+  new tab so a half-filled submission survives. The selectors themselves
+  never create. Both creations notify Discord and log to edits.json;
+  `/api/game/create` and `/api/category/add` take any member (placing a
+  game into a group still needs scope over the group). Only experts edit
+  what exists.
+- **Editing values**: authors state metric values at submission and may
+  correct them via the author edit path (`metric_<key>` fields); experts
+  via `/api/expert/edit` field `metric:<key>` on a run, both logged.
+  Experts manage a category's metric definitions in the game editor
+  (field `metrics`, JSON): adding a metric writes an explicit `0` onto
+  every run of that category in the same commit (nothing is unranked;
+  experts fill values and the board re-sorts); removing one keeps stored
+  run values, they just stop being read.
+- **Leaderboards**: one column per metric of the category (classic shows
+  the single Time column, unchanged); a "Ranked by:" line names the
+  hierarchy; History deltas are direction-aware on the primary metric
+  (frames against frames when time rules and both sides are movies).
+  Browse coalesces Frames/Time into one untitled column showing each run's
+  own primary metric; a flat cross-category list has no honest metric sort,
+  so browse orders by date/stars/title only. The run page's fact box keeps
+  everything: frames, derived time when it exists, every stated metric with
+  its label ("not yet stated" for 0).
 
 ---
 
@@ -737,8 +724,6 @@ archivist, module responsibilities). What matters designwise:
 
 ## 13. Open items
 
-- The **contact@toolassisted.run mailbox** must be created at Infomaniak
-  (the constitution already names the address).
 - Contributor point weights are provisional; the community settles them.
 - miniHawk's own movie format joins `movieparse.py` when it lands.
 - Full-launch checklist: re-review policy drafts and point weights; flip

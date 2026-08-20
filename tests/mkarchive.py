@@ -208,7 +208,9 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
                 o['key'] for o in goal_dim['options']}:
             goal_dim['options'].append({'key': spec['goal'],
                                         'label': spec['goal'].replace('-', ' '),
-                                        'rule': 'Test rule.'})
+                                        'rule': 'Test rule.',
+                                        **({'metrics': spec['goal_metrics']}
+                                           if spec.get('goal_metrics') else {})})
 
         rid = spec['id']
         rdir = gdir / 'runs' / rid
@@ -235,7 +237,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             'submittedBy': spec['authors'][0],
         }
         for k, v in spec.items():
-            if k in ('id', 'game', 'goal', 'authors', 'frames', 'notes'):
+            if k in ('id', 'game', 'goal', 'authors', 'frames', 'notes', 'goal_metrics'):
                 continue
             run[k] = v
         # the third signal is part of the checked status cache

@@ -32,8 +32,6 @@ from render import (
 gamedata = {key: f'{systems[g["system"]]["name"]} · {g["title"]}'
             for key, g in sorted(games.items(),
                                  key=lambda kv: (kv[1]['system'], kv[1]['title']))}
-sys_opts_submit = ''.join(f'<option value="{esc(k)}">{esc(v["name"])}</option>'
-                          for k, v in sorted(systems.items(), key=lambda kv: kv[1]['name']))
 body = f'''<header class="ghead"><div><h1>Submit a run</h1>
 <p class="authline">Your run is archived instantly and appears immediately, as pending.
 Honest attribution of every author is the one hard rule. Never upload ROMs.</p></div></header>
@@ -42,25 +40,20 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
 <p id="s-login" hidden><a href="{ARCHIVIST}/login">Log in via the forum</a> to submit a run.</p>
 <form id="submitform" class="actform bigform" hidden>
   <label>Game</label>
+  <div class="pickrow">
   <div class="gamepick" id="s-gamepick">
     <input class="gamesearch" id="s-gamesearch" placeholder="Type to find the game…" autocomplete="off">
     <div class="gamelist" hidden></div>
     <input type="hidden" name="game" id="s-game">
   </div>
+  <span class="createq">Game not there? <a class="btn quiet" href="../create-game/" target="_blank">Create it</a></span>
+  </div>
   <p class="statline" id="s-gamelocked" hidden>Submitting to <b id="s-gamelockname"></b> ·
   <a href="#" id="s-gameunlock">a different game?</a></p>
-  <div id="s-newgame" hidden>
-    <p class="rules">Anyone can create a game; it exists the moment you submit.
-    A mistaken one is deleted by an expert, on the record.</p>
-    <label>System</label><select name="system">{sys_opts_submit}</select>
-    <label>Game title</label><input name="new_game_title" placeholder="e.g. Solomon's Key">
-  </div>
   <label>Category</label>
+  <div class="pickrow">
   <select id="s-goal" name="goal"></select>
-  <div id="s-newgoal" hidden>
-    <p class="rules">New categories exist the moment you submit; experts refine the rule wording.</p>
-    <label>Category label</label><input id="s-goallabel" name="new_goal_label" placeholder="e.g. fastest completion">
-    <label>Rules</label><input name="new_goal_rule" placeholder="e.g. Complete the game as fast as possible.">
+  <span class="createq">Category not there? <a class="btn quiet" id="s-createcat" target="_blank" aria-disabled="true">Create it</a></span>
   </div>
   <div id="s-uncldesc" hidden>
     <p class="rules">Unclassified: entertainment, experiments, playarounds; no defined goal,
@@ -92,9 +85,9 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
     It can never be reproduced, in emulator or on console, and the page will say so;
     one verification still ranks it like any other run.</label>
-  <div id="s-moviewrap">
-  <label>Movie file</label><input name="movie" type="file" required>
-  </div>
+  <div id="s-metrics" class="metricsbox" hidden>
+  <p class="rules fullw">This category states its results; every value here appears in the rankings.</p>
+  <div id="s-mfields"></div>
   <div id="s-timewrap" hidden>
   <label>Run time, stated by you (required for video-only)</label>
   <div class="timepick" id="s-timepick">
@@ -104,6 +97,10 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     <span class="tseg"><input id="t-ms" type="number" inputmode="numeric" min="0" max="999" placeholder="000"><label for="t-ms">ms</label></span>
   </div>
   <input type="hidden" name="time" id="s-time">
+  </div>
+  </div>
+  <div id="s-moviewrap">
+  <label>Movie file</label><input name="movie" type="file" required>
   </div>
   <label>Voluntary content disclosures, to warn viewers about:</label>
   <div class="cwrow">
