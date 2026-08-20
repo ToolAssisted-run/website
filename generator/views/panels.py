@@ -60,12 +60,11 @@ panel_data = {
     # one that the archivist would not refuse
     'games': [{'key': k, 'title': g['title'], 'system': g['system'],
                'group': next((gr['key'] for gr in groups if k in gr.get('games', [])), ''),
-               'established': bool(g.get('established', True)),
                'rejected': bool(g.get('rejected'))}
               for k, g in sorted(games.items())
               if not g.get('rejected') and not g.get('removed')],
     'groups': [{'key': gr['key'], 'title': gr['title'], 'games': gr.get('games', []),
-                'established': bool(gr.get('established', True))} for gr in groups],
+                } for gr in groups],
     # every member, so the appointment picker can offer people rather than ask
     # for a name to be typed exactly right
     'members': sorted((a['username'] for a in authors.values()), key=str.lower),
@@ -94,9 +93,9 @@ games, a game group covers the games in it. You may appoint anybody to a scope y
 already cover, never wider than your own.</p></section>
 
 <section id="pending-wrap"><h2>Waiting on you</h2>
-<p class="rules">Games and group created inside your jurisdiction that nobody with
-authority has answered yet. Approving says it is a real, distinct thing; refusing says it
-is not, and asks for a reason that the person who made it can read and answer.</p>
+<p class="rules">Removal requests filed inside your jurisdiction that nobody has answered
+yet. Granting takes the thing out of the index; declining asks for a note the person who
+filed can read and answer.</p>
 <div id="pending-list" class="factbox"></div>
 <form id="f-decide" class="actform" hidden>
   <input type="hidden" name="kind" id="decide-kind">
@@ -156,9 +155,8 @@ is not, and asks for a reason that the person who made it can read and answer.</
 <section><details class="secfold menufold"><summary><h2>Create a group</h2></summary>
 <form id="f-groupnew" class="actform">
   <p class="rules">A group is one family of games, across every system it appeared on. You
-  may gather games you already speak for. A group spans systems, so the scope that covers
-  one is site scope: made by a site-wide expert it is established at once, and made by
-  anybody else it waits for one. A game belongs to exactly one group.</p>
+  may gather games you already speak for. It exists the moment you create it; a mistaken
+  one is deleted on the record. A game belongs to exactly one group.</p>
   <label>Key <input name="group" required pattern="[a-z0-9]+(-[a-z0-9]+)*"
     placeholder="lowercase-with-hyphens, used in the address"></label>
   <label>Title <input name="title" required maxlength="80" placeholder="Mega Man"></label>

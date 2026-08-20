@@ -69,8 +69,8 @@ group  (groups.json)                      a game family ACROSS systems
   `unclassified` cannot name a real group. Every group has a page and a card,
   however empty: a group somebody just made IS the state worth seeing.
 - **Categories** are per-game dimensions; each option carries a rule fragment,
-  rules compose per combination. New options created at submission are
-  **provisional** until an expert ratifies or rewords them.
+  rules compose per combination. New options exist the moment they are
+  created; experts refine the wording, and delete unused mistakes.
 - **The Unclassified category** exists on every game: entertainment,
   experiments, playarounds. No defined goal; the run carries its own mandatory
   `goalDescription` (≤200 chars, shown in the ranking row). These runs cannot
@@ -129,13 +129,12 @@ the same commit: nobody holds authority over a ghost (validated on HELD roles
 only; history may name things later deleted).
 
 **What experts do** (every act logged, public, appealable):
-ratify provisional games/categories/groups · invalidate faulty
+invalidate faulty
 reproductions/verifications/console verifications · resolve/dismiss reports ·
 edit everything in their jurisdiction (see §4, "Edits") · create games in
-their group, groups at site scope ("authority does not consult itself": a
-creation by someone already covering it arrives established, their name
-written as ratifier) · file and (site scope) decide removal requests · delete
-outright what was never a work · withdraw any run in scope. Experts never
+their group, groups at site scope · file and (site scope) decide removal
+requests · delete outright what was never a work · withdraw any run in
+scope. Experts never
 judge merit: reproduction and verification stay open to all; experts police
 the trust layer's quality and curate taxonomy.
 
@@ -321,19 +320,17 @@ concerns use **contact@toolassisted.run** (§10).
 
 ## 5. Games and groups: lifecycle
 
-- **Creation is free**: anyone creates a game (at submission or via the
-  combobox) or a category option; it exists immediately as **provisional**,
-  visibly tagged, defusing invent-a-category-to-claim-a-record. Experts
-  create games in their group from the group page and groups from the Games
-  index (site scope); creations by somebody already covering the scope arrive
-  established with their name as ratifier.
-- **Ratification** (provisional → established) is an act: `ratifiedBy` +
-  `ratifiedAt`, both or neither, never on an unestablished game. Seeded games
-  arrived established, ratified by nobody, and honestly carry neither.
+- **Creation is free and real on arrival**: anyone creates a game (at
+  submission or via the combobox) or a category option; it exists the moment
+  it is made. **Ratification is retired as a mechanism** (2026-08-20):
+  nothing is provisional, nothing waits for a vouch. The counterweight is
+  the fast lane: a creation that should not exist is deleted by an expert,
+  logged, and reversible through git. Historical `ratifiedBy/At` (and
+  `rejected`) fields survive on old records and in the site log's
+  ratifications section as the record of who vouched while the mechanism
+  existed; the validator keeps only their internal consistency.
 - **Groups are acts, not hand edits**: `/api/group/create` (only games you
-  already speak for), `/api/group/edit`, `/api/group/ratify`; every change
-  logged. An expert may reject a game/group as not a real, distinct thing
-  (`rejected` with reason; refused things are offered nowhere).
+  already speak for) and `/api/group/edit`; every change logged.
 - **Removal is a request, never an act**: filed with a reason, decided by a
   site-wide expert, both names and both reasons public. Granted removal
   unlists; runs and pages stay. (Outright deletion exists separately for
@@ -342,13 +339,12 @@ concerns use **contact@toolassisted.run** (§10).
   Expert menu, revealed only to covering experts, enforced server-side):
   identity (rename, thumbnail) and the **category manager**: one card per
   option with label and rule edited in place (public reason required),
-  provisional options ratified in place, unused options deletable (a
-  category with runs in it is their home and cannot be deleted), new
-  options added established (expert authority). Endpoints:
-  `/api/category/add` (option_key field: 'key' is the auth field),
-  `/api/category/ratify`, `/api/category/delete`; every act lands in
-  edits.json. Governance acts (ratify game, removal request, delete) appear
-  on both the editor and the game page's Expert menu.
+  unused options deletable (a category with runs in it is their home and
+  cannot be deleted), new options simply added. Endpoints:
+  `/api/category/add` (option_key field: 'key' is the auth field) and
+  `/api/category/delete`; every act lands in edits.json. Governance acts
+  (removal request, delete) appear on both the editor and the game page's
+  Expert menu.
 - Every game and group page ends with the **Expert menu** (§9) holding the
   governance acts for those entitled; content editing lives on the editor.
 

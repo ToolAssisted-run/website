@@ -743,20 +743,11 @@
       });
 
       // ---- what is waiting on me ----
-      var pending = [].concat(
-        (amSite ? P.removals : []).map(function(r){
-          return {kind: 'removal', key: r.key, sub: r.kind, title: r.title,
-                  what: 'removal asked by ' + r.by + ' · ' + r.reason}; }),
-        P.games.filter(function(g){
-          return !g.established && !g.rejected && coversGame(myScopes, g.key); })
-               .map(function(g){ return {kind: 'game', key: g.key, title: g.title,
-                                         what: 'game · ' + g.key}; }),
-        P.groups.filter(function(gr){
-          return !gr.established && coversGroup(myScopes, gr.key); })
-               .map(function(gr){ return {kind: 'group', key: gr.key, title: gr.title,
-                                          what: 'group · ' + (gr.games || []).length +
-                                                ((gr.games || []).length === 1
-                                                 ? ' game' : ' games')}; }));
+      // ratification is gone: creations are real on arrival, so the only
+      // thing that waits on anybody is a removal request
+      var pending = (amSite ? P.removals : []).map(function(r){
+        return {kind: 'removal', key: r.key, sub: r.kind, title: r.title,
+                what: 'removal asked by ' + r.by + ' · ' + r.reason}; });
       var plist = document.getElementById('pending-list');
       var dform = document.getElementById('f-decide');
       if (!pending.length) {
@@ -800,10 +791,7 @@
           if (!approve) fd.append('note', reason);
           path = '/api/removal/decide';
         } else {
-          fd.append(kind === 'game' ? 'game' : 'group', key);
-          if (!approve) fd.append('reason', reason);
-          path = '/api/' + (kind === 'game' ? 'game' : 'group') +
-                 (approve ? '/ratify' : '/reject');
+          return;   // nothing but removals waits on anybody any more
         }
         post(path, fd, dform.querySelector('button')).then(function(res){
           if (res.ok && res.j.ok) {
@@ -830,7 +818,7 @@
       fill(document.getElementById('groupedit-key'),
            myGroups.map(function(gr){
              return {value: gr.key,
-                     label: gr.title + (gr.established ? '' : ' (provisional)')}; }),
+                     label: gr.title}; }),
            'no group is yours to change');
       // the group pickers offer only games a group could actually take: a
       // game already in one would be refused, since a game belongs to one
@@ -915,7 +903,7 @@
                (j.dropped === 1 ? '' : 's') + '.';
       });
       armPanel('f-groupnew', '/api/group/create', function(j){
-        return 'The ' + j.group + ' group exists, provisionally, with ' +
+        return 'The ' + j.group + ' group exists, with ' +
                j.games.length + ' game' + (j.games.length === 1 ? '' : 's') + '.';
       });
       armPanel('f-groupedit', '/api/group/edit', function(j){
@@ -1129,8 +1117,6 @@
            function(j){ return 'Renamed to ' + j.to + '.'; });
       wire('f-ge-thumb', '/api/expert/edit', null,
            function(){ return 'Thumbnail set.'; });
-      wire('f-ge-ratify', '/api/game/ratify', null,
-           function(){ return 'Ratified.'; });
       wire('f-ge-remove', '/api/game/request-removal', null,
            function(){ return 'Filed. A site-wide expert answers it.'; });
       wire('f-ge-delete', '/api/game/delete',
@@ -1140,15 +1126,14 @@
       wire('f-ge-add', '/api/category/add', null,
            function(j){ return 'Added ' + j.key + '.'; });
 
-      // one card per category option: edit in place, ratify, delete-if-empty
+      // one card per category option: edit in place, delete-if-empty
       var box = document.getElementById('ge-cats');
       (GE.options || []).forEach(function(o){
         var card = el('div', 'gecard');
         var head = el('div', 'gehead');
         head.appendChild(el('b', '', o.key));
         head.appendChild(el('span', 'actmeta',
-          ' ' + o.runs + ' run' + (o.runs === 1 ? '' : 's')
-          + (o.provisional ? ' · provisional' : '')));
+          ' ' + o.runs + ' run' + (o.runs === 1 ? '' : 's')));
         card.appendChild(head);
         function field(labelText, tag){
           var lab = el('label', '', labelText + ' ');
@@ -1194,20 +1179,6 @@
           step();
         });
         row.appendChild(save);
-        if (o.provisional) {
-          var rat = el('button', 'btn quiet', 'Ratify');
-          rat.type = 'button';
-          rat.addEventListener('click', function(){
-            var fd = new FormData();
-            fd.append('game', GE.game);
-            fd.append('option', o.key);
-            post('/api/category/ratify', fd, rat).then(function(res){
-              if (res.ok && res.j.ok) ok('Ratified ' + o.key + '.');
-              else note(msg, res.j.error || 'something went wrong', false);
-            });
-          });
-          row.appendChild(rat);
-        }
         if (!o.runs) {
           var del = el('button', 'btn danger', 'Delete');
           del.type = 'button';
@@ -1275,32 +1246,6 @@
             if (res.ok && res.j.ok) {
               note(msg, 'Attested: ' + res.j.identity + ' is now ' + res.j.member +
                         '. ' + (res.j.rename || ''), true);
-              form.hidden = true;
-            } else note(msg, res.j.error || 'something went wrong', false);
-          });
-      });
-    });
-  }
-
-  // ---- ratify a provisional game (experts) ----
-  var ratifyData = document.getElementById('ratifydata');
-  if (ratifyData) {
-    var RD = JSON.parse(ratifyData.textContent);
-    mep.then(function(d){
-      if (!d.loggedIn) return;
-      if ((RD.experts || []).indexOf(d.user.toLowerCase()) < 0) return;
-      var wrap = document.getElementById('f-ratify-wrap');
-      var form = document.getElementById('f-ratify');
-      var msg = document.getElementById('ratify-msg');
-      wrap.hidden = false;
-      var menu = wrap.closest ? wrap.closest('.expertmenu') : null;
-      if (menu) menu.hidden = false;
-      form.addEventListener('submit', function(ev){
-        ev.preventDefault();
-        post('/api/game/ratify', new FormData(form), form.querySelector('button'))
-          .then(function(res){
-            if (res.ok && res.j.ok) {
-              note(msg, 'Ratified. The provisional mark disappears on the next rebuild.', true);
               form.hidden = true;
             } else note(msg, res.j.error || 'something went wrong', false);
           });

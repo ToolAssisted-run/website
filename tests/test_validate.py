@@ -328,12 +328,6 @@ def m_ratified_without_date(root):
     d['ratifiedBy'] = 'SomeExpert'          # and no ratifiedAt: not an act
     g.write_text(json.dumps(d, indent=1))
 
-def m_ratified_but_provisional(root):
-    g = root / 'games' / 'nes' / 'testgame' / 'game.json'
-    d = json.loads(g.read_text())
-    d.update(ratifiedBy='SomeExpert', ratifiedAt='2026-02-01', established=False)
-    g.write_text(json.dumps(d, indent=1))
-
 def m_attested_without_expert(root):
     (root / 'authors' / 'ada.json').write_text(json.dumps(
         {'username': 'Ada', 'claimed': True, 'claimMethod': 'attested',
@@ -465,8 +459,6 @@ CASES = [
     ('a revoked founder role', m_founder_revoked, 'permanent'),
     ('a ratification with no date on it', m_ratified_without_date,
      'ratifiedBy and ratifiedAt go together'),
-    ('a game ratified but still provisional', m_ratified_but_provisional,
-     'but not established'),
     ('an attestation with no expert behind it', m_attested_without_expert,
      'without the expert'),
     ('an attestation with no stated method', m_attested_without_method,

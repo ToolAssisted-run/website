@@ -50,17 +50,15 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <p class="statline" id="s-gamelocked" hidden>Submitting to <b id="s-gamelockname"></b> ·
   <a href="#" id="s-gameunlock">a different game?</a></p>
   <div id="s-newgame" hidden>
-    <p class="rules">Anyone can create a game; it exists immediately as <b>provisional</b>
-    until an expert ratifies it. If you are yourself an expert covering it, it is
-    established as you create it, with your name on it: authority does not need to
-    consult itself.</p>
+    <p class="rules">Anyone can create a game; it exists the moment you submit.
+    A mistaken one is deleted by an expert, on the record.</p>
     <label>System</label><select name="system">{sys_opts_submit}</select>
     <label>Game title</label><input name="new_game_title" placeholder="e.g. Solomon's Key">
   </div>
   <label>Category</label>
   <select id="s-goal" name="goal"></select>
   <div id="s-newgoal" hidden>
-    <p class="rules">New categories are provisional too; experts refine the rule wording.</p>
+    <p class="rules">New categories exist the moment you submit; experts refine the rule wording.</p>
     <label>Category label</label><input id="s-goallabel" name="new_goal_label" placeholder="e.g. fastest completion">
     <label>Rules</label><input name="new_goal_rule" placeholder="e.g. Complete the game as fast as possible.">
   </div>

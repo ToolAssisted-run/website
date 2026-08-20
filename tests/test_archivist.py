@@ -1018,14 +1018,12 @@ def main():
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'eien86', 'group': 'founder-series',
                             'title': 'Founder Series', 'games': 'nes/pinball'})
-            ck('a site expert\'s series is established on creation',
-               c == 200 and r.get('established') is True, str(r))
+            ck('a site expert creates a series, real on arrival', c == 200, str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             gdoc = json.loads((work / 'groups.json').read_text())
             mine_ = next(g for g in gdoc['groups'] if g['key'] == 'founder-series')
-            ck('and it records them as the one who vouched',
-               mine_.get('ratifiedBy') == 'eien86' and mine_.get('createdBy') == 'eien86',
-               str(mine_))
+            ck('and it records who made it',
+               mine_.get('createdBy') == 'eien86', str(mine_))
             c, r, _ = call(U + '/api/group/edit',
                            {'key': KEY, 'expert': 'eien86', 'group': 'founder-series',
                             'remove': 'nes/pinball'})
@@ -1036,10 +1034,7 @@ def main():
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
                             'title': 'Test Family', 'games': 'nes/pinball'})
-            ck('a system expert may gather a game they cover',
-               c == 200 and r.get('established') is False,
-               'and it stays provisional: a series spans systems, so only site '
-               'scope is the scope that covers one: ' + str(r))
+            ck('a system expert may gather a game they cover', c == 200, str(r))
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
                             'title': 'Again', 'games': ''})
@@ -1062,8 +1057,8 @@ def main():
             made = next(g for g in gdoc['groups'] if g['key'] == 'test-family')
             ck('the series records who made it and when',
                made.get('createdBy') == 'groupexpert'
-               and re.fullmatch(r'\d{4}-\d{2}-\d{2}', made.get('createdAt') or '')
-               and made.get('established') is False, str(made))
+               and re.fullmatch(r'\d{4}-\d{2}-\d{2}', made.get('createdAt') or ''),
+               str(made))
 
             c, r, _ = call(U + '/api/group/edit',
                            {'key': KEY, 'expert': 'TestAuthor', 'group': 'test-family',
@@ -1091,35 +1086,21 @@ def main():
             ck('a game belongs to one series, even at creation time',
                c == 409 and 'belongs to one' in r.get('error', ''), str(r))
 
-            c, r, _ = call(U + '/api/group/ratify',
-                           {'key': KEY, 'expert': 'TestAuthor', 'group': 'test-family'})
-            ck('a member may not ratify a series', c == 403, str(r))
-            c, r, _ = call(U + '/api/group/ratify',
+# ratification is retired: the endpoint answers 404 like anything gone
+            c, r, code_hdrs = call(U + '/api/group/ratify',
                            {'key': KEY, 'expert': 'eien86', 'group': 'test-family'})
-            ck('a site expert ratifies a series', c == 200 and r['established'], str(r))
-            c, r, _ = call(U + '/api/group/ratify',
-                           {'key': KEY, 'expert': 'eien86', 'group': 'test-family'})
-            ck('a series is ratified once', c == 409, str(r))
-            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            gdoc = json.loads((work / 'groups.json').read_text())
-            made = next(g for g in gdoc['groups'] if g['key'] == 'test-family')
-            ck('the ratification names the expert and the day',
-               made.get('ratifiedBy') == 'eien86'
-               and re.fullmatch(r'\d{4}-\d{2}-\d{2}', made.get('ratifiedAt') or ''),
-               str(made))
+            ck('the retired ratify endpoint is simply gone', c == 404, str(r)[:80])
 
             # --- a group expert fills out their own series ---
             c, r, _ = call(U + '/api/game/create',
                            {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
                             'system': 'nes', 'title': 'Brand New Game'})
             ck('an expert creates a game inside a series they cover',
-               c == 200 and r['game'] == 'nes/brand-new-game'
-               and r['established'] is True, str(r))
+               c == 200 and r['game'] == 'nes/brand-new-game', str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             newg = json.loads((work / 'games/nes/brand-new-game/game.json').read_text())
-            ck('it is established as it is made, with their name on it',
-               newg.get('ratifiedBy') == 'groupexpert' and newg.get('established'),
-               str(newg))
+            ck('it is real as it is made, with their name on it',
+               newg.get('createdBy') == 'groupexpert', str(newg))
             ck('and it has the files a game needs',
                (work / 'games/nes/brand-new-game/categories.json').exists(),
                'no categories.json')
@@ -1214,39 +1195,12 @@ def main():
                (work / 'games/nes/pinball/runs/M900010/run.json').exists(),
                'the movie was never what was in question')
 
-            # --- refusal: the other half of the same decision ---
-            # the one game in this fixture is already in a series, and a game
-            # belongs to one, so free it before gathering it into another
-            c, r, _ = call(U + '/api/group/edit',
+            # --- refusal went with ratification: a wrong group is deleted,
+            # on the record, by the fast lane tested further down ---
+            c, r, _ = call(U + '/api/group/reject',
                            {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
-                            'remove': 'nes/pinball'})
-            ck('the game is freed for the next series', c == 200, str(r))
-            c, r, _ = call(U + '/api/group/create',
-                           {'key': KEY, 'expert': 'groupexpert', 'group': 'doomed',
-                            'title': 'Doomed', 'games': 'nes/pinball'})
-            ck('a provisional series to refuse', c == 200, str(r))
-            c, r, _ = call(U + '/api/group/reject',
-                           {'key': KEY, 'expert': 'groupexpert', 'group': 'doomed',
-                            'reason': 'no'})
-            ck('a refusal without a real reason is refused', c == 400, str(r))
-            c, r, _ = call(U + '/api/group/reject',
-                           {'key': KEY, 'expert': 'TestAuthor', 'group': 'doomed',
-                            'reason': 'I simply do not like it very much'})
-            ck('somebody with no scope may not refuse a series', c == 403, str(r))
-            c, r, _ = call(U + '/api/group/reject',
-                           {'key': KEY, 'expert': 'groupexpert', 'group': 'doomed',
-                            'reason': 'These games are not one family; Pinball stands alone.'})
-            ck('an expert refuses a series and it is dissolved',
-               c == 200 and r['released'] == ['nes/pinball'], str(r))
-            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            gdoc = json.loads((work / 'groups.json').read_text())
-            gone = next(g for g in gdoc['groups'] if g['key'] == 'doomed')
-            ck('the refusal keeps who and why, and lets the games go',
-               gone['rejected']['by'] == 'groupexpert' and gone['games'] == []
-               and gone.get('established') is False, str(gone))
-            c, r, _ = call(U + '/api/group/ratify',
-                           {'key': KEY, 'expert': 'eien86', 'group': 'doomed'})
-            ck('a refused series cannot then be approved', c in (409, 404), str(r))
+                            'reason': 'These games are not one family at all.'})
+            ck('the retired reject endpoint is simply gone', c == 404, str(r)[:80])
 
             # --- a Committee seat may appoint, at any scope (2.5.3) ---
             c, r, _ = call(U + '/api/expert/appoint',
@@ -1731,8 +1685,8 @@ def main():
             ck('and the claimed record is the member now',
                (check / 'authors' / 'renamedstar.json').exists())
             gj = check / 'games/nes/solomons-key/game.json'
-            ck('created game is provisional', gj.exists()
-               and json.loads(gj.read_text())['established'] is False)
+            ck('created game exists, real on arrival', gj.exists()
+               and 'established' not in json.loads(gj.read_text()))
             ck('a submitted run carries its committed forum pointer',
                created_id and json.loads(
                    (check / f'games/nes/solomons-key/runs/{created_id}/run.json')
@@ -1745,8 +1699,8 @@ def main():
                .get('forum', {}).get('topicId'),
                'games need an anchor so their tag page exists before the first run')
             cj = json.loads((check / 'games/nes/solomons-key/categories.json').read_text())
-            ck('created category flagged provisional',
-               cj['dimensions'][0]['options'][0].get('provisional') is True)
+            ck('created category is simply a category',
+               'provisional' not in cj['dimensions'][0]['options'][0])
             ck('created run folder present',
                created_id and (check / f'games/nes/solomons-key/runs/{created_id}/run.json').exists())
             irun = check / 'games/nes/pinball/runs/M910001'
