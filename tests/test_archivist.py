@@ -1136,6 +1136,38 @@ def main():
                             'system': 'nes', 'title': 'Not Yours'})
             ck('somebody with no scope over the series may not fill it', c == 403, str(r))
 
+            # --- the category manager: add, edit-covered elsewhere, ratify,
+            # delete only when unused ---
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'expert': 'nobody9', 'game': 'nes/pinball',
+                            'label': 'Any%', 'rule': 'Finish the game by any means.'})
+            ck('adding a category needs a covering expert', c == 403, str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'label': 'Any Percent', 'rule': 'Finish the game by any means.'})
+            ck('an expert adds a category', c == 200 and r['key'] == 'any-percent',
+               str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'label': 'Any Percent', 'rule': 'Duplicate.'})
+            ck('the same key is refused', c == 409, str(r))
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': '100k-glitched'})
+            ck('a category with runs in it cannot be deleted',
+               c == 409 and 'home' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': 'any-percent'})
+            ck('an unused category deletes cleanly', c == 200
+               and r['removed'] == 'any-percent', str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            elog2 = json.loads((work / 'edits.json').read_text())['events']
+            ck('category acts are in the edit log',
+               any(e['kind'] == 'category' and e['field'] == 'added' for e in elog2)
+               and any(e['kind'] == 'category' and e['field'] == 'removed'
+                       for e in elog2), str(elog2[-3:]))
+
             # --- removal is asked for, never taken ---
             c, r, _ = call(U + '/api/game/request-removal',
                            {'key': KEY, 'expert': 'groupexpert',

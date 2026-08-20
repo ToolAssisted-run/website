@@ -796,6 +796,13 @@ def main():
         ck('the run page carries the expert delete, hidden until armed',
            'id="f-rundelete-wrap" hidden' in runp_
            and 'Delete this movie' in runp_, runp_[:200])
+        editp_ = all_html.get(out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html') \
+            or (out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html').read_text()
+        ck('every game has its editor page, gated and data-carrying',
+           'id="gameeditdata"' in editp_ and 'id="ge-gate"' in editp_
+           and 'id="f-ge-add"' in editp_)
+        ck('the game page expert menu links the editor',
+           'href="edit/"' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the game page carries the expert delete',
            'f-gamedelete' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the group page carries the expert delete',

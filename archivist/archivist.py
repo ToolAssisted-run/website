@@ -771,6 +771,151 @@ def invalidate():
                     'note': 'Logged in the open site log; appealable; '
                             'the act may be redone by any other member.'})
 
+def _category_gate(f):
+    """Shared by the category endpoints: who is asking, over which game, and
+    the game's categories document. Returns (expert, game_key, cfile, cats,
+    error)."""
+    expert, err_ = request_identity(f, 'expert')
+    if err_:
+        return None, None, None, None, err_
+    game_key = (f.get('game') or '').strip()
+    if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', game_key):
+        return None, None, None, None, fail('game must be system/slug')
+    cfile = ARCHIVE / 'games' / game_key / 'categories.json'
+    if not cfile.exists():
+        return None, None, None, None, fail(f'unknown game {game_key}', 404)
+    if not expert_covers(expert, game_key):
+        return None, None, None, None, fail(
+            f'{expert!r} is not an expert covering {game_key}', 403)
+    return expert, game_key, cfile, json.loads(cfile.read_text()), None
+
+
+@app.post('/api/category/add')
+def category_add():
+    """An expert adds a category option to a game they cover. Made by
+    authority, it arrives established; the edit log carries the act."""
+    f = request.form
+    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        err0 = auth_precheck(f)
+        if err0:
+            return err0
+        if not dry:
+            checkout_branch()
+        expert, game_key, cfile, cats, err_ = _category_gate(f)
+        if err_:
+            return err_
+        label = (f.get('label') or '').strip()
+        rule = (f.get('rule') or '').strip()
+        if not (1 <= len(label) <= 80):
+            return fail('a label fits in 80 characters')
+        if not (1 <= len(rule) <= 500):
+            return fail('a rule fits in 500 characters; it is what a verifier '
+                        'holds a run to')
+        # 'key' is the submitter-key auth field; the option key travels as
+        # option_key (the same collision removal/decide once had)
+        okey = slugify((f.get('option_key') or label).strip())
+        if not okey:
+            return fail('the label yields an empty key')
+        if okey == 'unclassified':
+            return fail('unclassified is reserved: every game already has it')
+        dim = next((d for d in cats['dimensions'] if d['key'] == 'goal'),
+                   cats['dimensions'][0] if cats['dimensions'] else None)
+        if dim is None:
+            cats['dimensions'] = [{'key': 'goal', 'name': 'Goal', 'options': []}]
+            dim = cats['dimensions'][0]
+        if any(o['key'] == okey for d in cats['dimensions'] for o in d['options']):
+            return fail(f'{okey!r} already exists on this game', 409)
+        if dry:
+            return jsonify({'ok': True, 'dry_run': True, 'key': okey})
+        dim['options'].append({'key': okey, 'label': label, 'rule': rule})
+        cfile.write_text(json.dumps(cats, indent=1) + '\n')
+        log_edit('category', f'{game_key}:{okey}', 'added', '', label, expert,
+                 (f.get('reason') or 'Created by a covering expert.').strip()[:500])
+        ensure_member(expert)
+        commit_push(f'Category add {game_key}:{okey}: by expert {expert}\n\n'
+                    f'Label: {label}\nVia: archivist')
+    return jsonify({'ok': True, 'game': game_key, 'key': okey, 'label': label})
+
+
+@app.post('/api/category/ratify')
+def category_ratify():
+    """Provisional option -> established, by an expert who covers the game."""
+    f = request.form
+    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        err0 = auth_precheck(f)
+        if err0:
+            return err0
+        if not dry:
+            checkout_branch()
+        expert, game_key, cfile, cats, err_ = _category_gate(f)
+        if err_:
+            return err_
+        okey = (f.get('option') or '').strip()
+        opt = next((o for d in cats['dimensions'] for o in d['options']
+                    if o['key'] == okey), None)
+        if not opt:
+            return fail(f'{game_key} defines no category {okey!r}', 404)
+        if not opt.get('provisional'):
+            return fail('that category is already established')
+        if dry:
+            return jsonify({'ok': True, 'dry_run': True})
+        opt.pop('provisional', None)
+        cfile.write_text(json.dumps(cats, indent=1) + '\n')
+        log_edit('category', f'{game_key}:{okey}', 'ratified', 'provisional',
+                 'established', expert,
+                 (f.get('reason') or 'Ratified by a covering expert.').strip()[:500])
+        ensure_member(expert)
+        commit_push(f'Category ratify {game_key}:{okey}: by expert {expert}\n\n'
+                    f'Via: archivist')
+    return jsonify({'ok': True, 'game': game_key, 'key': okey})
+
+
+@app.post('/api/category/delete')
+def category_delete():
+    """Remove an option no run has ever used. Anything referenced stays: a
+    category with runs in it is the runs' home, not clutter."""
+    f = request.form
+    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        err0 = auth_precheck(f)
+        if err0:
+            return err0
+        if not dry:
+            checkout_branch()
+        expert, game_key, cfile, cats, err_ = _category_gate(f)
+        if err_:
+            return err_
+        okey = (f.get('option') or '').strip()
+        opt = next((o for d in cats['dimensions'] for o in d['options']
+                    if o['key'] == okey), None)
+        if not opt:
+            return fail(f'{game_key} defines no category {okey!r}', 404)
+        users = [json.loads(rj.read_text())['id']
+                 for rj in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
+                 if (json.loads(rj.read_text()).get('category') or {}).get('goal') == okey]
+        if users:
+            return fail(f'{okey!r} holds {len(users)} run(s) ({", ".join(users[:4])}'
+                        f'{"…" if len(users) > 4 else ""}); a category with runs '
+                        f'in it is their home, not clutter', 409)
+        if dry:
+            return jsonify({'ok': True, 'dry_run': True})
+        for d in cats['dimensions']:
+            d['options'] = [o for o in d['options'] if o['key'] != okey]
+        cfile.write_text(json.dumps(cats, indent=1) + '\n')
+        log_edit('category', f'{game_key}:{okey}', 'removed', opt.get('label', okey),
+                 '', expert,
+                 (f.get('reason') or 'Removed unused by a covering expert.').strip()[:500])
+        ensure_member(expert)
+        commit_push(f'Category remove {game_key}:{okey}: by expert {expert}\n\n'
+                    f'Via: archivist')
+    return jsonify({'ok': True, 'game': game_key, 'removed': okey})
+
+
 @app.post('/api/game/ratify')
 def ratify():
     """An expert ratifies a provisional game (provisional -> established)."""

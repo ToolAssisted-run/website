@@ -234,43 +234,8 @@ its own. Never verified; ranked purely by ★ likes.</p>
         '<label>Why <input name="reason" required minlength="8" maxlength="500" '
         'placeholder="a duplicate of another game, a nonsense title, …"></label>'
         '<button class="btn quiet">File</button></form></details>'
-        '<details class="actform"><summary>Rename this game</summary>'
-        '<form id="f-gamerename">'
-        '<p class="rules">The title is the record\'s, not any member\'s; renaming is '
-        'logged with your name, the old title and the new.</p>'
-        '<input type="hidden" name="kind" value="game">'
-        f'<input type="hidden" name="target" value="{esc(g["key"])}">'
-        '<input type="hidden" name="field" value="title">'
-        f'<label>New title <input name="value" required maxlength="120" '
-        f'value="{esc(g["title"])}"></label>'
-        '<label>Why <input name="reason" required minlength="8" maxlength="500"></label>'
-        '<button class="btn">Rename</button></form></details>'
-        '<details class="actform"><summary>Set the game thumbnail</summary>'
-        '<form id="f-gamethumb">'
-        '<p class="rules">Shown on this page and on the game\'s card. An image you '
-        'answer for, logged like every edit.</p>'
-        '<input type="hidden" name="kind" value="game">'
-        f'<input type="hidden" name="target" value="{esc(g["key"])}">'
-        '<input type="hidden" name="field" value="thumbnail">'
-        '<label>Image (png/jpg/webp, under 256 KB) '
-        '<input name="thumbnail" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>'
-        '<label>Why <input name="reason" required minlength="8" maxlength="500"></label>'
-        '<button class="btn">Set</button></form></details>'
-        '<details class="actform"><summary>Edit a category</summary>'
-        '<form id="f-gamecat">'
-        '<p class="rules">The label is what the rankings say; the rule is what a '
-        'verifier holds a run to. Logged with the old wording and the new.</p>'
-        '<input type="hidden" name="kind" value="category">'
-        '<label>Category <select name="target">'
-        + ''.join(f'<option value="{esc(g["key"])}:{esc(o["key"])}">{esc(o["label"])}'
-                  f'{" (provisional)" if o.get("provisional") else ""}</option>'
-                  for d_ in g['categories']['dimensions'] for o in d_['options'])
-        + '</select></label>'
-        '<label>Field <select name="field"><option value="label">Label</option>'
-        '<option value="rule">Rule</option></select></label>'
-        '<label>New wording <input name="value" required maxlength="500"></label>'
-        '<label>Why <input name="reason" required minlength="8" maxlength="500"></label>'
-        '<button class="btn">Change</button></form></details>'
+        '<p class="statline"><a class="btn" href="edit/">Edit this game</a> '
+        'Title, thumbnail and categories are edited on their own page.</p>'
         '<details class="actform"><summary>Delete this game</summary>'
         '<form id="f-gamedelete">'
         '<p class="rules">Outright: the game record goes, and every movie in it survives, '
@@ -315,4 +280,85 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {gameacts}'''
     crumb = f'<a href="{rel}games/">Games</a> / {esc(g["title"])}'
     (gd / 'index.html').write_text(page(g['title'], body, rel, crumb, 'Games'))
+
+    # ---- the game editor: everything a covering expert may change, in one
+    # place with a real UI (the page is public markup; every form is revealed
+    # only to covering experts and the archivist enforces regardless) ----
+    opt_data = []
+    for d_ in g['categories']['dimensions']:
+        for o in d_['options']:
+            opt_data.append({
+                'key': o['key'], 'label': o['label'], 'rule': o.get('rule', ''),
+                'provisional': bool(o.get('provisional')),
+                'runs': sum(1 for r_ in g['runs']
+                            if (r_.get('category') or {}).get('goal') == o['key'])})
+    edit_data = {'game': g['key'], 'title': g['title'],
+                 'experts': covering_experts(g['key']),
+                 'provisional': not g.get('established', True),
+                 'options': opt_data}
+    erel = rel + '../'
+    ebody = f"""<header class="ghead"><div>
+<div class="chips"><span class="chip">{esc(systems[g['system']]['name'])}</span></div>
+<h1>Edit {esc(g['title'])}</h1>
+<p class="authline">Everything a covering expert may change about this game. Every edit
+is logged in the open with your name, the old value and the new.</p></div>
+<div class="hbtns"><a class="btn quiet" href="../">Back to the game</a></div></header>
+<script type="application/json" id="gameeditdata">{json.dumps(edit_data).replace('<', chr(92) + 'u003c')}</script>
+<p class="msg" id="ge-gate">Checking who you are…</p>
+<div id="geditor" hidden>
+<section><h2>Identity</h2>
+<form id="f-ge-title" class="actform">
+  <input type="hidden" name="kind" value="game">
+  <input type="hidden" name="target" value="{esc(g['key'])}">
+  <input type="hidden" name="field" value="title">
+  <label>Title <input name="value" required maxlength="120" value="{esc(g['title'])}"></label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="the reason is public"></label>
+  <button class="btn">Rename</button>
+</form>
+<form id="f-ge-thumb" class="actform">
+  <input type="hidden" name="kind" value="game">
+  <input type="hidden" name="target" value="{esc(g['key'])}">
+  <input type="hidden" name="field" value="thumbnail">
+  {f'<img class="gface" src="/thumbs/{esc(SHIPPED_GAME_THUMBS[g["key"]])}" alt="current thumbnail">' if g['key'] in SHIPPED_GAME_THUMBS else '<p class="rules">No thumbnail set; the card falls back to the newest run frame.</p>'}
+  <label>Thumbnail (png/jpg/webp, under 256 KB)
+    <input name="thumbnail" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
+  <button class="btn">Set</button>
+</form></section>
+<section><h2>Categories</h2>
+<p class="rules">The label is what the rankings say; the rule is what a verifier holds a
+run to. A category with runs in it cannot be deleted: it is their home.</p>
+<div id="ge-cats"></div>
+<form id="f-ge-add" class="actform gecard">
+  <h3>Add a category</h3>
+  <input type="hidden" name="game" value="{esc(g['key'])}">
+  <label>Label <input name="label" required maxlength="80" placeholder="e.g. 100% completion"></label>
+  <label>Rule <input name="rule" required maxlength="500"
+    placeholder="what a verifier holds a run to"></label>
+  <label>Key (optional; derived from the label) <input name="option_key" pattern="[a-z0-9-]*"></label>
+  <button class="btn">Add</button>
+</form></section>
+<section><h2>Governance</h2>
+{'<form id="f-ge-ratify" class="actform"><p class="rules">This game is provisional: nobody with authority has vouched for it yet.</p><input type="hidden" name="game" value="' + esc(g['key']) + '"><button class="btn">Ratify</button></form>' if not g.get('established', True) else '<p class="rules">Established' + (f", ratified by {esc(g.get('ratifiedBy', ''))} on {esc(g.get('ratifiedAt', ''))}" if g.get('ratifiedBy') else ' (arrived established with the seeding import)') + '.</p>'}
+<form id="f-ge-remove" class="actform">
+  <p class="rules">Files a request; a site-wide expert answers it. Runs are untouched.</p>
+  <input type="hidden" name="game" value="{esc(g['key'])}">
+  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
+  <button class="btn quiet">File</button>
+</form>
+<form id="f-ge-delete" class="actform">
+  <p class="rules">Outright: the record goes; every movie survives, moved to this
+  system's Uncategorized game. Your reason is public and permanent.</p>
+  <input type="hidden" name="game" value="{esc(g['key'])}">
+  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
+  <button class="btn danger">Delete</button>
+</form></section>
+<p class="msg" id="ge-msg" hidden></p>
+</div>"""
+    (gd / 'edit').mkdir(exist_ok=True)
+    (gd / 'edit' / 'index.html').write_text(page(
+        f"Edit {g['title']}", ebody, erel,
+        f'<a href="{erel}games/">Games</a> / <a href="../">{esc(g["title"])}</a> / Edit',
+        'Games'))
 
