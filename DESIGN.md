@@ -351,6 +351,47 @@ concerns use **contact@toolassisted.run** (§10).
 - Every game and group page ends with the **Expert menu** (§9) holding the
   governance acts for those entitled; content editing lives on the editor.
 
+### Planned: per-category metrics (decisions locked, build pending)
+
+A category will define what it ranks by. Settled in discussion, to build:
+
+- **Model**: a category option gains `metrics: [{key, label, type: time|number,
+  better: lower|higher, unit?}]`; array order IS the tie-break hierarchy and
+  the first entry is the primary metric, shown wherever time shows today.
+  A reserved key `time` means the derived real time (movie frames/fps or
+  stated duration) and is never typed for movie runs. **Absent `metrics`
+  means the implicit classic metric** (real time, lower better): zero
+  migration. Runs store stated values in `run.json` `metrics: {key: number}`
+  (times as seconds).
+- **Adding a metric to a category with runs**: every existing run gets an
+  explicit empty value (0 / 00:00.000); experts fill them through the logged
+  edit paths and the ranking re-sorts as values land. Nothing is unranked.
+  `0` renders as the "—" placeholder and sorts LAST at its level regardless
+  of direction (a zero is never a winning result), falling through to the
+  next metric. **Removing a metric**: the comparator uses what remains;
+  stored values are never deleted, they just stop being read.
+- **Verification is untouched by metrics, absolutely**: it attests the
+  category's goal was achieved; metrics only order the achievers. No value
+  edit (author's or expert's) voids a verification; dishonest values are a
+  moderation matter like any other.
+- **Browse**: the Frames and Time columns coalesce into one untitled column
+  showing each run's own primary metric; the "Fastest first" sort is
+  REMOVED (shipped 2026-08-21): a flat cross-category list has no honest
+  metric ordering. Hierarchy ranking lives on the leaderboards.
+- **Submission**: every author-stated metric the category defines is
+  required. On category pick, the metric fields appear in a
+  **dashed-edge box just below the video-only checkbox**: segmented
+  h/m/s/ms inputs for time-types, number boxes with the unit for numbers.
+  The video-only stated-time input appears **only if `time` is among the
+  category's metrics**; if the category defines no time metric, time is
+  never asked for, and movie runs never type time at all (derived).
+- **Full-hierarchy tie**: earlier arrival wins (second-exact arrival times).
+- Editor: the category manager grows metric rows (label, type, direction,
+  unit, reorder, add/remove), logged like every category edit.
+- Still under discussion: remainder of the submission corner case (new
+  inline categories and metrics; video-only runs in categories without a
+  time metric), tie display, per-surface sweep details.
+
 ---
 
 ## 6. Identity
