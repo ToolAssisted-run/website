@@ -293,9 +293,13 @@ Log in (top right) to reply from here.</p></section>'''
         attribution = (f'<p class="actmeta rn-edits">Edited by {esc(editors)}</p>'
                        if editors else '')
         return f'<h3 class="rn-h">{title}</h3>{body}{attribution}'
+    # a video-only run has nothing to reproduce, so the reproducer panel
+    # (and its edit form) never exists on it
     role_notes_html = ('<h2>Community notes</h2>'
-                       + ('' if is_leg else role_panel('reproducer', 'Reproducer notes', 'reproducer')
-                          + role_panel('verifier', 'Verifier notes', 'verifier'))
+                       + ('' if is_leg or r.get('videoOnly') else
+                          role_panel('reproducer', 'Reproducer notes', 'reproducer'))
+                       + ('' if is_leg else
+                          role_panel('verifier', 'Verifier notes', 'verifier'))
                        + role_panel('expert', 'Expert notes', 'expert'))
 
     withdraw_form = '''
@@ -526,11 +530,11 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
     {f"<dt>Completed</dt><dd>{esc(r['completed'])}</dd>" if r.get('completed') else ''}
     <dt>{'Published' if is_leg else 'Submitted'}</dt><dd>{esc((r.get('submitted') or '')[:10])}</dd>
     {f"<dt>Archived here</dt><dd>{esc(archived_at(r)[:10])}</dd>" if is_leg else ''}</dl></div>
-  <div class="factbox"><h4>Reproduction info</h4><dl>
+  {'' if r.get('videoOnly') else f'''<div class="factbox"><h4>Reproduction info</h4><dl>
     <dt>Emulator</dt><dd>{esc(r.get('contract', {}).get('emulator') or '—')}</dd>
     {f"<dt>ROM</dt><dd>{esc(rom.get('name'))}</dd>" if rom.get('name') else ''}
     {f"<dt>ROM sha1</dt><dd class='trunc'>{esc(rom.get('sha1')[:12])}…</dd>" if rom.get('sha1') else ''}
-</dl></div>
+</dl></div>'''}
   {attach_box}
   <div class="factbox"><h4>Status</h4>
     <p class="statline">{rep_line}</p>
