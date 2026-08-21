@@ -333,6 +333,17 @@ def inline(s, rel='../../'):
     s = s.replace('%%%', '<br>')
     s = re.sub(r'__(.+?)__', r'<b>\1</b>', s)
     s = re.sub(r"''(.+?)''", r'<em>\1</em>', s)
+    # a link to an image renders as the image itself, linked to the original;
+    # display only, the stored notes stay exactly as written. Runs first,
+    # while the text carries no generated markup to trip over; the lookbehind
+    # leaves [url|label] links (a labelled link was asked for) alone.
+    img = r'https?://[^\s\|\]\[]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s\|\]\[]*)?'
+    s = re.sub(rf'\[({img})\]',
+               r'<a href="\1"><img class="noteimg" src="\1" alt="" loading="lazy"></a>',
+               s, flags=re.I)
+    s = re.sub(rf'(?<!["\[|=])\b({img})',
+               r'<a href="\1"><img class="noteimg" src="\1" alt="" loading="lazy"></a>',
+               s, flags=re.I)
     s = re.sub(r'\[module:youtube\|v=([\w-]+)\]',
                r'<a href="https://youtu.be/\1">▶ video</a>', s)
     s = resolve_refs(s, rel)

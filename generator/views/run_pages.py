@@ -548,7 +548,6 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
       'authors': [canon(a['user']) for a in r['authors']],
       'likes': [l['user'].lower() for l in r.get('likes', [])]}).replace('<', chr(92) + 'u003c')}</script>
   {'' if is_leg or is_ranked(r) else f'<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>'}
-  <a class="btn quiet" href="../../games/{g['key']}/">View leaderboard</a>
 </aside></div>
 {expert_menu}'''
     crumb = (f'<a href="../../browse/">Runs</a> / '
