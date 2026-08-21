@@ -75,7 +75,7 @@ def card_section(title, gms):
 <h2>{esc(title)}
 <span class="chip">{len(gms)} game{'s' if len(gms) != 1 else ''}</span>
 <span class="chip starchip"><span class="starglyph">★</span> {stars}</span></h2>
-<div class="grid">{cards}</div></section>'''
+<div class="hwrap"><div class="hrow">{cards}</div></div></section>'''
 
 sys_sections = [card_section(systems[skey]['name'], by_sys[skey])
                 for skey in sorted(by_sys, key=lambda k: systems[k]['name'])]
@@ -244,9 +244,9 @@ games_sort_js = '''<script>
       Array.prototype.slice.call(wrap.children).sort(order)
         .forEach(function(s){ wrap.appendChild(s); });
     });
-    // every grid: the cards inside a band, and the group cards, which stand
-    // in a grid of their own with no band around them
-    document.querySelectorAll('.grid').forEach(function(grid){
+    // every card row: the shelves inside a band, and the group cards,
+    // which stand in a grid of their own with no band around them
+    document.querySelectorAll('.grid, .hrow').forEach(function(grid){
       Array.prototype.slice.call(grid.children).sort(order)
         .forEach(function(c){ grid.appendChild(c); });
     });
@@ -259,6 +259,9 @@ games_sort_js = '''<script>
       var el = document.getElementById('v-' + k);
       if (el) el.hidden = (k !== view);
     });
+    // the shelves size their arrows from geometry, which a hidden view
+    // has none of; a resize nudge repaints them once revealed
+    window.dispatchEvent(new Event('resize'));
     document.querySelectorAll('.gview-btn').forEach(function(b){
       b.classList.toggle('on', b.dataset.view === view);
     });
