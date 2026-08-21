@@ -20,27 +20,33 @@ from render import (
 
 # ---- tools page ----
 EMULATORS = [
-    ('BizHawk', 'multi-system (NES, SNES, Genesis, GB/GBA, N64, PSX, Saturn, …)', '.bk2, .tasproj'),
-    ('FCEUX', 'NES / Famicom', '.fm2, .fm3'),
-    ('lsnes', 'SNES', '.lsmv'),
-    ('Gens-rr', 'Genesis / Mega Drive', '.gmv'),
-    ('VBA-rr', 'Game Boy / Color / Advance', '.vbm'),
-    ('Gambatte', 'Game Boy / Color', '.gbmv'),
-    ('DeSmuME', 'Nintendo DS', '.dsm'),
-    ('Mupen64-rr', 'Nintendo 64', '.m64'),
-    ('Dolphin', 'GameCube / Wii', '.dtm'),
-    ('libTAS', 'Linux (native games and emulators)', '.ltm'),
-    ('Hourglass', 'Windows', '.wtf'),
-    ('JPC-rr', 'DOS', '.jrsr'),
-    ('Citra', 'Nintendo 3DS', '.ctm'),
-    ('PCSX2-rr', 'PlayStation 2', '.p2m2'),
-    ('openMSX', 'MSX', '.omr'),
-    ('MAME-rr', 'Arcade', '.mar'),
-    ('FBNeo / FB Alpha', 'Arcade', '.fbm'),
+    ('BizHawk', 'https://github.com/TASEmulators/BizHawk',
+     'multi-system (NES, SNES, Genesis, GB/GBA, N64, PSX, Saturn, …)', '.bk2, .tasproj'),
+    ('FCEUX', 'https://github.com/TASEmulators/fceux', 'NES / Famicom', '.fm2, .fm3'),
+    ('lsnes', 'https://repo.or.cz/lsnes.git', 'SNES', '.lsmv'),
+    ('Gens-rr', 'https://github.com/TASEmulators/gens-rerecording',
+     'Genesis / Mega Drive', '.gmv'),
+    ('VBA-rr', 'https://github.com/TASEmulators/vba-rerecording',
+     'Game Boy / Color / Advance', '.vbm'),
+    ('Gambatte', 'https://github.com/sinamas/gambatte', 'Game Boy / Color', '.gbmv'),
+    ('DeSmuME', 'https://github.com/TASEmulators/desmume', 'Nintendo DS', '.dsm'),
+    ('Mupen64-rr', 'https://github.com/mkdasher/mupen64-rr-lua-', 'Nintendo 64', '.m64'),
+    ('Dolphin', 'https://github.com/dolphin-emu/dolphin', 'GameCube / Wii', '.dtm'),
+    ('libTAS', 'https://github.com/clementgallet/libTAS',
+     'Linux (native games and emulators)', '.ltm'),
+    ('Hourglass', 'https://github.com/Hourglass-Resurrection/Hourglass-Resurrection',
+     'Windows', '.wtf'),
+    ('JPC-rr', 'https://repo.or.cz/jpcrr.git', 'DOS', '.jrsr'),
+    ('Citra', 'https://github.com/citra-mirror/citra', 'Nintendo 3DS', '.ctm'),
+    ('PCSX2-rr', 'https://github.com/pcsx2/pcsx2', 'PlayStation 2', '.p2m2'),
+    ('openMSX', 'https://github.com/openMSX/openMSX', 'MSX', '.omr'),
+    ('MAME-rr', 'https://github.com/TASEmulators/mame-rr', 'Arcade', '.mar'),
+    ('FBNeo / FB Alpha', 'https://github.com/finalburnneo/FBNeo', 'Arcade', '.fbm'),
 ]
-emu_rows = ''.join(f'<tr><td><b>{esc(n)}</b></td><td>{esc(s)}</td>'
-                   f'<td class="num"><code>{esc(x)}</code></td></tr>'
-                   for n, s, x in EMULATORS)
+emu_rows = ''.join(f'<tr><td><b><a href="{esc(u)}">{esc(n)}</a></b></td><td>{esc(s)}</td>'
+                   f'<td class="num"><code>{esc(x)}</code></td>'
+                   f'<td class="num"><span class="tick-yes">✓</span></td></tr>'
+                   for n, u, s, x in EMULATORS)
 
 # (tool, link, game/engine, movie format, parsed mechanically at submission)
 # surveyed from the community's collections; ordered by game
@@ -138,6 +144,10 @@ body = f'''<header class="ghead"><div><h1>Tools</h1>
 <p class="authline">You can create your run with any emulator and any tools you like; what you
 submit, in the end, is simply the encoded video. Below are the tools commonly used to make TASes.</p>
 </div></header>
+<div class="resourcebox"><b>Need help with any of these tools?</b>
+Ask on <a href="{FORUM}">our forum</a> or on
+<a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
+will point you the right way.</div>
 <section><h2>miniHawk <span class="chip pendchip">in development</span></h2>
 <div class="policy"><p><b>miniHawk</b> is this site\'s endorsed emulator, a re-implementation
 of <a href="https://github.com/TASEmulators/BizHawk">BizHawk</a> built around three ideas:
@@ -160,7 +170,8 @@ BizHawk, searching inputs from inside the emulator itself, by toca.
 attach their movie files to your submission as supplementary data beside your run video; for
 most of these formats we extract the relevant information (time, frames, rerecords) directly
 from the file.</p>
-<table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th></tr></thead>
+<table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
+<th class="num">Parsed</th></tr></thead>
 <tbody>{emu_rows}</tbody></table></section>
 <section><h2>Game-specific TAS tools</h2>
 <p class="rules fullw">These tools create tool-assisted runs inside one game or engine, with no
@@ -169,11 +180,7 @@ supplementary data beside your run video; for some of these formats we extract t
 information (time, frames, rerecords) directly from the file, marked below.</p>
 <table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
 <th class="num">Parsed</th></tr></thead>
-<tbody>{gt_rows}</tbody></table>
-<div class="resourcebox"><b>New to one of these emulators?</b>
-Ask on <a href="{FORUM}">our forum</a> or on
-<a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
-will point you the right way.</div></section>'''
+<tbody>{gt_rows}</tbody></table></section>'''
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page('Tools', body, '../', '', 'Tools'))
 

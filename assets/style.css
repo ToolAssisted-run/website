@@ -290,6 +290,10 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .policy.wide{max-width:none}
 .impstart{margin:26px 0 10px}
 .main h2{margin-top:24px}
+/* the first section under the page header hugs the divider instead of
+   stacking three margins into a blank line */
+.main>section:first-child{margin-top:2px}
+.main>section:first-child>h2:first-child{margin-top:0}
 .roster{display:flex;flex-direction:column;gap:10px}
 .act{background:var(--bg);border:2.5px solid var(--hair);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
 .act.invalid{opacity:.6}
@@ -354,9 +358,18 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .rtab th[data-key]{cursor:pointer;user-select:none;white-space:nowrap}
 .rtab th[data-key]:hover{color:var(--accent-text)}
 /* the contribute worklists: room for ~15 rows, then they scroll; the
-   header row stays pinned while they do */
-.contscroll{max-height:640px;overflow-y:auto;border-radius:10px}
-.contscroll thead th{position:sticky;top:0;z-index:1}
+   header row stays pinned while they do, and the scrollbar keeps quiet
+   until the pointer is over the list */
+.nrgap{margin-top:14px}
+.contscroll{max-height:640px;overflow-y:auto;border-radius:10px;
+ scrollbar-width:thin;scrollbar-color:transparent transparent}
+.contscroll:hover{scrollbar-color:var(--hairs) transparent}
+.contscroll::-webkit-scrollbar{width:8px}
+.contscroll::-webkit-scrollbar-track{background:transparent}
+.contscroll::-webkit-scrollbar-thumb{background:transparent;border-radius:4px}
+.contscroll:hover::-webkit-scrollbar-thumb{background:var(--hairs)}
+.contscroll thead th{position:sticky;top:0;z-index:1;background:var(--panel);
+ box-shadow:0 2px 0 var(--hair)}
 .tick-yes{color:var(--accent-text);font-weight:700}
 .tick-no{color:var(--faint)}
 .rtab th.sorted::after{content:" " attr(data-dir);font-size:.7em;color:var(--accent-text)}
