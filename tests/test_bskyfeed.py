@@ -83,8 +83,10 @@ def main():
            'public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed' in js)
         css = (REPO / 'assets/style.css').read_text()
         feed_rule = css[css.index('.bskyfeed{'):css.index('.bpost{')]
-        ck('the news window is a capped scroll box, not a growing column',
-           'max-height' in feed_rule and 'overflow-y:auto' in feed_rule, feed_rule[:120])
+        news_rule = css[css.index('.heronews{'):css.index('.heronews h2')]
+        ck('the news window is a bounded scroll box, not a growing column',
+           'overflow-y:auto' in feed_rule and 'min-height:100%' in news_rule
+           and 'height:0' in news_rule, (feed_rule + news_rule)[:160])
         ck('no client-side cap: older posts are a scroll away',
            'items.slice(0, 3)' not in js)
 
