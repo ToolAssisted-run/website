@@ -77,7 +77,7 @@ body = f'''<section class="hero">
 <div class="herotext">
 <h1>Games, played beyond human limits.</h1>
 <p><b>toolAssisted.run</b> is an open community archive of tool-assisted speedruns, score
-attacks and superplays. Every verifiable work is preserved the moment it arrives; merit is
+attacks and superplays. Every run is preserved the moment it arrives; merit is
 decided in the open, by the people who care about it.</p>
 <div class="herobtns"><a class="btn" href="browse/"><span class="wide">Browse the archive</span><span class="narrow">Browse</span></a>
 <a class="btn quiet" href="contribute/">Contribute</a>
