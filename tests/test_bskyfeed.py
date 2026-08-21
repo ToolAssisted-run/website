@@ -81,6 +81,8 @@ def main():
            'platform.twitter.com' not in js and 'widgets.js' not in js)
         ck('the feed is read from the public AT Protocol endpoint',
            'public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed' in js)
+        ck('the home column caps itself at three posts',
+           'items = items.slice(0, 3)' in js)
 
         if not node:
             print('SKIP renderer checks (node not installed)')
