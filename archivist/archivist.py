@@ -3519,6 +3519,8 @@ if __name__ == '__main__':
     if RECONCILE_SECONDS > 0:
         threading.Thread(target=reconcile_loop, daemon=True).start()
     replay_spool()   # notifications a restart interrupted mid-wait
+    import sitebuild
+    sitebuild.start()   # publish the site from here, fresh on every commit
     cert = os.environ.get('TLS_CERT')
     key = os.environ.get('TLS_KEY')
     ctx = (cert, key) if cert and key else None

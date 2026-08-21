@@ -87,6 +87,10 @@ _last_refresh = {'t': 0.0}
 def checkout_branch():
     _abandon_unfinished_git_state()
     _last_refresh['t'] = time.time()
+    try:
+        before = sh('git', 'rev-parse', 'HEAD').stdout.strip()
+    except subprocess.CalledProcessError:
+        before = None
     sh('git', 'fetch', '-q', 'origin')
     try:
         sh('git', 'checkout', '-q', '-f', '-B', BRANCH, f'origin/{BRANCH}')
@@ -96,6 +100,11 @@ def checkout_branch():
     # commit carries only what this request writes
     sh('git', 'reset', '-q', '--hard', f'origin/{BRANCH}')
     sh('git', 'clean', '-qfd')
+    # content that arrived from elsewhere (a manual push, another writer)
+    # deserves a fresh site just as much as content committed here
+    if before is not None and sh('git', 'rev-parse', 'HEAD').stdout.strip() != before:
+        import sitebuild
+        sitebuild.request_build()
 
 def refresh_archive(max_age=None):
     """Make sure the checkout is current before anything is decided from it.
@@ -151,7 +160,9 @@ def commit_push(message):
     for attempt in range(2):
         try:
             sh('git', 'push', '-q', 'origin', f'{BRANCH}:{BRANCH}')
-            dispatch_site_rebuild()
+            import sitebuild
+            sitebuild.request_build()       # this host publishes in ~a second
+            dispatch_site_rebuild()         # the Pages standby follows behind
             return
         except subprocess.CalledProcessError:
             if attempt:

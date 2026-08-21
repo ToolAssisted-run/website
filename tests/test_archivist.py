@@ -435,6 +435,9 @@ def main():
                    THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
                    PROVIDER_MOCK_BASE=f'http://127.0.0.1:{hport}/p/',
                    DUMPS_DIR=str(dumps),
+                   # the publisher: build with the real generator from this
+                   # repo, into the sandbox — hermetic, like everything here
+                   WEBSITE_DIR=str(REPO), SITE_DIR=str(td / 'site'),
                    DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET='testsessionsecret',
                    SELF_URL=f'http://127.0.0.1:{port}', SITE_ORIGIN='https://toolassisted.run',
                    PATH='/usr/bin:/bin', HOME=str(td))
@@ -547,6 +550,28 @@ def main():
             c, r, _ = call(U + '/api/submit', newsub, uniq_files())
             ck('submission lands in the pre-created game', c == 200 and r.get('ok'), str(r))
             created_id = r.get('id')
+
+            # --- the publisher: a push rebuilds the site this host serves,
+            #     complete and atomically swapped in, within seconds ---
+            def published(relpath, timeout=45):
+                end = time.time() + timeout
+                page = td / 'site' / 'current' / relpath
+                while time.time() < end:
+                    if page.exists():
+                        return True
+                    time.sleep(0.3)
+                return False
+
+            ck('the new run has a live page moments after the submit',
+               published(f'runs/{created_id}/index.html'),
+               (td / 'log').read_text()[-1500:])
+            ck('the served site is a complete build, not a fragment',
+               (td / 'site' / 'current' / 'index.html').exists()
+               and (td / 'site' / 'current' / 'assets' / 'app.js').exists()
+               and (td / 'site' / 'current' / '404.html').exists())
+            ck('current is an atomic symlink into the build directory',
+               (td / 'site' / 'current').is_symlink()
+               and os.readlink(td / 'site' / 'current').startswith('build-'))
 
             # --- unclassified: no goal, needs a description, never verified ---
             c, r, _ = call(U + '/api/submit', dict(sub, goal='unclassified'), files)
