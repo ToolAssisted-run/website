@@ -997,6 +997,30 @@ def main():
                                              'notes': 'Updated notes.'})
             ck('author edit ok', c == 200 and set(r['changed']) == {'notes', 'emulator'}, str(r))
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010', 'metric_score': '123'})
+            ck('a metric the category does not state is refused',
+               c == 400 and 'states no metric' in r.get('error', ''), str(r))
+            psub = dict(sub, game='nes/pinball', goal='pacifist',
+                        metric_score='1250')
+            del psub['dry_run']
+            c, r, _ = call(U + '/api/submit', psub, uniq_files())
+            ck('a pacifist run archives with its stated score', c == 200, str(r))
+            pac_id = r.get('id')
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': pac_id, 'metric_score': '',
+                                             'emulator': 'BizHawk 2.12'})
+            ck('an empty metric field leaves the value untouched',
+               c == 200 and r['changed'] == ['emulator'], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': pac_id, 'metric_score': '1300'})
+            ck('an author restates their category metric',
+               c == 200 and r['changed'] == ['metric:score'], str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            prj = json.loads(next(work.glob(f'games/*/*/runs/{pac_id}/run.json'))
+                             .read_text())
+            ck('the restated value is the record now',
+               prj['metrics'] == {'score': 1300.0}, str(prj.get('metrics')))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
                                              'run': 'M900010', 'tools': 'whatever'})
             ck('the retired tools field changes nothing',
                c == 400 and 'nothing to change' in r.get('error', ''), str(r))

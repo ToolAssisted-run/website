@@ -483,6 +483,14 @@ def main():
             browse = (out / 'browse' / 'index.html').read_text()
             ck('browse leads with the primary metric',
                '9,000' in browse and 'pts' in browse, '')
+            p351 = (out / 'runs/M900351/index.html').read_text()
+            ck('the edit panel offers the category metric, prefilled',
+               'name="metric_score"' in p351 and 'value="5000"' in p351,
+               p351[p351.find('metric_score') - 60:][:160])
+            p353 = (out / 'runs/M900353/index.html').read_text()
+            i353 = p353[p353.find('name="metric_score"'):][:60]
+            ck('an unstated metric offers an empty field, not a zero',
+               'name="metric_score"' in p353 and 'value=' not in i353, i353)
             solo = (out / 'games/nes/scoreonly/index.html').read_text()
             ck('a time-less video-only run ranks by its score alone',
                'M900356' in rows_of(solo.split('Pending:')[0])

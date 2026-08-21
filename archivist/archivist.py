@@ -1954,16 +1954,33 @@ def edit_run():
         if 'emulator' in f:
             r.setdefault('contract', {})['emulator'] = (f.get('emulator') or '').strip()[:120]
             changed.append('emulator')
+        # stated metric values: only the keys this run's category defines;
+        # an empty field leaves the value untouched, an explicit 0 returns
+        # it to "not yet stated" (which ranks last)
+        _sys, _slug = r['game'].split('/')
+        _g, _cats = load_game(_sys, _slug)
+        _goal = (r.get('category') or {}).get('goal')
+        _opt = next((o for dd in (_cats or {}).get('dimensions', [])
+                     for o in dd['options'] if o['key'] == _goal), None)
+        _mkeys = {mm['key'] for mm in (_opt or {}).get('metrics', [])
+                  if mm['key'] != 'time'}
         for fk in list(f.keys()):
             if not fk.startswith('metric_'):
                 continue
             mkey = fk[len('metric_'):]
+            raw = (f.get(fk) or '').strip()
+            if raw == '':
+                continue
+            if mkey not in _mkeys:
+                return fail(f'this category states no metric {mkey!r}')
             try:
-                mval = float((f.get(fk) or '').strip())
+                mval = float(raw)
             except ValueError:
                 return fail(f'{mkey} must be a number (seconds for times)')
             if mval < 0:
                 return fail(f'{mkey} cannot be negative')
+            if mval == (r.get('metrics') or {}).get(mkey, 0):
+                continue
             befores[f'metric:{mkey}'] = str((r.get('metrics') or {}).get(mkey, 0))
             r.setdefault('metrics', {})[mkey] = mval
             changed.append(f'metric:{mkey}')
