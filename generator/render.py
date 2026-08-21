@@ -486,7 +486,7 @@ def console_tick(r):
 
 IMPORTED_TICK = '<span class="tick imported" title="Imported: verified and reproduced at the trusted site it came from, before joining this archive">✓</span>'
 
-FULL_TICK = '<span class="tick full" title="Verified (expert): an expert confirmed the goal is met; permanent">✓</span>'
+FULL_TICK = '<span class="tick full" title="Verified: the goal is confirmed; permanent">✓</span>'
 
 PROV_TICK = '<span class="tick prov" title="Verified: the community confirmed the goal is met; ranked. An expert verification makes it permanent">✓</span>'
 
