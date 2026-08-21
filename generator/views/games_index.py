@@ -117,10 +117,15 @@ if live_groups:
                  'group they belong to.' if synthetic else
                  'A game group: one family of games, across every system it '
                  'appeared on. Experts may hold a scope over a whole group.')
+        placed_in = {k: grx['title'] for grx in live_groups
+                     for k in grx.get('games', []) if grx['key'] != gr['key']}
         gact_data = {'group': gr['key'], 'experts': gexperts,
                      'editorZone': True,
-                     'system_options': [{'key': s, 'name': systems[s]['name']}
-                                        for s in sorted(systems)]}
+                     'movable': [{'key': k, 'title': games[k]['title'],
+                                  'group': placed_in.get(k, '')}
+                                 for k in sorted(games,
+                                                 key=lambda k: games[k]['title'].lower())
+                                 if k not in gr.get('games', [])]}
         gacts = ('' if gr.get('synthetic') else
                  '<script type="application/json" id="groupactdata">'
                  + json.dumps(gact_data).replace('<', chr(92) + 'u003c') + '</script>'
@@ -128,16 +133,16 @@ if live_groups:
                  '<h2>Expert menu</h2>'
                  '<p class="rules">Only experts whose scope covers this group, and editors, '
                  'see this box; every action here is logged in the open.</p>'
-                 '<details class="actform"><summary>Add a game to this group</summary>'
-                 '<form id="f-groupaddgame">'
-                 '<p class="rules">Creates the game inside this group; it exists the '
-                 'moment you make it. It has no '
-                 'runs until somebody archives one.</p>'
+                 '<details class="actform"><summary>Move games into this group</summary>'
+                 '<form id="f-groupmove">'
+                 '<p class="rules">Tick any games and they move into this group, each '
+                 'leaving whatever group held it; a game belongs to one group. '
+                 'A brand-new game is made on the create page instead.</p>'
                  f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
-                 '<label>System <select name="system" id="ga-system"></select></label>'
-                 '<label>Title <input name="title" required maxlength="120" '
-                 'placeholder="e.g. Mega Man 3"></label>'
-                 '<button class="btn">Add</button></form></details>'
+                 '<input type="hidden" name="move">'
+                 '<input class="gmfilter" type="search" placeholder="Type to filter games…">'
+                 '<div class="gmovelist"></div>'
+                 '<button class="btn">Move here</button></form></details>'
                  '<details class="actform"><summary>Delete this group</summary>'
                  '<form id="f-groupdelete">'
                  '<p class="rules">Outright: the grouping goes, and every game in it becomes '

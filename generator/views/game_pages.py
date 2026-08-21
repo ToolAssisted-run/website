@@ -220,7 +220,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 })();
 </script>'''.replace('DEFAULT_COMBO', default_combo)
 
-    # deletion (public reason, runs survive in Uncategorized) is the one
+    # deletion (public reason, runs deleted with the game) is the one
     # removal mechanism; the old ask-then-decide request flow is retired
     gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
                     'editorZone': True}
@@ -235,9 +235,10 @@ its own. Never verified; ranked purely by ★ likes.</p>
         'Title, thumbnail and categories are edited on their own page.</p>'
         '<details class="actform"><summary>Delete this game</summary>'
         '<form id="f-gamedelete">'
-        '<p class="rules">Outright: the game record goes, and every run in it survives, '
-        'moved to this system\'s Uncategorized game where it ranks by likes until somebody '
-        're-homes it. Your reason is public and permanent.</p>'
+        '<p class="rules">Outright: the game goes, and every run in it is deleted '
+        'with it; each deletion lands in the public log. For a genuine work in the '
+        'wrong game, move the run instead of deleting the game. Your reason is '
+        'public and permanent.</p>'
         f'<input type="hidden" name="game" value="{esc(g["key"])}">'
         '<label>Why <input name="reason" required minlength="8" maxlength="500" '
         'placeholder="a test, spam, a duplicate record, …"></label>'

@@ -362,13 +362,33 @@
       }
       var zbtn = document.getElementById(dataId + '-btn');
       if (zbtn) zbtn.hidden = false;
-      var sysSel = document.getElementById('ga-system');
-      if (sysSel && D.system_options) {
-        D.system_options.forEach(function(s){
-          var o = document.createElement('option');
-          o.value = s.key;
-          o.textContent = s.name;
-          sysSel.appendChild(o);
+      var gmove = document.getElementById('f-groupmove');
+      if (gmove && D.movable) {
+        var glist = gmove.querySelector('.gmovelist');
+        var ghid = gmove.querySelector('[name=move]');
+        var gsync = function(){
+          var picked = [];
+          glist.querySelectorAll('input:checked').forEach(function(c){ picked.push(c.value); });
+          ghid.value = picked.join(' ');
+        };
+        var grows = D.movable.map(function(g){
+          var lab = document.createElement('label');
+          lab.className = 'gmrow';
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.value = g.key;
+          cb.addEventListener('change', gsync);
+          lab.appendChild(cb);
+          lab.appendChild(document.createTextNode(' ' + g.title + ' (' + g.key + ')'
+            + (g.group ? ' · now in ' + g.group : '')));
+          lab.dataset.hay = (g.title + ' ' + g.key).toLowerCase();
+          glist.appendChild(lab);
+          return lab;
+        });
+        var gfilt = gmove.querySelector('.gmfilter');
+        if (gfilt) gfilt.addEventListener('input', function(){
+          var n = gfilt.value.toLowerCase();
+          grows.forEach(function(r){ r.hidden = !!n && r.dataset.hay.indexOf(n) === -1; });
         });
       }
       forms.forEach(function(spec){
@@ -401,13 +421,14 @@
     {id: 'f-gamecat', path: '/api/expert/edit',
      done: function(j){ return 'Changed to ' + j.to + '.'; }},
     {id: 'f-gamedelete', path: '/api/game/delete', expertOnly: true,
-     confirm: 'Delete this game outright? Its runs survive, moved to the ' +
-              'Uncategorized game of this system. This cannot be undone.',
-     done: function(j){ return 'Deleted. ' + (j.runs_moved && j.runs_moved.length
-       ? j.runs_moved.length + ' run(s) moved to ' + j.to + '.' : 'It held no runs.'); }}]);
+     confirm: 'Delete this game outright, WITH every run in it? ' +
+              'This cannot be undone.',
+     done: function(j){ return 'Deleted. ' + (j.runs_deleted && j.runs_deleted.length
+       ? j.runs_deleted.length + ' run(s) deleted with it.' : 'It held no runs.'); }}]);
   armZone('groupactdata', 'groupacts', 'groupact-msg', [
-    {id: 'f-groupaddgame', path: '/api/game/create',
-     done: function(j){ return j.game + ' is in this group.'; }},
+    {id: 'f-groupmove', path: '/api/group/edit',
+     done: function(j){ return 'Moved. This group now holds ' + j.games.length +
+       ' game' + (j.games.length === 1 ? '' : 's') + '.'; }},
     {id: 'f-groupdelete', path: '/api/group/delete',
      confirm: 'Delete this group outright? Its games become ungrouped. ' +
               'This cannot be undone.',

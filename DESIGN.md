@@ -64,9 +64,10 @@ group  (groups.json)                      a game family ACROSS systems
 
 - **Groups** gather one family of games across every system it appeared on.
   A game sits in at most one group (validator-enforced). Games no group has
-  claimed belong to **Unclassified**, which is *derived, never stored*: the
-  archive records facts, not what can be computed. The reserved key
-  `unclassified` cannot name a real group. Every group has a page and a card,
+  claimed belong to **Uncategorized**, which is *derived, never stored*: the
+  archive records facts, not what can be computed, and a derived group can
+  never be deleted. The reserved keys `uncategorized` and `unclassified`
+  cannot name a real group. Every group has a page and a card,
   however empty: a group somebody just made IS the state worth seeing.
 - **Categories** are per-game dimensions; each option carries a rule fragment,
   rules compose per combination. New options exist the moment they are
@@ -76,9 +77,6 @@ group  (groups.json)                      a game family ACROSS systems
   `goalDescription` (≤200 chars, shown in the ranking row). These runs cannot
   be verified, can be reproduced, and rank **solely by ★ likes** in their own
   always-visible shelf. They are never "pending".
-- **The Uncategorized holding game** (`<sys>/uncategorized`, derived need):
-  when a game record is deleted, its runs survive there as unclassified, each
-  carrying a factual provenance line as its goal description.
 - **Terminology**: always "group", never "series". Say "forum group" when
   Discourse's role groups are meant.
 
@@ -299,8 +297,11 @@ concerns use **contact@toolassisted.run** (§10).
   page (confirmation dialog + mandatory public reason); the Committee deletes
   member records (refused while they authored runs; a seated member is the
   Founder's alone; the Founder is nobody's). Every deletion lands in
-  `deletions.json` and the site log; a deleted game's entry says where its
-  runs went (the Uncategorized holding game).
+  `deletions.json` and the site log; deleting a game deletes every run in
+  it, one logged entry per run beside the game's own, because the use case
+  is content that should never have been archived (rule violations, spam).
+  A genuine work in a wrong game record is moved by an expert edit, never
+  deleted with the record.
 
 ### Edits (the record can be corrected; the history always shows)
 
@@ -345,7 +346,12 @@ concerns use **contact@toolassisted.run** (§10).
   ratifications section as the record of who vouched while the mechanism
   existed; the validator keeps only their internal consistency.
 - **Groups are acts, not hand edits**: `/api/group/create` (only games you
-  already speak for) and `/api/group/edit`; every change logged.
+  already speak for) and `/api/group/edit`; every change logged. The edit's
+  `add` refuses a game that already has a home (409); `move` is the explicit
+  transfer, pulling each game out of whatever group held it. The group page
+  offers "Move games into this group": a filterable checkbox multi-selector
+  of every game not already in it (new games are made on the create page,
+  not from group pages).
 - **A game leaves through deletion** (public reason; its runs survive in the
   system's Uncategorized game). **A group is deleted outright the same way**
   (covering expert or editor, public reason): its games become ungrouped and

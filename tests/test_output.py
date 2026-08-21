@@ -345,7 +345,7 @@ def main():
            'a group an expert just made is the state worth seeing')
         hollow = all_html[out / 'groups' / 'hollow' / 'index.html']
         ck('and its page says what an empty group is',
-           'No games in this group yet' in hollow and 'f-groupaddgame' in hollow,
+           'No games in this group yet' in hollow and 'f-groupmove' in hollow,
            hollow[:200])
 
         # ---------- a withdrawal that took the content down ----------
@@ -702,9 +702,9 @@ def main():
            and 'f-gamedelete' in gh,
            'the path is chosen by the script, the words by the page')
         grh = all_html[out / 'groups' / 'test-family' / 'index.html']
-        ck('a group page adds games and deletes itself outright; no request form',
-           'f-groupaddgame' in grh and 'f-groupremove' not in grh
-           and 'f-groupdelete' in grh, grh[:200])
+        ck('a group page moves games in and deletes itself outright; no request form',
+           'f-groupmove' in grh and 'f-groupaddgame' not in grh
+           and 'f-groupremove' not in grh and 'f-groupdelete' in grh, grh[:200])
         ck('the games index offers a new group',
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
 
