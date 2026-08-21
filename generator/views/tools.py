@@ -66,9 +66,11 @@ GitHub</a>.</p></div>
 BizHawk, searching inputs from inside the emulator itself, by toca.
 <a href="https://github.com/toca-1/advancedbot-bizhawk">Source on GitHub</a>.</p></div>
 </div></section>
-<section><h2>Other supported movie formats</h2>
-<p class="rules fullw">Submissions accept the movie files of these emulators; upload the format
-your emulator records. If your tool is missing, tell us on the forum; adding a format is easy.</p>
+<section><h2>Emulator-based TAS tools</h2>
+<p class="rules fullw">These are emulators capable of running many different games. You can
+attach their movie files to your submission as supplementary data beside your run video; for
+most of these formats we extract the relevant information (time, frames, rerecords) directly
+from the file.</p>
 <table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th></tr></thead>
 <tbody>{emu_rows}</tbody></table>
 <div class="resourcebox"><b>New to one of these emulators?</b>
