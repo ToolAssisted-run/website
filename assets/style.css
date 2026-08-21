@@ -351,6 +351,9 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .gmfilter{width:100%}
 .newsmore{border:0;background:none;color:var(--faint);font-size:.78rem;cursor:pointer;padding:4px 0;font-family:inherit}
 .newsmore:hover{color:var(--accent-text)}
+.rtab th[data-key]{cursor:pointer;user-select:none;white-space:nowrap}
+.rtab th[data-key]:hover{color:var(--accent-text)}
+.rtab th.sorted::after{content:" " attr(data-dir);font-size:.7em;color:var(--accent-text)}
 /* tiers: the same green, filling up. A badge that changes hue every milestone
    turns a roster into a sweet shop; this reads as more of the same thing. */
 .role-contrib.tier-1k{background:rgba(34,197,94,.20)}
