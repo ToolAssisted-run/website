@@ -42,19 +42,29 @@ def fresh_selection(all_runs, slots=8):
     return sorted(all_runs, key=lambda r: (archived_at(r), r.get('submitted') or '',
                                            r['id']), reverse=True)[:slots]
 
-cards = []
-for r in fresh_selection(runs):
+def liked_selection(all_runs, slots=12):
+    """The most-starred runs, ties to the newer arrival. Nothing with zero
+    stars: an empty shelf says more than a shelf of unliked filler."""
+    liked = [r for r in all_runs if nlikes(r) > 0]
+    return sorted(liked, key=lambda r: (nlikes(r), archived_at(r),
+                                        r.get('submitted') or '', r['id']),
+                  reverse=True)[:slots]
+
+def run_card(r):
     g = r['_game']
     au = ', '.join(a['user'] for a in r['authors'])
     rs, vs = eff_state(r)
     sm = ('<span class="importedsm">Imported</span>' if rs == 'imported' else
           '<span class="versm">Verified</span>' if is_ranked(r) else
           '<span class="pendsm">Pending</span>')
-    cards.append(f'''<a class="card" href="runs/{r['id']}/">
+    return f'''<a class="card" href="runs/{r['id']}/">
 {thumb_html(r, f'<span class="dur">{esc(primary_metric_text(r))}</span>')}
 <span class="cbody"><b>{esc(g['title'])}</b><span class="ccat">{esc(cat_label(r))}</span>
 <span class="cauth">{esc(au)}</span>
-<span class="cfoot"><span>{run_clock(r) if r.get('videoOnly') else f"{r['movie']['frames']:,}f"}</span><span><span class="starglyph">★</span>{nlikes(r)}</span>{sm}</span></span></a>''')
+<span class="cfoot"><span>{run_clock(r) if r.get('videoOnly') else f"{r['movie']['frames']:,}f"}</span><span><span class="starglyph">★</span>{nlikes(r)}</span>{sm}</span></span></a>'''
+
+cards = [run_card(r) for r in fresh_selection(runs, slots=12)]
+liked_cards = [run_card(r) for r in liked_selection(runs)]
 stats = f'''<div class="statstrip">
 <div class="stat"><b>{len(runs)}</b><span>runs</span></div>
 <div class="stat"><b>{len(games)}</b><span>games</span></div>
@@ -81,7 +91,9 @@ decided in the open, by the people who care about it.</p>
 </div>
 </aside>
 </div></section>
-<section><h2>Freshly archived</h2><div class="grid">{''.join(cards)}</div></section>
+<section><h2>Freshly archived</h2>
+<div class="hwrap"><div class="hrow">{''.join(cards)}</div></div></section>
+{f'<section><h2>Most liked</h2><div class="hwrap"><div class="hrow">{"".join(liked_cards)}</div></div></section>' if liked_cards else ''}
 <section class="homefoot"><div class="cols3">
 <div class="factbox"><h4>Archive first</h4><p class="statline">Runs are archived instantly into
 <a href="https://github.com/ToolAssisted-run/archive">the public archive</a> and appear

@@ -2122,6 +2122,65 @@
   // The AT Protocol serves public posts as JSON to anybody (CORS open, no
   // token, no cookies), so the panel renders in our own markup instead of
   // handing the reader to a third-party widget.
+  // ---- member news: ten shown, the rest a quiet click away ----
+  document.querySelectorAll('.newsmore').forEach(function(b){
+    b.addEventListener('click', function(){
+      var rest = b.parentElement.querySelector('.newsrest');
+      if (rest) rest.hidden = false;
+      b.remove();
+    });
+  });
+
+  // ---- shelves: one row, dragged sideways (home page) ----
+  // native touch panning is left alone; the mouse gets click-hold-drag,
+  // and the faint arrows appear only on the side with more to see
+  document.querySelectorAll('.hwrap > .hrow').forEach(function(row){
+    var wrap = row.parentElement;
+    function mk(dir){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'harr ' + (dir < 0 ? 'left' : 'right');
+      b.textContent = dir < 0 ? '\u2039' : '\u203a';
+      b.setAttribute('aria-label', dir < 0 ? 'scroll left' : 'scroll right');
+      b.addEventListener('click', function(){
+        row.scrollBy({left: dir * row.clientWidth * 0.8, behavior: 'smooth'});
+      });
+      wrap.appendChild(b);
+      return b;
+    }
+    var left = mk(-1), right = mk(1);
+    function paint(){
+      var max = row.scrollWidth - row.clientWidth - 1;
+      left.hidden = row.scrollLeft <= 0;
+      right.hidden = row.scrollLeft >= max;
+    }
+    row.addEventListener('scroll', paint, {passive: true});
+    window.addEventListener('resize', paint);
+    paint();
+    var down = false, moved = false, sx = 0, sl = 0;
+    row.addEventListener('pointerdown', function(e){
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      down = true; moved = false; sx = e.clientX; sl = row.scrollLeft;
+      try { row.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    row.addEventListener('pointermove', function(e){
+      if (!down) return;
+      var dx = e.clientX - sx;
+      if (!moved && Math.abs(dx) > 4) { moved = true; row.classList.add('dragging'); }
+      if (moved) row.scrollLeft = sl - dx;
+    });
+    function lift(){
+      if (!down) return;
+      down = false;
+      setTimeout(function(){ moved = false; row.classList.remove('dragging'); }, 0);
+    }
+    row.addEventListener('pointerup', lift);
+    row.addEventListener('pointercancel', lift);
+    row.addEventListener('click', function(e){
+      if (moved) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+  });
+
   var bfeed = document.getElementById('bskyfeed');
   if (bfeed) {
     var handle = bfeed.dataset.handle || '';
