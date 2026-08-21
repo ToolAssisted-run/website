@@ -2495,43 +2495,4 @@
     });
   }
 
-  // ---- contribute page: Needs verification filter ----
-  // Runs that already have a community verification ("Verified: ranked") only
-  // need an Expert to make them permanent. Hide those rows from users who
-  // cannot do that: only a covering Expert (whose scope reaches this run's game, 
-  // resolved by the generator and stamped as data-experts on each row) 
-  // can submit an expert verification.
-  // If every ranked row is filtered out, the table is hidden and the
-  // "nothing waiting" note shown in its place.
-  mep.then(function(d){
-    var nvTable = document.getElementById('nv-table');
-    if (!nvTable || d.unreachable) return;
-
-    var u = d.loggedIn ? d.user.toLowerCase() : null;
-    var T = window.TAR || {};
-    var isFounder = u !== null && (T.founders || []).map(function(x){ return x.toLowerCase(); }).indexOf(u) >= 0;
-    var isCommittee = u !== null && (T.committee || []).map(function(x){ return x.toLowerCase(); }).indexOf(u) >= 0;
-
-    var rows = nvTable.querySelectorAll('tbody tr[data-verified-ranked]');
-    var removedCount = 0;
-    rows.forEach(function(tr){
-      var experts = (tr.dataset.experts || '').split(',').map(function(x){ return x.trim().toLowerCase(); });
-      var isCoveringExpert = u !== null && experts.indexOf(u) >= 0;
-
-      if (!isCoveringExpert) {
-        tr.parentNode.removeChild(tr);
-        removedCount++;
-      }
-    });
-
-    if (removedCount > 0) {
-      var remainingRows = nvTable.querySelectorAll('tbody tr');
-      if (remainingRows.length === 0) {
-        nvTable.style.display = 'none';
-        var nvEmpty = document.getElementById('nv-empty');
-        if (nvEmpty) nvEmpty.style.display = '';
-      }
-    }
-  });
-
 })();
