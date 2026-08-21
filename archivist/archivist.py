@@ -1348,11 +1348,13 @@ def run_delete():
 
 @app.post('/api/game/delete')
 def game_delete():
-    """An expert deletes a game record; its movies survive, uncategorized.
+    """An expert deletes a game outright, and its runs go with it.
 
-    The runs move to the system's Uncategorized holding game and rank by
-    likes until somebody re-homes them: a wrong game record says nothing
-    about the movies inside it.
+    The use case is a game that should never have been archived: rule
+    violations, spam, fabrications. Every deleted run gets its own line in
+    deletions.json beside the game's, so the log carries the whole act, and
+    git history keeps the bytes. Works that were genuine but mis-homed are
+    moved by an expert run edit, never by deletion.
     """
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
@@ -1369,9 +1371,6 @@ def game_delete():
             return fail('game must be system/slug')
         game_key = m.group(0)
         system, slug = m.groups()
-        if slug == 'uncategorized':
-            return fail('the holding game is where deleted games\' runs live; it '
-                        'cannot itself be deleted')
         gdir = ARCHIVE / 'games' / system / slug
         if not (gdir / 'game.json').exists():
             return fail(f'unknown game {game_key}', 404)
@@ -1379,60 +1378,25 @@ def game_delete():
             return fail(f'{actor!r} is not an expert covering {game_key}', 403)
         game = json.loads((gdir / 'game.json').read_text())
         run_dirs = sorted(d for d in (gdir / 'runs').glob('M*') if d.is_dir())
-        hold_key = f'{system}/uncategorized'
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_delete': game_key,
-                            'runs_moving': [d.name for d in run_dirs],
-                            'to': hold_key if run_dirs else None})
+                            'runs_deleted': [d.name for d in run_dirs]})
         checkout_branch()
         gdir = ARCHIVE / 'games' / system / slug
         if not (gdir / 'game.json').exists():
             return fail(f'unknown game {game_key}', 404)
         run_dirs = sorted(d for d in (gdir / 'runs').glob('M*') if d.is_dir())
-        moved = []
-        if run_dirs:
-            hdir = ARCHIVE / 'games' / system / 'uncategorized'
-            if not (hdir / 'game.json').exists():
-                (hdir / 'runs').mkdir(parents=True, exist_ok=True)
-                (hdir / 'game.json').write_text(json.dumps(
-                    {'title': 'Uncategorized', 'system': system},
-                    indent=1) + '\n')
-                (hdir / 'categories.json').write_text(json.dumps(
-                    {'dimensions': [{'key': 'goal', 'name': 'Category', 'options': []}]},
-                    indent=1) + '\n')
-            for d in run_dirs:
-                dest = hdir / 'runs' / d.name
-                if dest.exists():
-                    return fail(f'{d.name} already exists under {hold_key}; not '
-                                f'overwriting', 409)
-                shutil.move(str(d), str(dest))
-                rj = dest / 'run.json'
-                rdoc = json.loads(rj.read_text())
-                old_goal = (rdoc.get('category') or {}).get('goal', '?')
-                rdoc['game'] = hold_key
-                rdoc['category'] = {'goal': 'unclassified'}
-                if not (rdoc.get('goalDescription') or '').strip():
-                    # an unclassified run states its own goal; this one's goal
-                    # was its deleted game's category, so the statement is the
-                    # provenance, plainly ours and plainly factual
-                    rdoc['goalDescription'] = (
-                        f'Archived as "{old_goal}" in {game.get("title", game_key)}, '
-                        f'a game record that was deleted; awaiting a new home.')
-                # verification is goal-bound and the goal died with the game:
-                # live verifications are voided, on the record, with the reason.
-                # Reproductions and console verifications attest sync, not the
-                # goal, so they survive the move untouched.
-                for v_ in rdoc.get('verifications', []):
-                    if not v_.get('invalidated'):
-                        v_['invalidated'] = {
-                            'by': 'system',
-                            'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                            'reason': f'The game {game_key} was deleted; the goal '
-                                      f'this verification was bound to went with it.'}
-                if rdoc.get('status', {}).get('verified') not in ('imported',):
-                    rdoc['status']['verified'] = 'none'
-                rj.write_text(json.dumps(rdoc, indent=1) + '\n')
-                moved.append(d.name)
+        deleted_runs = []
+        for d in run_dirs:
+            try:
+                rdoc = json.loads((d / 'run.json').read_text())
+                rtitle = f'{game.get("title", game_key)} ' \
+                         f'({(rdoc.get("category") or {}).get("goal", "?")})'
+            except Exception:                                 # noqa: BLE001
+                rtitle = game.get('title', game_key)
+            log_deletion('run', d.name, rtitle, actor,
+                         f'Its game {game_key} was deleted. {reason}')
+            deleted_runs.append(d.name)
         shutil.rmtree(gdir)
         # the game leaves any group it sat in; a group cannot hold a ghost
         doc = load_groups()
@@ -1450,15 +1414,13 @@ def game_delete():
                                    'scope': scope, 'action': 'revoked', 'by': actor,
                                    'date': today_, 'at': now_iso(),
                                    'reason': f'The game was deleted. {reason}'})
-        log_deletion('game', game_key, game.get('title', game_key), actor, reason,
-                     moved_to=hold_key if moved else None)
+        log_deletion('game', game_key, game.get('title', game_key), actor, reason)
         ensure_member(actor)
         commit_push(f'Delete game {game_key}: by expert {actor}\n\n'
                     f'Reason: {reason}\n'
-                    f'Runs moved to {hold_key}: {", ".join(moved) or "none"}\n'
+                    f'Runs deleted with it: {", ".join(deleted_runs) or "none"}\n'
                     f'Via: archivist')
-    return jsonify({'ok': True, 'deleted': game_key, 'runs_moved': moved,
-                    'to': hold_key if moved else None})
+    return jsonify({'ok': True, 'deleted': game_key, 'runs_deleted': deleted_runs})
 
 @app.post('/api/group/delete')
 def group_delete():
@@ -1690,6 +1652,9 @@ def group_create():
         games = [g.strip() for g in (f.get('games') or '').replace(',', ' ').split() if g.strip()]
         if not re.fullmatch(r'[a-z0-9]+(-[a-z0-9]+)*', key or ''):
             return fail('the group key must be lowercase words joined by hyphens')
+        if key in ('uncategorized', 'unclassified'):
+            return fail(f'{key} is reserved for the derived group that gathers '
+                        f'every game no group has claimed')
         if not (1 <= len(title) <= 80):
             return fail('a group needs a title')
         doc = load_groups()
@@ -1734,8 +1699,10 @@ def group_create():
 
 @app.post('/api/group/edit')
 def group_edit():
-    """Add or remove games, or retitle. Adding needs authority over the game as
-    well as the group: a group is not a way to reach games you do not cover."""
+    """Add, move in or remove games, or retitle. Adding needs authority over
+    the game as well as the group: a group is not a way to reach games you do
+    not cover. `move` differs from `add` in one way: it pulls the game out of
+    whatever group holds it, because a game belongs to one group."""
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
@@ -1748,8 +1715,11 @@ def group_edit():
             return err_
         key = (f.get('group') or '').strip().lower()
         add = [g.strip() for g in (f.get('add') or '').replace(',', ' ').split() if g.strip()]
+        move = [g.strip() for g in (f.get('move') or '').replace(',', ' ').split() if g.strip()]
         drop = [g.strip() for g in (f.get('remove') or '').replace(',', ' ').split() if g.strip()]
         title = (f.get('title') or '').strip()
+        if not (add or move or drop or title):
+            return fail('nothing to change')
         doc = load_groups()
         gr = next((g for g in doc['groups'] if g['key'] == key), None)
         if not gr:
@@ -1768,13 +1738,21 @@ def group_edit():
                          None)
             if other:
                 return fail(f'{g} already belongs to the {other["title"]} group; a game '
-                            f'belongs to one', 409)
+                            f'belongs to one (move it instead)', 409)
+        for g in move:
+            if not (ARCHIVE / 'games' / g / 'game.json').is_file():
+                return fail(f'no such game: {g!r}', 404)
+            if not expert_covers(expert, g) and not is_editor(expert):
+                return fail(f'{expert} holds no scope covering {g}; a group cannot '
+                            f'reach a game its curator may not speak for', 403)
+            if g in gr['games']:
+                return fail(f'{g} is already in this group', 409)
         for g in drop:
             if g not in gr['games']:
                 return fail(f'{g} is not in this group', 404)
         if title and not (1 <= len(title) <= 80):
             return fail('a title must be under 80 characters')
-        after = sorted((set(gr['games']) | set(add)) - set(drop))
+        after = sorted((set(gr['games']) | set(add) | set(move)) - set(drop))
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_hold': after,
                             'title': title or gr['title']})
@@ -1785,16 +1763,29 @@ def group_edit():
             return fail(f'no group with the key {key!r}', 404)
         before_games = list(gr['games'])
         before_title = gr['title']
-        gr['games'] = sorted((set(gr['games']) | set(add)) - set(drop))
+        # a move pulls the game out of whatever group held it, first
+        moved_from = {}
+        for other in doc['groups']:
+            if other['key'] == key:
+                continue
+            hits = [g for g in move if g in other.get('games', [])]
+            if hits:
+                other['games'] = [g for g in other['games'] if g not in hits]
+                for g in hits:
+                    moved_from[g] = other['key']
+        gr['games'] = sorted((set(gr['games']) | set(add) | set(move)) - set(drop))
         if title:
             gr['title'] = title
         save_groups(doc)
         what = ', '.join(filter(None, [
-            f'+{" ".join(add)}' if add else '', f'-{" ".join(drop)}' if drop else '',
+            f'+{" ".join(add)}' if add else '',
+            ' '.join(f'{g} moved in from {moved_from[g]}' if g in moved_from
+                     else f'{g} moved in' for g in move) if move else '',
+            f'-{" ".join(drop)}' if drop else '',
             f'retitled {title!r}' if title else '']))
-        log_edit('group', key, 'games' if (add or drop) else 'title',
-                 ', '.join(before_games) if (add or drop) else before_title,
-                 ', '.join(gr['games']) if (add or drop) else gr['title'],
+        log_edit('group', key, 'games' if (add or move or drop) else 'title',
+                 ', '.join(before_games) if (add or move or drop) else before_title,
+                 ', '.join(gr['games']) if (add or move or drop) else gr['title'],
                  expert, f'Changed from the group form: {what}')
         ensure_member(expert)
         commit_push(f'Group {key}: {what}\n\nBy: {expert}\nVia: archivist')

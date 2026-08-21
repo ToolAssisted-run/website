@@ -1332,6 +1332,43 @@ def main():
                            {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
                             'reason': 'The shelf was a fixture experiment.'})
             ck('an editor deletes a group', c == 200, str(r))
+
+            # --- moving a game between groups: one act, one home ---
+            c, r, _ = call(U + '/api/group/create',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'uncategorized',
+                            'title': 'Sneaky', 'games': 'nes/solomons-key'})
+            ck('the derived group keys cannot be claimed',
+               c == 400 and 'reserved' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/group/create',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'movetest',
+                            'title': 'Move Test', 'games': 'nes/solomons-key'})
+            ck('a site expert gathers an ungrouped game', c == 200, str(r))
+            c, r, _ = call(U + '/api/group/edit',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'test-family',
+                            'add': 'nes/solomons-key'})
+            ck('add refuses a game that has a home; moving is explicit',
+               c == 409 and 'move' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/group/edit',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'test-family',
+                            'move': 'nes/solomons-key'})
+            ck('a move lands the game here',
+               c == 200 and 'nes/solomons-key' in r['games'], str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            gdoc = json.loads((work / 'groups.json').read_text())['groups']
+            ck('and pulls it out of the group that held it',
+               'nes/solomons-key' not in next(
+                   g for g in gdoc if g['key'] == 'movetest')['games'], str(gdoc))
+            c, r, _ = call(U + '/api/group/edit',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'movetest',
+                            'move': 'nes/solomons-key'})
+            ck('and back again', c == 200 and 'nes/solomons-key' in r['games'], str(r))
+            c, r, _ = call(U + '/api/group/edit',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'movetest'})
+            ck('an edit that changes nothing is refused', c == 400, str(r))
+            c, r, _ = call(U + '/api/group/delete',
+                           {'key': KEY, 'expert': 'eien86', 'group': 'movetest',
+                            'reason': 'The move-test scaffolding comes down.'})
+            ck('the move-test scaffold goes', c == 200, str(r))
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
                             'target': 'M900010', 'field': 'goal',
@@ -1951,26 +1988,23 @@ def main():
             c, r, _ = call(U + '/api/game/delete',
                            {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
                             'reason': 'deleting the game its movies live in'})
-            ck('deleting a game moves its movies to Uncategorized',
-               c == 200 and 'M900010' in r['runs_moved']
-               and r['to'] == 'nes/uncategorized', str(r))
+            ck('deleting a game deletes its runs with it',
+               c == 200 and 'M900010' in r['runs_deleted'], str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            moved_rj = work / 'games/nes/uncategorized/runs/M900010/run.json'
-            ck('the moved movie survives with an unclassified category',
-               moved_rj.exists()
-               and json.loads(moved_rj.read_text())['category']['goal'] == 'unclassified'
-               and json.loads(moved_rj.read_text())['game'] == 'nes/uncategorized',
-               str(moved_rj))
             ck('the deleted game is gone from the tree and its group',
                not (work / 'games/nes/pinball').exists()
                and 'nes/pinball' not in json.dumps(
                    json.loads((work / 'groups.json').read_text())), 'still present')
+            ck('no holding game was conjured for the fallen runs',
+               not (work / 'games/nes/uncategorized').exists(), 'it exists')
+            dele = json.loads((work / 'deletions.json').read_text())['events']
+            ck('each deleted run has its own line in the public log',
+               any(e['kind'] == 'run' and e['key'] == 'M900010'
+                   and 'nes/pinball' in e['reason'] for e in dele), str(dele[-3:]))
             c, r, _ = call(U + '/api/run/delete',
                            {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
-                            'reason': 'the movie itself was a fixture test all along'})
-            ck('an expert deletes a movie outright', c == 200, str(r))
-            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            ck('the movie is gone', not moved_rj.exists(), 'still present')
+                            'reason': 'the movie went down with its game'})
+            ck('the run is already gone with its game', c == 404, str(r))
             c, r, _ = call(U + '/api/group/delete',
                            {'key': KEY, 'expert': 'eien86', 'group': 'founder-group',
                             'reason': 'dissolving a fixture group outright'})
