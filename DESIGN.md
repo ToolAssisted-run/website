@@ -639,6 +639,16 @@ archivist, module responsibilities). What matters designwise:
   been updated · Refresh") offers the reload. Never automatic: the reload
   is the reader's. (The pill earns its keep again whenever the Pages
   standby, with its `max-age=600`, is in front.)
+- **Confirmations mean "and you can see it"**: every successful write's
+  response carries the archive revision it produced (`serial`, injected by
+  the archivist for every non-dry POST), and the buildstamp carries the
+  revision the served site was built from. The client holds the green
+  message at "Publishing to the site…" until the served stamp reaches the
+  response's serial, then says the change is live; follow-on links (submit
+  a run to a just-created game or category) only appear at that moment, so
+  they always land on pages that know about the change. If the stamp never
+  catches up in 30 s (the Pages standby serving), the message degrades to
+  "shortly" instead of lying.
 
 ---
 

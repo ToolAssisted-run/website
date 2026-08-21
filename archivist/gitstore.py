@@ -84,6 +84,22 @@ def _abandon_unfinished_git_state():
 
 _last_refresh = {'t': 0.0}
 
+_serial_cache = {'n': None}
+
+def current_serial():
+    """How many commits main carries: a monotonically increasing stamp of
+    the archive's state. Every successful write's response carries it, the
+    built site's buildstamp carries the one it was built from, and the
+    client compares the two to know when a change is actually live."""
+    with lock:
+        if _serial_cache['n'] is None:
+            try:
+                _serial_cache['n'] = int(sh('git', 'rev-list', '--count',
+                                            'HEAD').stdout)
+            except (subprocess.CalledProcessError, ValueError):
+                return 0
+        return _serial_cache['n']
+
 def checkout_branch():
     _abandon_unfinished_git_state()
     _last_refresh['t'] = time.time()
@@ -103,6 +119,7 @@ def checkout_branch():
     # content that arrived from elsewhere (a manual push, another writer)
     # deserves a fresh site just as much as content committed here
     if before is not None and sh('git', 'rev-parse', 'HEAD').stdout.strip() != before:
+        _serial_cache['n'] = None
         import sitebuild
         sitebuild.request_build()
 
@@ -160,6 +177,7 @@ def commit_push(message):
     for attempt in range(2):
         try:
             sh('git', 'push', '-q', 'origin', f'{BRANCH}:{BRANCH}')
+            _serial_cache['n'] = None
             import sitebuild
             sitebuild.request_build()       # this host publishes in ~a second
             dispatch_site_rebuild()         # the Pages standby follows behind

@@ -29,6 +29,35 @@
     box.textContent = text;
     box.className = 'actmsg ' + (good ? 'good' : 'bad');
   }
+  // A write is only done, for the reader, once the site serves it. Every
+  // successful write answers with the archive revision it produced
+  // (serial); assets/buildstamp.json carries the revision the served site
+  // was built from. Poll the stamp until it catches up, then say so; if
+  // the slow standby is serving instead, give up quietly after 30 s.
+  function waitBuilt(serial, cb){
+    if (!serial) { cb(false); return; }
+    var t0 = Date.now();
+    (function poll(){
+      fetch(rel + 'assets/buildstamp.json', {cache: 'no-store'})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if (j && j.serial && j.serial >= serial) { cb(true); return; }
+          if (Date.now() - t0 > 30000) { cb(false); return; }
+          setTimeout(poll, 400);
+        })
+        .catch(function(){
+          if (Date.now() - t0 > 30000) cb(false);
+          else setTimeout(poll, 900);
+        });
+    })();
+  }
+  function noteBuilt(box, doneText, serial, liveText){
+    note(box, doneText + ' Publishing to the site…', true);
+    waitBuilt(serial, function(live){
+      note(box, doneText + ' ' + (live ? (liveText || 'It is live on the site now.')
+                                       : 'It will appear on the site shortly.'), true);
+    });
+  }
   var _namesP = null;
   function authorNames(){
     _namesP = _namesP || fetch(rel + 'assets/authornames.json' + V)
@@ -356,8 +385,7 @@
           post(spec.path, new FormData(form), form.querySelector('button'))
             .then(function(res){
               if (res.ok && res.j.ok) {
-                note(msg, spec.done(res.j) + ' The site rebuilds from the archive; ' +
-                          'it shows here in a few seconds.', true);
+                noteBuilt(msg, spec.done(res.j), res.j.serial);
                 form.reset();
               } else note(msg, res.j.error || 'something went wrong', false);
             });
@@ -409,8 +437,8 @@
         post('/api/member/delete', new FormData(form), form.querySelector('button'))
           .then(function(res){
             if (res.ok && res.j.ok) {
-              note(msg, 'Deleted. The site rebuilds from the archive; the page goes ' +
-                        'in a few seconds.', true);
+              noteBuilt(msg, 'Deleted.', res.j.serial,
+                        'The page is gone from the site now.');
             } else note(msg, res.j.error || 'something went wrong', false);
           });
       });
@@ -514,9 +542,8 @@
           post('/api/founder/committee', new FormData(form),
                form.querySelector('button')).then(function(res){
             if (res.ok && res.j.ok) {
-              note(msg, (res.j.action === 'granted' ? 'Seated. ' : 'Unseated. ') +
-                        (res.j.told || '') + ' It shows on the site in a few seconds.',
-                   true);
+              noteBuilt(msg, (res.j.action === 'granted' ? 'Seated. ' : 'Unseated. ') +
+                        (res.j.told || ''), res.j.serial);
               form.reset();
             } else note(msg, res.j.error || 'something went wrong', false);
           });
@@ -586,9 +613,8 @@
         post('/api/role/decide', new FormData(roleForm), roleForm.querySelector('button'))
           .then(function(res){
             if (res.ok && res.j.ok) {
-              note(roleMsg, 'Recorded: ' + res.j.votes + ' of ' + res.j.committee +
-                        ' voted for it. The site rebuilds from the archive; the badge ' +
-                        'appears here in a few seconds.', true);
+              noteBuilt(roleMsg, 'Recorded: ' + res.j.votes + ' of ' + res.j.committee +
+                        ' voted for it.', res.j.serial);
               roleForm.reset();
             } else note(roleMsg, res.j.error || 'something went wrong', false);
           });
@@ -608,8 +634,8 @@
         post('/api/expert/appoint', new FormData(sform),
              sform.querySelector('button')).then(function(res){
           if (res.ok && res.j.ok) {
-            note(cmsg, res.j.user + ' is now an expert for the whole site. It shows ' +
-                       'on the site in a few seconds.', true);
+            noteBuilt(cmsg, res.j.user + ' is now an expert for the whole site.',
+                      res.j.serial);
             sform.reset();
           } else note(cmsg, res.j.error || 'something went wrong', false);
         });
@@ -630,8 +656,7 @@
         post('/api/editor/appoint', new FormData(eform),
              eform.querySelector('button')).then(function(res){
           if (res.ok && res.j.ok) {
-            note(cmsg, res.j.user + ' is now an editor. The badge shows on the ' +
-                       'site in a few seconds.', true);
+            noteBuilt(cmsg, res.j.user + ' is now an editor.', res.j.serial);
             eform.reset();
           } else note(cmsg, res.j.error || 'something went wrong', false);
         });
@@ -922,8 +947,7 @@
           ev.preventDefault();
           post(path, new FormData(form), form.querySelector('button')).then(function(res){
             if (res.ok && res.j.ok) {
-              note(msg, done(res.j) + ' The site rebuilds from the archive; it shows ' +
-                        'here in a few seconds.', true);
+              noteBuilt(msg, done(res.j), res.j.serial);
               form.reset();
             } else note(msg, res.j.error || 'something went wrong', false);
           });
@@ -996,8 +1020,7 @@
           fd.append('run', D.run);
           post(path, fd, form.querySelector('button')).then(function(res){
             if (res.ok && res.j.ok) {
-              note(out, 'Recorded, thank you. The site rebuilds from the archive; ' +
-                        'your change appears here in a few seconds.', true);
+              noteBuilt(out, 'Recorded, thank you.', res.j.serial);
             } else note(out, res.j.error || 'something went wrong', false);
           });
         });
@@ -1154,9 +1177,8 @@
       gate.hidden = true;
       document.getElementById('geditor').hidden = false;
       var msg = document.getElementById('ge-msg');
-      function ok(text){
-        note(msg, text + ' The site rebuilds from the archive; it shows in a ' +
-                  'few seconds.', true);
+      function ok(text, serial){
+        noteBuilt(msg, text, serial);
       }
       function wire(id, path, confirmText, done){
         var form = document.getElementById(id);
@@ -1166,7 +1188,7 @@
           if (confirmText && !window.confirm(confirmText)) return;
           post(path, new FormData(form), form.querySelector('button'))
             .then(function(res){
-              if (res.ok && res.j.ok) ok(done(res.j));
+              if (res.ok && res.j.ok) ok(done(res.j), res.j.serial);
               else note(msg, res.j.error || 'something went wrong', false);
             });
         });
@@ -1220,12 +1242,13 @@
           if (ruleIn.value.trim() !== o.rule) jobs.push(['rule', ruleIn.value.trim()]);
           if (med.value() !== med0) jobs.push(['metrics', med.value()]);
           if (!jobs.length) { note(msg, 'Nothing changed on ' + o.key + '.', false); return; }
+          var savedSerial;
           function step(){
             if (!jobs.length) {
               o.label = labIn.value.trim();
               o.rule = ruleIn.value.trim();
               med0 = med.value();
-              ok('Saved ' + o.key + '.');
+              ok('Saved ' + o.key + '.', savedSerial);
               return;
             }
             var job = jobs.shift();
@@ -1236,7 +1259,7 @@
             fd.append('value', job[1]);
             fd.append('reason', whyIn.value.trim());
             post('/api/expert/edit', fd, save).then(function(res){
-              if (res.ok && res.j.ok) step();
+              if (res.ok && res.j.ok) { savedSerial = res.j.serial; step(); }
               else note(msg, res.j.error || 'something went wrong', false);
             });
           }
@@ -1252,7 +1275,7 @@
             fd.append('game', GE.game);
             fd.append('option', o.key);
             post('/api/category/delete', fd, del).then(function(res){
-              if (res.ok && res.j.ok) { card.remove(); ok('Removed ' + o.key + '.'); }
+              if (res.ok && res.j.ok) { card.remove(); ok('Removed ' + o.key + '.', res.j.serial); }
               else note(msg, res.j.error || 'something went wrong', false);
             });
           });
@@ -1861,9 +1884,10 @@
             if (sbtn) sbtn.disabled = true;      // done: never offer it again
             sformDirty = false;                  // archived: nothing left to lose
             sform.hidden = true;
-            note(msg, 'Archived as ' + res.j.id + '. Your run page appears after the next ' +
-                      'rebuild (a few seconds) at ../runs/' + res.j.id + '/' +
-                      (res.j.forum ? '. Announced on the forum: ' + res.j.forum : ''), true);
+            noteBuilt(msg, 'Archived as ' + res.j.id + '.' +
+                      (res.j.forum ? ' Announced on the forum: ' + res.j.forum : ''),
+                      res.j.serial,
+                      'Your run page is live at ../runs/' + res.j.id + '/.');
           } else note(msg, res.j.error || 'something went wrong', false);
         });
       });
@@ -1994,13 +2018,16 @@
     var cgmsg = document.getElementById('cg-msg');
     wireCreateForm(cgform, document.getElementById('cg-login'), cgmsg,
                    '/api/game/create', function(j){
-      note(cgmsg, 'Created. The game page appears after the next rebuild (a few seconds). ' +
-                  'Submit the run now: ../submit/?game=' + j.game, true);
-      var a = document.createElement('a');
-      a.className = 'btn'; a.href = '../submit/?game=' + j.game;
-      a.textContent = 'Submit a run to ' + j.game;
-      cgmsg.appendChild(document.createElement('br'));
-      cgmsg.appendChild(a);
+      note(cgmsg, 'Created. Publishing to the site…', true);
+      waitBuilt(j.serial, function(live){
+        note(cgmsg, live ? 'Created. The game page is live; submit a run to it now.'
+                         : 'Created. It will appear on the site shortly.', true);
+        var a = document.createElement('a');
+        a.className = 'btn'; a.href = '../submit/?game=' + j.game;
+        a.textContent = 'Submit a run to ' + j.game;
+        cgmsg.appendChild(document.createElement('br'));
+        cgmsg.appendChild(a);
+      });
     });
   }
   var ccform = document.getElementById('createcatform');
@@ -2016,12 +2043,16 @@
       var ccmsg = document.getElementById('cc-msg');
       wireCreateForm(ccform, document.getElementById('cc-login'), ccmsg,
                      '/api/category/add', function(j){
-        note(ccmsg, 'Created. Submit the run now: ../submit/?game=' + ccKey, true);
-        var a = document.createElement('a');
-        a.className = 'btn'; a.href = '../submit/?game=' + ccKey;
-        a.textContent = 'Submit a run';
-        ccmsg.appendChild(document.createElement('br'));
-        ccmsg.appendChild(a);
+        note(ccmsg, 'Created. Publishing to the site…', true);
+        waitBuilt(j.serial, function(live){
+          note(ccmsg, live ? 'Created. The category is live; submit the run now.'
+                           : 'Created. It will appear on the site shortly.', true);
+          var a = document.createElement('a');
+          a.className = 'btn'; a.href = '../submit/?game=' + ccKey;
+          a.textContent = 'Submit a run';
+          ccmsg.appendChild(document.createElement('br'));
+          ccmsg.appendChild(a);
+        });
       });
     }
   }
@@ -2344,7 +2375,11 @@
           if (r.remaining > 0 && r.imported.length) { step(); return; }
           logLine('');
           logLine('Done: ' + done + ' imported' + (skips ? ', ' + skips + ' need attention (see above)' : '') + '.');
-          logLine('The site rebuilds from the archive; your runs appear in a few seconds.');
+          logLine('Publishing to the site…');
+          waitBuilt(r.serial, function(live){
+            logLine(live ? 'Your runs are live on the site now.'
+                         : 'Your runs will appear on the site shortly.');
+          });
           runBtn.hidden = true;
           busy(runBtn, false);
         });
