@@ -1,0 +1,13 @@
+#!/bin/bash
+# The live origin's code deploy, run by CI (deploy.yml, job sync-vps) through
+# a forced-command SSH key after the full test suite has passed on main.
+# Pulls the website checkout, installs the archivist, restarts it; the
+# restart's startup build republishes the site with the new generator.
+set -euo pipefail
+cd /opt/archivist/website
+git fetch -q origin
+git reset -q --hard origin/main
+git clean -qfd
+cp archivist/*.py /opt/archivist/
+systemctl restart archivist
+echo "synced to $(git rev-parse --short HEAD): $(git log -1 --format=%s)"
