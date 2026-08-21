@@ -495,6 +495,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .dimrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .gcontrols{margin:14px 0 16px;justify-content:flex-end}
 .dimsub{display:inline-flex;gap:8px;align-items:center;margin-left:18px}
+.dimsub.nogap{margin-left:0}
 .dimname{font-family:ui-monospace,monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);min-width:60px}
 .dimopt{padding:7px 14px;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--muted);font:inherit;font-size:.86rem;cursor:pointer}
 .dimopt:hover{border-color:var(--accent-text);color:var(--ink)}
