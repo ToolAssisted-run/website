@@ -733,14 +733,22 @@ archivist, module responsibilities). What matters designwise:
   dormant. If dispatches ever stop, deploys degrade silently to the
   six-hourly rebuild: check the token first. The retired FTP_* secrets are
   deleted from both repos (values survive in the operator's local netrc).
-- **Backups**: the archive is backed up by being git, everywhere; the
-  TASVideos corpus lives in a private backup repo, refreshed by a daily VPS
-  cron (05:17 UTC, paced, single-threaded; the only thing that ever touches
-  tasvideos.org). Discourse dumps daily (5 kept locally) and a second cron
-  (04:30, `/usr/local/bin/ship-discourse-backups`) ships them to Infomaniak
-  Swiss Backup over rclone/Swift (`swissbackup:discourse-backups`, 30-day
-  remote retention; config in root's rclone.conf on the VPS). The ship log
-  is silent on success; verify with `rclone ls`, not the log.
+- **Backups: one snapshot restores 100% of the site** (scripts and
+  `RESTORE.md` in `infra/vps/`). Two crons ship to Infomaniak Swiss Backup
+  over rclone/Swift (config in root's rclone.conf on the VPS): Discourse
+  dumps daily (04:30, `ship-discourse-backups` →
+  `swissbackup:discourse-backups`, 30-day retention; 5 kept locally), and
+  the whole site's state daily (04:45, `ship-site-backups` →
+  `swissbackup:site-backups`, 30-day retention): a full-history git bundle
+  of the archive, one of the website repo, and a state tarball carrying the
+  operational files (visits, spool, claims), the archivist env and keys,
+  nginx vhosts, certificates, cron files and the Discourse `app.yml` — it
+  contains secrets, which is the point of a restorable snapshot on private
+  storage. The TASVideos corpus (2.3 GB; also mirrored to a private GitHub
+  repo, refreshed daily at 05:17 by the only cron that ever touches
+  tasvideos.org) ships as a weekly bundle (Mondays →
+  `swissbackup:corpus-backups`, 21-day retention). Ship logs are silent on
+  success; verify with `rclone ls`, not the log.
 - **History is rewritten only deliberately, for records about people**, and
   a force push is always a human hand, never tooling (the auto-mode
   classifier blocks it by design). After any rewrite: GitHub keeps old
