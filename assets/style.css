@@ -125,7 +125,13 @@ background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53
 .heronews{display:flex;flex-direction:column;border:2.5px solid var(--hair);
   border-radius:12px;background:var(--panel);box-shadow:var(--shadow);padding:14px 16px 12px}
 .heronews h2{font-size:1.05rem;letter-spacing:-.01em;margin-bottom:10px}
-.bskyfeed{flex:1;min-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.bskyfeed{flex:1;min-height:340px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;
+ scrollbar-width:thin;scrollbar-color:transparent transparent;padding-right:4px}
+.bskyfeed:hover{scrollbar-color:var(--hairs) transparent}
+.bskyfeed::-webkit-scrollbar{width:8px}
+.bskyfeed::-webkit-scrollbar-track{background:transparent}
+.bskyfeed::-webkit-scrollbar-thumb{background:transparent;border-radius:4px}
+.bskyfeed:hover::-webkit-scrollbar-thumb{background:var(--hairs)}
 .bpost{border-bottom:2.5px solid var(--hair);padding-bottom:11px}
 .bpost:last-child{border-bottom:none;padding-bottom:0}
 .dpost{border-top:2.5px solid var(--hair);padding:14px 0}
