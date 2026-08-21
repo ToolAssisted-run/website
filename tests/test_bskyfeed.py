@@ -81,8 +81,12 @@ def main():
            'platform.twitter.com' not in js and 'widgets.js' not in js)
         ck('the feed is read from the public AT Protocol endpoint',
            'public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed' in js)
-        ck('the home column caps itself at three posts',
-           'items = items.slice(0, 3)' in js)
+        css = (REPO / 'assets/style.css').read_text()
+        feed_rule = css[css.index('.bskyfeed{'):css.index('.bpost{')]
+        ck('the news window is a capped scroll box, not a growing column',
+           'max-height' in feed_rule and 'overflow-y:auto' in feed_rule, feed_rule[:120])
+        ck('no client-side cap: older posts are a scroll away',
+           'items.slice(0, 3)' not in js)
 
         if not node:
             print('SKIP renderer checks (node not installed)')

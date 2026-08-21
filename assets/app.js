@@ -2210,9 +2210,6 @@
             '<a href="' + profileUrl + '">@' + escH(handle) + '</a> for announcements.</p>';
           return;
         }
-        // three newest only: the column sits beside the hero and must
-        // never outgrow it; the profile link below carries the rest
-        items = items.slice(0, 3);
         bfeed.innerHTML = items.map(function(it){
           return bskyPostHtml(it, profileUrl, linkify, since);
         }).join('');
