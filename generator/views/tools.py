@@ -10,6 +10,7 @@ import subprocess
 import sys
 import urllib.parse
 from config import (
+    FORUM,
     OUT,
 )
 from render import (
@@ -71,10 +72,9 @@ your emulator records. If your tool is missing, tell us on the forum; adding a f
 <table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th></tr></thead>
 <tbody>{emu_rows}</tbody></table>
 <div class="resourcebox"><b>New to one of these emulators?</b>
-TASVideos maintains the definitive guides to all of them: setup, recording, rerecording
-workflow, and the quirks of every system:
-<a href="https://tasvideos.org/EmulatorResources">the TASVideos Emulator Resources</a>.
-An excellent place to start.</div></section>'''
+Ask on <a href="{FORUM}">our forum</a> or on
+<a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
+will point you the right way.</div></section>'''
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page('Tools', body, '../', '', 'Tools'))
 
