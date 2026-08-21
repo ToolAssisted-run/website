@@ -131,7 +131,8 @@ def main():
         # ---------------- contributor points ----------------
         # hard system (dos), submitted 150 days ago, first reproduction today:
         # 100 base + 50 hard + min(150*2, 200) = 350; second reproduction 75;
-        # each verification 20.
+        # first verification ages 1/day to double (20 + min(150,20) = 40),
+        # later verifications pay the flat 20.
         pts_runs = [
             mkarchive.run_spec('M900311', game='dos/hardgame', frames=5000,
                                authors=['Ada'], submitted=d(150),
@@ -160,8 +161,10 @@ def main():
         ck('later reproduction pays base + hard bonus only',
            stats.get('rep2', {}).get('contrib') == PT_REPRO_LATER + PT_REPRO_HARD,
            str(stats.get('rep2')))
-        ck('verification pays its flat weight',
-           stats.get('ver', {}).get('contrib') == PT_VERIFY, str(stats.get('ver')))
+        ck('the first verification ages to its cap',
+           stats.get('ver', {}).get('contrib') == PT_VERIFY * 2, str(stats.get('ver')))
+        ck('a later verification pays the flat weight',
+           stats.get('ver2', {}).get('contrib') == PT_VERIFY, str(stats.get('ver2')))
         ck('imported runs award nothing', 'importer' not in stats)
 
         ck('console verification pays its own weight',

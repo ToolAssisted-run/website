@@ -353,6 +353,10 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .newsmore:hover{color:var(--accent-text)}
 .rtab th[data-key]{cursor:pointer;user-select:none;white-space:nowrap}
 .rtab th[data-key]:hover{color:var(--accent-text)}
+/* the contribute worklists: room for ~15 rows, then they scroll; the
+   header row stays pinned while they do */
+.contscroll{max-height:640px;overflow-y:auto;border-radius:10px}
+.contscroll thead th{position:sticky;top:0;z-index:1}
 .tick-yes{color:var(--accent-text);font-weight:700}
 .tick-no{color:var(--faint)}
 .rtab th.sorted::after{content:" " attr(data-dir);font-size:.7em;color:var(--accent-text)}

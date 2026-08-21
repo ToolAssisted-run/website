@@ -133,7 +133,7 @@ gt_rows = ''.join(
     f'<tr><td><b><a href="{esc(u)}">{esc(n)}</a></b></td><td>{esc(g)}</td>'
     f'<td><code>{esc(x)}</code></td>'
     f'<td class="num">{"<span class=tick-yes>✓</span>" if p else "<span class=tick-no>—</span>"}</td></tr>'
-    for n, u, g, x, p in GAME_TOOLS)
+    for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4]))
 body = f'''<header class="ghead"><div><h1>Tools</h1>
 <p class="authline">You can create your run with any emulator and any tools you like; what you
 submit, in the end, is simply the encoded video. Below are the tools commonly used to make TASes.</p>
