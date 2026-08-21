@@ -29,6 +29,7 @@ from model import (
 from render import (
     FULL_TICK,
     IMPORTED_TICK,
+    md_html,
     run_date_cell,
     METRICS_ED,
     NONE_TICK,
@@ -81,7 +82,7 @@ for key, g in games.items():
     for combo in combo_iter(dims):
         ckey = '|'.join(o['key'] for _, o in combo)
         label = ' × '.join(o['label'] for _, o in combo)
-        rules = ' '.join(o['rule'] for _, o in combo)
+        rules = '\n\n'.join(o['rule'] for _, o in combo if o.get('rule'))
         allrs = [r for r in g['runs'] if all(r['category'][d['key']] == o['key'] for d, o in combo)]
         mdefs = next((o.get('metrics') for _, o in combo if o.get('metrics')),
                      None) or CLASSIC_METRICS
@@ -158,12 +159,12 @@ for key, g in games.items():
                              f'{esc(m["label"])} ({"lower" if m["better"] == "lower" else "higher"} is better)'
                              for m in mdefs) + '</p>')
         if allrs:
-            content = f'''<p class="rules"><b>Rules:</b> {esc(rules)}</p>{ranked_by}
+            content = f'''<div class="rules fullw rulesmd"><b>Rules:</b>{md_html(rules)}</div>{ranked_by}
 {'<table><thead><tr><th>#</th><th>Author</th><th class="num">Frames</th>' + mth + '<th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead><tbody>' + ''.join(rows) + '</tbody></table>' if rows else '<p class="emptynote">No ranked runs yet in this category.</p>'}
 {f'<h3 class="pendh">Pending: awaiting reproduction and verification</h3><table><tbody>' + ''.join(prows) + '</tbody></table>' if prows else ''}
 {f'<h3 class="histh">History: earlier runs superseded by the same authors</h3><table><tbody>' + ''.join(hrows) + '</tbody></table>' if hrows else ''}'''
         else:
-            content = (f'<p class="rules"><b>Rules:</b> {esc(rules)}</p>{ranked_by}'
+            content = (f'<div class="rules fullw rulesmd"><b>Rules:</b>{md_html(rules)}</div>{ranked_by}'
                        '<p class="emptynote">No runs archived yet in this combination.</p>')
         sections.append(f'<section class="combo" data-combo="{esc(ckey)}"><h2>{esc(label)}</h2>{content}</section>')
 
