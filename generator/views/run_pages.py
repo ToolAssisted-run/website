@@ -64,6 +64,7 @@ for r in runs:
     rs, vs = eff_state(r)
     auth_html = ' · '.join(author_chip(a['user'], '../../') for a in r['authors'])
     enc = next((e for e in r.get('encodes', []) if providers.resolve(e['url'])), None)
+    enc_url = (r.get('encodes') or [{}])[0].get('url', '')
     vid = ''
     if enc:
         pv = providers.resolve(enc['url'])
@@ -392,6 +393,7 @@ Log in (top right) to reply from here.</p></section>'''
     <input type="hidden" name="authors">
   </div>
   </div>
+  <label>Encode link</label><input name="encode" type="url" value="{esc(enc_url)}" placeholder="https://youtu.be/…">
   <label>Emulator / core (optional)</label><input name="emulator">
   <label>When was the run completed? (optional; shown beside the submission date)</label>
   <input name="completed" type="date" max="{datetime.date.today().isoformat()}">

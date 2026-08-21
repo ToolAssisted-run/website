@@ -817,6 +817,14 @@ def main():
             ck('an author revises their own run', c == 200, str(r))
             c, r, _ = call(U + '/api/edit',
                            {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                            'encode': 'https://youtu.be/X7oXnw7X0kQ'})
+            ck('an author updates the encode link', c == 200 and 'encode' in r.get('changed', []), str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rdoc = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('the replaced encode is saved in the archive record',
+               rdoc['encodes'][0]['url'] == 'https://youtu.be/X7oXnw7X0kQ', str(rdoc['encodes']))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                             'completed': '2099-01-01'})
             ck('an author cannot finish a run in the future', c == 400, str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
