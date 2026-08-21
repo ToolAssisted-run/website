@@ -12,6 +12,61 @@
     .then(function(r){ return r.json(); })
     .catch(function(){ return {loggedIn: false, unreachable: true}; });
 
+  // ---- view as: a Steering Committee member borrowing lesser eyes ----
+  // Presentation only, per tab, gone when the tab closes: the page reveals
+  // itself as if you held the chosen role and nothing more, while the
+  // archivist keeps treating every request as you. Modes: '' (yourself),
+  // expert (site-wide), editor, member, out (signed out).
+  function vaMode(){
+    try { return sessionStorage.getItem('tar-viewas') || ''; } catch (e) { return ''; }
+  }
+  var _vaOk = false;   // the wrap below decides whether the key is honored
+  function vaOn(){ return _vaOk ? vaMode() : ''; }
+  function vaCover(list, who){
+    // a page's covering-experts list, seen through the chosen eyes
+    var m = vaOn();
+    if (!m) return list || [];
+    list = (list || []).filter(function(n){ return n !== who; });
+    if (m === 'expert') list = list.concat([who]);   // site scope covers everything
+    return list;
+  }
+  mep = mep.then(function(d){
+    var T = window.TAR || {};
+    if (!d.loggedIn) return d;
+    var who = (d.user || '').toLowerCase();
+    T.viewasEligible = (T.committee || []).map(function(x){ return x.toLowerCase(); })
+                       .indexOf(who) >= 0;
+    var m = vaMode();
+    if (!m) return d;
+    if (!T.viewasEligible) {          // a stale key on lesser accounts is noise
+      try { sessionStorage.removeItem('tar-viewas'); } catch (e) {}
+      return d;
+    }
+    _vaOk = true;
+    if (m === 'out') return {loggedIn: false, viewingAs: m};
+    ['experts', 'editors', 'committee', 'founders'].forEach(function(k){
+      T[k] = (T[k] || []).filter(function(n){ return n.toLowerCase() !== who; });
+    });
+    if (m === 'expert') T.experts = T.experts.concat([who]);
+    if (m === 'editor') T.editors = T.editors.concat([who]);
+    d.viewingAs = m;
+    return d;
+  });
+  mep.then(function(){
+    var m = vaOn();
+    if (!m) return;
+    var labels = {expert: 'a site-wide expert', editor: 'an editor',
+                  member: 'a plain member', out: 'signed out'};
+    var pill = el('button', 'viewaspill',
+                  'Viewing as ' + (labels[m] || m) + ' · back to yourself');
+    pill.type = 'button';
+    pill.addEventListener('click', function(){
+      try { sessionStorage.removeItem('tar-viewas'); } catch (e) {}
+      location.reload();
+    });
+    document.body.appendChild(pill);
+  });
+
   // shared by every page: the submit preview, the news feed, anything that
   // puts text it did not write into the DOM
   function escH(s){
@@ -259,6 +314,29 @@
       theme.appendChild(b);
     });
     menu.appendChild(theme);
+    if (T.viewasEligible) {
+      var va = el('div', 'am-theme am-viewas');
+      va.appendChild(el('span', 'am-label', 'View as'));
+      var vsel = document.createElement('select');
+      [['', 'yourself'], ['expert', 'site-wide expert'], ['editor', 'editor'],
+       ['member', 'plain member'], ['out', 'signed out']].forEach(function(p){
+        var o = document.createElement('option');
+        o.value = p[0];
+        o.textContent = p[1];
+        vsel.appendChild(o);
+      });
+      vsel.value = vaMode();
+      vsel.addEventListener('click', function(ev){ ev.stopPropagation(); });
+      vsel.addEventListener('change', function(){
+        try {
+          if (vsel.value) sessionStorage.setItem('tar-viewas', vsel.value);
+          else sessionStorage.removeItem('tar-viewas');
+        } catch (e) {}
+        location.reload();
+      });
+      va.appendChild(vsel);
+      menu.appendChild(va);
+    }
     if ((T.experts || []).indexOf((d.user || '').toLowerCase()) >= 0) {
       menu.appendChild(item('Expert panel', rel + 'expert/'));
     }
@@ -347,7 +425,7 @@
     mep.then(function(d){
       if (d.unreachable || !d.loggedIn) return;
       var who = d.user.toLowerCase();
-      var isExpertHere = (D.experts || D.siteExperts || []).indexOf(who) >= 0;
+      var isExpertHere = vaCover(D.experts || D.siteExperts, who).indexOf(who) >= 0;
       // an editor shapes the library: zones that are library shape open for
       // them too, minus the forms marked as the experts' alone
       var isEditorHere = D.editorZone
@@ -547,7 +625,7 @@
           'checked right now.';
         return;
       }
-      if (!d.loggedIn || F.founders.indexOf(d.user.toLowerCase()) < 0) {
+      if (!d.loggedIn || vaOn() || F.founders.indexOf(d.user.toLowerCase()) < 0) {
         gate.textContent = 'This panel is the Founder’s.';
         return;
       }
@@ -587,7 +665,7 @@
           '/login">Log in</a> to see whether it is yours.';
         return;
       }
-      if (C.committee.indexOf(d.user.toLowerCase()) < 0) {
+      if (vaOn() || C.committee.indexOf(d.user.toLowerCase()) < 0) {
         gate.textContent = 'This panel is for the Steering Committee, and you are not on it.';
         return;
       }
@@ -701,7 +779,10 @@
       }
       var u = d.user.toLowerCase();
       var mine = P.roster.filter(function(e){ return e.user.toLowerCase() === u; });
-      var amCommittee = P.committee.indexOf(u) >= 0;
+      var vam = vaOn();
+      if (vam === 'expert') mine = [{user: d.user, scope: 'site'}];
+      else if (vam) mine = [];
+      var amCommittee = !vam && P.committee.indexOf(u) >= 0;
       // a Committee seat opens the panel too: any single Committee member may
       // appoint an expert at any scope (Principles 2.5.3), so the appointment
       // forms are theirs even when they hold no expert scope of their own
@@ -952,7 +1033,7 @@
       var msg = document.getElementById('act-msg');
       var u = d.loggedIn ? d.user.toLowerCase() : null;
       var isAuthor = u !== null && D.authors.indexOf(u) >= 0;
-      var isExpert = u !== null && D.experts.indexOf(u) >= 0;
+      var isExpert = u !== null && vaCover(D.experts, u).indexOf(u) >= 0;
       var anything = false;
       function arm(id, path, prefill){
         var form = document.getElementById(id);
@@ -1124,7 +1205,7 @@
           '<a href="' + api + '/login">Log in</a> to see whether it is yours.';
         return;
       }
-      if ((GE.experts || []).indexOf(d.user.toLowerCase()) < 0
+      if (vaCover(GE.experts, d.user.toLowerCase()).indexOf(d.user.toLowerCase()) < 0
           && ((window.TAR || {}).editors || []).indexOf(d.user.toLowerCase()) < 0) {
         gate.textContent = 'This page is for the experts covering this game ' +
           'and for editors, and you are neither.';

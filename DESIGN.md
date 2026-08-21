@@ -629,6 +629,13 @@ archivist, module responsibilities). What matters designwise:
   layout modifier is `fullw`. Run pages use the full window (`wide=True` on
   `page()`); everything else keeps the 1160 px wrap. Nothing may scroll
   sideways at 360 px.
+- **View as** (Steering Committee only): the account menu offers Yourself /
+  Site-wide expert / Editor / Plain member / Signed out. Presentation only
+  and per tab (sessionStorage, an amber fixed pill while active, one click
+  back): the page reveals itself as the chosen role by filtering the baked
+  role lists and page blobs client-side, while the archivist keeps treating
+  every request as the real you — a pretend role must never reach the write
+  path. A view-as key on a non-Committee account is ignored and cleared.
 - **Honest failure**: an unreachable archivist shows an amber "archivist
   unreachable" marker with a retry; reading never needs the archivist.
   The submit form arms the standard leave-page dialog once anything changes.

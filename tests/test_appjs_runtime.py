@@ -195,12 +195,14 @@ global.document = {
   addEventListener(){}, cookie: '',
 };
 global.window = {
-  TAR: { api: 'https://forum.example/archivist', rel: '../', v: 'test' },
+  TAR: Object.assign({ api: 'https://forum.example/archivist', rel: '../', v: 'test' },
+                     (session && session.__tar) || {}),
   location: { pathname: '/submit/', href: 'https://toolassisted.run/submit/', search: '' },
   matchMedia: () => ({ matches: false, addEventListener(){} }),
   innerWidth: 1280, addEventListener(){},
   localStorage: { getItem: () => null, setItem(){}, removeItem(){} },
-  sessionStorage: { getItem: () => null, setItem(){}, removeItem(){} },
+  sessionStorage: { getItem: (k) => (k === 'tar-viewas' && session && session.__viewas) || null,
+                    setItem(){}, removeItem(){} },
 };
 global.localStorage = window.localStorage;
 global.sessionStorage = window.sessionStorage;
@@ -394,6 +396,34 @@ def main():
             ck('withdrawal stays with the authors: even a site expert never '
                'sees it', st.get('f-withdraw-wrap', {}).get('hidden') is True,
                str(st.get('f-withdraw-wrap')))
+
+        # view-as: a Committee seat borrowing lesser eyes (presentation only)
+        demoted = dict(expert_session, __tar={'committee': ['root']},
+                       __viewas='member')
+        dem, err = run_real_page(node, js, td, 'viewas-member', run_html, demoted)
+        ck('the script runs viewing as a plain member', dem is not None, err)
+        if dem:
+            ck('no exception under borrowed eyes', not dem['errors'],
+               str(dem['errors'][:2]))
+            ck('viewing as a member, the expert powers stay hidden',
+               dem['state'].get('f-invalidate-wrap', {}).get('hidden') is True,
+               str(dem['state'].get('f-invalidate-wrap')))
+        lifted = {'ok': True, 'loggedIn': True, 'user': 'Ada', 'claimed': True,
+                  'notifications': 0, '__tar': {'committee': ['ada']},
+                  '__viewas': 'expert'}
+        lif, err = run_real_page(node, js, td, 'viewas-expert', run_html, lifted)
+        ck('the script runs viewing as a site-wide expert', lif is not None, err)
+        if lif:
+            ck('viewing as a site-wide expert opens the expert powers',
+               lif['state'].get('f-invalidate-wrap', {}).get('hidden') is False,
+               str(lif['state'].get('f-invalidate-wrap')))
+        stale = dict(expert_session, __viewas='member')   # no Committee seat
+        stl, err = run_real_page(node, js, td, 'viewas-stale', run_html, stale)
+        ck('the script runs with a stale view-as key', stl is not None, err)
+        if stl:
+            ck('a view-as key on a non-Committee account changes nothing',
+               stl['state'].get('f-invalidate-wrap', {}).get('hidden') is False,
+               str(stl['state'].get('f-invalidate-wrap')))
             ck('the expert notes stay with the game-scoped experts',
                st.get('f-expertnote-wrap', {}).get('hidden') is True,
                'site scope should not edit the expert notes')
