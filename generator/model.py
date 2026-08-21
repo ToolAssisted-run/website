@@ -429,8 +429,10 @@ _VISITS_FILE = pathlib.Path(os.environ.get('SITE_VISITS_FILE',
                                            str(ARCHIVE.parent / 'visits.json')))
 try:
     _visits = json.loads(_VISITS_FILE.read_text())
+    visits_known = True
 except (OSError, ValueError):
     _visits = {}
+    visits_known = False   # no host state: cards hide the eye entirely
 
 def nvisits(r):
     return int(_visits.get(r['id'], 0))
