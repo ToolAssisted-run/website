@@ -153,8 +153,8 @@ def main():
         r2 = rd('runs/M900002/index.html')
         ck('roster + screenshot', '/shots/M900002-reproductions-1-helper.png' in r2)
         ck('community-verified status line says verified, plainly',
-           'Verified: ranked; an expert verification makes it permanent' in r2
-           and '(provisional)' not in r2)
+           'Verified: ranked' in r2
+           and '(provisional)' not in r2 and '(expert)' not in r2)
         r3 = rd('runs/M900003/index.html')
         ck('dispute banner', 'under dispute' in r3)
         leg = rd('runs/M7229/index.html')

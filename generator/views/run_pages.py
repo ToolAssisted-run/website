@@ -230,8 +230,8 @@ Log in (top right) to reply from here.</p></section>'''
         if is_unclassified(r):
             ver_line = f'{NONE_TICK} Verification not applicable: Unclassified runs rank by likes'
         else:
-            ver_line = (f'{tick(vs)} Verified (expert): permanent' if vs == 'confirmed'
-                        else f'{tick(vs)} Verified: ranked; an expert verification makes it permanent' if nver
+            ver_line = (f'{tick(vs)} Verified: permanent' if vs == 'confirmed'
+                        else f'{tick(vs)} Verified: ranked' if nver
                         else f'{tick(vs)} Not yet verified: one verification ranks this run')
     ncons = len(live(r.get('consoleVerifications', [])))
     cstate = console_state(r)
