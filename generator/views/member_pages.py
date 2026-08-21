@@ -91,13 +91,21 @@ for uname, a in authors.items():
                   f'Import runs</a></div>')
     selfimport_html = header_btn
     NEWS_ICON = {'reproduced': '↻', 'verified': '✓', 'liked': '★'}
-    news_items = ''.join(
-        f'<p class="statline newsline" data-date="{esc(e["date"])}">'
-        f'<span class="newsico {e["kind"]}">{NEWS_ICON[e["kind"]]}</span> '
-        f'{member_chip(e["actor"], "../../")} {e["kind"]} '
-        f'<a href="../../runs/{e["run"]}/">{esc(e["title"])} ({e["run"]})</a>'
-        f'<span class="actmeta"> {esc(e["date"])}</span></p>'
-        for e in author_news.get(uname, [])[:50])
+
+    def news_line(e):
+        return (f'<p class="statline newsline" data-date="{esc(e["date"])}">'
+                f'<span class="newsico {e["kind"]}">{NEWS_ICON[e["kind"]]}</span> '
+                f'{member_chip(e["actor"], "../../")} {e["kind"]} '
+                f'<a href="../../runs/{e["run"]}/">{esc(e["title"])} ({e["run"]})</a>'
+                f'<span class="actmeta"> {esc(moment(e.get("at") or e["date"]))}</span></p>')
+
+    my_news = author_news.get(uname, [])[:50]
+    news_items = ''.join(news_line(e) for e in my_news[:10])
+    if len(my_news) > 10:
+        news_items += (
+            '<div class="newsrest" hidden>'
+            + ''.join(news_line(e) for e in my_news[10:]) + '</div>'
+            '<button type="button" class="newsmore">load more news…</button>')
     news_html = (f'<section id="news"><h2>News</h2><div class="factbox newsbox">{news_items}</div></section>'
                  if news_items else
                  '<section id="news"><h2>News</h2><p class="emptynote">Nothing yet. '

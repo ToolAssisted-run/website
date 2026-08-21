@@ -181,6 +181,19 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .ctr{text-align:center}
 .legend{margin-top:12px;font-size:.78rem;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:15px}
+/* a shelf: one row, dragged sideways; the scrollbar stays hidden and the
+   faint arrows carry the affordance (right first, left once scrolled) */
+.hwrap{position:relative}
+.hrow{display:flex;gap:15px;overflow-x:auto;scrollbar-width:none;padding:2px;cursor:grab}
+.hrow::-webkit-scrollbar{display:none}
+.hrow .card{flex:0 0 240px}
+.hrow.dragging{cursor:grabbing;user-select:none}
+.harr{position:absolute;top:0;bottom:0;width:46px;border:0;cursor:pointer;z-index:2;
+  display:flex;align-items:center;justify-content:center;font-size:1.7rem;
+  color:var(--ink);opacity:.4;background:linear-gradient(to left,var(--ground) 20%,transparent)}
+.harr:hover{opacity:.85}
+.harr.left{left:0;background:linear-gradient(to right,var(--ground) 20%,transparent)}
+.harr.right{right:0}
 .card{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;overflow:hidden;text-decoration:none;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:border-color .12s,transform .12s}
 .card:hover{border-color:var(--accent-text);transform:translateY(-2px)}
 .thumb{position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,var(--panel),rgba(34,197,94,.07));display:flex;align-items:center;justify-content:center;border-bottom:2.5px solid var(--hair)}
@@ -311,6 +324,8 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .gmovelist{max-height:240px;overflow:auto;border:1.5px solid var(--hairs);border-radius:8px;padding:6px 8px;margin:8px 0;display:flex;flex-direction:column;gap:4px}
 .gmrow{font-size:.9rem}
 .gmfilter{width:100%}
+.newsmore{border:0;background:none;color:var(--faint);font-size:.78rem;cursor:pointer;padding:4px 0;font-family:inherit}
+.newsmore:hover{color:var(--accent-text)}
 /* tiers: the same green, filling up. A badge that changes hue every milestone
    turns a roster into a sweet shop; this reads as more of the same thing. */
 .role-contrib.tier-1k{background:rgba(34,197,94,.20)}

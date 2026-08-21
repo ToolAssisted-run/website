@@ -330,6 +330,7 @@ def main():
         ck('the shelf is strictly newest-first',
            shelf_ids[:2] == ['M900362', 'M900409'] or shelf_ids[0] == 'M900362',
            str(shelf_ids[:4]))
+        ck('no Most liked shelf without a single star', 'Most liked' not in home)
         index_js = (out / 'browse/index.html').read_text()
         m = re.search(r'"id": "M900362".*?"date": "([\d-]+)"', index_js, re.S)
         ck('browse dates an imported run by its arrival, not its publication',
@@ -402,6 +403,26 @@ def main():
         names = json.loads((out / 'assets/authornames.json').read_text())
         ck('author name list is complete and canonical',
            {'Ada', 'Bo', 'Rep', 'Ver', 'Fan'} <= set(names), str(names[:8]))
+
+        # a busy profile folds its news; the home page shelves the most liked
+        many_likes = [{'user': f'Fan{i:02d}', 'date': d(1),
+                       'at': d(1) + f'T00:00:{i:02d}Z'} for i in range(12)]
+        arch = mkarchive.make_archive(td / 'a6b', [
+            mkarchive.run_spec('M900342', frames=5000, authors=['Ada'],
+                               submitted=d(10), likes=many_likes)])
+        out = td / 'o6b'
+        build(arch, out)
+        prof = (out / 'authors/ada/index.html').read_text()
+        ck('a busy profile shows ten news lines and folds the rest',
+           prof.count('newsline') == 12 and 'newsrest' in prof
+           and 'load more news' in prof, str(prof.count('newsline')))
+        ck('news lines carry the second, newest first',
+           '00:00:11' in prof and prof.index('00:00:11') < prof.index('00:00:02'),
+           'timestamp missing or misordered')
+        home6 = (out / 'index.html').read_text()
+        ck('the most liked shelf holds the starred run',
+           'Most liked' in home6 and 'M900342' in home6.split('Most liked')[1],
+           home6[:100])
 
         # ---------------- per-category metrics ranking ----------------
         # A category ranks by its own metric hierarchy: score (higher wins),

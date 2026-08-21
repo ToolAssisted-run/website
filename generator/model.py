@@ -476,16 +476,19 @@ for r in runs:
 author_news = {}
 for r in runs:
     a_low = [canon(a['user']) for a in r['authors']]
-    events = ([('reproduced', act['user'], act.get('date', '')) for act in r.get('reproductions', [])]
-              + [('verified', act['user'], act.get('date', '')) for act in r.get('verifications', [])]
-              + [('liked', l['user'], l.get('date', '')) for l in r.get('likes', [])])
-    for kind, actor, date in events:
+    events = ([('reproduced', act) for act in r.get('reproductions', [])]
+              + [('verified', act) for act in r.get('verifications', [])]
+              + [('liked', l) for l in r.get('likes', [])])
+    for kind, act in events:
         for uname in a_low:
             author_news.setdefault(uname, []).append(
-                {'date': date, 'kind': kind, 'actor': actor, 'run': r['id'],
+                {'date': act.get('date', ''), 'at': act.get('at') or '',
+                 'kind': kind, 'actor': act['user'], 'run': r['id'],
                  'title': r['_game']['title']})
 for lst in author_news.values():
-    lst.sort(key=lambda e: e['date'], reverse=True)
+    # the arrival second when the record carries one, the day otherwise;
+    # ISO strings order correctly either way
+    lst.sort(key=lambda e: e['at'] or e['date'], reverse=True)
 
 # ---- author stats (menu + profiles) ----
 author_stats = {}
