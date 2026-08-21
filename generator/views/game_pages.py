@@ -222,8 +222,6 @@ its own. Never verified; ranked purely by ★ likes.</p>
 
     # deletion (public reason, runs survive in Uncategorized) is the one
     # removal mechanism; the old ask-then-decide request flow is retired
-    open_removal = next((r for r in g.get('removalRequests', [])
-                         if r['status'] == 'open'), None)
     gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
                     'editorZone': True}
     gameacts = (
@@ -245,20 +243,6 @@ its own. Never verified; ranked purely by ★ likes.</p>
         'placeholder="a test, spam, a duplicate record, …"></label>'
         '<button class="btn danger">Delete</button></form></details>'
         '<p id="gameact-msg" class="actmsg" hidden></p></div>')
-    removal_note = ''
-    if g.get('removed'):
-        removal_note = (f'<div class="warnbox"><b>This game was removed from the index</b>'
-                        f'<p class="statline">Asked for by '
-                        f'{member_chip(g["removed"].get("requestedBy", ""), rel)}, granted by '
-                        f'{member_chip(g["removed"]["by"], rel)} on {esc(g["removed"]["date"])}.</p>'
-                        f'<p class="actnote">{inline(g["removed"]["reason"], rel)}</p>'
-                        f'<p class="statline">Its runs are untouched and still have their '
-                        f'pages.</p></div>')
-    elif open_removal:
-        removal_note = (f'<div class="warnbox"><b>A removal has been asked for</b>'
-                        f'<p class="statline">By {member_chip(open_removal["by"], rel)} on '
-                        f'{esc(open_removal["date"])}. A site-wide expert decides it.</p>'
-                        f'<p class="actnote">{inline(open_removal["reason"], rel)}</p></div>')
 
     body = f'''<header class="ghead"><div>
 <div class="chips"><span class="chip">{esc(systems[g['system']]['name'])}</span>
@@ -273,7 +257,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {selector}
 {''.join(sections)}
 {sel_js if multi else ''}
-{removal_note}
+
 <p class="legend">{IMPORTED_TICK} Imported: verified at the trusted site it came from &nbsp;
 {FULL_TICK} verified (expert) &nbsp; {PROV_TICK} verified &nbsp; {NONE_TICK} pending</p>
 {gameacts}'''

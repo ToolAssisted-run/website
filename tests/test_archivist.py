@@ -1359,51 +1359,19 @@ def main():
                             'reason': 'Probing the deletion wall.', 'dry_run': '1'})
             ck('an editor deletes no games', c == 403, str(r))
 
-            # --- removal is asked for, never taken ---
+            # --- the removal-request flow is retired: deletion is the act ---
             c, r, _ = call(U + '/api/game/request-removal',
                            {'key': KEY, 'expert': 'groupexpert',
-                            'game': 'nes/brand-new-game',
-                            'reason': 'I made this by mistake; it duplicates Pinball.'})
-            ck('an expert asks for a game to go', c == 200, str(r))
-            c, r, _ = call(U + '/api/game/request-removal',
-                           {'key': KEY, 'expert': 'groupexpert',
-                            'game': 'nes/brand-new-game',
-                            'reason': 'asking twice about the very same thing'})
-            ck('only one request is open at a time', c == 409, str(r))
-            c, r, _ = call(U + '/api/removal/decide',
-                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'game',
-                            'key_': '', 'action': 'granted'})
-            ck('a request is not answered by anybody narrower than site scope',
-               c == 403, str(r))
-            c, r, _ = call(U + '/api/removal/decide',
-                           {'key': KEY, 'expert': 'eien86', 'kind': 'game',
-                            'action': 'granted', 'target': 'nes/no-such-game'})
-            ck('answering a request for something that does not exist is a 404',
-               c == 404, str(r))
-            c, r, _ = call(U + '/api/removal/decide',
-                           {'key': KEY, 'expert': 'eien86', 'kind': 'game',
-                            'action': 'declined', 'note': 'short'})
-            ck('declining without a reason is refused', c == 400, str(r))
-            c, r, _ = call(U + '/api/removal/decide',
-                           {'key': KEY, 'expert': 'eien86', 'kind': 'game',
-                            'action': 'granted'})
-            ck('the request has to name what it is about', c == 400, str(r))
-            # the real one, naming the game
+                            'game': 'nes/brand-new-game', 'reason': 'asking the old way'})
+            ck('the retired game removal-request endpoint is gone', c == 404, str(r)[:80])
+            c, r, _ = call(U + '/api/group/request-removal',
+                           {'key': KEY, 'expert': 'groupexpert', 'group': 'test-family',
+                            'reason': 'asking the old way'})
+            ck('the retired group removal-request endpoint is gone', c == 404, str(r)[:80])
             c, r, _ = call(U + '/api/removal/decide',
                            {'key': KEY, 'expert': 'eien86', 'kind': 'game',
                             'action': 'granted', 'target': 'nes/brand-new-game'})
-            ck('a site expert grants the removal',
-               c == 200 and r['action'] == 'granted', str(r))
-            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            newg = json.loads((work / 'games/nes/brand-new-game/game.json').read_text())
-            ck('the game is marked removed, naming both people',
-               newg['removed']['by'] == 'eien86'
-               and newg['removed']['requestedBy'] == 'groupexpert', str(newg))
-            ck('and the request is closed, not deleted',
-               newg['removalRequests'][-1]['status'] == 'granted', str(newg))
-            ck('the run inside it is untouched',
-               (work / 'games/nes/pinball/runs/M900010/run.json').exists(),
-               'the movie was never what was in question')
+            ck('the retired removal-decide endpoint is gone', c == 404, str(r)[:80])
 
             # --- refusal went with ratification: a wrong group is deleted,
             # on the record, by the fast lane tested further down ---

@@ -117,13 +117,10 @@ if live_groups:
                  'group they belong to.' if synthetic else
                  'A game group: one family of games, across every system it '
                  'appeared on. Experts may hold a scope over a whole group.')
-        gopen = next((r for r in gr.get('removalRequests', [])
-                      if r['status'] == 'open'), None)
         gact_data = {'group': gr['key'], 'experts': gexperts,
                      'editorZone': True,
                      'system_options': [{'key': s, 'name': systems[s]['name']}
-                                        for s in sorted(systems)],
-                     'openRequest': bool(gopen)}
+                                        for s in sorted(systems)]}
         gacts = ('' if gr.get('synthetic') else
                  '<script type="application/json" id="groupactdata">'
                  + json.dumps(gact_data).replace('<', chr(92) + 'u003c') + '</script>'
@@ -141,31 +138,16 @@ if live_groups:
                  '<label>Title <input name="title" required maxlength="120" '
                  'placeholder="e.g. Mega Man 3"></label>'
                  '<button class="btn">Add</button></form></details>'
-                 '<details class="actform"><summary>Ask for this group to be removed</summary>'
-                 '<form id="f-groupremove">'
-                 '<p class="rules">Files a request; it never removes anything by itself. A '
-                 'site-wide expert answers it. If it is granted the group is dissolved and '
-                 'its games are ungrouped; no game and no run is deleted.</p>'
-                 f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
-                 '<label>Why <input name="reason" required minlength="8" maxlength="500" '
-                 'placeholder="these are not one family, …"></label>'
-                 '<button class="btn quiet">File</button></form></details>'
                  '<details class="actform"><summary>Delete this group</summary>'
                  '<form id="f-groupdelete">'
                  '<p class="rules">Outright: the grouping goes, and every game in it becomes '
-                 'ungrouped, gathered by Unclassified until somebody re-homes it. No game and '
+                 'ungrouped, gathered by Uncategorized until somebody re-homes it. No game and '
                  'no run is deleted. Your reason is public and permanent.</p>'
                  f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
                  '<label>Why <input name="reason" required minlength="8" maxlength="500" '
                  'placeholder="a test, a mistake, …"></label>'
                  '<button class="btn danger">Delete</button></form></details>'
                  '<p id="groupact-msg" class="actmsg" hidden></p></div>')
-        gremoval = ''
-        if gopen:
-            gremoval = (f'<div class="warnbox"><b>A removal has been asked for</b>'
-                        f'<p class="statline">By {member_chip(gopen["by"], "../../")} on '
-                        f'{esc(gopen["date"])}. A site-wide expert decides it.</p>'
-                        f'<p class="actnote">{inline(gopen["reason"], "../../")}</p></div>')
 
         gbody = f'''<header class="ghead"><div>
 <div class="chips"><span class="chip">{len(ggames)} games</span>
@@ -177,7 +159,7 @@ if live_groups:
 {'<div class="grid">' + cards + '</div>' if ggames else
  '<p class="emptynote">No games in this group yet. Experts covering it add them '
  'right here, and anybody can put one in it at submission time.</p>'}
-{gremoval}
+
 {table}
 {gacts}'''
         gdir = OUT / 'groups' / gr['key']
@@ -232,7 +214,7 @@ data-last="{1 if gr.get('synthetic') else 0}" href="../groups/{gr['key']}/">
     group = [gr for gr in live_groups if not gr.get('synthetic')]
     grp_view = f'''<div class="grid">{''.join(group_card(gr) for gr in live_groups)}</div>
 <p class="authline">{len(group)} groups, and every game belongs to one:
-those no group has claimed yet are gathered under Unclassified.</p>'''
+those no group has claimed yet are gathered under Uncategorized.</p>'''
 else:
     grp_view = ''          # nothing is grouped yet, so there is no group view
 
@@ -246,7 +228,7 @@ games_sort_js = '''<script>
     if (v && document.getElementById('v-' + v)) view = v;
   } catch(e){}
   function order(a, b){
-    // Unclassified is a holding pen, not a group: it stays last either way
+    // Uncategorized is a holding pen, not a group: it stays last either way
     if ((a.dataset.last || 0) !== (b.dataset.last || 0))
       return (a.dataset.last || 0) - (b.dataset.last || 0);
     return byStars ? (b.dataset.stars - a.dataset.stars)

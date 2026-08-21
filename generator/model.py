@@ -179,7 +179,7 @@ def unclassified_group():
     and the archive records facts, not what can be computed from them."""
     if not _uncl:
         placed = {k for gr in groups if has_page(gr) for k in gr['games']}
-        _uncl.update({'key': 'unclassified', 'title': 'Unclassified',
+        _uncl.update({'key': 'uncategorized', 'title': 'Uncategorized',
                       'synthetic': True,
                       'games': sorted(k for k in games if k not in placed)})
     return _uncl
@@ -193,7 +193,7 @@ def unclassified_shown():
 
 def groups_of(game_key):
     """The groups a game's page should link to: the group it belongs to, or
-    Unclassified if no group has claimed it."""
+    Uncategorized if no group has claimed it."""
     mine = [gr for gr in groups_by_game.get(game_key, []) if has_page(gr)]
     if mine:
         return mine
