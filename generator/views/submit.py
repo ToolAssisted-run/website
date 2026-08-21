@@ -85,6 +85,9 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
     It can never be reproduced, in emulator or on console, and the page will say so;
     one verification still ranks it like any other run.</label>
+  <div id="s-moviewrap">
+  <label>Movie file</label><input name="movie" type="file" required>
+  </div>
   <div id="s-metrics" class="metricsbox" hidden>
   <p class="rules fullw">This category states its results; every value here appears in the rankings.</p>
   <div id="s-mfields"></div>
@@ -98,9 +101,6 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   </div>
   <input type="hidden" name="time" id="s-time">
   </div>
-  </div>
-  <div id="s-moviewrap">
-  <label>Movie file</label><input name="movie" type="file" required>
   </div>
   <label>Voluntary content disclosures, to warn viewers about:</label>
   <div class="cwrow">
