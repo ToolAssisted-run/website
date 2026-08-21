@@ -1,0 +1,66 @@
+#!/bin/bash
+# Ship the WHOLE site's state to Infomaniak Swiss Backup, so one snapshot
+# restores 100% of toolassisted.run: the archive (full git history), the
+# operational state beside it, every secret and config a rebuild needs, and
+# the import corpus. Discourse dumps ship separately (ship-discourse-backups);
+# together the two remotes are the complete disaster-recovery set.
+#
+# Layout on the remote:
+#   swissbackup:site-backups/archive-YYYY-MM-DD.bundle      daily, kept 30d
+#   swissbackup:site-backups/website-YYYY-MM-DD.bundle      daily, kept 30d
+#   swissbackup:site-backups/state-YYYY-MM-DD.tar.gz        daily, kept 30d
+#   swissbackup:corpus-backups/tasvideos-YYYY-MM-DD.bundle  Mondays, kept 21d
+set -euo pipefail
+
+DAY=$(date -u +%F)
+WORK=$(mktemp -d /tmp/site-backup.XXXXXX)
+trap 'rm -rf "$WORK"' EXIT
+
+# 1. the archive: a git bundle carries every run, note and byte of history
+git -C /opt/archivist/archive bundle create -q "$WORK/archive-$DAY.bundle" --all
+
+# 2. the website repo as deployed here (generator + archivist + configs)
+git -C /opt/archivist/website bundle create -q "$WORK/website-$DAY.bundle" --all
+
+# 3. everything a bare machine needs to become this machine again:
+#    operational state (visits, spool, claims), the archivist's env and
+#    keys, nginx vhosts, certificates, the Discourse container definition.
+#    This tarball contains SECRETS; the Swiss Backup space is private and
+#    that is the point: a snapshot that cannot restore the site is not a
+#    backup.
+tar -czf "$WORK/state-$DAY.tar.gz" \
+    --absolute-names \
+    /opt/archivist/visits.json \
+    /opt/archivist/notify-spool.json \
+    /opt/archivist/claims.json \
+    /opt/archivist/deploy_key /opt/archivist/deploy_key.pub \
+    /opt/archivist/backup_key /opt/archivist/backup_key.pub \
+    /opt/archivist/backup_key_rw /opt/archivist/backup_key_rw.pub \
+    /etc/archivist.env \
+    /etc/systemd/system/archivist.service \
+    /etc/nginx/sites-available \
+    /etc/nginx/conf.d \
+    /etc/letsencrypt \
+    /etc/cron.d/discourse-backup-ship \
+    /etc/cron.d/site-backup-ship \
+    /etc/cron.d/tasvideos-backup-refresh \
+    /var/discourse/containers/app.yml \
+    /usr/local/bin/ship-discourse-backups \
+    /usr/local/bin/ship-site-backups \
+    /usr/local/bin/tar-site-sync \
+    2>/dev/null || true
+
+rclone copy "$WORK" swissbackup:site-backups --transfers 2 --log-level ERROR
+rclone delete swissbackup:site-backups --min-age 30d --log-level ERROR || true
+
+# 4. the TASVideos import corpus: 2.3 GB and mirrored to a private GitHub
+#    repo besides, so weekly here is belt-and-braces, not the only copy
+if [ "$(date -u +%u)" = 1 ]; then
+    git -C /opt/archivist/tasvideos-dumps bundle create -q \
+        "$WORK/tasvideos-$DAY.bundle" --all
+    rclone copy "$WORK/tasvideos-$DAY.bundle" swissbackup:corpus-backups \
+        --transfers 1 --log-level ERROR
+    rclone delete swissbackup:corpus-backups --min-age 21d --log-level ERROR || true
+fi
+
+echo "$DAY shipped: $(ls -sh1 "$WORK" | tail -n +2 | tr '\n' ' ')"

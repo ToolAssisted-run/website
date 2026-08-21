@@ -1,0 +1,3 @@
+# /etc/cron.d/site-backup-ship — the whole site's state to Swiss Backup,
+# daily, after Discourse has taken (03:3x) and shipped (04:30) its own dump
+45 4 * * * root /usr/local/bin/ship-site-backups >> /var/log/site-backup-ship.log 2>&1
