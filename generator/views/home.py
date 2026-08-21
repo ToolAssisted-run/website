@@ -86,7 +86,7 @@ decided in the open, by the people who care about it.</p>
 <section class="homefoot"><div class="cols3">
 <div class="factbox"><h4>Archive first</h4><p class="statline">Runs are archived instantly into
 <a href="https://github.com/ToolAssisted-run/archive">the public archive</a> and appear
-immediately, as pending. Ranking needs both community gates: one reproduction and one verification.</p></div>
+immediately, as pending. Ranking needs one community gate: verification.</p></div>
 <div class="factbox"><h4>Open by construction</h4><p class="statline">The whole archive is
 <a href="https://github.com/ToolAssisted-run/archive">a public git repository</a> under CC BY 4.0.
 The site is generated from it; clone it and you hold the same facts we do.</p></div>

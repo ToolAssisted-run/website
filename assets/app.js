@@ -1038,6 +1038,9 @@
           } else {
             // the author list and their supplementary files are never an
             // expert's to touch; an expert edit states its public reason
+            var det = form.closest('details');
+            var sum = det && det.querySelector('summary');
+            if (sum) sum.textContent = 'Edit run (expert mode)';
             var fa = document.getElementById('fe-authors');
             fa.hidden = true;
             fa.querySelector('[name=authors]').disabled = true;
