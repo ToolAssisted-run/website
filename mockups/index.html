@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Mock · game-specific TAS tools</title>
+<style>
+:root{--bg:#FFFFFF;--ground:#EEF2F6;--panel:#F4F7FA;--ink:#0F172A;--muted:#334155;--faint:#475569;
+--accent:#22C55E;--accent-text:#15803D;--hair:#C6D2DF;--hairs:#97AAC0}
+@media (prefers-color-scheme:dark){:root{--bg:#101A2C;--ground:#070D17;--panel:#182339;--ink:#F1F5F9;
+--muted:#94A3B8;--faint:#64748B;--accent-text:#4ADE80;--hair:#31435F;--hairs:#50698E}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ground);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.55;padding:34px 5vw 90px}
+h1{font-family:ui-monospace,monospace;font-size:1.25rem;margin-bottom:4px}
+.note{color:var(--faint);font-size:.9rem;max-width:62rem;margin-bottom:24px}
+h2{font-size:1.35rem;letter-spacing:-.01em;margin:0 0 8px}
+.rules{color:var(--muted);max-width:62rem;font-size:.95rem;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;overflow:hidden;margin-bottom:22px}
+th,td{padding:9px 14px;text-align:left;border-bottom:2px solid var(--hair);font-size:.92rem;vertical-align:top}
+th{font-family:ui-monospace,monospace;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);background:var(--panel)}
+tr:last-child td{border-bottom:none}
+code{font-family:ui-monospace,monospace;background:var(--panel);padding:1px 6px;border-radius:5px;font-size:.85em}
+.tick{color:var(--accent-text);font-weight:700}
+.dash{color:var(--faint)}
+a{color:var(--accent-text);font-weight:600}
+.openq{background:var(--bg);border:2.5px dashed var(--hairs);border-radius:12px;padding:14px 18px;max-width:62rem;font-size:.9rem;color:var(--muted)}
+.openq b{color:var(--ink)}
+.openq li{margin:6px 0 6px 18px}
+</style>
+</head>
+<body>
+<h1>Mock: the Tools page gains a second table</h1>
+<p class="note">To review before it ships. It would sit directly below "Emulator-based TAS
+tools", same visual treatment; the three game-specific rows currently living in the emulator
+table (Celeste Studio, gz macros, DSDA-Doom) would move here. The "parsed" column marks
+formats our submission pipeline already reads mechanically.</p>
+
+<h2>Game-specific TAS tools</h2>
+<p class="rules">These tools create tool-assisted runs inside one game or engine, with no
+emulator involved. You can attach their input or replay files to your submission as
+supplementary data beside your run video; for some of these formats we extract the relevant
+information (time, frames, rerecords) directly from the file.</p>
+
+<table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th><th>Parsed</th></tr></thead>
+<tbody>
+<tr><td><b>CelesteTAS + Celeste Studio</b></td><td>Celeste</td><td><code>.tas</code></td><td class="tick">✓</td></tr>
+<tr><td><b>gz / practice macros</b></td><td>Zelda: Ocarina of Time and Majora's Mask (N64)</td><td><code>.gzm</code></td><td class="tick">✓</td></tr>
+<tr><td><b>DSDA-Doom / PrBoom+</b></td><td>Doom engine (Doom, Doom II, Heretic, Hexen)</td><td><code>.lmp</code></td><td class="tick">✓</td></tr>
+<tr><td><b>Dustmod</b></td><td>Dustforce</td><td><code>.dft</code></td><td class="tick">✓</td></tr>
+<tr><td><b>TMInterface</b></td><td>TrackMania Nations / United Forever</td><td>input scripts</td><td class="dash">—</td></tr>
+<tr><td><b>Bunnymod XT</b></td><td>Half-Life and other GoldSrc games</td><td><code>.hltas</code></td><td class="dash">—</td></tr>
+<tr><td><b>SourcePauseTool (SPT)</b></td><td>Source engine (Half-Life 2, Portal)</td><td>afterframes scripts</td><td class="dash">—</td></tr>
+<tr><td><b>TASQuake</b></td><td>Quake</td><td>TAS scripts</td><td class="dash">—</td></tr>
+<tr><td><b>TASmod</b></td><td>Minecraft (Java Edition)</td><td>recording files</td><td class="dash">—</td></tr>
+<tr><td><b>UniTAS</b></td><td>Unity games (generic; in development)</td><td>movie scripts</td><td class="dash">—</td></tr>
+<tr><td><b>Replay bots (zBot, xBot, MH Replay)</b></td><td>Geometry Dash</td><td>bot macros</td><td class="dash">—</td></tr>
+</tbody></table>
+
+<div class="openq"><b>Open questions for your review</b>
+<ul>
+<li>The emulator table's "specialty formats" row carries <code>.ctas</code> and
+<code>.3ct</code>, which our parsers read; I could not pin down which tools emit them. If
+they belong to game-specific tools from your research, name them and they get rows here
+(with the ✓, since parsing already works).</li>
+<li>Anything your survey found that is missing from this list: paste the names and I fold
+them in.</li>
+<li>Row order is roughly by maturity/prevalence; alphabetical is the alternative.</li>
+</ul></div>
+</body>
+</html>
