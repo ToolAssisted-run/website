@@ -710,6 +710,10 @@ def main():
            and 'f-groupremove' not in grh and 'f-groupdelete' in grh, grh[:200])
         ck('the games index offers a new group',
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
+        gidx = all_html[out / 'games' / 'index.html']
+        ck('the list view sorts by any column',
+           gidx.count('data-key="') == 5 and 'data-runs=' in gidx
+           and 'data-stars=' in gidx, str(gidx.count('data-key="')))
 
         # ---------- registered things are picked, never typed blind ----------
         # the global pattern: wherever a game, member or group that already

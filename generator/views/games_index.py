@@ -254,6 +254,30 @@ games_sort_js = '''<script>
       b.classList.toggle('on', (b.dataset.mode === 'stars') === byStars);
     });
   }
+  // the list view sorts by any column; a second click flips the direction.
+  // Text columns start ascending, counts start with the biggest first.
+  var ltab = document.querySelector('#v-list table');
+  if (ltab) {
+    var lkey = 'title', lasc = true;
+    var ths = ltab.querySelectorAll('th[data-key]');
+    ths.forEach(function(th){
+      th.addEventListener('click', function(){
+        var k = th.dataset.key;
+        if (lkey === k) lasc = !lasc;
+        else { lkey = k; lasc = th.dataset.type !== 'num'; }
+        var tb = ltab.tBodies[0];
+        Array.prototype.slice.call(tb.rows).sort(function(a, b){
+          var x = a.dataset[k], y = b.dataset[k];
+          var r = th.dataset.type === 'num' ? (+x) - (+y)
+                : (x < y ? -1 : x > y ? 1 : 0);
+          return lasc ? r : -r;
+        }).forEach(function(rw){ tb.appendChild(rw); });
+        ths.forEach(function(t){ t.classList.remove('sorted'); t.removeAttribute('data-dir'); });
+        th.classList.add('sorted');
+        th.setAttribute('data-dir', lasc ? '\u25b2' : '\u25bc');
+      });
+    });
+  }
   function apply(){
     ['groups', 'systems', 'list'].forEach(function(k){
       var el = document.getElementById('v-' + k);
@@ -289,13 +313,19 @@ for g in sorted(games.values(), key=lambda g: g['title'].lower()):
     mine = [gr for gr in groups_by_game.get(g['key'], []) if has_page(gr)]
     grp = ', '.join(f'<a href="../groups/{gr["key"]}/">{esc(gr["title"])}</a>'
                     for gr in mine) or '<span class="faintcell">—</span>'
-    list_rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='{g['key']}/'">
+    list_rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='{g['key']}/'"
+ data-title="{esc(g['title'].lower())}" data-sys="{esc(systems[g['system']]['name'].lower())}"
+ data-grp="{esc(', '.join(gr['title'].lower() for gr in mine))}"
+ data-runs="{len(g['runs'])}" data-stars="{sum(nlikes(r) for r in g['runs'])}">
 <td><a href="{g['key']}/">{esc(g['title'])}</a></td>
 <td>{esc(systems[g['system']]['name'])}</td><td>{grp}</td>
 <td class="num">{len(g['runs'])}</td>
 <td class="num"><span class="starglyph">★</span>{sum(nlikes(r) for r in g['runs'])}</td></tr>''')
-list_view = f'''<table class="rtab"><thead><tr><th>Game</th><th>System</th><th>Group</th>
-<th class="num">Runs</th><th class="num">Stars</th></tr></thead>
+list_view = f'''<table class="rtab"><thead><tr>
+<th data-key="title" class="sorted" data-dir="▲">Game</th>
+<th data-key="sys">System</th><th data-key="grp">Group</th>
+<th class="num" data-key="runs" data-type="num">Runs</th>
+<th class="num" data-key="stars" data-type="num">Stars</th></tr></thead>
 <tbody>{''.join(list_rows)}</tbody></table>'''
 
 site_experts_now = sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'})
