@@ -141,26 +141,25 @@ gt_rows = ''.join(
     f'<td class="num">{"<span class=tick-yes>✓</span>" if p else "<span class=tick-no>—</span>"}</td></tr>'
     for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4]))
 body = f'''<header class="ghead"><div><h1>Tools</h1>
-<p class="authline">You can create your run with any emulator and any tools you like; what you
-submit, in the end, is simply the encoded video. Below are the tools commonly used to make TASes.</p>
+<p class="authline">You can create your run with any emulator and any tools you like; you only
+need to submit the encoded video. Below are the tools commonly used to make TASes.</p>
 </div></header>
 <div class="resourcebox"><b>Need help with any of these tools?</b>
 Ask on <a href="{FORUM}">our forum</a> or on
 <a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
 will point you the right way.</div>
 <section><h2>miniHawk <span class="chip pendchip">in development</span></h2>
-<div class="policy"><p><b>miniHawk</b> is this site\'s endorsed emulator, a re-implementation
+<div class="policy fullw"><p><b>miniHawk</b> is this site\'s endorsed emulator, a re-implementation
 of <a href="https://github.com/TASEmulators/BizHawk">BizHawk</a> built around three ideas:
 <b>modular emulation cores</b>, <b>performance</b>, and a <b>higher standard of
 reproducibility</b>: every core runs waterboxed, and the movie format carries extended
 build environment metadata.
 <a href="https://github.com/ToolAssisted-run/miniHawk">Follow it on GitHub</a>.</p></div></section>
-<section><h2>Botting &amp; authoring tools</h2>
+<section><h2>Botting and brute-forcing tools</h2>
 <div class="cols3">
 <div class="factbox"><h4>jaffarPlus</h4><p class="statline">A high-performance botting
-engine for routing and solving games by massive state-space search, behind many of the
-runs in this archive. <a href="https://github.com/SergioMartin86/jaffarPlus">Source on
-GitHub</a>.</p></div>
+engine for routing and solving games by massive state-space search.
+<a href="https://github.com/SergioMartin86/jaffarPlus">Source on GitHub</a>.</p></div>
 <div class="factbox"><h4>AdvancedBot</h4><p class="statline">A botting external tool for
 BizHawk, searching inputs from inside the emulator itself, by toca.
 <a href="https://github.com/toca-1/advancedbot-bizhawk">Source on GitHub</a>.</p></div>
