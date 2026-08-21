@@ -20,6 +20,7 @@ from model import (
     PT_REPRO_HARD,
     PT_REPRO_LATER,
     PT_VERIFY,
+    verify_bounty,
     cat_label,
     days_pending,
     eff_state,
@@ -53,9 +54,10 @@ nv_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="window
 <td><b>{esc(r['_game']['title'])}</b><span class="bcat">{esc(cat_label(r))}</span></td>
 <td>{esc(systems[r['_game']['system']]['name'])}</td>
 <td>{', '.join(esc(a['user']) for a in r['authors'])}</td>
-<td class="num"><b class="bounty">{PT_VERIFY}</b> pts</td></tr>''' for r in need_verify)
-worklist_systems = sorted({r['_game']['system'] for r in need_repro} |
-                          {r['_game']['system'] for r in need_verify})
+<td class="num"><b class="bounty">{verify_bounty(r)}</b> pts</td></tr>''' for r in need_verify)
+# the filter serves the reproduction list alone: verifying only takes
+# watching a video, so what systems you can RUN is irrelevant there
+worklist_systems = sorted({r['_game']['system'] for r in need_repro})
 sysfilter = ''
 if worklist_systems:
     btns = ''.join(f'<button class="dimopt sysopt" data-sys="{esc(s)}">{esc(systems[s]["name"])}</button>'
@@ -73,7 +75,7 @@ if worklist_systems:
     btns.forEach(function(b){{
       b.classList.toggle('on', active === null || active.indexOf(b.dataset.sys) >= 0);
     }});
-    document.querySelectorAll('tr[data-sys]').forEach(function(tr){{
+    document.querySelectorAll('#nr-scroll tr[data-sys]').forEach(function(tr){{
       tr.style.display = (active === null || active.indexOf(tr.dataset.sys) >= 0) ? '' : 'none';
     }});
   }}
@@ -137,20 +139,20 @@ board = (f'<table><thead><tr><th>#</th><th>Member</th><th class="num">Points</th
 body = f'''<header class="ghead"><div><h1>Contribute</h1>
 <p class="authline">The public worklist. No claiming, no assignment; anyone may do anything,
 anytime; the first to finish earns the points.</p></div></header>
-{sysfilter}
 <div class="cols">
 <div class="main">
 <section><h2>Needs verification</h2>
-<p class="rules">Watch the encode and confirm the run achieves its stated category goal. <b>One
+<p class="rules fullw">Watch the encode and confirm the run achieves its stated category goal. <b>One
 verification ranks the run</b>, shown as verified; a covering expert's makes it
-permanent.</p>
-{f'<table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
+permanent. The bounty <b>rises one point per day</b> the run waits, up to double.</p>
+{f'<div class="contscroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table></div>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
 <section><h2>Needs reproduction</h2>
-<p class="rules">Load the movie file on your own setup, confirm it syncs to the end, and submit an
+<p class="rules fullw">Load the movie file on your own setup, confirm it syncs to the end, and submit an
 ending screenshot as proof. Reproduction is the archive's assurance that the movie really
 plays, recorded and paid; it does not gate ranking. The bounty <b>rises the longer a run sits
 unreproduced</b>: the obscure long tail is the best-paying work on the board.</p>
-{f'<table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>{nr_rows}</tbody></table>' if nr_rows else '<p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>'}</section>
+{sysfilter}
+{f'<div class="contscroll" id="nr-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>{nr_rows}</tbody></table></div>' if nr_rows else '<p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>'}</section>
 
 </div>
 <aside class="side">

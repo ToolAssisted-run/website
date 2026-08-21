@@ -36,6 +36,10 @@ PT_REPRO_LATER = 25
 
 PT_VERIFY = 20
 
+PT_VERIFY_AGE_PER_DAY = 1   # the first verification pays more the longer a
+
+PT_VERIFY_AGE_CAP = 20      # run waits, up to double the base
+
 PT_NEGLECT_PER_DAY = 2
 
 PT_NEGLECT_CAP = 200
@@ -427,6 +431,12 @@ def repro_bounty(r):
     return (PT_REPRO_FIRST + hard_bonus(r)
             + min(days_pending(r) * PT_NEGLECT_PER_DAY, PT_NEGLECT_CAP))
 
+def verify_bounty(r):
+    """Current first-verification payout for a still-unverified run:
+    the base, plus one point per day waiting, capped at double."""
+    return PT_VERIFY + min(days_pending(r) * PT_VERIFY_AGE_PER_DAY,
+                           PT_VERIFY_AGE_CAP)
+
 BADGES = [(25000, '25k'), (10000, '10k'), (5000, '5k'), (1000, '1k')]
 
 def contrib_tier(pts):
@@ -465,9 +475,17 @@ for r in runs:
         else:
             award(act['user'], PT_REPRO_LATER + hard_bonus(r), 'reproduction', r,
               act.get('at') or act.get('date'))
-    for act in live(r.get('verifications', [])):
-        award(act['user'], PT_VERIFY, 'verification', r,
-              act.get('at') or act.get('date'))
+    vers = sorted(live(r.get('verifications', [])), key=lambda a: a.get('date') or '')
+    for i, act in enumerate(vers):
+        if i == 0:
+            ad = parse_date(act.get('date'))
+            aged = (min((ad - sub).days * PT_VERIFY_AGE_PER_DAY, PT_VERIFY_AGE_CAP)
+                    if ad and sub and ad > sub else 0)
+            award(act['user'], PT_VERIFY + aged, 'first verification', r,
+                  act.get('at') or act.get('date'))
+        else:
+            award(act['user'], PT_VERIFY, 'verification', r,
+                  act.get('at') or act.get('date'))
     for act in live(r.get('consoleVerifications', [])):
         award(act['user'], PT_CONSOLE, 'console verification', r,
               act.get('at') or act.get('date'))
