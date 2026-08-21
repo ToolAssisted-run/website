@@ -26,6 +26,7 @@ from config import (
 )
 from model import (
     BADGED_ROLES,
+    visits_known,
     ROLES_NOW,
     ROLE_LABEL,
     RUN_BY_ID,
@@ -179,10 +180,10 @@ def primary_metric_text(r):
     return f'{n} {m["unit"]}' if m.get('unit') else n
 
 def card_views(n):
-    """The little eye a card carries when the run has been seen. Visit counts
-    are host state, absent on CI and the standby, so zero simply shows
-    nothing rather than a page of zeroes."""
-    if not n:
+    """The little eye a card carries, zero included. Visit counts are host
+    state, absent on CI and the standby; only there does the eye vanish,
+    because an unknowable count shown as 0 would be a lie."""
+    if not visits_known:
         return ''
     return ('<span class="cview" title="number of visits">'
             '<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>'.replace(chr(10), '')
