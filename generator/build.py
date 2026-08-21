@@ -38,6 +38,13 @@ for asset in (pathlib.Path(__file__).resolve().parent / 'assets').glob('*'):
 _htaccess = pathlib.Path(__file__).resolve().parent.parent / '.htaccess'
 if _htaccess.exists():
     shutil.copy2(_htaccess, OUT / '.htaccess')
+# design mocks ride along at /mock/ so a console-bound reviewer can look at
+# them on the live site; the page is self-contained, noindexed, and exempt
+# from the site-chrome output invariants
+_mock = pathlib.Path(__file__).resolve().parent.parent / 'mockups' / 'index.html'
+if _mock.exists():
+    (OUT / 'mock').mkdir(exist_ok=True)
+    shutil.copy2(_mock, OUT / 'mock' / 'index.html')
 # GitHub Pages reads the custom domain from the repository settings, but a
 # CNAME in the upload is what keeps it from ever being dropped by a deploy.
 (OUT / 'CNAME').write_text('toolassisted.run\n')

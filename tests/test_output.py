@@ -83,7 +83,10 @@ SPECIAL = {'404.html'}
 
 
 def pages(out):
-    return sorted(p for p in out.rglob('*.html') if p.name not in SPECIAL)
+    # /mock/ is a self-contained design preview for console-bound review; it
+    # carries no site chrome, so the chrome invariants do not apply to it
+    return sorted(p for p in out.rglob('*.html')
+                  if p.name not in SPECIAL and p.parent.name != 'mock')
 
 
 def dead_links(out):
