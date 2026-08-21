@@ -29,6 +29,7 @@ from model import (
 from render import (
     FULL_TICK,
     IMPORTED_TICK,
+    run_date_cell,
     METRICS_ED,
     NONE_TICK,
     PROV_TICK,
@@ -111,7 +112,7 @@ for key, g in games.items():
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
 {mcells(r)}
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
-<td>{esc((r.get('submitted') or '')[:10])}</td>
+{run_date_cell(r)}
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
         prows = []
         for r in pend:
@@ -121,7 +122,7 @@ for key, g in games.items():
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
 {mcells(r)}
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
-<td>{esc((r.get('submitted') or '')[:10])}</td>
+{run_date_cell(r)}
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
         hrows = []
         for r in history:
@@ -148,7 +149,7 @@ for key, g in games.items():
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
 <td class="num muted">{dtxt}</td>
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
-<td>{esc((r.get('submitted') or '')[:10])}</td>
+{run_date_cell(r)}
 <td class="ctr">{tick(eff_state(r)[0])}</td><td class="ctr">{tick(eff_state(r)[1])}</td><td class="ctr">{console_tick(r)}</td></tr>''')
         ranked_by = ''
         if mdefs is not CLASSIC_METRICS:
@@ -180,7 +181,7 @@ for key, g in games.items():
 <td class="num"><span class="starglyph">★</span> {nlikes(r)}</td>
 <td class="num"><a href="{rel}runs/{r['id']}/">{frames_html(r)}</a></td>
 <td class="num">{run_clock(r)}</td>
-<td>{esc((r.get('submitted') or '')[:10])}</td>
+{run_date_cell(r)}
 <td class="ctr">{tick(eff_state(r)[0])}</td><td class="ctr">{console_tick(r)}</td></tr>''')
         sections.append(f'''<section class="unclsect"><h2>Unclassified</h2>
 <p class="rules">Entertainment, experiments, playarounds. No defined goal; each run describes

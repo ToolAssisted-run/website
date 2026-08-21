@@ -200,6 +200,15 @@ def chip_views(n):
             '<circle cx="12" cy="12" r="2.6"/></svg> '
             + f'{n:,}</span>')
 
+def run_date_cell(r):
+    """The run's primary date on a board: the completion date the authors
+    stated when they stated one, the submission day otherwise. A future
+    history tab wants the same rule."""
+    c = (r.get('completed') or '').strip()
+    if c:
+        return f'<td title="completion date">{esc(c)}</td>'
+    return f'<td title="submission date">{esc((r.get("submitted") or "")[:10])}</td>'
+
 def frames_html(r):
     """The frames cell: a count for a movie, a dash for a video-only run,
     which has no frames because it has no input."""
