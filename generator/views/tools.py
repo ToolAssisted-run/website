@@ -142,7 +142,7 @@ gt_rows = ''.join(
     for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4]))
 body = f'''<header class="ghead"><div><h1>Tools</h1>
 <p class="authline">You can create your run with any emulator and any tools you like; you only
-need to submit the encoded video. Below are the tools commonly used to make TASes.</p>
+need to submit the encoded video. Below are the TAS tools commonly used.</p>
 </div></header>
 <div class="resourcebox"><b>Need help with any of these tools?</b>
 Ask on <a href="{FORUM}">our forum</a> or on
