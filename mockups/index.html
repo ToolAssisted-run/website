@@ -38,17 +38,19 @@ h1{font-family:ui-monospace,monospace;font-size:1.3rem;margin-bottom:4px}
 .reel{position:absolute;inset:0;z-index:0;pointer-events:none;background-repeat:repeat}
 .reel.masked{-webkit-mask-image:linear-gradient(to left,#000 30%,transparent 75%);
  mask-image:linear-gradient(to left,#000 30%,transparent 75%)}
-.playhead{position:absolute;top:8%;bottom:8%;left:31.5%;width:5px;border-radius:3px;
+.playhead{position:absolute;left:6%;right:6%;bottom:22%;height:5px;border-radius:3px;
  background:var(--accent);opacity:.14;z-index:0;pointer-events:none}
-@media (prefers-reduced-motion:reduce){.reel{animation:none}}
+.rmnote{color:#B45309;font-size:.8rem;margin-top:6px}
 </style>
 </head>
 <body>
 <h1>Hero input reel</h1>
-<p class="note">The icon's piano-roll motif, rolling forward behind the welcome box. Motion is
-frame-quantized (CSS steps(), one input column per tick, no easing), the pattern is the ink
-color at low opacity so both themes carry it, and reduced-motion users get a still reel.
-Tune it live; the second stage shows the same settings on dark.</p>
+<p class="note">The icon's piano-roll motif, rolling upward behind the welcome box like an
+input display at playback. Motion is frame-quantized (CSS steps(), one input row per tick,
+no easing); the pattern is the ink color at low opacity so both themes carry it. Tune it
+live; the second stage shows the same settings on dark.</p>
+<p class="rmnote" id="rmnote" hidden>Your system asks for reduced motion; this mock animates
+anyway so it can be reviewed. The real page will honor the setting with a still reel.</p>
 
 <div class="controls">
   <label>variant
@@ -57,9 +59,10 @@ Tune it live; the second stage shows the same settings on dark.</p>
       <option value="masked">right side, fading toward the text</option>
     </select></label>
   <label>opacity <input type="range" id="op" min="2" max="16" value="6"><output id="opv">6%</output></label>
+  <label>density <input type="range" id="dn" min="4" max="40" value="10"><output id="dnv">10%</output></label>
   <label>step every <input type="range" id="ms" min="150" max="1000" step="50" value="500"><output id="msv">500ms</output></label>
   <label><input type="checkbox" id="ph"> green playhead bar</label>
-  <label><input type="checkbox" id="rev"> reverse direction</label>
+  <label><input type="checkbox" id="rev"> roll downward instead</label>
 </div>
 
 <div class="stage">
@@ -101,17 +104,18 @@ Tune it live; the second stage shows the same settings on dark.</p>
 </div>
 
 <script>
-// One tile = 21 input columns at the icon's cell pitch (16px cell + 5px gap),
-// 4 lanes tall. Lit/dim per cell from a fixed seed, so the pattern is stable
-// and tiles seamlessly; the animation advances exactly one column per step.
-var PITCH = 21, COLS = 21, LANES = 4, W = PITCH * COLS, H = PITCH * LANES;
-function tile(ink, alpha){
+// One tile = 8 input lanes across, 21 rows tall, at the icon's cell pitch
+// (16px cell + 5px gap). Lit/dim per cell from a fixed seed, so the pattern
+// is stable and tiles seamlessly; the roll advances one row per step,
+// upward, like an input editor during playback.
+var PITCH = 21, LANES = 8, ROWS = 21, W = PITCH * LANES, H = PITCH * ROWS;
+function tile(ink, alpha, density){
   var s = 1234567, cells = [];
   function rnd(){ s = (s * 16807) % 2147483647; return s / 2147483647; }
-  for (var c = 0; c < COLS; c++)
-    for (var l = 0; l < LANES; l++){
-      var lit = rnd() < 0.34;
-      cells.push('<rect x="' + (c * PITCH + 2) + '" y="' + (l * PITCH + 2) +
+  for (var l = 0; l < LANES; l++)
+    for (var r = 0; r < ROWS; r++){
+      var lit = rnd() < density;
+      cells.push('<rect x="' + (l * PITCH + 2) + '" y="' + (r * PITCH + 2) +
         '" width="16" height="16" rx="4" fill="' + ink + '" opacity="' +
         (alpha * (lit ? 1 : 0.18)).toFixed(3) + '"/>');
     }
@@ -119,30 +123,31 @@ function tile(ink, alpha){
             cells.join('') + '</svg>';
   return 'url(data:image/svg+xml;base64,' + btoa(svg) + ')';
 }
-var V = {variant: 'full', op: 6, ms: 500, ph: false, rev: false};
-var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var V = {variant: 'full', op: 6, dn: 10, ms: 500, ph: false, rev: false};
+if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  document.getElementById('rmnote').hidden = false;
 var keys = document.createElement('style');
 document.head.appendChild(keys);
 function paint(){
   keys.textContent = '@keyframes roll{from{background-position:0 0}' +
-    'to{background-position:' + (V.rev ? W : -W) + 'px 0}}';
+    'to{background-position:0 ' + (V.rev ? H : -H) + 'px}}';
   [['heroL', '#0F172A'], ['heroD', '#F1F5F9']].forEach(function(pair){
     var hero = document.getElementById(pair[0]);
     var reel = hero.querySelector('.reel');
     reel.className = 'reel' + (V.variant === 'masked' ? ' masked' : '');
-    reel.style.backgroundImage = tile(pair[1], V.op / 100);
+    reel.style.backgroundImage = tile(pair[1], V.op / 100, V.dn / 100);
     reel.style.animation = 'none';
     void reel.offsetWidth;   // restart the animation after a control change
-    if (!still)
-      reel.style.animation = 'roll ' + (COLS * V.ms / 1000) + 's steps(' + COLS + ') infinite';
+    reel.style.animation = 'roll ' + (ROWS * V.ms / 1000) + 's steps(' + ROWS + ') infinite';
     hero.querySelector('.playhead').hidden = !V.ph;
   });
 }
-['variant', 'op', 'ms', 'ph', 'rev'].forEach(function(id){
+['variant', 'op', 'dn', 'ms', 'ph', 'rev'].forEach(function(id){
   var el = document.getElementById(id);
   el.addEventListener('input', function(){
     V[id] = el.type === 'checkbox' ? el.checked : (el.type === 'range' ? +el.value : el.value);
     document.getElementById('opv').textContent = V.op + '%';
+    document.getElementById('dnv').textContent = V.dn + '%';
     document.getElementById('msv').textContent = V.ms + 'ms';
     paint();
   });
