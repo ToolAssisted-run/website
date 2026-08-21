@@ -15,6 +15,7 @@ from config import (
 )
 from model import (
     archived_at,
+    nvisits,
     authors,
     cat_label,
     eff_state,
@@ -63,8 +64,16 @@ def run_card(r):
 <span class="cauth">{esc(au)}</span>
 <span class="cfoot"><span>{run_clock(r) if r.get('videoOnly') else f"{r['movie']['frames']:,}f"}</span><span><span class="starglyph">★</span>{nlikes(r)}</span>{sm}</span></span></a>'''
 
+def viewed_selection(all_runs, slots=12):
+    """The most-visited runs, ties to the newer arrival; nothing unseen."""
+    seen = [r for r in all_runs if nvisits(r) > 0]
+    return sorted(seen, key=lambda r: (nvisits(r), archived_at(r),
+                                       r.get('submitted') or '', r['id']),
+                  reverse=True)[:slots]
+
 cards = [run_card(r) for r in fresh_selection(runs, slots=12)]
 liked_cards = [run_card(r) for r in liked_selection(runs)]
+viewed_cards = [run_card(r) for r in viewed_selection(runs)]
 stats = f'''<div class="statstrip">
 <div class="stat"><b>{len(runs)}</b><span>runs</span></div>
 <div class="stat"><b>{len(games)}</b><span>games</span></div>
@@ -94,6 +103,7 @@ decided in the open, by the people who care about it.</p>
 <section><h2>Freshly archived</h2>
 <div class="hwrap"><div class="hrow">{''.join(cards)}</div></div></section>
 {f'<section><h2>Most liked</h2><div class="hwrap"><div class="hrow">{"".join(liked_cards)}</div></div></section>' if liked_cards else ''}
+{f'<section><h2>Most viewed</h2><div class="hwrap"><div class="hrow">{"".join(viewed_cards)}</div></div></section>' if viewed_cards else ''}
 <section class="homefoot"><div class="cols3">
 <div class="factbox"><h4>Archive first</h4><p class="statline">Runs are archived instantly into
 <a href="https://github.com/ToolAssisted-run/archive">the public archive</a> and appear

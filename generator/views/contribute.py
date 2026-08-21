@@ -152,7 +152,7 @@ ending screenshot as proof. Reproduction is the archive's assurance that the mov
 plays, recorded and paid; it does not gate ranking. The bounty <b>rises the longer a run sits
 unreproduced</b>: the obscure long tail is the best-paying work on the board.</p>
 {sysfilter}
-{f'<div class="contscroll" id="nr-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>{nr_rows}</tbody></table></div>' if nr_rows else '<p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>'}</section>
+{f'<div class="contscroll nrgap" id="nr-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>{nr_rows}</tbody></table></div>' if nr_rows else '<p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>'}</section>
 
 </div>
 <aside class="side">

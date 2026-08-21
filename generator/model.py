@@ -422,6 +422,19 @@ def is_pending(r):
         return False
     return vs == 'none'
 
+# run visit counts: operational state the archivist keeps beside the
+# checkout, never in the archive. Present on the live origin, absent on CI
+# and the Pages standby, where the most-viewed shelf simply does not render.
+_VISITS_FILE = pathlib.Path(os.environ.get('SITE_VISITS_FILE',
+                                           str(ARCHIVE.parent / 'visits.json')))
+try:
+    _visits = json.loads(_VISITS_FILE.read_text())
+except (OSError, ValueError):
+    _visits = {}
+
+def nvisits(r):
+    return int(_visits.get(r['id'], 0))
+
 def days_pending(r):
     d = parse_date(r.get('submitted'))
     return max(0, (TODAY - d).days) if d else 0

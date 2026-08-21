@@ -426,6 +426,18 @@ def main():
         ck('the most liked shelf holds the starred run',
            'Most liked' in home6 and 'M900342' in home6.split('Most liked')[1],
            home6[:100])
+        # visit counts are host state beside the checkout: with a file the
+        # shelf renders, without one (CI, the Pages standby) it stays away
+        vfile = td / 'visits-a6b.json'
+        vfile.write_text(json.dumps({'M900342': 7}))
+        os.environ['SITE_VISITS_FILE'] = str(vfile)
+        out2 = td / 'o6c'
+        build(arch, out2)
+        del os.environ['SITE_VISITS_FILE']
+        home6c = (out2 / 'index.html').read_text()
+        ck('the most viewed shelf appears only where visit counts live',
+           'Most viewed' in home6c and 'Most viewed' not in home6
+           and 'M900342' in home6c.split('Most viewed')[1], home6c[:80])
 
         # ---------------- per-category metrics ranking ----------------
         # A category ranks by its own metric hierarchy: score (higher wins),
