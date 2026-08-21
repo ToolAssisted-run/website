@@ -27,6 +27,7 @@ from model import (
     systems,
 )
 from render import (
+    card_views,
     esc,
     page,
     primary_metric_text,
@@ -62,7 +63,7 @@ def run_card(r):
 {thumb_html(r, f'<span class="dur">{esc(primary_metric_text(r))}</span>')}
 <span class="cbody"><b>{esc(g['title'])}</b><span class="ccat">{esc(cat_label(r))}</span>
 <span class="cauth">{esc(au)}</span>
-<span class="cfoot"><span>{run_clock(r) if r.get('videoOnly') else f"{r['movie']['frames']:,}f"}</span><span><span class="starglyph">★</span>{nlikes(r)}</span>{sm}</span></span></a>'''
+<span class="cfoot"><span>{run_clock(r) if r.get('videoOnly') else f"{r['movie']['frames']:,}f"}</span><span><span class="starglyph">★</span>{nlikes(r)}</span>{card_views(nvisits(r))}{sm}</span></span></a>'''
 
 def viewed_selection(all_runs, slots=12):
     """The most-visited runs, ties to the newer arrival; nothing unseen."""
