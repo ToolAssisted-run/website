@@ -101,7 +101,8 @@ immediately, as pending. Ranking needs one community gate: verification.</p></di
 <div class="factbox"><h4>Open by construction</h4><p class="statline">The whole archive is
 <a href="https://github.com/ToolAssisted-run/archive">a public git repository</a> under CC BY 4.0.
 The site is generated from it; clone it and you hold the same facts we do.</p></div>
-<div class="factbox"><h4>Join in</h4><p class="statline">Reproduce and verify runs on the
+<div class="factbox"><h4>Join in</h4><p class="statline"><a href="submit/">Submit your run</a>,
+reproduce and verify runs on the
 <a href="contribute/">Contribute board</a>, talk shop on
 <a href="{FORUM}">the forum</a>, or come chat on
 <a href="https://discord.gg/VsKDT9XB6u">our Discord</a>.</p></div>
