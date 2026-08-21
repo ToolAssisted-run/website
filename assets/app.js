@@ -357,7 +357,7 @@
             .then(function(res){
               if (res.ok && res.j.ok) {
                 note(msg, spec.done(res.j) + ' The site rebuilds from the archive; ' +
-                          'it shows here in a few minutes.', true);
+                          'it shows here in a few seconds.', true);
                 form.reset();
               } else note(msg, res.j.error || 'something went wrong', false);
             });
@@ -410,7 +410,7 @@
           .then(function(res){
             if (res.ok && res.j.ok) {
               note(msg, 'Deleted. The site rebuilds from the archive; the page goes ' +
-                        'in a few minutes.', true);
+                        'in a few seconds.', true);
             } else note(msg, res.j.error || 'something went wrong', false);
           });
       });
@@ -515,7 +515,7 @@
                form.querySelector('button')).then(function(res){
             if (res.ok && res.j.ok) {
               note(msg, (res.j.action === 'granted' ? 'Seated. ' : 'Unseated. ') +
-                        (res.j.told || '') + ' It shows on the site in a few minutes.',
+                        (res.j.told || '') + ' It shows on the site in a few seconds.',
                    true);
               form.reset();
             } else note(msg, res.j.error || 'something went wrong', false);
@@ -588,7 +588,7 @@
             if (res.ok && res.j.ok) {
               note(roleMsg, 'Recorded: ' + res.j.votes + ' of ' + res.j.committee +
                         ' voted for it. The site rebuilds from the archive; the badge ' +
-                        'appears here in a few minutes.', true);
+                        'appears here in a few seconds.', true);
               roleForm.reset();
             } else note(roleMsg, res.j.error || 'something went wrong', false);
           });
@@ -609,7 +609,7 @@
              sform.querySelector('button')).then(function(res){
           if (res.ok && res.j.ok) {
             note(cmsg, res.j.user + ' is now an expert for the whole site. It shows ' +
-                       'on the site in a few minutes.', true);
+                       'on the site in a few seconds.', true);
             sform.reset();
           } else note(cmsg, res.j.error || 'something went wrong', false);
         });
@@ -631,7 +631,7 @@
              eform.querySelector('button')).then(function(res){
           if (res.ok && res.j.ok) {
             note(cmsg, res.j.user + ' is now an editor. The badge shows on the ' +
-                       'site in a few minutes.', true);
+                       'site in a few seconds.', true);
             eform.reset();
           } else note(cmsg, res.j.error || 'something went wrong', false);
         });
@@ -923,7 +923,7 @@
           post(path, new FormData(form), form.querySelector('button')).then(function(res){
             if (res.ok && res.j.ok) {
               note(msg, done(res.j) + ' The site rebuilds from the archive; it shows ' +
-                        'here in a few minutes.', true);
+                        'here in a few seconds.', true);
               form.reset();
             } else note(msg, res.j.error || 'something went wrong', false);
           });
@@ -997,7 +997,7 @@
           post(path, fd, form.querySelector('button')).then(function(res){
             if (res.ok && res.j.ok) {
               note(out, 'Recorded, thank you. The site rebuilds from the archive; ' +
-                        'your change appears here in a few minutes.', true);
+                        'your change appears here in a few seconds.', true);
             } else note(out, res.j.error || 'something went wrong', false);
           });
         });
@@ -1156,7 +1156,7 @@
       var msg = document.getElementById('ge-msg');
       function ok(text){
         note(msg, text + ' The site rebuilds from the archive; it shows in a ' +
-                  'few minutes.', true);
+                  'few seconds.', true);
       }
       function wire(id, path, confirmText, done){
         var form = document.getElementById(id);
@@ -1862,7 +1862,7 @@
             sformDirty = false;                  // archived: nothing left to lose
             sform.hidden = true;
             note(msg, 'Archived as ' + res.j.id + '. Your run page appears after the next ' +
-                      'rebuild (about a minute) at ../runs/' + res.j.id + '/' +
+                      'rebuild (a few seconds) at ../runs/' + res.j.id + '/' +
                       (res.j.forum ? '. Announced on the forum: ' + res.j.forum : ''), true);
           } else note(msg, res.j.error || 'something went wrong', false);
         });
@@ -1994,7 +1994,7 @@
     var cgmsg = document.getElementById('cg-msg');
     wireCreateForm(cgform, document.getElementById('cg-login'), cgmsg,
                    '/api/game/create', function(j){
-      note(cgmsg, 'Created. The game page appears after the next rebuild (about a minute). ' +
+      note(cgmsg, 'Created. The game page appears after the next rebuild (a few seconds). ' +
                   'Submit the run now: ../submit/?game=' + j.game, true);
       var a = document.createElement('a');
       a.className = 'btn'; a.href = '../submit/?game=' + j.game;
@@ -2344,7 +2344,7 @@
           if (r.remaining > 0 && r.imported.length) { step(); return; }
           logLine('');
           logLine('Done: ' + done + ' imported' + (skips ? ', ' + skips + ' need attention (see above)' : '') + '.');
-          logLine('The site rebuilds from the archive; your runs appear in a few minutes.');
+          logLine('The site rebuilds from the archive; your runs appear in a few seconds.');
           runBtn.hidden = true;
           busy(runBtn, false);
         });
