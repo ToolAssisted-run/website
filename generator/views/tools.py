@@ -34,17 +34,106 @@ EMULATORS = [
     ('JPC-rr', 'DOS', '.jrsr'),
     ('Citra', 'Nintendo 3DS', '.ctm'),
     ('PCSX2-rr', 'PlayStation 2', '.p2m2'),
-    ('DSDA-Doom / PrBoom+', 'Doom engine', '.lmp'),
     ('openMSX', 'MSX', '.omr'),
     ('MAME-rr', 'Arcade', '.mar'),
     ('FBNeo / FB Alpha', 'Arcade', '.fbm'),
-    ('Celeste Studio', 'Celeste', '.tas'),
-    ('gz / practice macros', 'Nintendo 64 (Ocarina of Time)', '.gzm'),
-    ('specialty formats', 'PC and console-verification tooling', '.ctas, .dft, .3ct'),
 ]
 emu_rows = ''.join(f'<tr><td><b>{esc(n)}</b></td><td>{esc(s)}</td>'
                    f'<td class="num"><code>{esc(x)}</code></td></tr>'
                    for n, s, x in EMULATORS)
+
+# (tool, link, game/engine, movie format, parsed mechanically at submission)
+# surveyed from the community's collections; ordered by game
+GAME_TOOLS = [
+    ('hatTAS', 'https://github.com/doesthisusername/hat-tas',
+     'A Hat in Time', 'input scripts', False),
+    ('BallanceModLoader (built-in TAS)', 'https://github.com/Gamepiaynmo/BallanceModLoader',
+     'Ballance', 'mod recordings', False),
+    ('Greasemonkey TAS script', 'https://pastebin.com/d0RHZHn2',
+     'Candy Box 2', 'browser script', False),
+    ('CelesteTAS + Celeste Studio',
+     'https://github.com/EverestAPI/CelesteTAS-EverestInterop',
+     'Celeste', '.tas', True),
+    ('UniversalClassicTas / ClassicTAS',
+     'https://github.com/CelesteClassic/UniversalClassicTas',
+     'Celeste Classic (PICO-8)', 'input scripts', False),
+    ('DarkSouls-TAS', 'https://github.com/DavidCEllis/DarkSouls-TAS',
+     'Dark Souls', 'input scripts', False),
+    ('DSDA-Doom / PrBoom+', 'https://github.com/kraflab/dsda-doom',
+     'Doom engine (Doom, Doom II, Heretic, Hexen)', '.lmp', True),
+    ('Dustmod', 'https://dustmod.com', 'Dustforce', '.dft', True),
+    ('factorio-tas-playback', 'https://github.com/Bilka2/factorio-tas-playback',
+     'Factorio', 'run scripts', False),
+    ('TAS-Helper-for-Factorio', 'https://github.com/MortenTobiasNielsen/TAS-Helper-for-Factorio',
+     'Factorio', 'run scripts', False),
+    ('Factorio-AnyPct-TAS', 'https://github.com/gotyoke/Factorio-AnyPct-TAS',
+     'Factorio', 'run scripts', False),
+    ('FireBoyWaterGirlTAS', 'https://github.com/pixelchai/FireBoyWaterGirlTAS',
+     'Fireboy & Watergirl', 'input scripts', False),
+    ('SoulsTAS', 'https://github.com/Vinjul1704/SoulsTAS',
+     'FromSoftware games (Dark Souls III, Sekiro, Elden Ring)', 'TAS scripts', False),
+    ('OpenGMK / GM8emulator', 'https://github.com/OpenGMK/OpenGMK',
+     'GameMaker 8 games', 'recordings', False),
+    ('ReplayBot', 'https://github.com/matcool/ReplayBot',
+     'Geometry Dash', 'bot macros', False),
+    ('Bunnymod XT', 'https://github.com/YaLTeR/BunnymodXT',
+     'Half-Life and other GoldSrc games', '.hltas', False),
+    ('Iji TAS mod', 'https://github.com/Kataiser/Iji-TAS-mod',
+     'Iji', 'mod recordings', False),
+    ('jazz2tas', 'https://github.com/BinaryBlob92/jazz2tas',
+     'Jazz Jackrabbit 2', 'input scripts', False),
+    ('JumpKingTAS', 'https://github.com/ShootMe/JumpKingTAS',
+     'Jump King', 'input scripts', False),
+    ('KalimbaTAS', 'https://github.com/ShootMe/KalimbaTAS',
+     'Kalimba', 'input scripts', False),
+    ('LaMulanaTAS', 'https://github.com/worsety/LaMulanaTAS',
+     'La-Mulana (remake)', 'input scripts', False),
+    ('Left4TAS', 'https://github.com/sw1ft747/Left4TAS',
+     'Left 4 Dead 1 & 2', 'TAS scripts', False),
+    ('LoTAS', 'https://www.curseforge.com/minecraft/mc-mods/lotas',
+     'Minecraft (Java Edition)', 'tick and savestate tools', False),
+    ('TASmod', 'https://github.com/MinecraftTAS/TASmod',
+     'Minecraft (Java Edition)', 'recording files', False),
+    ('OriDETAS', 'https://github.com/ShootMe/OriDETAS',
+     'Ori and the Blind Forest (Definitive Edition)', 'input scripts', False),
+    ('OTS TAS Tool', 'https://github.com/thisishowmymindworks/ots-tas-tool',
+     'Out There Somewhere', 'input scripts', False),
+    ('SourceAutoRecord', 'https://sar.portal2.sr/',
+     'Portal 2', 'TAS scripts', False),
+    ('TASQuake', 'https://github.com/lipsanen/TASQuake',
+     'Quake', 'TAS scripts', False),
+    ('racket science', 'https://github.com/doesthisusername/racket-science',
+     'Ratchet & Clank', 'input scripts', False),
+    ('Refunct TAS Tool', 'https://github.com/oberien/refunct-tas',
+     'Refunct', 'Lua scripts', False),
+    ('naezith_tas', 'https://github.com/negative-seven/naezith_tas',
+     'Remnants of Naezith', 'input scripts', False),
+    ('SmolTAS', 'https://github.com/Sh1r0Yaksha/SmolTAS',
+     'Smol Ame', 'input scripts', False),
+    ('SourcePauseTool (SPT)', 'https://github.com/YaLTeR/SourcePauseTool',
+     'Source engine (Half-Life 2, Portal)', 'afterframes scripts', False),
+    ('SplasherTAS', 'https://github.com/ShootMe/SplasherTAS',
+     'Splasher', 'input scripts', False),
+    ('wafel', 'https://github.com/branpk/wafel',
+     'Super Mario 64', 'savestate tooling', False),
+    ('TAS Plugin', 'https://jump.tf/forum/index.php/topic,1350.0.html',
+     'Team Fortress 2', 'plugin recordings', False),
+    ('TeslagradTAS', 'https://github.com/ShootMe/TeslagradTAS',
+     'Teslagrad', 'input scripts', False),
+    ('TinertiaTAS', 'https://github.com/ShootMe/TinertiaTAS',
+     'Tinertia', 'input scripts', False),
+    ('TMInterface', 'https://donadigo.com/tminterface',
+     'TrackMania Nations / United Forever', 'input scripts', False),
+    ('UniTAS', 'https://github.com/eddio0141/UniTAS',
+     'Unity games (generic; in development)', 'movie scripts', False),
+    ('gz / practice macros', 'https://github.com/glankk/gz',
+     "Zelda: Ocarina of Time and Majora's Mask (N64)", '.gzm', True),
+]
+gt_rows = ''.join(
+    f'<tr><td><b><a href="{esc(u)}">{esc(n)}</a></b></td><td>{esc(g)}</td>'
+    f'<td><code>{esc(x)}</code></td>'
+    f'<td class="num">{"<span class=tick-yes>✓</span>" if p else "<span class=tick-no>—</span>"}</td></tr>'
+    for n, u, g, x, p in GAME_TOOLS)
 body = f'''<header class="ghead"><div><h1>Tools</h1>
 <p class="authline">You can create your run with any emulator and any tools you like; what you
 submit, in the end, is simply the encoded video. Below are the tools commonly used to make TASes.</p>
@@ -72,7 +161,15 @@ attach their movie files to your submission as supplementary data beside your ru
 most of these formats we extract the relevant information (time, frames, rerecords) directly
 from the file.</p>
 <table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th></tr></thead>
-<tbody>{emu_rows}</tbody></table>
+<tbody>{emu_rows}</tbody></table></section>
+<section><h2>Game-specific TAS tools</h2>
+<p class="rules fullw">These tools create tool-assisted runs inside one game or engine, with no
+emulator involved. You can attach their input or replay files to your submission as
+supplementary data beside your run video; for some of these formats we extract the relevant
+information (time, frames, rerecords) directly from the file, marked below.</p>
+<table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
+<th class="num">Parsed</th></tr></thead>
+<tbody>{gt_rows}</tbody></table>
 <div class="resourcebox"><b>New to one of these emulators?</b>
 Ask on <a href="{FORUM}">our forum</a> or on
 <a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
