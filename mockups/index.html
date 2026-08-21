@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Mock · the grouping proposal</title>
+<style>
+:root{--bg:#FFFFFF;--ground:#EEF2F6;--panel:#F4F7FA;--ink:#0F172A;--muted:#334155;--faint:#475569;
+--accent:#22C55E;--accent-text:#15803D;--hair:#C6D2DF;--hairs:#97AAC0;--warn:#B45309}
+@media (prefers-color-scheme:dark){:root{--bg:#101A2C;--ground:#070D17;--panel:#182339;--ink:#F1F5F9;
+--muted:#94A3B8;--faint:#64748B;--accent-text:#4ADE80;--hair:#31435F;--hairs:#50698E;--warn:#FDBA74}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ground);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.55;padding:34px 5vw 90px}
+h1{font-family:ui-monospace,monospace;font-size:1.25rem;margin-bottom:4px}
+.note{color:var(--faint);font-size:.9rem;max-width:64rem;margin-bottom:22px}
+h2{font-size:1.3rem;margin:28px 0 10px}
+.gcard{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:12px 16px;margin-bottom:10px}
+.gcard b{font-family:ui-monospace,monospace}
+.gcard .new{font-family:ui-monospace,monospace;font-size:.66rem;font-weight:700;text-transform:uppercase;
+ letter-spacing:.05em;padding:2px 7px;border-radius:5px;background:rgba(34,197,94,.12);color:var(--accent-text);
+ border:2px solid rgba(34,197,94,.4);margin-left:7px;vertical-align:1px}
+.gcard ul{margin:6px 0 2px 20px;font-size:.92rem;color:var(--muted)}
+.gcard li{margin:2px 0}
+code{font-family:ui-monospace,monospace;background:var(--panel);padding:1px 6px;border-radius:5px;font-size:.85em}
+.flag{color:var(--warn);font-size:.85rem}
+.sum{background:var(--bg);border:2.5px dashed var(--hairs);border-radius:12px;padding:14px 18px;max-width:64rem;
+ font-size:.9rem;color:var(--muted);margin-top:26px}
+.sum b{color:var(--ink)}
+</style>
+</head>
+<body>
+<h1>The grouping proposal, for review</h1>
+<p class="note">All 269 ungrouped games surveyed. Groups are families (one franchise across
+systems), never genres, so a game with no relatives stays ungrouped: <b>175 games remain
+standalone</b> under this proposal, which is correct, not lazy. 16 games join existing groups
+and 29 new groups gather 78 more. Amber flags mark the judgment calls; strike anything you
+disagree with and I execute the rest, every move a logged act.</p>
+
+<h2>Joining existing groups (16 games)</h2>
+<div class="gcard"><b>prince-of-persia</b>
+<ul><li>gc/prince-of-persia-the-two-thrones · gg/prince-of-persia · pcecd/prince-of-persia ·
+segacd/prince-of-persia · snes/prince-of-persia · snes/prince-of-persia-2-the-shadow-and-the-flame</li></ul></div>
+<div class="gcard"><b>castlevania</b><ul><li>nes/castlevania</li></ul></div>
+<div class="gcard"><b>mega-man</b><ul><li>snes/mega-man-7</li></ul></div>
+<div class="gcard"><b>ninja-gaiden</b><ul><li>nes/ninja-gaiden · sms/ninja-gaiden</li></ul></div>
+<div class="gcard"><b>shinobi</b><ul><li>genesis/shinobi-iii-return-of-the-ninja-master</li></ul></div>
+<div class="gcard"><b>galaxian</b><ul><li>a2600/galaxian <span class="flag">(the group already
+holds NES Galaga, so the original belongs)</span></li></ul></div>
+<div class="gcard"><b>pac-man</b><ul><li>nes/pac-man-championship-edition</li></ul></div>
+<div class="gcard"><b>saint-seiya</b><ul><li>nes/saint-seiya-ougon-densetsu ·
+wswan/saint-seiya-ougon-densetsu-hen-perfect-edition</li></ul></div>
+<div class="gcard"><b>bram-stoker-s-dracula</b><ul><li>segacd/bram-stokers-dracula</li></ul></div>
+
+<h2>New groups (29 groups, 78 games)</h2>
+<div class="gcard"><b>mortal-kombat</b> · Mortal Kombat<span class="new">new</span>
+<ul><li>snes/mortal-kombat · snes/mortal-kombat-3 · snes/ultimate-mortal-kombat-3 ·
+n64/mortal-kombat-4 · n64/mortal-kombat-trilogy · gc/mortal-kombat-deadly-alliance ·
+gc/mortal-kombat-deception · wii/mortal-kombat-armageddon ·
+genesis/mk5-mortal-combat-sub-zero <span class="flag">(unlicensed, but unmistakably of the
+family; drop it if bootlegs should stand alone)</span></li></ul></div>
+<div class="gcard"><b>batman</b> · Batman<span class="new">new</span>
+<ul><li>nes/batman · snes/batman · c64/batman-the-caped-crusader ·
+nes/batman-the-dark-knight · nes/batman-the-junkyard-challenge
+<span class="flag">(the last two are unlicensed Batman games; same question as MK5)</span></li></ul></div>
+<div class="gcard"><b>doom</b> · Doom<span class="new">new</span>
+<ul><li>pc/doom-sigil · pc/doom-ii-cold-front · pc/doom-ii-crud · pc/doom-ii-doom-city ·
+pc/doom-ii-hacx · pc/doom-ii-maskim-xul</li></ul></div>
+<div class="gcard"><b>digimon</b> · Digimon<span class="new">new</span>
+<ul><li>gba/digimon-battle-spirit-2 · gba/digimon-racing · gc/digimon-rumble-arena-2 ·
+gc/digimon-world-4 · psx/digimon-rumble-arena</li></ul></div>
+<div class="gcard"><b>teenage-mutant-ninja-turtles</b> · Teenage Mutant Ninja Turtles<span class="new">new</span>
+<ul><li>gc/teenage-mutant-ninja-turtles · gc/teenage-mutant-ninja-turtles-2-battle-nexus ·
+gc/tmnt-mutant-melee · nes/teenage-mutant-ninja-turtles-tournament-fighters</li></ul></div>
+<div class="gcard"><b>sonic-the-hedgehog</b> · Sonic the Hedgehog<span class="new">new</span>
+<ul><li>gba/sonic-battle · gg/sonic-blast · gc/sonic-gems-collection-sonic-r ·
+gc/sonic-gems-collection-sonic-the-fighters</li></ul></div>
+<div class="gcard"><b>the-simpsons</b> · The Simpsons<span class="new">new</span>
+<ul><li>nes/the-simpsons-bart-vs-the-space-mutants · nes/the-simpsons-bart-vs-the-world ·
+nes/the-simpsons-bartman-meets-radioactive-man</li></ul></div>
+<div class="gcard"><b>robocop</b> · RoboCop<span class="new">new</span>
+<ul><li>nes/robocop · nes/robocop-2 · genesis/robocop-3</li></ul></div>
+<div class="gcard"><b>adventure-island</b> · Adventure Island<span class="new">new</span>
+<ul><li>nes/adventure-island · nes/adventure-island-iv · snes/super-adventure-island</li></ul></div>
+<div class="gcard"><b>test-drive</b> · Test Drive<span class="new">new</span>
+<ul><li>genesis/the-duel-test-drive-ii · dos/test-drive-iii-road-and-car ·
+dos/test-drive-iii-the-passion</li></ul></div>
+<div class="gcard"><b>capcom-vs-series</b> · Capcom Versus series<span class="new">new</span>
+<ul><li>arcade/x-men-vs-street-fighter · psx/marvel-vs-capcom-clash-of-super-heroes ·
+gc/capcom-vs-snk-2-eo <span class="flag">(one lineage by design, but three license umbrellas;
+say the word and they stand alone instead)</span></li></ul></div>
+<div class="gcard"><b>the-king-of-fighters</b> · The King of Fighters<span class="new">new</span>
+<ul><li>arcade/the-king-of-fighters-94 · arcade/the-king-of-fighters-96</li></ul></div>
+<div class="gcard"><b>killer-instinct</b> · Killer Instinct<span class="new">new</span>
+<ul><li>arcade/killer-instinct · snes/killer-instinct</li></ul></div>
+<div class="gcard"><b>bomberman</b> · Bomberman<span class="new">new</span>
+<ul><li>nes/bomberman · snes/super-bomberman-3</li></ul></div>
+<div class="gcard"><b>ikari-warriors</b> · Ikari Warriors<span class="new">new</span>
+<ul><li>nes/ikari-warriors · nes/ikari-warriors-ii-victory-road</li></ul></div>
+<div class="gcard"><b>street-rod</b> · Street Rod<span class="new">new</span>
+<ul><li>dos/street-rod · dos/street-rod-2</li></ul></div>
+<div class="gcard"><b>need-for-speed</b> · Need for Speed<span class="new">new</span>
+<ul><li>dos/road-track-presents-the-need-for-speed-se · psx/need-for-speed-porsche-unleashed</li></ul></div>
+<div class="gcard"><b>the-death-and-return-of-superman</b> · The Death and Return of Superman<span class="new">new</span>
+<ul><li>genesis/the-death-and-return-of-superman · snes/the-death-and-return-of-superman</li></ul></div>
+<div class="gcard"><b>the-lucky-dime-caper</b> · The Lucky Dime Caper<span class="new">new</span>
+<ul><li>gg/the-lucky-dime-caper-starring-donald-duck · sms/the-lucky-dime-caper-starring-donald-duck</li></ul></div>
+<div class="gcard"><b>barbarian</b> · Barbarian<span class="new">new</span>
+<ul><li>dos/barbarian · genesis/barbarian <span class="flag">(both read as the Psygnosis
+Barbarian; if the DOS one is Palace's Barbarian instead, this pairing is wrong — you would
+know from the runs)</span></li></ul></div>
+<div class="gcard"><b>wonder-boy</b> · Wonder Boy / Monster World<span class="new">new</span>
+<ul><li>sms/wonder-boy-in-monster-land · genesis/monster-world-iv</li></ul></div>
+<div class="gcard"><b>pokemon</b> · Pokémon<span class="new">new</span>
+<ul><li>gbc/pok-mon-pinball · n64/pok-mon-snap</li></ul></div>
+<div class="gcard"><b>trollface-quest</b> · Trollface Quest<span class="new">new</span>
+<ul><li>flash/trollface-quest · flash/trollface-quest-2</li></ul></div>
+<div class="gcard"><b>emma</b> · Emma<span class="new">new</span>
+<ul><li>ds/emma-at-the-farm · ds/emma-in-the-mountains</li></ul></div>
+<div class="gcard"><b>numan-athletics</b> · Numan Athletics<span class="new">new</span>
+<ul><li>arcade/numan-athletics · arcade/mach-breakers-numan-athletics-2</li></ul></div>
+<div class="gcard"><b>k-1-pocket-grand-prix</b> · K-1 Pocket Grand Prix<span class="new">new</span>
+<ul><li>gba/k-1-pocket-grand-prix · gba/k-1-pocket-grand-prix-2</li></ul></div>
+<div class="gcard"><b>air-combat</b> · Air Combat / Ace Combat<span class="new">new</span>
+<ul><li>arcade/air-combat-22 · psx/air-combat <span class="flag">(both Namco, one lineage
+that became Ace Combat)</span></li></ul></div>
+<div class="gcard"><b>super-mario-bros</b> · Super Mario Bros.<span class="new">new</span>
+<ul><li>gbc/super-mario-bros-deluxe · nes/superfast-mario-bros <span class="flag">(the second
+is a romhack of SMB; drop it if hacks should stand alone)</span></li></ul></div>
+<div class="gcard"><b>sesame-street</b> · Sesame Street<span class="new">new</span>
+<ul><li>nes/sesame-street-countdown · gbc/the-adventures-of-elmo-in-grouchland
+<span class="flag">(same license, different developers; weakest pairing on this page)</span></li></ul></div>
+
+<div class="sum"><b>Deliberately left standalone (175 games)</b>: everything with no relative
+in the archive. Notable near-misses that do NOT group, and why: <i>Grand Prix Circuit</i> vs
+<i>Grand Prix World</i> (different franchises); <i>Football Manager</i> vs <i>The Manager</i>
+vs <i>PC Fútbol</i> (three unrelated management lineages); <i>Mighty Gunvolt</i> next to
+Mega Man (homage, not family); <i>Duke Nukem 3D</i> next to Doom (rival, not relative);
+<i>Fatal Fury 3</i> and <i>Rage of the Dragons</i> next to King of Fighters (SNK kinship is
+not one family); <i>Strider 2</i>, <i>Columns III</i>, <i>DuckTales 2</i>, <i>Joe &amp; Mac 2</i>
+(sequels whose family has only one member here; the group can be made the day a relative
+arrives). Crossovers park with nobody: <i>Crash Bandicoot Purple</i> stays out rather than
+picking Crash over Spyro.</div>
+</body>
+</html>
