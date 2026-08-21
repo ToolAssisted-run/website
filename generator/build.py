@@ -20,7 +20,7 @@ import json
 import pathlib
 import shutil
 
-from config import OUT, REPO_ROOT, SITE_COMMIT
+from config import ARCHIVE_SERIAL, OUT, REPO_ROOT, SITE_COMMIT
 import providers  # noqa: E402  (config put archivist/ on the path)
 from render import ship_thumbnails
 
@@ -47,6 +47,7 @@ if _htaccess.exists():
 # fetches this tiny file uncached and offers a refresh when they differ.
 (OUT / 'assets' / 'buildstamp.json').write_text(json.dumps(
     {'v': SITE_COMMIT or 'dev',
+     'serial': ARCHIVE_SERIAL,
      'built': datetime.datetime.now(datetime.timezone.utc)
               .strftime('%Y-%m-%dT%H:%M:%SZ')}))
 (OUT / 'runs').mkdir()

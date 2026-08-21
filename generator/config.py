@@ -54,3 +54,17 @@ def site_commit():
 
 SITE_COMMIT = site_commit()
 
+def archive_serial():
+    """How many commits the archive's history carries: a monotonically
+    increasing stamp of the state this build was made from. The archivist
+    answers every write with the serial it produced; the client compares
+    the two to know when a change is actually being served."""
+    try:
+        return int(subprocess.run(['git', 'rev-list', '--count', 'HEAD'],
+                                  cwd=ARCHIVE, capture_output=True, text=True,
+                                  check=True).stdout)
+    except Exception:
+        return 0
+
+ARCHIVE_SERIAL = archive_serial()
+

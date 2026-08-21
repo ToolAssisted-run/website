@@ -86,6 +86,7 @@ from identity import (
 from gitstore import (
     checkout_branch,
     commit_push,
+    current_serial,
     duplicate_of,
     find_run,
     load_game,
@@ -176,6 +177,27 @@ def cors(resp):
         resp.headers['Access-Control-Allow-Origin'] = SITE_ORIGIN
         resp.headers['Access-Control-Allow-Credentials'] = 'true'
         resp.headers['Vary'] = 'Origin'
+    return resp
+
+@app.after_request
+def stamp_serial(resp):
+    """A successful write answers with the archive revision it left behind.
+
+    The built site's assets/buildstamp.json carries the revision it was
+    built from; the client holds its confirmation message until the served
+    stamp reaches the response's serial, so "done" only ever means "and you
+    can see it". Dry runs change nothing and carry nothing."""
+    if (request.method == 'POST' and request.path.startswith('/api/')
+            and resp.status_code == 200
+            and resp.mimetype == 'application/json'):
+        try:
+            j = json.loads(resp.get_data())
+        except Exception:                                     # noqa: BLE001
+            return resp
+        if isinstance(j, dict) and j.get('ok') and not j.get('dry_run') \
+                and 'serial' not in j:
+            j['serial'] = current_serial()
+            resp.set_data(json.dumps(j))
     return resp
 
 @app.get('/login')

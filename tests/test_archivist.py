@@ -545,11 +545,16 @@ def main():
                                                    metric_score='1250'), uniq_files())
             ck('stated values ride the dry run',
                c == 200 and r['run']['metrics'] == {'score': 1250.0}, str(r))
+            ck('a dry run changes nothing, so it carries no publish serial',
+               'serial' not in r, str(r))
             newsub = dict(sub, game='nes/solomons-key', goal='fastest-completion')
             del newsub['dry_run']
             c, r, _ = call(U + '/api/submit', newsub, uniq_files())
             ck('submission lands in the pre-created game', c == 200 and r.get('ok'), str(r))
             created_id = r.get('id')
+            created_serial = r.get('serial')
+            ck('a real write answers with the archive revision it produced',
+               isinstance(created_serial, int) and created_serial > 0, str(r))
 
             # --- the publisher: a push rebuilds the site this host serves,
             #     complete and atomically swapped in, within seconds ---
@@ -572,6 +577,11 @@ def main():
             ck('current is an atomic symlink into the build directory',
                (td / 'site' / 'current').is_symlink()
                and os.readlink(td / 'site' / 'current').startswith('build-'))
+            stamp = json.loads((td / 'site' / 'current' / 'assets' /
+                                'buildstamp.json').read_text())
+            ck('the served buildstamp reaches the write that made it',
+               isinstance(stamp.get('serial'), int)
+               and stamp['serial'] >= (created_serial or 0), str(stamp))
 
             # --- unclassified: no goal, needs a description, never verified ---
             c, r, _ = call(U + '/api/submit', dict(sub, goal='unclassified'), files)
