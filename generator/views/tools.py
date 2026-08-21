@@ -65,16 +65,11 @@ GitHub</a>.</p></div>
 BizHawk, searching inputs from inside the emulator itself, by toca.
 <a href="https://github.com/toca-1/advancedbot-bizhawk">Source on GitHub</a>.</p></div>
 </div></section>
-<section><h2>Supported emulators &amp; movie formats</h2>
+<section><h2>Other supported movie formats</h2>
 <p class="rules fullw">Submissions accept the movie files of these emulators; upload the format
 your emulator records. If your tool is missing, tell us on the forum; adding a format is easy.</p>
 <table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th></tr></thead>
 <tbody>{emu_rows}</tbody></table>
-<p class="rules fullw">Movie files are parsed mechanically at submission: frames, rerecords and start
-type are read straight from your file. Our parsers are re-implemented from
-<a href="https://github.com/TASVideos/tasvideos">TASVideos\' movie parsers</a>, whose
-contributors are the primary authors of the source material; that module is accordingly
-distributed under their GPL-3.0 license.</p>
 <div class="resourcebox"><b>New to one of these emulators?</b>
 TASVideos maintains the definitive guides to all of them: setup, recording, rerecording
 workflow, and the quirks of every system:
