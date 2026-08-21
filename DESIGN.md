@@ -532,21 +532,22 @@ archivist, module responsibilities). What matters designwise:
   blobs the script reads (always `.replace('<', '\\u003c')`-armoured). Run
   arrival dates come from git history (`fetch-depth: 0` in CI), falling back
   to `importedAt`/`submitted`.
-- **The pipeline**: the archivist fires the website's `deploy.yml` dispatch
-  itself, in a background thread, the moment its push lands
-  (`WEBSITE_DISPATCH_TOKEN` in the VPS env; `reason=archive-content` skips
-  the website's code-test gate) → build + deploy to **GitHub Pages**, about
-  **30 s act-to-published**. Two fallbacks stand behind it: the archive
-  repo's `rebuild-site` job fires the same dispatch before it validates
-  (`ARCHIVE_ACTION_WRITE_SECRET`; the deploy concurrency group coalesces the
-  pair, and the job stays red on an invalid push), and a six-hourly schedule
-  backstops both. Both tokens are the same non-expiring fine-grained token
-  (website repo only, Actions read-write). A six-hourly scheduled rebuild is the safety net against the
-  token expiring silently. A **completeness guard** stops any deploy missing
-  a run page or a core asset; deploys never cancel each other
-  (`cancel-in-progress: false`, bursts coalesce). Website pushes run the full
-  suite before deploying; a red suite keeps the last good build. The site's
-  copy says changes appear "in a few minutes", which is the honest chain.
+- **The pipeline**: the archivist is the publisher. The moment its push
+  lands, `archivist/sitebuild.py` rebuilds the whole site from the local
+  checkout (~1 s), refuses any incomplete build (the same guard CI applies:
+  every run has a page, core assets exist), and swaps an atomic `current`
+  symlink that host nginx serves. **Act-to-published is about a second**;
+  the read lock holds the tree still during the build, a burst of commits
+  coalesces into one rebuild, and a failed build keeps the previous site
+  serving. Content arriving from elsewhere is caught by the refresh loop
+  (HEAD moved → rebuild). **GitHub Pages remains the hot standby**: the
+  same push still fires the website's `deploy.yml` dispatch
+  (`WEBSITE_DISPATCH_TOKEN`; `reason=archive-content` skips the code-test
+  gate), the archive repo's `rebuild-site` job and a six-hourly schedule
+  back that up, and Pages keeps a complete, current copy of the site that
+  one DNS change puts back in front. Website pushes run the full suite
+  before touching either origin; a red suite keeps the last good build
+  everywhere.
 - **The site serves its own images**: thumbnails at `/thumbs/`, proof
   screenshots at `/shots/` (raw.githubusercontent 429s a page with hundreds
   of hotlinks). Movie downloads stay on raw, one click at a time.
@@ -629,13 +630,15 @@ archivist, module responsibilities). What matters designwise:
 - Every page ends in the shared footer (constitution links, site log, social
   icons as CSS masks); the beta bar rides `SITE_BETA` (flip to `0` when the
   beta ends).
-- **Freshness against the Pages cache**: GitHub Pages serves every page with
-  `max-age=600`, so a browser can show a 10-minute-old leaderboard while the
-  site rebuilt in ~40 s. Every build ships `/assets/buildstamp.json`; each
-  page knows its own build (`window.TAR.v`), the client compares the two
-  through an uncached fetch, and a green fixed pill ("This page has been
-  updated · Refresh") offers the reload. Never automatic: the reload is the
-  reader's.
+- **Freshness**: the live origin serves every response `Cache-Control:
+  no-cache` with an ETag, so each load revalidates (a 304 nearly always)
+  and a build swap is visible on the very next request. For a page left
+  open across a change, every build still ships `/assets/buildstamp.json`;
+  each page knows its own build (`window.TAR.v`), the client compares the
+  two through an uncached fetch, and a green fixed pill ("This page has
+  been updated · Refresh") offers the reload. Never automatic: the reload
+  is the reader's. (The pill earns its keep again whenever the Pages
+  standby, with its `max-age=600`, is in front.)
 
 ---
 
@@ -683,18 +686,27 @@ archivist, module responsibilities). What matters designwise:
   serves from it (DNS-audited), but the domain's mail service rides its
   bundle, so terminating it risks the toolassisted.run mailboxes. Do not
   propose cancelling it.
-- **Hosting**: the site on **GitHub Pages** (apex A records to GitHub, `www`
-  CNAME, TLS by GitHub, `CNAME` file shipped in every build; Pages does no
-  rewrites — the self-contained `404.html` forwards legacy `/stage/` links —
-  and no response headers). Forum + archivist on an Infomaniak VPS
-  (Ubuntu LTS, Docker Discourse owning 80/443, archivist beside it). Mail
-  through Infomaniak (`mta-gw.infomaniak.ch`).
+- **Hosting**: everything on the Infomaniak VPS (Ubuntu LTS). Host nginx
+  terminates TLS (certbot) and serves three things: `toolassisted.run`
+  statically from `/opt/archivist/site/current` (the archivist's freshest
+  build; configs in `infra/nginx/`), `forum.toolassisted.run` proxied to the
+  Docker Discourse in socketed mode (`web.socketed.template.yml`, unix
+  socket, no ports), and `/archivist/` on both hosts proxied to the
+  archivist on 8100. **GitHub Pages is the hot standby**: every build still
+  deploys there (`CNAME` shipped, TLS by GitHub), and repointing the apex A
+  records back at GitHub restores service if the VPS dies. Mail through
+  Infomaniak (`mta-gw.infomaniak.ch`).
 - **Everything works on the archive's `main`**. The beta's `staging` branch
   was merged in (a two-parent commit whose tree is staging's; nothing left
   behind) and stays **frozen** so old forum links into it keep resolving.
-- **Deploying the archivist** = copy **all** of `archivist/*.py` to
-  `/opt/archivist/` + `systemctl restart archivist`. Deploying the site =
-  push to main; never deploy by hand unless CI is broken.
+- **Deploying anything** = push to main. The `sync-vps` job in `deploy.yml`
+  runs after the full suite passes and reaches the VPS through a
+  forced-command SSH key (`VPS_SYNC_KEY` secret) that can only ever run
+  `/usr/local/bin/tar-site-sync`: pull the website checkout at
+  `/opt/archivist/website`, copy **all** of `archivist/*.py` to
+  `/opt/archivist/`, restart the archivist (whose startup build republishes
+  the site). The manual path (scp the same files, restart) remains the
+  emergency fallback when CI is broken.
 - **Secrets** (never committed): `/etc/archivist.env` on the VPS
   (`SUBMIT_KEY`, `DISCOURSE_*`, `SESSION_SECRET`, `SSO`, `DISCORD_WEBHOOK_URL`,
   `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under

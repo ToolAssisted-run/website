@@ -107,6 +107,34 @@ jobs:
         # test forwards to the subprocess.
         run: PYTHONPATH=$(python3 -m site --user-site) python3 website/tests/test_archivist.py archive
 
+  # The live origin: the VPS serves toolassisted.run from the archivist's
+  # freshest build, about a second after content lands. Code changes reach
+  # it only through this job, after the full test suite has passed; content
+  # changes never come this way (the archivist rebuilds locally the moment
+  # they land). The key is a forced-command SSH key: whatever is asked, the
+  # VPS only ever runs /usr/local/bin/tar-site-sync (pull, install, restart;
+  # the restart's startup build republishes the site).
+  sync-vps:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull, install and restart on the live origin
+        env:
+          KEY: ${{ secrets.VPS_SYNC_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "no VPS_SYNC_KEY secret; live origin not wired up yet"
+            exit 0
+          fi
+          install -m 600 /dev/null sync_key
+          printf '%s\n' "$KEY" > sync_key
+          ssh -i sync_key -o StrictHostKeyChecking=accept-new \
+              ubuntu@179.237.98.196 sync
+
+  # GitHub Pages stays fully deployed on every push and every content
+  # dispatch: it is the hot standby — one DNS change brings the site back
+  # if the live origin dies.
   deploy:
     needs: test
     if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
