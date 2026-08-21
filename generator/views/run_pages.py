@@ -395,6 +395,13 @@ Log in (top right) to reply from here.</p></section>'''
   <label>Emulator / core (optional)</label><input name="emulator">
   <label>When was the run completed? (optional; shown beside the submission date)</label>
   <input name="completed" type="date" max="{datetime.date.today().isoformat()}">
+  {''.join(
+      f'<label>{esc(m["label"])} '
+      f'({esc(m.get("unit") or ("seconds" if m["type"] == "time" else "number"))}; '
+      f'this category ranks by it. Leave empty to keep, 0 for not yet stated)</label>'
+      f'<input name="metric_{esc(m["key"])}" type="number" step="any" min="0" '
+      + (f'value="{mv:g}">' if (mv := (r.get("metrics") or {}).get(m["key"])) else '>')
+      for m in run_metric_defs(r) if m['key'] != 'time')}
   <label>Notes (<a href="../../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="12"></textarea>
   <div id="fe-attach">
   <label>Add supplementary files (optional: text configs, or additional movie
