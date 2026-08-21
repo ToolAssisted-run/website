@@ -508,6 +508,8 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .eyeic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2}
 .cview{display:inline-flex;align-items:center;gap:3px;color:var(--faint);font-size:.78rem}
 .cview .eyeic{width:12px;height:12px}
+.viewchip{display:inline-flex;align-items:center;gap:4px;color:var(--faint)}
+.viewchip .eyeic{width:12px;height:12px}
 .factbox{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow)}
 .factbox h4{font-family:ui-monospace,monospace;font-size:.64rem;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:500;margin-bottom:9px}
 .factbox dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}

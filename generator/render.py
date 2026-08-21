@@ -189,6 +189,17 @@ def card_views(n):
             '<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>'.replace(chr(10), '')
             + f'{n:,}</span>')
 
+def chip_views(n):
+    """The eye as a heading chip: cumulative visits for a band of games.
+    Same rule as card_views: no host state, no chip."""
+    if not visits_known:
+        return ''
+    return ('<span class="chip viewchip" title="number of visits">'
+            '<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true">'
+            '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>'
+            '<circle cx="12" cy="12" r="2.6"/></svg> '
+            + f'{n:,}</span>')
+
 def frames_html(r):
     """The frames cell: a count for a movie, a dash for a video-only run,
     which has no frames because it has no input."""

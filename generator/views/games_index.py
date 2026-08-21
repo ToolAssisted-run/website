@@ -32,6 +32,7 @@ from model import (
 from render import (
     FULL_TICK,
     card_views,
+    chip_views,
     NONE_TICK,
     PROV_TICK,
     SHIPPED_GAME_THUMBS,
@@ -73,10 +74,11 @@ def card_section(title, gms):
     """One band of game cards, headed with what it holds."""
     stars = sum(nlikes(r) for g in gms for r in g['runs'])
     cards = ''.join(game_card(g) for g in sorted(gms, key=lambda g: g['title']))
+    views = sum(nvisits(r) for g in gms for r in g['runs'])
     return f'''<section class="syssect" data-stars="{stars}" data-title="{esc(title)}">
 <h2>{esc(title)}
 <span class="chip">{len(gms)} game{'s' if len(gms) != 1 else ''}</span>
-<span class="chip starchip"><span class="starglyph">★</span> {stars}</span></h2>
+<span class="chip starchip"><span class="starglyph">★</span> {stars}</span>{chip_views(views)}</h2>
 <div class="hwrap"><div class="hrow">{cards}</div></div></section>'''
 
 sys_sections = [card_section(systems[skey]['name'], by_sys[skey])
@@ -216,7 +218,7 @@ data-last="{1 if gr.get('synthetic') else 0}" href="../groups/{gr['key']}/">
 <span class="cbody"><b>{esc(gr['title'])}</b>
 <span class="csys">{len(ggames)} games · {nsys} system{'s' if nsys != 1 else ''}</span>
 <span class="cfoot"><span>{len(grunts)} run{'s' if len(grunts) != 1 else ''}</span>
-<span><span class="starglyph">★</span>{stars}</span></span></span></a>'''
+<span><span class="starglyph">★</span>{stars}</span>{card_views(sum(nvisits(r) for r in grunts))}</span></span></a>'''
 
     group = [gr for gr in live_groups if not gr.get('synthetic')]
     grp_view = f'''<div class="grid">{''.join(group_card(gr) for gr in live_groups)}</div>
