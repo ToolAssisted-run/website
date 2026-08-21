@@ -512,9 +512,7 @@ def state_chip(r):
     if is_unclassified(r):
         return '<span class="chip unclchip">Unclassified</span>'
     if is_ranked(r):
-        if vs in ('confirmed', 'imported'):
-            return '<span class="chip verchip">Verified (expert)</span>'
-        return '<span class="chip provchip">Verified</span>'
+        return '<span class="chip verchip">Verified</span>'
     return '<span class="chip pendchip">Pending</span>'
 
 def badge_chip(pts):

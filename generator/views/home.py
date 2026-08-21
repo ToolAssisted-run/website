@@ -48,8 +48,7 @@ for r in fresh_selection(runs):
     au = ', '.join(a['user'] for a in r['authors'])
     rs, vs = eff_state(r)
     sm = ('<span class="importedsm">Imported</span>' if rs == 'imported' else
-          '<span class="versm">Verified (expert)</span>' if is_ranked(r) and vs == 'confirmed' else
-          '<span class="provsm">Verified</span>' if is_ranked(r) else
+          '<span class="versm">Verified</span>' if is_ranked(r) else
           '<span class="pendsm">Pending</span>')
     cards.append(f'''<a class="card" href="runs/{r['id']}/">
 {thumb_html(r, f'<span class="dur">{esc(primary_metric_text(r))}</span>')}

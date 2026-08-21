@@ -57,8 +57,8 @@ var params = new URLSearchParams(location.search);
 if (params.get('q')) q.value = params.get('q');
 function chip(state){
   return {imported:'<span class="chip importedchip">Imported</span>',
-          verified:'<span class="chip verchip">Verified (expert)</span>',
-          provisional:'<span class="chip provchip">Verified</span>',
+          verified:'<span class="chip verchip">Verified</span>',
+          provisional:'<span class="chip verchip">Verified</span>',
           unclassified:'<span class="chip unclchip">Unclassified</span>',
           pending:'<span class="chip pendchip">Pending</span>'}[state];
 }
@@ -67,7 +67,8 @@ function render(){
   var rs = RUNS.filter(function(r){
     if (sys && r.sys !== sys) return false;
     if (st === 'ranked' && (r.state === 'pending')) return false;
-    if (st && st !== 'ranked' && r.state !== st) return false;
+    if (st === 'verified' && r.state !== 'verified' && r.state !== 'provisional') return false;
+    if (st && st !== 'ranked' && st !== 'verified' && r.state !== st) return false;
     if (needle){
       var hay = (r.title + ' ' + r.cat + ' ' + r.authors.join(' ') + ' ' + r.id).toLowerCase();
       if (hay.indexOf(needle) === -1) return false;
@@ -101,7 +102,7 @@ body = f'''<header class="ghead"><div><h1>Runs</h1>
 <input id="bq" type="search" placeholder="Search game, category, author…">
 <select id="bsys"><option value="">All systems</option>{sys_opts}</select>
 <select id="bst"><option value="">All statuses</option><option value="ranked">Ranked</option>
-<option value="verified">Verified (expert)</option><option value="provisional">Verified</option>
+<option value="verified">Verified</option>
 <option value="pending">Pending</option><option value="imported">Imported</option>
 <option value="unclassified">Unclassified</option></select>
 <select id="bsort"><option value="date">Newest first</option>

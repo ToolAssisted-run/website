@@ -143,7 +143,7 @@ anytime; the first to finish earns the points.</p></div></header>
 <section><h2>Needs verification</h2>
 <p class="rules">Watch the encode and confirm the run achieves its stated category goal. <b>One
 verification ranks the run</b>, shown as verified; a covering expert's makes it
-verified (expert), which is permanent.</p>
+permanent.</p>
 {f'<table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
 <section><h2>Needs reproduction</h2>
 <p class="rules">Load the movie file on your own setup, confirm it syncs to the end, and submit an
