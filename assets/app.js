@@ -2161,12 +2161,17 @@
     row.addEventListener('pointerdown', function(e){
       if (e.pointerType !== 'mouse' || e.button !== 0) return;
       down = true; moved = false; sx = e.clientX; sl = row.scrollLeft;
-      try { row.setPointerCapture(e.pointerId); } catch (err) {}
     });
     row.addEventListener('pointermove', function(e){
       if (!down) return;
       var dx = e.clientX - sx;
-      if (!moved && Math.abs(dx) > 4) { moved = true; row.classList.add('dragging'); }
+      if (!moved && Math.abs(dx) > 4) {
+        moved = true;
+        row.classList.add('dragging');
+        // capture only once it IS a drag: capturing on pointerdown
+        // retargets the click at the row and kills the card links
+        try { row.setPointerCapture(e.pointerId); } catch (err) {}
+      }
       if (moved) row.scrollLeft = sl - dx;
     });
     function lift(){
