@@ -2013,12 +2013,13 @@ def edit_run():
             changed.append('goalDescription')
         if 'encode' in f:
             enc_v = (f.get('encode') or '').strip()
-            enc_r = providers.resolve(enc_v)
-            if not enc_r:
-                return fail('encode must be a watchable URL on a platform we accept')
-            befores['encode'] = (r.get('encodes') or [{}])[0].get('url', '')
-            r['encodes'] = [{'kind': enc_r['kind'], 'url': enc_v}]
-            changed.append('encode')
+            if enc_v:
+                enc_r = providers.resolve(enc_v)
+                if not enc_r:
+                    return fail('encode must be a watchable URL on a platform we accept')
+                befores['encode'] = (r.get('encodes') or [{}])[0].get('url', '')
+                r['encodes'] = [{'kind': enc_r['kind'], 'url': enc_v}]
+                changed.append('encode')
         if 'time' in f and r.get('videoOnly'):
             m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
                                (f.get('time') or '').strip())
