@@ -35,9 +35,7 @@ h1{font-family:ui-monospace,monospace;font-size:1.3rem;margin-bottom:4px}
 .newsbox p{font-size:.8rem;color:var(--faint)}
 
 /* ---- the input reel ---- */
-.reel{position:absolute;inset:0;z-index:0;pointer-events:none;background-repeat:repeat;
- animation:roll var(--dur,10.5s) steps(var(--steps,21)) infinite}
-@keyframes roll{to{background-position-x:var(--shift,-441px)}}
+.reel{position:absolute;inset:0;z-index:0;pointer-events:none;background-repeat:repeat}
 .reel.masked{-webkit-mask-image:linear-gradient(to left,#000 30%,transparent 75%);
  mask-image:linear-gradient(to left,#000 30%,transparent 75%)}
 .playhead{position:absolute;top:8%;bottom:8%;left:31.5%;width:5px;border-radius:3px;
@@ -122,15 +120,21 @@ function tile(ink, alpha){
   return 'url(data:image/svg+xml;base64,' + btoa(svg) + ')';
 }
 var V = {variant: 'full', op: 6, ms: 500, ph: false, rev: false};
+var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var keys = document.createElement('style');
+document.head.appendChild(keys);
 function paint(){
+  keys.textContent = '@keyframes roll{from{background-position:0 0}' +
+    'to{background-position:' + (V.rev ? W : -W) + 'px 0}}';
   [['heroL', '#0F172A'], ['heroD', '#F1F5F9']].forEach(function(pair){
     var hero = document.getElementById(pair[0]);
     var reel = hero.querySelector('.reel');
     reel.className = 'reel' + (V.variant === 'masked' ? ' masked' : '');
     reel.style.backgroundImage = tile(pair[1], V.op / 100);
-    reel.style.setProperty('--steps', COLS);
-    reel.style.setProperty('--dur', (COLS * V.ms / 1000) + 's');
-    reel.style.setProperty('--shift', (V.rev ? W : -W) + 'px');
+    reel.style.animation = 'none';
+    void reel.offsetWidth;   // restart the animation after a control change
+    if (!still)
+      reel.style.animation = 'roll ' + (COLS * V.ms / 1000) + 's steps(' + COLS + ') infinite';
     hero.querySelector('.playhead').hidden = !V.ph;
   });
 }
