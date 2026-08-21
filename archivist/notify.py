@@ -48,8 +48,22 @@ def profile_slug(name):
 
 
 def member_md(name):
-    """A member's name carrying the link to their profile."""
-    return f'[{name}](<{SITE_URL}/authors/{profile_slug(name)}/>)'
+    """A member's name carrying the link to their profile.
+
+    Only registered members get the link: a credited name that never claimed
+    an account here has no profile page, and a link to a page that does not
+    exist helps nobody. Mirrors the generator's is_member (record exists and
+    is claimed), reading the record fresh so a name registered a moment ago
+    links from its very next mention."""
+    import selfimport
+    try:
+        rec = json.loads((ARCHIVE / 'authors'
+                          / f'{selfimport.slugify(name)}.json').read_text())
+    except (OSError, ValueError):
+        return name
+    if not rec.get('claimed'):
+        return name
+    return f'[{name}](<{SITE_URL}/authors/{profile_slug(rec.get("username") or name)}/>)'
 
 
 def movie_md(r, title=None):

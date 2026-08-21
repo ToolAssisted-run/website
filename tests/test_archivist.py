@@ -1664,6 +1664,15 @@ def main():
                discord_saw('by [TestAuthor](<https://toolassisted.run/authors/'
                            'testauthor/>)'),
                str(DISCORD_MSGS[-3:]))
+            ghost = dict(sub, game='nes/solomons-key', goal='fastest-completion',
+                         authors='TestAuthor, GhostGuy')
+            del ghost['dry_run']
+            c, r, _ = call(U + '/api/submit', ghost, uniq_files())
+            ck('a run with an unregistered co-author archives', c == 200, str(r))
+            ck('an unregistered co-author is named without a link',
+               discord_saw('GhostGuy')
+               and not any('[GhostGuy]' in m for m in DISCORD_MSGS),
+               str(DISCORD_MSGS[-3:]))
             ck('a notification is one line',
                all('\n' not in m for m in DISCORD_MSGS), str(DISCORD_MSGS[-3:]))
             ck('nothing we post can ping anybody',
@@ -1697,9 +1706,9 @@ def main():
             # the topic link points at the mock forum here and the real one in
             # production, so the assertion holds the shape, not the host
             ck('and it reaches Discord, tags stripped, the title carrying the link',
-               discord_saw(')** posted in [Hello there](<')
-               and discord_saw('**[chatter](<')
-               and discord_saw('/t/5/2>): first post!'),
+               discord_saw('**chatter** posted in [Hello there](<')
+               and discord_saw('/t/5/2>): first post!')
+               and not any('[chatter]' in m for m in DISCORD_MSGS),
                str(DISCORD_MSGS[-3:]))
             c, r = hook({'post': {'username': 'chatter',
                                   'topic_archetype': 'private_message',
