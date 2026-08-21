@@ -70,19 +70,88 @@ def game_card(g, prefix='', with_system=False):
 <span class="cfoot"><span>{len(g['runs'])} run{'s' if len(g['runs'])!=1 else ''}</span>
 <span><span class="starglyph">★</span>{gstars}</span>{card_views(sum(nvisits(r) for r in g['runs']))}</span></span></a>'''
 
-def card_section(title, gms):
-    """One band of game cards, headed with what it holds."""
-    stars = sum(nlikes(r) for g in gms for r in g['runs'])
-    cards = ''.join(game_card(g) for g in sorted(gms, key=lambda g: g['title']))
-    views = sum(nvisits(r) for g in gms for r in g['runs'])
-    return f'''<section class="syssect" data-stars="{stars}" data-title="{esc(title)}">
-<h2>{esc(title)}
-<span class="chip">{len(gms)} game{'s' if len(gms) != 1 else ''}</span>
-<span class="chip starchip"><span class="starglyph">★</span> {stars}</span>{chip_views(views)}</h2>
-<div class="hwrap"><div class="hrow">{cards}</div></div></section>'''
+def collage(ggames):
+    """Up to four games, one tile each, each showing that game's most
+    starred run: the face of a family (a group) or a library (a system),
+    drawn from distinct games, best liked first."""
+    tiles = []
+    for g in sorted(ggames, key=lambda g: (-sum(nlikes(r) for r in g['runs']),
+                                           g['title'])):
+        best = max((r for r in g['runs'] if r.get('thumbnail')),
+                   key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
+        if best:
+            tiles.append(best)
+        if len(tiles) == 4:
+            break
+    if not tiles:
+        # no thumbnails, or no games at all: the card still needs a face
+        word = ggames[0]['system'].upper() if ggames else 'NEW'
+        return f'<span class="thumb"><span class="sys">{esc(word)}</span></span>'
+    nsfw = any('sexual' in r.get('contentWarnings', []) for r in tiles)
+    cells = ''.join(
+        f'<span class="tile"><img class="'
+        f'{"nsfwblur" if "sexual" in r.get("contentWarnings", []) else ""}" '
+        f'src="{esc(thumb_url(r))}" alt="" loading="lazy"></span>'
+        for r in tiles)
+    badge = '<span class="nsfw18">18+</span>' if nsfw else ''
+    return (f'<span class="thumb collage" data-n="{len(tiles)}">{cells}{badge}</span>')
 
-sys_sections = [card_section(systems[skey]['name'], by_sys[skey])
-                for skey in sorted(by_sys, key=lambda k: systems[k]['name'])]
+def system_card(skey, gms):
+    """One card for a whole system's library, exactly like a group's."""
+    rlist = [r for g in gms for r in g['runs']]
+    stars = sum(nlikes(r) for r in rlist)
+    return f'''<a class="card" data-stars="{stars}" data-title="{esc(systems[skey]['name'])}" href="../systems/{skey}/">
+{collage(gms)}
+<span class="cbody"><b>{esc(systems[skey]['name'])}</b>
+<span class="csys">{len(gms)} game{'s' if len(gms) != 1 else ''}</span>
+<span class="cfoot"><span>{len(rlist)} run{'s' if len(rlist) != 1 else ''}</span>
+<span><span class="starglyph">★</span>{stars}</span>{card_views(sum(nvisits(r) for r in rlist))}</span></span></a>'''
+
+sys_view = (f'''<div class="grid">{''.join(
+    system_card(skey, by_sys[skey])
+    for skey in sorted(by_sys, key=lambda k: systems[k]['name']))}</div>
+<p class="authline">{len(by_sys)} systems; every game lives on one.</p>''')
+
+# ---- system pages: a system's whole library, exactly like a group page ----
+(OUT / 'systems').mkdir(parents=True, exist_ok=True)
+for skey in sorted(by_sys):
+    sgames = sorted(by_sys[skey], key=lambda g: g['title'].lower())
+    sruns = [r for g in sgames for r in g['runs']]
+    sstars = sum(nlikes(r) for r in sruns)
+    scards = ''.join(game_card(g, '../../games/') for g in sgames)
+    srows = []
+    for r in sorted((r for r in sruns if is_ranked(r)),
+                    key=lambda r: (r['_game']['title'], cat_label(r))):
+        rs_, vs_ = eff_state(r)
+        srows.append(f"""<tr onclick="if(!event.target.closest('a'))location='../../runs/{r['id']}/'"><td><a href="../../games/{r['_game']['key']}/">{esc(r['_game']['title'])}</a></td>
+<td>{esc(cat_label(r))}</td>
+<td>{', '.join(author_chip(a['user'], '../../') for a in r['authors'])}</td>
+<td class="num"><a href="../../runs/{r['id']}/">{primary_metric_html(r)}</a></td>
+<td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
+<td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>""")
+    stable = (f"""<h2>Records across the system</h2>
+<table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
+<th class="num"></th><th class="num">Stars</th>
+<th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
+<tbody>{''.join(srows)}</tbody></table>
+<p class="legend">{FULL_TICK} verified (expert) &nbsp; {PROV_TICK} verified &nbsp;
+{NONE_TICK} pending</p>""" if srows else
+              '<p class="authline">No ranked run on this system yet.</p>')
+    sbody = f"""<header class="ghead"><div>
+<div class="chips"><span class="chip">{len(sgames)} games</span>
+<span class="chip">{len(sruns)} run{'s' if len(sruns) != 1 else ''}</span>
+<span class="chip starchip"><span class="starglyph">★</span> {sstars}</span>{chip_views(sum(nvisits(r) for r in sruns))}</div>
+<h1>{esc(systems[skey]['name'])}</h1>
+<p class="authline">Every {esc(systems[skey]['name'])} game in the library, whatever
+group each belongs to.</p></div></header>
+<div class="grid">{scards}</div>
+
+{stable}"""
+    sdir = OUT / 'systems' / skey
+    sdir.mkdir(parents=True, exist_ok=True)
+    (sdir / 'index.html').write_text(page(
+        systems[skey]['name'], sbody, '../../',
+        f'<a href="../../games/">Games</a> / {esc(systems[skey]["name"])}', 'Games'))
 
 if live_groups:
     (OUT / 'groups').mkdir(parents=True, exist_ok=True)
@@ -177,40 +246,13 @@ if live_groups:
             gr['title'], gbody, '../../',
             f'<a href="../../games/">Games</a> / {esc(gr["title"])}', 'Games'))
 
-    def group_collage(gr, ggames):
-        """Up to four games of the group, one tile each, each showing that
-        game's most starred run. A group is a family of games, so the card
-        shows the family rather than one member of it; the tiles are drawn
-        from distinct games, best liked first."""
-        tiles = []
-        for g in sorted(ggames, key=lambda g: (-sum(nlikes(r) for r in g['runs']),
-                                               g['title'])):
-            best = max((r for r in g['runs'] if r.get('thumbnail')),
-                       key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
-            if best:
-                tiles.append(best)
-            if len(tiles) == 4:
-                break
-        if not tiles:
-            # no thumbnails, or no games at all: the card still needs a face
-            word = ggames[0]['system'].upper() if ggames else 'NEW'
-            return f'<span class="thumb"><span class="sys">{esc(word)}</span></span>'
-        nsfw = any('sexual' in r.get('contentWarnings', []) for r in tiles)
-        cells = ''.join(
-            f'<span class="tile"><img class="'
-            f'{"nsfwblur" if "sexual" in r.get("contentWarnings", []) else ""}" '
-            f'src="{esc(thumb_url(r))}" alt="" loading="lazy"></span>'
-            for r in tiles)
-        badge = '<span class="nsfw18">18+</span>' if nsfw else ''
-        return (f'<span class="thumb collage" data-n="{len(tiles)}">{cells}{badge}</span>')
-
     def group_card(gr):
         """One card for a whole group, thumbnailed with a collage of its
         games."""
         ggames = group_games(gr)
         grunts = group_runs(gr)
         stars = sum(nlikes(r) for r in grunts)
-        tm = group_collage(gr, ggames)
+        tm = collage(ggames)
         nsys = len({g['system'] for g in ggames})
         return f'''<a class="card" data-stars="{stars}" data-title="{esc(gr['title'])}"
 data-last="{1 if gr.get('synthetic') else 0}" href="../groups/{gr['key']}/">
@@ -361,7 +403,7 @@ experts curate afterwards.</p></div>
 <button class="dimopt gview-btn on" data-view="systems">Systems</button>
 <button class="dimopt gview-btn" data-view="list">List</button></span></div>
 {f'<div class="gview" id="v-groups" hidden>{grp_view}</div>' if grp_view else ''}
-<div class="gview gsects" id="v-systems">{''.join(sys_sections)}</div>
+<div class="gview" id="v-systems">{sys_view}</div>
 <div class="gview" id="v-list" hidden>{list_view}</div>
 {games_sort_js}
 {games_acts}'''

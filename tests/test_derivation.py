@@ -262,11 +262,14 @@ def main():
            stats['ada']['author'] == 3 and stats['bo']['author'] == 1,
            str({k: v['author'] for k, v in stats.items()}))
         games_page = (out / 'games/index.html').read_text()
-        sections = re.findall(r'<section class="syssect" data-stars="(\d+)"', games_page)
         cards = re.findall(r'<a class="card" data-stars="(\d+)"', games_page)
-        ck('system star totals equal the sum of their games',
-           sorted(int(x) for x in sections) == [1, 3], str(sections))
-        ck('game star totals are per game', sorted(int(x) for x in cards) == [1, 3], str(cards))
+        ck('system card star totals equal the sum of their games',
+           sorted(int(x) for x in cards) == [1, 3], str(cards))
+        syspages = sorted(p.parent.name for p in (out / 'systems').glob('*/index.html'))
+        ck('every system has its own page', len(syspages) == 2, str(syspages))
+        sp = (out / 'systems' / syspages[0] / 'index.html').read_text()
+        gcards = re.findall(r'<a class="card" data-stars="(\d+)"', sp)
+        ck('the system page holds its games as cards', len(gcards) >= 1, str(gcards))
 
         # ---------------- superseded / history ----------------
         hist = [
