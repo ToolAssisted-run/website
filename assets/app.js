@@ -408,8 +408,6 @@
   armZone('groupactdata', 'groupacts', 'groupact-msg', [
     {id: 'f-groupaddgame', path: '/api/game/create',
      done: function(j){ return j.game + ' is in this group.'; }},
-    {id: 'f-groupremove', path: '/api/group/request-removal', expertOnly: true,
-     done: function(){ return 'Filed. A site-wide expert answers it.'; }},
     {id: 'f-groupdelete', path: '/api/group/delete',
      confirm: 'Delete this group outright? Its games become ungrouped. ' +
               'This cannot be undone.',
@@ -803,72 +801,6 @@
         refreshCandidates(s, us);
       });
 
-      // ---- what is waiting on me ----
-      // ratification is gone: creations are real on arrival, so the only
-      // thing that waits on anybody is a removal request
-      var pending = (amSite ? P.removals : []).map(function(r){
-        return {kind: 'removal', key: r.key, sub: r.kind, title: r.title,
-                what: 'removal asked by ' + r.by + ' · ' + r.reason}; });
-      var plist = document.getElementById('pending-list');
-      var dform = document.getElementById('f-decide');
-      if (!pending.length) {
-        plist.appendChild(el('p', 'emptynote', 'Nothing is waiting for you.'));
-      } else {
-        pending.forEach(function(item){
-          var line = el('p', 'statline');
-          line.appendChild(el('b', '', item.title));
-          line.appendChild(el('span', 'actmeta', ' ' + item.what + ' '));
-          var b = el('button', 'btn quiet', 'Decide');
-          b.addEventListener('click', function(){
-            document.getElementById('decide-kind').value = item.kind;
-            document.getElementById('decide-key').value = item.key;
-            document.getElementById('decide-sub').value = item.sub || '';
-            dyes.textContent = item.kind === 'removal' ? 'Grant the removal' : 'Approve';
-            dno.textContent = item.kind === 'removal' ? 'Decline it' : 'Refuse';
-            document.getElementById('decide-what').textContent =
-              'Deciding on ' + item.title + ' (' + item.what + ')';
-            dform.hidden = false;
-          });
-          line.appendChild(b);
-          plist.appendChild(line);
-        });
-      }
-      function decide(approve){
-        var kind = document.getElementById('decide-kind').value;
-        var key = document.getElementById('decide-key').value;
-        var sub = document.getElementById('decide-sub').value;
-        var reason = dform.querySelector('[name=reason]').value.trim();
-        if (!approve && reason.length < 8) {
-          note(msg, 'Saying no needs a reason the other person can read and answer.', false);
-          return;
-        }
-        var fd = new FormData();
-        var path;
-        if (kind === 'removal') {
-          // answering a request another member filed, not deciding for myself
-          fd.append('kind', sub);
-          fd.append('target', key);
-          fd.append('action', approve ? 'granted' : 'declined');
-          if (!approve) fd.append('note', reason);
-          path = '/api/removal/decide';
-        } else {
-          return;   // nothing but removals waits on anybody any more
-        }
-        post(path, fd, dform.querySelector('button')).then(function(res){
-          if (res.ok && res.j.ok) {
-            note(msg, (approve ? 'Approved. ' : 'Refused. ') +
-                      'The site rebuilds from the archive; it shows here in about a ' +
-                      'minute.', true);
-            dform.hidden = true;
-          } else note(msg, res.j.error || 'something went wrong', false);
-        });
-      }
-      var dyes = document.getElementById('decide-yes');
-      var dno = document.getElementById('decide-no');
-      var dcancel = document.getElementById('decide-cancel');
-      if (dyes) dyes.addEventListener('click', function(){ decide(true); });
-      if (dno) dno.addEventListener('click', function(){ decide(false); });
-      if (dcancel) dcancel.addEventListener('click', function(){ dform.hidden = true; });
 
       // the lists the remaining forms run on: what I may step down from, the
       // group I may change, and the games I may name in one

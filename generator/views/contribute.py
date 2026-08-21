@@ -168,9 +168,9 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 <p class="statline muted">Weights are provisional while the community settles them.</p></div>
 <div class="factbox"><h4>The rules</h4>
 <ul class="factlist">
-<li>Never your own run.</li>
+<li>You cannot verify or confirm reproduction for your own run.</li>
 <li>One reproduction and one verification per member per run.</li>
-<li>A spent shot stays spent, even if invalidated later.</li>
+<li>You keep the points, even if an expert later overrules your contribution.</li>
 <li>Contradictions open a case; nothing is removed automatically.</li>
 </ul></div>
 {open_cases_box}

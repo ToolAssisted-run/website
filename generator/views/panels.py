@@ -71,14 +71,6 @@ panel_data = {
     # open removal requests. Only a site-wide expert answers one, so the panel
     # shows them to nobody else, but the request itself is public on the page
     # it is about and in the site log.
-    'removals': ([{'kind': 'game', 'key': k, 'title': g['title'],
-                   'by': r['by'], 'date': r['date'], 'reason': r['reason']}
-                  for k, g in sorted(games.items())
-                  for r in g.get('removalRequests', []) if r['status'] == 'open']
-                 + [{'kind': 'group', 'key': gr['key'], 'title': gr['title'],
-                     'by': r['by'], 'date': r['date'], 'reason': r['reason']}
-                    for gr in groups
-                    for r in gr.get('removalRequests', []) if r['status'] == 'open']),
 }
 body = f'''<header class="ghead"><div><h1>Expert panel</h1>
 <p class="authline">The scopes you hold, and the things holding them lets you do. Every
@@ -92,22 +84,6 @@ reason and the date, and shows in the role log on the member\'s page.</p></div><
 games, a game group covers the games in it. You may appoint anybody to a scope you
 already cover, never wider than your own.</p></section>
 
-<section id="pending-wrap"><h2>Waiting on you</h2>
-<p class="rules">Removal requests filed inside your jurisdiction that nobody has answered
-yet. Granting takes the thing out of the index; declining asks for a note the person who
-filed can read and answer.</p>
-<div id="pending-list" class="factbox"></div>
-<form id="f-decide" class="actform" hidden>
-  <input type="hidden" name="kind" id="decide-kind">
-  <input type="hidden" name="key" id="decide-key">
-  <input type="hidden" id="decide-sub">
-  <p class="statline" id="decide-what"></p>
-  <label>Reason, if you are saying no <input name="reason" maxlength="500"
-    placeholder="what is wrong with it; required to refuse"></label>
-  <button class="btn" id="decide-yes" type="button">Approve</button>
-  <button class="btn quiet" id="decide-no" type="button">Refuse</button>
-  <button class="btn quiet" id="decide-cancel" type="button">Cancel</button>
-</form></section>
 
 <section><details class="secfold menufold"><summary><h2>Make somebody an expert for a game</h2></summary>
 <form id="f-appoint-game" class="actform">

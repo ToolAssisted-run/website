@@ -133,9 +133,8 @@ only; history may name things later deleted).
 invalidate faulty
 reproductions/verifications/console verifications · resolve/dismiss reports ·
 edit everything in their jurisdiction (see §4, "Edits") · create games in
-their group, groups at site scope · file and (site scope) decide removal
-requests · delete outright what was never a work · withdraw any run in
-scope. Experts never
+their group, groups at site scope · delete outright what was never a
+work · withdraw any run in scope. Experts never
 judge merit: reproduction and verification stay open to all; experts police
 the trust layer's quality and curate taxonomy.
 
@@ -229,7 +228,7 @@ stated duration).
 
 **Every event carries its arrival second**: beside the human-readable
 `date` (day), event records (acts, invalidations, withdrawals, reports,
-cases, role events, edits, deletions, claims, removal requests; and
+cases, role events, edits, deletions, claims; and
 `ratifiedAtTime`/`claimedAtTime` on games, groups and author records) carry
 an optional `at` (ISO seconds, UTC), stamped by the archivist at write time.
 Boards and logs sort by the moment (`at` falling back to `date`) and display
@@ -339,8 +338,7 @@ concerns use **contact@toolassisted.run** (§10).
   submit selectors; see §5 metrics); it exists the moment it is made. **Ratification is retired as a mechanism** (2026-08-20):
   nothing is provisional, nothing waits for a vouch. This is about content
   taxonomy only: **a name claim still waits for the Steering Committee**
-  (§6), and removal requests still wait for a site-wide expert; identity and
-  removals are judgements, not creations. The counterweight is
+  (§6); identity is a judgement, not a creation. The counterweight is
   the fast lane: a creation that should not exist is deleted by an expert,
   logged, and reversible through git. Historical `ratifiedBy/At` (and
   `rejected`) fields survive on old records and in the site log's
@@ -349,11 +347,12 @@ concerns use **contact@toolassisted.run** (§10).
 - **Groups are acts, not hand edits**: `/api/group/create` (only games you
   already speak for) and `/api/group/edit`; every change logged.
 - **A game leaves through deletion** (public reason; its runs survive in the
-  system's Uncategorized game): the old ask-then-decide removal-request flow
-  is retired from the UI for games (`/api/game/request-removal` and
-  `/api/removal/decide` survive for the record, and pages still show
-  historical removal notes). Groups keep the request flow: filed with a
-  reason, decided by a site-wide expert, both names public.
+  system's Uncategorized game). **A group is deleted outright the same way**
+  (covering expert or editor, public reason): its games become ungrouped and
+  the derived Uncategorized group gathers them; that group is computed from
+  whatever no real group claims, so it can never be deleted. The old
+  ask-then-decide removal-request flow is fully retired (2026-08-21):
+  endpoints gone, UI gone, and nothing in the archive ever used it.
 - **The game editor** (`/games/<key>/edit/`, linked from the game page's
   Expert menu, revealed only to covering experts, enforced server-side):
   identity (rename, thumbnail) and the **category manager**: one card per

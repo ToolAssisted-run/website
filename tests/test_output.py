@@ -519,12 +519,12 @@ def main():
            '2 games · 2 systems' in vgroups, vgroups[vgroups.find('cbody'):][:160])
         ck('the groups view does not list the games themselves',
            'href="nes/testgame/"' not in vgroups and 'href="nes/orphan/"' not in vgroups)
-        ck('the groups view holds an Unclassified card for the rest',
-           'groups/unclassified/' in vgroups, str(vgroups.count('class="card"')))
-        ck('Unclassified sorts last whatever the sort is',
+        ck('the groups view holds an Uncategorized card for the rest',
+           'groups/uncategorized/' in vgroups, str(vgroups.count('class="card"')))
+        ck('Uncategorized sorts last whatever the sort is',
            vgroups.index('data-last="1"') > vgroups.index('groups/test-family/'))
-        uncl = all_html.get(out / 'groups' / 'unclassified' / 'index.html', '')
-        ck('the Unclassified group has a page', bool(uncl))
+        uncl = all_html.get(out / 'groups' / 'uncategorized' / 'index.html', '')
+        ck('the Uncategorized group has a page', bool(uncl))
         ck('it holds exactly the game no group claimed',
            'games/nes/orphan/' in uncl and 'games/dos/hardgame/' not in uncl)
         ck('it does not pretend to be a series',
@@ -535,7 +535,7 @@ def main():
            str([pth.parent.name for pth, h in all_html.items()
                 if pth.parent.parent.parent.name == 'games' and 'grpline' not in h]))
         ck('an unclaimed game says so on its own page',
-           'groups/unclassified/' in all_html[out / 'games' / 'nes' / 'orphan' / 'index.html'])
+           'groups/uncategorized/' in all_html[out / 'games' / 'nes' / 'orphan' / 'index.html'])
         vlist = gindex[gindex.index('id="v-list"'):]
         # four games now: the three with runs, and the runless one an expert
         # created while filling out a group
@@ -675,8 +675,7 @@ def main():
         ck('and leaves the site-wide expert off it', 'Root' not in head_, head_[-400:])
 
         # ---------- acts on the page they are about ----------
-        # Each zone starts hidden and opens only for the people who may use it,
-        # and none of them can delete anything: a removal is a request.
+        # Each zone starts hidden and opens only for the people who may use it.
         for page_, blob, zone in (
                 (out / 'games' / 'nes' / 'testgame' / 'index.html',
                  'gameactdata', 'f-gameremove-wrap'),
@@ -703,8 +702,9 @@ def main():
            and 'f-gamedelete' in gh,
            'the path is chosen by the script, the words by the page')
         grh = all_html[out / 'groups' / 'test-family' / 'index.html']
-        ck('a group page can add a game and ask for its own removal',
-           'f-groupaddgame' in grh and 'f-groupremove' in grh, grh[:200])
+        ck('a group page adds games and deletes itself outright; no request form',
+           'f-groupaddgame' in grh and 'f-groupremove' not in grh
+           and 'f-groupdelete' in grh, grh[:200])
         ck('the games index offers a new group',
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
 
@@ -920,10 +920,8 @@ def main():
            'epanel-claims' not in panel and 'claim/pending' not in panel, panel[:200])
         acts = re.findall(r'<summary><h2>([^<]+)</h2></summary>', panel)
         ck('every action in the panel is folded', len(acts) >= 6, str(acts))
-        ck('and the pending list is not folded',
-           'id="pending-list"' in panel
-           and panel.find('id="pending-list"') < panel.find('<summary><h2>'),
-           str(acts))
+        ck('nothing waits on anybody: the removal-request flow is retired',
+           'pending-list' not in panel and 'f-decide' not in panel, panel[:200])
         ck('the panel knows who is a member, so it can offer names',
            isinstance(pd.get('members'), list) and pd['members'], str(pd)[:200])
         ck('ratification is gone from the panel data',
