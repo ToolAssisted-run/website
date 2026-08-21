@@ -182,6 +182,12 @@
     btn.disabled = on;
     btn.classList.toggle('busy', on);
   }
+  function actionBtn(form){
+    // the form's real submit button: never a chip's × or a helper button,
+    // so the busy spinner lands on the button the member actually pressed
+    return form.querySelector('button:not([type=button])') ||
+           actionBtn(form);
+  }
   function post(path, fd, btn){
     busy(btn, true);
     return fetch(api + path, {method: 'POST', body: fd, credentials: 'include'})
@@ -480,7 +486,7 @@
         form.addEventListener('submit', function(ev){
           ev.preventDefault();
           if (spec.confirm && !window.confirm(spec.confirm)) return;
-          post(spec.path, new FormData(form), form.querySelector('button'))
+          post(spec.path, new FormData(form), actionBtn(form))
             .then(function(res){
               if (res.ok && res.j.ok) {
                 noteBuilt(msg, spec.done(res.j), res.j.serial);
@@ -531,7 +537,7 @@
         ev.preventDefault();
         if (!window.confirm('Delete the member ' + M.target + ' outright? ' +
                             'This cannot be undone.')) return;
-        post('/api/member/delete', new FormData(form), form.querySelector('button'))
+        post('/api/member/delete', new FormData(form), actionBtn(form))
           .then(function(res){
             if (res.ok && res.j.ok) {
               noteBuilt(msg, 'Deleted.', res.j.serial,
@@ -589,7 +595,7 @@
       var fd = new FormData(form);
       fd.append('action', approve ? 'approved' : 'denied');
       if (approve) fd.delete('note');
-      post('/api/claim/decide', fd, form.querySelector('button')).then(function(res){
+      post('/api/claim/decide', fd, actionBtn(form)).then(function(res){
         if (res.ok && res.j.ok) {
           note(msg, (approve ? 'Approved. ' : 'Denied. ') + (res.j.told || '') +
                     ' The site rebuilds from the archive; it shows there in about a ' +
@@ -637,7 +643,7 @@
         form.addEventListener('submit', function(ev){
           ev.preventDefault();
           post('/api/founder/committee', new FormData(form),
-               form.querySelector('button')).then(function(res){
+               actionBtn(form)).then(function(res){
             if (res.ok && res.j.ok) {
               noteBuilt(msg, (res.j.action === 'granted' ? 'Seated. ' : 'Unseated. ') +
                         (res.j.told || ''), res.j.serial);
@@ -707,7 +713,7 @@
       refreshRoleCandidates();
       roleForm.addEventListener('submit', function(ev){
         ev.preventDefault();
-        post('/api/role/decide', new FormData(roleForm), roleForm.querySelector('button'))
+        post('/api/role/decide', new FormData(roleForm), actionBtn(roleForm))
           .then(function(res){
             if (res.ok && res.j.ok) {
               noteBuilt(roleMsg, 'Recorded: ' + res.j.votes + ' of ' + res.j.committee +
@@ -729,7 +735,7 @@
       sform.addEventListener('submit', function(ev){
         ev.preventDefault();
         post('/api/expert/appoint', new FormData(sform),
-             sform.querySelector('button')).then(function(res){
+             sactionBtn(form)).then(function(res){
           if (res.ok && res.j.ok) {
             noteBuilt(cmsg, res.j.user + ' is now an expert for the whole site.',
                       res.j.serial);
@@ -751,7 +757,7 @@
       eform.addEventListener('submit', function(ev){
         ev.preventDefault();
         post('/api/editor/appoint', new FormData(eform),
-             eform.querySelector('button')).then(function(res){
+             eactionBtn(form)).then(function(res){
           if (res.ok && res.j.ok) {
             noteBuilt(cmsg, res.j.user + ' is now an editor.', res.j.serial);
             eform.reset();
@@ -979,7 +985,7 @@
         if (!form) return;
         form.addEventListener('submit', function(ev){
           ev.preventDefault();
-          post(path, new FormData(form), form.querySelector('button')).then(function(res){
+          post(path, new FormData(form), actionBtn(form)).then(function(res){
             if (res.ok && res.j.ok) {
               noteBuilt(msg, done(res.j), res.j.serial);
               form.reset();
@@ -1052,7 +1058,7 @@
           ev.preventDefault();
           var fd = new FormData(form);
           fd.append('run', D.run);
-          post(path, fd, form.querySelector('button')).then(function(res){
+          post(path, fd, actionBtn(form)).then(function(res){
             if (res.ok && res.j.ok) {
               noteBuilt(out, 'Recorded, thank you.', res.j.serial);
             } else note(out, res.j.error || 'something went wrong', false);
@@ -1223,7 +1229,7 @@
         form.addEventListener('submit', function(ev){
           ev.preventDefault();
           if (confirmText && !window.confirm(confirmText)) return;
-          post(path, new FormData(form), form.querySelector('button'))
+          post(path, new FormData(form), actionBtn(form))
             .then(function(res){
               if (res.ok && res.j.ok) ok(done(res.j), res.j.serial);
               else note(msg, res.j.error || 'something went wrong', false);
@@ -1342,7 +1348,7 @@
       claimForm.addEventListener('submit', function(ev){
         ev.preventDefault();
         post('/api/claim/request', new FormData(claimForm),
-             claimForm.querySelector('button')).then(function(res){
+             actionBtn(claimForm)).then(function(res){
           if (res.ok && res.j.ok) {
             note(msg, 'Filed. The Steering Committee answers it, and you will hear ' +
                       'either way, by private message on the forum.', true);
@@ -1365,7 +1371,7 @@
       wrap.hidden = false;
       form.addEventListener('submit', function(ev){
         ev.preventDefault();
-        post('/api/claim/attest', new FormData(form), form.querySelector('button'))
+        post('/api/claim/attest', new FormData(form), actionBtn(form))
           .then(function(res){
             if (res.ok && res.j.ok) {
               note(msg, 'Attested: ' + res.j.identity + ' is now ' + res.j.member +
@@ -1464,7 +1470,7 @@
         var fd = new FormData(rform);
         fd.append('run', L.run);
         var msg = document.getElementById('report-msg');
-        post('/api/report', fd, rform.querySelector('button')).then(function(res){
+        post('/api/report', fd, ractionBtn(form)).then(function(res){
           if (res.ok && res.j.ok) {
             rbox.hidden = true;
             note(msg, 'Report ' + res.j.report + ' filed. ' + res.j.note, true);
@@ -2141,7 +2147,7 @@
       dform.addEventListener('submit', function(ev){
         ev.preventDefault();
         var msg = document.getElementById('disc-msg');
-        var btn = dform.querySelector('button');
+        var btn = dactionBtn(form);
         var fd = new FormData(dform);
         fd.append('topic', topicId);
         btn.disabled = true;
