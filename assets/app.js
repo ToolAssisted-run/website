@@ -2491,10 +2491,10 @@
 
   // ---- contribute page: Needs verification filter ----
   // Runs that already have a community verification ("Verified: ranked") only
-  // need an expert to make them permanent. Hide those rows from users who
-  // cannot do that: only a Founder, a Steering Committee member, or a covering
-  // Expert (whose scope reaches this run's game, resolved by the generator and
-  // stamped as data-experts on each row) can submit an expert verification.
+  // need an Expert to make them permanent. Hide those rows from users who
+  // cannot do that: only a covering Expert (whose scope reaches this run's game, 
+  // resolved by the generator and stamped as data-experts on each row) 
+  // can submit an expert verification.
   // If every ranked row is filtered out, the table is hidden and the
   // "nothing waiting" note shown in its place.
   mep.then(function(d){
@@ -2512,7 +2512,7 @@
       var experts = (tr.dataset.experts || '').split(',').map(function(x){ return x.trim().toLowerCase(); });
       var isCoveringExpert = u !== null && experts.indexOf(u) >= 0;
 
-      if (!isFounder && !isCommittee && !isCoveringExpert) {
+      if (!isCoveringExpert) {
         tr.parentNode.removeChild(tr);
         removedCount++;
       }
