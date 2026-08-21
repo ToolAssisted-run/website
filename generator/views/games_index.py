@@ -14,6 +14,7 @@ from config import (
 )
 from model import (
     authors,
+    nvisits,
     cat_label,
     covering_experts,
     eff_state,
@@ -30,6 +31,7 @@ from model import (
 )
 from render import (
     FULL_TICK,
+    card_views,
     NONE_TICK,
     PROV_TICK,
     SHIPPED_GAME_THUMBS,
@@ -65,7 +67,7 @@ def game_card(g, prefix='', with_system=False):
 {tm}
 <span class="cbody"><b>{esc(g['title'])}</b>{sysline}
 <span class="cfoot"><span>{len(g['runs'])} run{'s' if len(g['runs'])!=1 else ''}</span>
-<span><span class="starglyph">★</span>{gstars}</span></span></span></a>'''
+<span><span class="starglyph">★</span>{gstars}</span>{card_views(sum(nvisits(r) for r in g['runs']))}</span></span></a>'''
 
 def card_section(title, gms):
     """One band of game cards, headed with what it holds."""

@@ -178,6 +178,16 @@ def primary_metric_text(r):
     n = f'{v:,.3f}'.rstrip('0').rstrip('.')
     return f'{n} {m["unit"]}' if m.get('unit') else n
 
+def card_views(n):
+    """The little eye a card carries when the run has been seen. Visit counts
+    are host state, absent on CI and the standby, so zero simply shows
+    nothing rather than a page of zeroes."""
+    if not n:
+        return ''
+    return ('<span class="cview" title="number of visits">'
+            '<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>'.replace(chr(10), '')
+            + f'{n:,}</span>')
+
 def frames_html(r):
     """The frames cell: a count for a movie, a dash for a video-only run,
     which has no frames because it has no input."""
