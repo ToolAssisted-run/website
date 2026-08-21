@@ -200,6 +200,47 @@ def chip_views(n):
             '<circle cx="12" cy="12" r="2.6"/></svg> '
             + f'{n:,}</span>')
 
+def md_html(text):
+    """Markdown, the small honest subset category rules use: paragraphs,
+    bullet and numbered lists, **bold**, *italic*, `code` and [label](url)
+    links. Everything else stays text; nothing raw passes through."""
+    def infmt(t):
+        t = esc(t)
+        t = re.sub(r'\[([^\]]+)\]\((https?://[^\s)]+)\)', r'<a href="\2">\1</a>', t)
+        t = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', t)
+        t = re.sub(r'(?<!\*)\*([^*\n]+)\*(?!\*)', r'<em>\1</em>', t)
+        t = re.sub(r'`([^`]+)`', r'<code>\1</code>', t)
+        return t
+    out = []
+    mode = [None]   # None | 'ul' | 'ol' | 'p'
+    def close():
+        if mode[0] == 'ul': out.append('</ul>')
+        if mode[0] == 'ol': out.append('</ol>')
+        if mode[0] == 'p': out.append('</p>')
+        mode[0] = None
+    for raw in str(text or '').replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+        line = raw.strip()
+        if not line:
+            close()
+            continue
+        m = re.match(r'[-*]\s+(.*)', line)
+        if m:
+            if mode[0] != 'ul': close(); out.append('<ul>'); mode[0] = 'ul'
+            out.append(f'<li>{infmt(m.group(1))}</li>')
+            continue
+        m = re.match(r'\d+[.)]\s+(.*)', line)
+        if m:
+            if mode[0] != 'ol': close(); out.append('<ol>'); mode[0] = 'ol'
+            out.append(f'<li>{infmt(m.group(1))}</li>')
+            continue
+        if mode[0] != 'p':
+            close(); out.append('<p>'); mode[0] = 'p'
+        else:
+            out.append(' ')
+        out.append(infmt(line))
+    close()
+    return ''.join(out)
+
 def run_date_cell(r):
     """The run's primary date on a board: the completion date the authors
     stated when they stated one, the submission day otherwise. A future
