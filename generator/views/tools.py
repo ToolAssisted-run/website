@@ -45,8 +45,8 @@ emu_rows = ''.join(f'<tr><td><b>{esc(n)}</b></td><td>{esc(s)}</td>'
                    f'<td class="num"><code>{esc(x)}</code></td></tr>'
                    for n, s, x in EMULATORS)
 body = f'''<header class="ghead"><div><h1>Tools</h1>
-<p class="authline">The instruments of the craft. Innovation is first-class here; tools are
-documented and celebrated, never banned. Disclosing what you used is a badge, not a confession.</p>
+<p class="authline">You can create your run with any emulator and any tools you like; what you
+submit, in the end, is simply the encoded video. Below are the tools commonly used to make TASes.</p>
 </div></header>
 <section><h2>miniHawk <span class="chip pendchip">in development</span></h2>
 <div class="policy"><p><b>miniHawk</b> is this site\'s endorsed emulator, a re-implementation
