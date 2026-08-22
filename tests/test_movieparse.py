@@ -244,6 +244,18 @@ RERECORDS = {'bk2': 1234, 'fm2': 4321, 'fm3': 77, 'dsm': 99, 'gmv': 555,
 def main():
     rnd = random.Random(20260815)
 
+    # ---------------- 0. a JRSR saved from a running machine (#31) ----------------
+    # JPC-RR embeds the machine state it was saved from and names it in the
+    # header; the events still replay from the initialization, so the file
+    # is accepted and reads exactly like the same movie with the state removed.
+    plain = f_jrsr()
+    with_state = plain.replace(
+        b'!BEGIN header\n', b'!BEGIN header\n+SAVESTATEID abc123\n').replace(
+        b'!BEGIN events', b'!BEGIN savestate\n+SOMEBLOB 0123456789\n+MORE 1\n!END\n!BEGIN events')
+    a, b = movieparse.parse('x.jrsr', with_state), movieparse.parse('x.jrsr', plain)
+    ck('a jrsr carrying a savestate is accepted and reads like the stripped one',
+       a.get('ok') and a == b and a['start'] == 'power-on', f'{a} vs {b}')
+
     # ---------------- 1. the never-raises contract ----------------
     raised, negative, malformed = [], [], []
     for ext in movieparse.PARSERS:

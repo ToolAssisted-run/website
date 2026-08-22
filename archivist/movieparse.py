@@ -567,15 +567,21 @@ def parse_jrsr(data):
         body = line[1:]
         tokens = [t for t in re.split(r'[ (]+', body.replace(')', ' ')) if t]
         if section == 'savestate':
-            return _err('jrsr', 'File contains a savestate')
+            # JPC-RR embeds the machine state it was saved from; the events
+            # still run from the initialization, so the state is baggage for
+            # our purposes, not a different kind of movie (issue #31). A
+            # movie that genuinely starts from a state says SAVESTATEID in
+            # its header, handled below.
+            continue
         if section == 'header':
             if tokens and tokens[0] == 'RERECORDS' and len(tokens) >= 2:
                 try:
                     rerecords = int(tokens[1])
                 except ValueError:
                     pass
-            elif tokens and tokens[0] == 'SAVESTATEID':
-                start = 'savestate'
+            # SAVESTATEID names the snapshot JPC-RR embedded when the file was
+            # saved from a running machine; the events still begin at +0 and
+            # replay from the initialization, so it is not a savestate start
         elif section == 'events':
             if len(tokens) < 2:
                 continue
