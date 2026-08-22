@@ -358,6 +358,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .gmovelist{max-height:240px;overflow:auto;border:1.5px solid var(--hairs);border-radius:8px;padding:6px 8px;margin:8px 0;display:flex;flex-direction:column;gap:4px}
 .gmrow{font-size:.9rem}
 .gmfilter{width:100%}
+input.bad{border-color:#DC2626!important}
 .newsmore{border:0;background:none;color:var(--faint);font-size:.78rem;cursor:pointer;padding:4px 0;font-family:inherit}
 .newsmore:hover{color:var(--accent-text)}
 .rtab th[data-key]{cursor:pointer;user-select:none;white-space:nowrap}
