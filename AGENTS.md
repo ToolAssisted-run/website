@@ -45,10 +45,10 @@ Working rules:
   repo. Signal Green #22C55E accent; JetBrains Mono + Inter; frame-quantized motion
   (CSS steps(), no easing); components as surfaces on a soft ground, bold lines.
 - Terminology matters: "verification" (goal met, judged from the encode) is THE
-  ranking gate since 2026-08-19: community verification ranks a run and is
-  SHOWN as "verified"; a covering expert's is permanent and SHOWN as
-  "verified (expert)" (2026-08-20 wording; the archive's stored enum names
-  remain provisional/confirmed and never change). "reproduction" (movie file syncs) is a
+  ranking gate since 2026-08-19, with NO tiers since 2026-08-22: one
+  verification from anybody makes a run "verified"; an expert may later
+  invalidate a wrong one (the archive's stored enum names remain
+  provisional/confirmed and never change; both show as verified). "reproduction" (movie file syncs) is a
   recorded, paid assurance and gates nothing. Video-only runs (no input
   movie; encode is the run; stated duration) mark both reproduction and
   console "not-applicable". "pending" (missing a
