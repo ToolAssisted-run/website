@@ -1946,14 +1946,25 @@ def edit_run():
                 changed.append('authors')
                 if not dry:
                     ensure_member(user)
+        # Only what actually differs is a change (issue #38): the form sends
+        # every field every time, and a browser textarea submits CRLF, which
+        # used to rewrite an untouched 96-line notes file on every edit.
         if 'notes' in f:
-            notes = f.get('notes')
+            notes = (f.get('notes') or '').replace('\r\n', '\n').replace('\r', '\n')
             if len(notes.encode()) > 1024 * 1024:
                 return fail('notes exceed 1 MB')
-            changed.append('notes')
+            notes = notes.rstrip() + '\n'
+            try:
+                old_notes = (rdir / 'notes.md').read_text()
+            except OSError:
+                old_notes = ''
+            if old_notes.rstrip() + '\n' != notes:
+                changed.append('notes')
         if 'emulator' in f:
-            r.setdefault('contract', {})['emulator'] = (f.get('emulator') or '').strip()[:120]
-            changed.append('emulator')
+            new_emu = (f.get('emulator') or '').strip()[:120]
+            if new_emu != r.get('contract', {}).get('emulator', ''):
+                r.setdefault('contract', {})['emulator'] = new_emu
+                changed.append('emulator')
         # stated metric values: only the keys this run's category defines;
         # an empty field leaves the value untouched, an explicit 0 returns
         # it to "not yet stated" (which ranks last)
@@ -1992,12 +2003,13 @@ def edit_run():
                     return fail('completed must be a date like 2021-10-26')
                 if cv > time.strftime('%Y-%m-%d', time.gmtime()):
                     return fail('completed cannot be in the future')
-            befores['completed'] = r.get('completed', '')
-            if cv:
-                r['completed'] = cv
-            else:
-                r.pop('completed', None)
-            changed.append('completed')
+            if cv != r.get('completed', ''):
+                befores['completed'] = r.get('completed', '')
+                if cv:
+                    r['completed'] = cv
+                else:
+                    r.pop('completed', None)
+                changed.append('completed')
         if 'goalDescription' in f:
             gd = (f.get('goalDescription') or '').strip()
             if len(gd) > 500:
@@ -2005,21 +2017,23 @@ def edit_run():
             if is_uncl_run(r) and not gd:
                 return fail('an Unclassified run states its own goal; it cannot lose '
                             'its description')
-            befores['goalDescription'] = r.get('goalDescription', '')
-            if gd:
-                r['goalDescription'] = gd
-            else:
-                r.pop('goalDescription', None)
-            changed.append('goalDescription')
+            if gd != r.get('goalDescription', ''):
+                befores['goalDescription'] = r.get('goalDescription', '')
+                if gd:
+                    r['goalDescription'] = gd
+                else:
+                    r.pop('goalDescription', None)
+                changed.append('goalDescription')
         if 'encode' in f:
             enc_v = (f.get('encode') or '').strip()
             if enc_v:
                 enc_r = providers.resolve(enc_v)
                 if not enc_r:
                     return fail('encode must be a watchable URL on a platform we accept')
-                befores['encode'] = (r.get('encodes') or [{}])[0].get('url', '')
-                r['encodes'] = [{'kind': enc_r['kind'], 'url': enc_v}]
-                changed.append('encode')
+                if enc_v != (r.get('encodes') or [{}])[0].get('url', ''):
+                    befores['encode'] = (r.get('encodes') or [{}])[0].get('url', '')
+                    r['encodes'] = [{'kind': enc_r['kind'], 'url': enc_v}]
+                    changed.append('encode')
         if 'time' in f and r.get('videoOnly'):
             m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
                                (f.get('time') or '').strip())
@@ -2048,13 +2062,13 @@ def edit_run():
                 for n, _ in new_atts)
             changed.append('attachments')
         if not changed:
-            return fail('nothing to change: send notes, emulator, completed, '
-                        'goalDescription, encode, attachments, or '
-                        '(video-only) time')
+            return fail('nothing to change: every value sent already matches the '
+                        'record (send notes, emulator, completed, goalDescription, '
+                        'encode, attachments, or, video-only, time)')
         if dry:
             return jsonify({'ok': True, 'dry_run': True, 'would_change': changed})
         if 'notes' in changed:
-            (rdir / 'notes.md').write_text(f.get('notes').rstrip() + '\n')
+            (rdir / 'notes.md').write_text(notes)
         if new_atts:
             (rdir / 'attachments').mkdir(exist_ok=True)
             for n, data in new_atts:
