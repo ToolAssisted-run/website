@@ -731,7 +731,7 @@ def main():
            and 'Disallow: /submit/' in (out / 'robots.txt').read_text())
         gidx = all_html[out / 'games' / 'index.html']
         ck('the list view sorts by any column',
-           gidx.count('data-key="') == 5 and 'data-runs=' in gidx
+           gidx.count('data-key="') in (5, 6) and 'data-runs=' in gidx
            and 'data-stars=' in gidx, str(gidx.count('data-key="')))
 
         # ---------- registered things are picked, never typed blind ----------

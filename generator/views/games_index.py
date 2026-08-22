@@ -15,6 +15,7 @@ from config import (
 from model import (
     authors,
     nvisits,
+    visits_known,
     cat_label,
     covering_experts,
     eff_state,
@@ -65,7 +66,7 @@ def game_card(g, prefix='', with_system=False):
     gstars = sum(nlikes(r) for r in g['runs'])
     sysline = (f'<span class="csys">{esc(systems[g["system"]]["name"])}</span>'
                if with_system else '')
-    return f'''<a class="card" data-stars="{gstars}" data-title="{esc(g['title'])}" href="{prefix}{g['key']}/">
+    return f'''<a class="card" data-stars="{gstars}" data-views="{sum(nvisits(r) for r in g['runs'])}" data-title="{esc(g['title'])}" href="{prefix}{g['key']}/">
 {tm}
 <span class="cbody"><b>{esc(g['title'])}</b>{sysline}
 <span class="cfoot"><span>{len(g['runs'])} run{'s' if len(g['runs'])!=1 else ''}</span>
@@ -101,7 +102,7 @@ def system_card(skey, gms):
     """One card for a whole system's library, exactly like a group's."""
     rlist = [r for g in gms for r in g['runs']]
     stars = sum(nlikes(r) for r in rlist)
-    return f'''<a class="card" data-stars="{stars}" data-title="{esc(systems[skey]['name'])}" href="../systems/{skey}/">
+    return f'''<a class="card" data-stars="{stars}" data-views="{sum(nvisits(r) for r in rlist)}" data-title="{esc(systems[skey]['name'])}" href="../systems/{skey}/">
 {collage(gms)}
 <span class="cbody"><b>{esc(systems[skey]['name'])}</b>
 <span class="csys">{len(gms)} game{'s' if len(gms) != 1 else ''}</span>
@@ -277,7 +278,7 @@ if live_groups:
         stars = sum(nlikes(r) for r in grunts)
         tm = collage(ggames)
         nsys = len({g['system'] for g in ggames})
-        return f'''<a class="card" data-stars="{stars}" data-title="{esc(gr['title'])}"
+        return f'''<a class="card" data-stars="{stars}" data-views="{sum(nvisits(r) for r in grunts)}" data-title="{esc(gr['title'])}"
 data-last="{1 if gr.get('synthetic') else 0}" href="../groups/{gr['key']}/">
 {tm}
 <span class="cbody"><b>{esc(gr['title'])}</b>
@@ -294,7 +295,7 @@ else:
 
 games_sort_js = '''<script>
 (function(){
-  var byStars = true, view = 'systems';
+  var sortMode = 'stars', view = 'systems';
   // a remembered view whose section is gone (an archive with no groups yet)
   // must not blank the page
   try {
@@ -305,8 +306,9 @@ games_sort_js = '''<script>
     // Uncategorized is a holding pen, not a group: it stays last either way
     if ((a.dataset.last || 0) !== (b.dataset.last || 0))
       return (a.dataset.last || 0) - (b.dataset.last || 0);
-    return byStars ? (b.dataset.stars - a.dataset.stars)
-                   : a.dataset.title.localeCompare(b.dataset.title);
+    if (sortMode === 'stars') return b.dataset.stars - a.dataset.stars;
+    if (sortMode === 'views') return (b.dataset.views || 0) - (a.dataset.views || 0);
+    return a.dataset.title.localeCompare(b.dataset.title);
   }
   function resort(){
     document.querySelectorAll('.gsects').forEach(function(wrap){   // bands
@@ -320,7 +322,7 @@ games_sort_js = '''<script>
         .forEach(function(c){ grid.appendChild(c); });
     });
     document.querySelectorAll('.gsort').forEach(function(b){
-      b.classList.toggle('on', (b.dataset.mode === 'stars') === byStars);
+      b.classList.toggle('on', b.dataset.mode === sortMode);
     });
   }
   // the list view sorts by any column; a second click flips the direction.
@@ -364,7 +366,7 @@ games_sort_js = '''<script>
     resort();
   }
   document.querySelectorAll('.gsort').forEach(function(b){
-    b.addEventListener('click', function(){ byStars = b.dataset.mode === 'stars'; resort(); });
+    b.addEventListener('click', function(){ sortMode = b.dataset.mode; resort(); });
   });
   document.querySelectorAll('.gview-btn').forEach(function(b){
     b.addEventListener('click', function(){
@@ -385,16 +387,18 @@ for g in sorted(games.values(), key=lambda g: g['title'].lower()):
     list_rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='{g['key']}/'"
  data-title="{esc(g['title'].lower())}" data-sys="{esc(systems[g['system']]['name'].lower())}"
  data-grp="{esc(', '.join(gr['title'].lower() for gr in mine))}"
- data-runs="{len(g['runs'])}" data-stars="{sum(nlikes(r) for r in g['runs'])}">
+ data-runs="{len(g['runs'])}" data-stars="{sum(nlikes(r) for r in g['runs'])}" data-views="{sum(nvisits(r) for r in g['runs'])}">
 <td><a href="{g['key']}/">{esc(g['title'])}</a></td>
 <td>{esc(systems[g['system']]['name'])}</td><td>{grp}</td>
 <td class="num">{len(g['runs'])}</td>
-<td class="num"><span class="starglyph">★</span>{sum(nlikes(r) for r in g['runs'])}</td></tr>''')
+<td class="num"><span class="starglyph">★</span>{sum(nlikes(r) for r in g['runs'])}</td>
+{f'<td class="num">{card_views(sum(nvisits(r) for r in g["runs"]))}</td>' if visits_known else ''}</tr>''')
 list_view = f'''<table class="rtab"><thead><tr>
 <th data-key="title" class="sorted" data-dir="▲">Game</th>
 <th data-key="sys">System</th><th data-key="grp">Group</th>
 <th class="num" data-key="runs" data-type="num">Runs</th>
-<th class="num" data-key="stars" data-type="num">Stars</th></tr></thead>
+<th class="num" data-key="stars" data-type="num">Stars</th>
+{'<th class="num" data-key="views" data-type="num">Views</th>' if visits_known else ''}</tr></thead>
 <tbody>{''.join(list_rows)}</tbody></table>'''
 
 site_experts_now = sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'})
@@ -420,6 +424,7 @@ experts curate afterwards.</p></div>
 <div class="dimrow gcontrols">
 <span class="dimsub nogap" id="gsortrow"><span class="dimname">Sort</span>
 <button class="dimopt gsort on" data-mode="stars"><span class="starglyph">★</span> Stars</button>
+{'<button class="dimopt gsort" data-mode="views"><svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg> Views</button>' if visits_known else ''}
 <button class="dimopt gsort" data-mode="title">By title</button></span>
 <span class="dimsub"><span class="dimname">View</span>
 {'<button class="dimopt gview-btn" data-view="groups">Groups</button>' if grp_view else ''}
