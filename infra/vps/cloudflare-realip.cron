@@ -1,0 +1,2 @@
+# refresh Cloudflare's IP ranges for nginx's real-IP module, monthly
+17 4 1 * * root /usr/local/bin/cloudflare-realip

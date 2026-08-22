@@ -739,6 +739,18 @@ archivist, module responsibilities). What matters designwise:
   deploys there (`CNAME` shipped, TLS by GitHub), and repointing the apex A
   records back at GitHub restores service if the VPS dies. Mail through
   Infomaniak (`mta-gw.infomaniak.ch`).
+- **Cloudflare in front (Free plan: unmetered DDoS protection, any site)**.
+  The zone is proxied (orange cloud) for the apex, `www` and `forum`; SSL
+  mode *Full (strict)* against the origin's Let's Encrypt certificates;
+  mail records stay DNS-only. The origin trusts Cloudflare's published
+  ranges for the real visitor address (`/etc/nginx/conf.d/cloudflare-realip.conf`,
+  regenerated monthly by `infra/vps/cloudflare-realip` from cron) so
+  Discourse's rate limits and IP logs still see people, not the edge. No
+  cache rules are needed: pages answer `Cache-Control: no-cache` (never
+  cached at the edge), versioned assets carry `?v=`, and JSON is not in the
+  edge's default cacheable set, so `buildstamp.json` stays live. certbot
+  renews through the proxy (HTTP-01 passes). The Pages standby is
+  unaffected: swapping the proxied A records to GitHub's still works.
 - **Everything works on the archive's `main`**. The beta's `staging` branch
   was merged in (a two-parent commit whose tree is staging's; nothing left
   behind) and stays **frozen** so old forum links into it keep resolving.
