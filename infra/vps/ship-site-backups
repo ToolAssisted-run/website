@@ -40,14 +40,17 @@ tar -czf "$WORK/state-$DAY.tar.gz" \
     /etc/systemd/system/archivist.service \
     /etc/nginx/sites-available \
     /etc/nginx/conf.d \
+    /etc/nginx/snippets \
     /etc/letsencrypt \
     /etc/cron.d/discourse-backup-ship \
     /etc/cron.d/site-backup-ship \
     /etc/cron.d/tasvideos-backup-refresh \
+    /etc/cron.d/cloudflare-realip \
     /var/discourse/containers/app.yml \
     /usr/local/bin/ship-discourse-backups \
     /usr/local/bin/ship-site-backups \
     /usr/local/bin/tar-site-sync \
+    /usr/local/bin/cloudflare-realip \
     2>/dev/null || true
 
 rclone copy "$WORK" swissbackup:site-backups --transfers 2 --log-level ERROR

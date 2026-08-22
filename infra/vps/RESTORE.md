@@ -25,7 +25,9 @@ Then:
    `systemctl enable --now archivist` — its startup build republishes the
    site into `/opt/archivist/site/current`.
 3. **nginx**: `apt install nginx`, symlink the restored vhosts from
-   `sites-available` into `sites-enabled`, `systemctl reload nginx`.
+   `sites-available` into `sites-enabled` (the tarball also restores
+   `conf.d/` with the Cloudflare real-IP ranges and `snippets/` with the
+   hardening headers the vhosts include), `systemctl reload nginx`.
    Certificates came with the tarball; certbot resumes renewals.
 4. **Discourse**: standard install (`git clone
    https://github.com/discourse/discourse_docker /var/discourse`), the
