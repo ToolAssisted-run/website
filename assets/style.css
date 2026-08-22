@@ -522,7 +522,9 @@ input.bad{border-color:#DC2626!important}
 .factbox h4{font-family:ui-monospace,monospace;font-size:.64rem;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:500;margin-bottom:9px}
 .factbox dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
 .factbox dt{font-size:.78rem;color:var(--faint)}
-.factbox dd{font-family:ui-monospace,monospace;font-size:.84rem;text-align:right}
+/* a value is a grid cell: without min-width:0 an unbreakable token (a hash
+   inside a ROM name) widens it past the box; long values wrap anywhere (#45) */
+.factbox dd{font-family:ui-monospace,monospace;font-size:.84rem;text-align:right;min-width:0;overflow-wrap:anywhere}
 .factbox dd.big{font-size:1.1rem;font-weight:700}
 .statline{font-size:.84rem;display:flex;gap:8px;align-items:center;margin:6px 0}
 .factbox .statline{display:block}

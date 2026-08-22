@@ -207,7 +207,7 @@ Log in (top right) to reply from here.</p></section>
   {% if not r.get('videoOnly') %}<div class="factbox"><h4>Reproduction info</h4><dl>
     <dt>Emulator</dt><dd>{{ r.get('contract', {}).get('emulator') or '—' }}</dd>
     {% if rom.get('name') %}<dt>ROM</dt><dd>{{ rom.get('name') }}</dd>{% endif %}
-    {% if rom.get('sha1') %}<dt>ROM sha1</dt><dd class='trunc'>{{ rom.get('sha1')[:12] }}…</dd>{% endif %}
+    {% if rom.get('sha1') %}<dt>ROM sha1</dt><dd class="trunc" title="{{ rom.get('sha1') }}">{{ rom.get('sha1')[:12] }}…</dd>{% endif %}
 </dl></div>{% endif %}
   {% if atts %}<div class="factbox"><h4>Attached files</h4>{% for a in atts %}<p class="statline"><a href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ a['file'] }}">{{ a['file'].split('/')[-1] }}</a> · {{ a.get('role', '') }}</p>{% endfor %}</div>{% endif %}
   {# status lines #}

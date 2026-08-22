@@ -190,6 +190,15 @@ def check_inline_scripts(out, label):
        str(bad[:2]))
 
 
+def check_stylesheet_rules():
+    """Layout rules that a screenshot proved necessary (#45): a fact value
+    never widens its box."""
+    css = (REPO / 'assets' / 'style.css').read_text()
+    dd = re.search(r'\.factbox dd\{([^}]*)\}', css)
+    ck('fact values shrink and wrap instead of overflowing (#45)',
+       dd and 'min-width:0' in dd.group(1) and 'overflow-wrap:anywhere' in dd.group(1))
+
+
 def check_markup_lives_in_templates():
     """The view/template split (issue #23): a view module prepares data and
     calls tpl(); every tag lives under generator/templates/. A tag in a view
@@ -206,6 +215,7 @@ def check_markup_lives_in_templates():
 
 
 def main():
+    check_stylesheet_rules()
     check_markup_lives_in_templates()
     with tempfile.TemporaryDirectory() as td:
         td = pathlib.Path(td)
