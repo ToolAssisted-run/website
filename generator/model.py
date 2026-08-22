@@ -526,6 +526,7 @@ for uname, a in authors.items():
     author_stats[uname] = {
         'runs': len(mine),
         'author': sum(nlikes(r) for r in mine),
+        'views': sum(nvisits(r) for r in mine),   # across every run they authored
         'contrib': points.get(uname, {}).get('points', 0),
     }
 

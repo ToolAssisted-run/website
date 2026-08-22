@@ -629,3 +629,5 @@ label.check .checkhint,.cwlab .checkhint{color:var(--muted)}
 .coauthnote{margin:4px 0 0}
 .policy ol,.policy ul{padding-left:24px;margin:8px 0}
 .policy li{margin:4px 0}
+.stat b .eyeic{width:18px;height:18px;vertical-align:-2px;margin-right:4px;stroke:currentColor;fill:none;stroke-width:2}
+th .eyeic{width:12px;height:12px;vertical-align:-1px}
