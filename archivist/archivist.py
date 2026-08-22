@@ -2522,7 +2522,9 @@ def role_decide():
     # two thirds of every sitting member, counted whether they voted or not.
     # Expert annulment is the documented exception and keeps its own rule
     # (2.5.4), which is why it lives in its own endpoint.
-    if action == 'granted':
+    # An editor is the documented exception the other way (2.6.3): removal
+    # by simple majority, like an expert's annulment.
+    if action == 'granted' or role == 'editor':
         enough, needed = votes * 2 > size, 'a simple majority of the Committee'
     else:
         enough, needed = votes * 3 >= size * 2, ('a hard majority of the Committee, '
@@ -3039,7 +3041,7 @@ def withdraw():
     Withdrawing is a voluntary act: only the run's own authors may do it (an
     expert who must remove a run deletes it, on the record). Nothing is
     erased: the record, the movie file and the reason stay in the archive,
-    because the principles forbid erasing a contribution (1.2, 2.7.2). The
+    because the principles forbid erasing a contribution (1.2, 2.8.2). The
     site stops listing it and says why."""
     f = request.form
     dry = f.get('dry_run') in ('1', 'true', 'yes')
