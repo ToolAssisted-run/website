@@ -3210,11 +3210,9 @@ def encode_check():
         return jsonify(hit[1])
     thumb = providers.thumbnail_url(enc['kind'], enc['id'])
     if not thumb and providers.BY_KIND[enc['kind']].get('thumbs'):
-        data, _ext = providers.thumbnail(enc['kind'], enc['id'], THUMB_MAX)
-        # a direct template needs fetching to know whether the video is real,
-        # but the page can then load the same URL itself
-        thumb = (providers.BY_KIND[enc['kind']]['thumbs'][0]
-                 .format(id=enc['id'], ytbase=providers.YT_THUMB_BASE)) if data else None
+        # a direct template needs fetching to know whether the video is real;
+        # the page then loads the candidate that actually answered (#29)
+        thumb = providers.thumbnail_source(enc['kind'], enc['id'], THUMB_MAX)
     payload = ({'ok': True, 'kind': enc['kind'], 'name': enc['name'],
                 'id': enc['id'], 'thumb': thumb} if thumb else
                {'ok': False, 'kind': enc['kind'], 'name': enc['name'],
