@@ -2096,6 +2096,23 @@ def edit_run():
                     f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
     return jsonify({'ok': True, 'run': run_id, 'changed': changed})
 
+@app.post('/api/preview')
+def preview_notes():
+    """The submit preview, rendered by the very code that renders the
+    published page (issue #30). Cross-references get a plain link here;
+    the published page dresses them with the run's title and thumbnail."""
+    import wikitext
+    text = (request.form.get('notes') or '').replace('\r\n', '\n')
+    if len(text.encode()) > 1024 * 1024:
+        return fail('notes exceed 1 MB')
+    def refs(t):
+        t = re.sub(r'\[M([0-9]+)\]', r'<a class="runref" href="/runs/M\1/">M\1</a>', t)
+        t = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', r'<span class="au">\1</span>', t)
+        return t
+    resp = jsonify({'ok': True, 'html': wikitext.wiki_html(text, refs=refs)})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
 @app.post('/api/like')
 def like():
     """Thumbs-up: everybody except the run's own authors, one per run.

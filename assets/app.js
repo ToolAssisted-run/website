@@ -1803,80 +1803,6 @@
       });
       checkEncode();
 
-      // preview: approximate client-side rendering of the notes dialect
-      function inlineMd(s){
-        s = escH(s);
-        s = s.split('%%%').join('<br>');
-        s = s.replace(/__(.+?)__/g, '<b>$1</b>');
-        s = s.replace(/''(.+?)''/g, '<em>$1</em>');
-        s = s.replace(/\[(https?:[^\s|\]]+)\|([^\]]+)\]/g, '<a href="$1">$2</a>');
-        s = s.replace(/\[(https?:[^\s\]]+)\]/g, '<a href="$1">$1</a>');
-        return s;
-      }
-      function renderNotes(text){
-        var out = [], inUl = false, inOl = false, inCode = false, inQuote = false,
-            inTable = false, code = [];
-        function closeAll(quoteToo){
-          if (inUl) { out.push('</ul>'); inUl = false; }
-          if (inOl) { out.push('</ol>'); inOl = false; }
-          if (inTable) { out.push('</tbody></table></div>'); inTable = false; }
-          // mirror the server renderer: any block start also ends an open
-          // quote, or the preview drifts from the published page
-          if (quoteToo !== false && inQuote) { out.push('</blockquote>'); inQuote = false; }
-        }
-        text.split(/\r?\n/).forEach(function(raw){
-          var l = raw.replace(/\s+$/, ''), s = l.trim(), m;
-          if (inCode) {
-            if (s.toUpperCase().indexOf('%%END_EMBED') === 0) {
-              out.push('<pre class="codebox"><code>' + escH(code.join('\n')) + '</code></pre>');
-              code = []; inCode = false;
-            } else code.push(l);
-            return;
-          }
-          if (s.toUpperCase().indexOf('%%SRC_EMBED') === 0) { closeAll(); inCode = true; return; }
-          if (s.toUpperCase().indexOf('%%QUOTE_END') === 0 || s.toUpperCase().indexOf('%%END_QUOTE') === 0) {
-            closeAll(false);
-            if (inQuote) { out.push('</blockquote>'); inQuote = false; } return;
-          }
-          if (s.toUpperCase().indexOf('%%QUOTE') === 0) {
-            closeAll();
-            var who = s.slice(7).trim();
-            out.push('<blockquote class="wquote">' + (who ? '<p class="qwho">' + inlineMd(who) + ':</p>' : ''));
-            inQuote = true; return;
-          }
-          if (s === '%%TOC%%') return;
-          m = /^\[module:youtube\|v=([\w-]+)\]$/.exec(s);
-          if (m) { closeAll(); out.push('<div class="notes-embed"><iframe src="https://www.youtube-nocookie.com/embed/' + m[1] + '" allowfullscreen loading="lazy"></iframe></div>'); return; }
-          if (/^-{4,}$/.test(s)) { closeAll(); out.push('<hr>'); return; }
-          m = /^(!{1,3})\s*(.*)/.exec(l);
-          if (m) { closeAll(); var tag = m[1].length === 1 ? 'h4' : 'h3';
-            out.push('<' + tag + '>' + inlineMd(m[2]) + '</' + tag + '>'); return; }
-          if (s.indexOf('||') === 0 || (s.charAt(0) === '|' && s.charAt(s.length - 1) === '|' && s.length > 1)) {
-            if (!inTable) { closeAll(); out.push('<div class="tblwrap"><table><tbody>'); inTable = true; }
-            var hdr = s.indexOf('||') === 0;
-            var cells = s.replace(/^\|+|\|+$/g, '').split(hdr ? '||' : '|');
-            out.push('<tr>' + cells.map(function(c){
-              return (hdr ? '<th>' : '<td>') + inlineMd(c.trim()) + (hdr ? '</th>' : '</td>');
-            }).join('') + '</tr>');
-            return;
-          } else if (inTable) { out.push('</tbody></table></div>'); inTable = false; }
-          m = /^\*+\s*(.*)/.exec(l);
-          if (m) { if (inOl) { out.push('</ol>'); inOl = false; }
-            if (!inUl) { out.push('<ul>'); inUl = true; }
-            out.push('<li>' + inlineMd(m[1]) + '</li>'); return; }
-          m = /^#+\s+(.*)/.exec(l);
-          if (m) { if (inUl) { out.push('</ul>'); inUl = false; }
-            if (!inOl) { out.push('<ol>'); inOl = true; }
-            out.push('<li>' + inlineMd(m[1]) + '</li>'); return; }
-          if (!s) { closeAll(); return; }
-          if (inUl) { out.push('</ul>'); inUl = false; }
-          if (inOl) { out.push('</ol>'); inOl = false; }
-          out.push('<p>' + inlineMd(l) + '</p>');
-        });
-        if (inCode && code.length) out.push('<pre class="codebox"><code>' + escH(code.join('\n')) + '</code></pre>');
-        closeAll();   // closes lists and tables first, then any open quote
-        return out.join('\n');
-      }
       document.getElementById('s-preview-btn').addEventListener('click', function(){
         var pv = document.getElementById('s-preview');
         pv.hidden = false;
@@ -1894,8 +1820,16 @@
           document.getElementById('pv-thumb').src = encImg.src;
           poster.hidden = false;
         } else poster.hidden = true;
-        document.getElementById('pv-notes').innerHTML =
-          renderNotes(sform.querySelector('[name=notes]').value || '');
+        // the archivist renders the preview with the same code that renders
+        // the published page, so what you see is what you will get (#30)
+        var pvn = document.getElementById('pv-notes');
+        pvn.textContent = 'Rendering…';
+        var pfd = new FormData();
+        pfd.append('notes', sform.querySelector('[name=notes]').value || '');
+        fetch(api + '/api/preview', {method: 'POST', body: pfd})
+          .then(function(r){ return r.json(); })
+          .then(function(j){ pvn.innerHTML = j.ok ? j.html : escH(j.error || 'preview failed'); })
+          .catch(function(){ pvn.textContent = 'The archivist is not reachable; the preview needs it.'; });
         pv.scrollIntoView({behavior: 'smooth', block: 'start'});
       });
 
