@@ -1,0 +1,54 @@
+{# Member page: header, stats, news, runs table, contributions, role log, committee delete form. #}
+{% macro news_line(e) %}
+<p class="statline newsline" data-date="{{ e.date }}"><span class="newsico {{ e.kind }}">{{ NEWS_ICON[e.kind] }}</span> {{ member_chip(e.actor, '../../') }} {{ e.kind }} <a href="../../runs/{{ e.run }}/">{{ e.title }} ({{ e.run }})</a><span class="actmeta"> {{ moment(e.get('at') or e.date) }}</span></p>
+{% endmacro %}
+<header class="ghead"><div>
+<h1>{{ a.username }} {{ '🇨🇭' if a.get('country') == 'CH' else '' }}</h1>{{ role_badges(a.username) }}</div><div class="hbtns"><a class="btn" id="selfimport" hidden data-author="{{ a.username }}" href="../../import/">Import runs</a></div></header>
+<script type="application/json" id="memberactdata">{{ json_blob(memberact) }}</script><div id="memberacts" class="actzone" hidden><details class="actform"><summary>Delete this member (Steering Committee)</summary><form id="f-memberdelete"><p class="rules">For spam and test accounts. Refused while they hold any role or authored any run: those have their own procedures. A sitting Committee member is the Founder's alone to delete, and the Founder is nobody's. Your reason is public and permanent.</p><input type="hidden" name="target" value="{{ a.username }}"><label>Why <input name="reason" required minlength="8" maxlength="500" placeholder="a spam account, a test, …"></label><button class="btn danger">Delete</button></form></details><p id="memberact-msg" class="actmsg" hidden></p></div>
+<div class="statstrip">
+<div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
+<div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>
+<div class="stat"><b>{{ st.contrib }}</b><span>contributor score</span></div>
+</div>
+{% if my_news %}
+<section id="news"><h2>News</h2><div class="factbox newsbox">{% for e in my_news[:10] %}{{ news_line(e) }}{% endfor %}
+{% if my_news|length > 10 %}<div class="newsrest" hidden>{% for e in my_news[10:] %}{{ news_line(e) }}{% endfor %}</div><button type="button" class="newsmore">load more news…</button>{% endif %}
+</div></section>
+{% else %}
+<section id="news"><h2>News</h2><p class="emptynote">Nothing yet. reproductions, verifications and stars on your runs will appear here.</p></section>
+{% endif %}
+<section><details class="secfold" open><summary><h2>Runs ({{ mine|length }})</h2></summary>
+<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead>
+<tbody>{% for r in mine %}{% set g = r._game %}{% set st2 = eff_state(r) %}
+<tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r.id }}/'"><td><a href="../../games/{{ g.key }}/">{{ g.title }}</a></td>
+<td>{{ cat_label(r) }}</td>
+<td class="num"><a href="../../runs/{{ r.id }}/">{{ primary_metric_html(r) }}</a></td>
+<td class="num"><span class="starglyph">★</span>{{ nlikes(r) }}</td>
+{{ run_date_cell(r) }}
+<td class="ctr">{{ tick(st2[0]) }}</td><td class="ctr">{{ tick(st2[1]) }}</td><td class="ctr">{{ console_tick(r) }}</td></tr>
+{% endfor %}</tbody></table></details></section>
+<section><details class="secfold" open><summary><h2>Contributions · {{ cpts }} points{{ badge_chip(cpts) }}</h2></summary>
+{% if acts %}
+<table class="sortable"><thead><tr><th>Date</th><th>Act</th><th>Run</th><th class="num">Points earned</th></tr></thead>
+<tbody>{% for d, desc, pts, r_ in acts %}
+<tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r_.id }}/'"><td>{{ moment(d) }}</td><td>{{ desc }}</td>
+<td><a href="../../runs/{{ r_.id }}/">{{ r_._game.title }} ({{ r_.id }})</a></td>
+<td class="num">+{{ pts }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}
+<p class="emptynote">No contributions yet. Reproduce or verify runs on the <a href="../../contribute/">Contribute board</a> to start earning.</p>
+{% endif %}
+</details></section>
+{% if role_rows %}
+{# the roles this member has held, and lost, in order: the log belongs to the
+   person it is about, at the bottom of their own page #}
+<section><details class="secfold menufold"><summary><h2>Roles
+({{ role_rows|length }})</h2></summary>
+<table><thead><tr><th>Date</th><th></th><th>Role</th><th>By</th><th>Reason</th></tr></thead>
+<tbody>{% for ev in role_rows %}
+<tr><td>{{ moment(ev.get('at') or ev.date) }}</td><td>{% if ev.action == 'granted' %}<span class="chip verchip">Granted</span>{% else %}<span class="chip pendchip">Removed</span>{% endif %}</td><td>{{ ev.what }}</td><td>{% if ev.by == 'founder' %}the founder{% elif ev.by == 'committee' %}a Committee vote{% else %}{{ member_chip(ev.by_name, '../../') }}{% endif %}</td><td>{{ inline(ev.reason, '../../') }}{% if ev.get('proof') %} · <a href="{{ ev.proof }}">where it was decided</a>{% endif %}</td></tr>
+{% endfor %}</tbody></table>
+<p class="legend">Every grant and every removal, with the reason given at the time. Roles
+are not a status somebody has always had: this is where that is visible.</p>
+</details></section>
+{% endif %}

@@ -1,0 +1,42 @@
+{# A group page: one family of games across every system, its records, and
+   the expert menu (move games in, delete the group). #}
+{% from '_game_cards.html' import game_card, records_table with context %}
+<header class="ghead"><div>
+<div class="chips"><span class="chip">{{ ggames|length }} games</span>
+<span class="chip">{{ grunts|length }} run{{ 's' if grunts|length != 1 else '' }}</span>
+<span class="chip starchip"><span class="starglyph">★</span> {{ stars_of(grunts) }}</span></div>
+<h1>{{ gr['title'] }}</h1>
+
+<p class="authline">{% if synthetic %}These games are not part of any group yet. Every game belongs to one, so they wait here until an expert places them in the group they belong to.{% else %}A game group: one family of games, across every system it appeared on. Experts may hold a scope over a whole group.{% endif %}</p>
+{% if gexperts and not synthetic %}
+<p class="authline">Group experts and above: {% for u in gexperts %}{{ member_chip(authors.get(u, {}).get('username', u), '../../') }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+{% endif %}
+</div></header>
+{% if ggames %}
+<div class="grid">{% for g in ggames %}{{ game_card(g, '../../games/', with_system=True) }}{% endfor %}</div>
+{% else %}
+<p class="emptynote">No games in this group yet. Experts covering it add them right here, and anybody can put one in it at submission time.</p>
+{% endif %}
+
+{% if not synthetic %}
+{{ records_table(rows, 'Records across the group', 'No ranked run in this group yet.') }}
+<script type="application/json" id="groupactdata">{{ json_blob(gact_data) }}</script>
+<div id="groupacts" class="actzone expertmenu" hidden>
+<h2>Expert menu</h2>
+<p class="rules">Only experts whose scope covers this group, and editors, see this box; every action here is logged in the open.</p>
+<details class="actform"><summary>Move games into this group</summary>
+<form id="f-groupmove">
+<p class="rules">Tick any games and they move into this group, each leaving whatever group held it; a game belongs to one group. A brand-new game is made on the create page instead.</p>
+<input type="hidden" name="group" value="{{ gr['key'] }}">
+<input type="hidden" name="move">
+<input class="gmfilter" type="search" placeholder="Type to filter games…">
+<div class="gmovelist"></div>
+<button class="btn">Move here</button></form></details>
+<details class="actform"><summary>Delete this group</summary>
+<form id="f-groupdelete">
+<p class="rules">Outright: the grouping goes, and every game in it becomes ungrouped, gathered by Uncategorized until somebody re-homes it. No game and no run is deleted. Your reason is public and permanent.</p>
+<input type="hidden" name="group" value="{{ gr['key'] }}">
+<label>Why <input name="reason" required minlength="8" maxlength="500" placeholder="a test, a mistake, …"></label>
+<button class="btn danger">Delete</button></form></details>
+<p id="groupact-msg" class="actmsg" hidden></p></div>
+{% endif %}

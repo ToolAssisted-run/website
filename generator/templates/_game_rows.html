@@ -1,0 +1,23 @@
+{# Leaderboard row macros for a game page: the common author / frames /
+   stars / date / ticks cells of a ranked, pending, history or unclassified row. #}
+{% macro authors(r, rel) %}
+{% for a in r['authors'] %}{{ author_chip(a['user'], rel) }}{% if not loop.last %} · {% endif %}{% endfor %}
+{% endmacro %}
+
+{% macro onclick(r, rel) %}onclick="if(!event.target.closest('a'))location='{{ rel }}runs/{{ r['id'] }}/'"{% endmacro %}
+{% macro metric_cells(r, mdefs) %}
+{% for m in mdefs %}<td class="num">{{ fmt_metric(metric_value(r, m), m) }}</td>{% endfor %}
+{% endmacro %}
+
+{% macro frames_cell(r, rel) %}
+<td class="num"><a href="{{ rel }}runs/{{ r['id'] }}/">{{ frames_html(r) }}</a></td>
+{% endmacro %}
+
+{% macro stars_cell(r) %}
+<td class="num"><span class="starglyph">★</span>{{ nlikes(r) }}</td>
+{% endmacro %}
+
+{% macro state_cells(r) %}
+{% set rs_, vs_ = eff_state(r) %}
+<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td><td class="ctr">{{ console_tick(r) }}</td>
+{% endmacro %}

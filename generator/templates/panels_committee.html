@@ -1,0 +1,75 @@
+{# The Steering Committee panel (/committee/): open name claims, whole-site experts, editors, recorded decisions #}
+<header class="ghead"><div><h1>Steering Committee</h1>
+<p class="authline">Claims to held names, waiting to be answered. Approving hands the name
+over, renames the forum account and lets that person import their own runs; denying asks
+for a reason. Either way they are told, and the answer is public in the
+<a href="../policy/site-log/#claims">site log</a>.</p></div></header>
+<p class="msg" id="cpanel-gate">Checking who you are…</p>
+<div id="cpanel" hidden>
+<section><h2>Open claims</h2>
+<p class="rules">Each row carries a masked form of the address the forum holds for that
+member, worked out as this page loads and kept nowhere. It is enough to tell whether it is
+the address that author would have; it is not the whole address, and nothing here or in the
+archive ever stores either form. The claim page tells them plainly that you see this
+much.</p>
+<div id="cpanel-list" class="factbox"></div>
+<form id="f-claimdecide" class="actform" hidden>
+  <p class="statline" id="cdecide-what"></p>
+  <input type="hidden" name="identity" id="cdecide-identity">
+  <label>Reason, if you are denying it <input name="note" maxlength="500"
+    placeholder="what is missing; the person is told this"></label>
+  <button class="btn" id="cdecide-yes" type="button">Approve</button>
+  <button class="btn quiet" id="cdecide-no" type="button">Deny</button>
+  <button class="btn quiet" id="cdecide-cancel" type="button">Cancel</button>
+</form>
+<p class="msg" id="cpanel-msg" hidden></p></section>
+<section><details class="secfold menufold"><summary><h2>Appoint a whole-site expert</h2></summary>
+<form id="f-siteexpert" class="actform">
+  <p class="rules">The widest scope there is: every system, every game, every group, and
+  the standing to attest identities. It is the Committee's to give (Principles 2.5.3), and
+  your name and reason are published with it. Members who already hold it are not
+  listed.</p>
+  <input type="hidden" name="scope" value="site">
+  <label>Member <select name="user" id="siteexpert-user"></select></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="what makes them the right person for the whole site"></label>
+  <button class="btn">Appoint</button>
+</form></details></section>
+<section><details class="secfold menufold"><summary><h2>Appoint an editor</h2></summary>
+<form id="f-editorrole" class="actform">
+  <p class="rules">The library's shape, nothing else: categories, groups, game identity,
+  and which category a run sits in. No power over people and none over the runs
+  themselves. A single Committee seat grants it, and your name and reason are
+  published; taking it away is a Committee poll like any role removal. Members who
+  already hold it are not listed.</p>
+  <label>Member <select name="user" id="editorrole-user"></select></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="what makes them the right curator for the library"></label>
+  <button class="btn">Appoint</button>
+</form></details></section>
+<section><details class="secfold menufold"><summary><h2>Record a Committee decision</h2></summary>
+<p class="rules">The Committee votes on the forum; this writes the result into the
+archive, which is the only place a role is recorded. Point it at the post carrying the
+poll: the poll must be restricted to the Committee, public, and closed, and a simple
+majority of the whole Committee must have voted for it. Adding somebody to a forum
+group grants nothing.</p>
+<form id="f-role" class="actform">
+  <label>Member <input name="target" list="dl-role-candidates" required
+    placeholder="type to find a member"></label>
+  <datalist id="dl-role-candidates"></datalist>
+  <label>Role <select name="role">
+    <option value="committee">Steering Committee</option>
+    <option value="moderator">Moderator</option>
+    <option value="editor">Editor</option></select></label>
+  <label>Decision <select name="action">
+    <option value="granted">Grant</option>
+    <option value="revoked">Remove</option></select></label>
+  <label>Forum post id <input name="post" required pattern="[0-9]+"
+    placeholder="the post carrying the poll"></label>
+  <label>Anything to add <input name="reason" maxlength="400"
+    placeholder="optional; the vote itself is already recorded"></label>
+  <button class="btn">Record</button>
+</form>
+<p class="msg" id="role-msg" hidden></p></details></section>
+</div>
+<script type="application/json" id="cpaneldata">{{ json_blob(cpanel_data) }}</script>

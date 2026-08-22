@@ -2,7 +2,7 @@
 """Run the emitted client script the way a browser would.
 
 Syntax checks and per-function tests both passed while the news feed was dead
-on the live site: `escH` was declared inside the submit page's block, so on the
+on the live site: `escapeHtml` (then `escH`) was declared inside the submit page's block, so on the
 landing page the feed threw a ReferenceError, its error handler threw the same
 way, and the panel sat on "Loading the latest posts…" for ever. Nothing static
 catches that; only executing the script in a page context does.
@@ -138,7 +138,7 @@ def run_page(node, js, td, label, ids):
 # page the generator actually produced (every element carrying an id, a name or
 # a button class, in document order) and resolves the simple selectors app.js
 # uses. That is what it takes to catch a selector picking the WRONG element:
-# `sform.querySelector('button.btn')` matched Preview, so page init disabled
+# `submitForm.querySelector('button.btn')` matched Preview, so page init disabled
 # Preview and left Submit ungated. A stub that returns a fresh fake for every
 # query cannot see that.
 PAGE_STUB = r"""

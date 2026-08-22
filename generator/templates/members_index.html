@@ -1,0 +1,12 @@
+{# The members index: one sortable row per member with author score, run count and contributor score. #}
+<header class="ghead"><div><h1>Members</h1>
+<p class="authline">Everybody who has logged in here at least once, sorted by author score:
+the stars their runs have earned. Click any column to re-sort.</p></div>
+</header>
+<table class="sortable"><thead><tr><th>Member</th><th class="num"><span class="starglyph">★</span> Author score</th>
+<th class="num">Runs</th><th class="num">Contributor score</th></tr></thead>
+<tbody>{% for uname, a, st_ in members %}<tr onclick="if(!event.target.closest('a'))location='{{ profile_slug(uname) }}/'">
+<td><b>{{ a['username'] }}</b>{{ role_badges(a['username']) }}</td>
+<td class="num"><span class="starglyph">★</span>{{ st_['author'] }}</td>
+<td class="num">{{ st_['runs'] }}</td><td class="num">{{ st_['contrib'] }}</td></tr>{% endfor %}</tbody></table>
+<p class="legend">Do you come from another community? <a href="../claim/">Claim your name</a></p>

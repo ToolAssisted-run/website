@@ -1,0 +1,229 @@
+{# The site log at /policy/site-log/: every act of authority, section by section. #}
+{% macro status_chip(status, chips) %}
+{% set cls, label = chips[status] %}
+<span class="chip{% if cls %} {{ cls }}{% endif %}">{{ label }}</span>
+{%- endmacro %}
+{% macro run_link(r) %}<a href="../../runs/{{ r.id }}/">{{ r._game.title }} ({{ r.id }})</a>{% endmacro %}
+{# a thing with a page links to it; one without (a dissolved group) is just named #}
+{% macro thing(title, href) %}{% if href %}<a href="../../{{ href }}">{{ title }}</a>{% else %}<b>{{ title }}</b>{% endif %}{% endmacro %}
+{# the answer to a request: its state, who decided and when, and any note #}
+{% macro answer(r, chips) %}
+{{ status_chip(r.status, chips) }}
+{%- if r.get('decidedBy') %}<span class="actmeta"> by {{ member_chip(r.get('decidedBy'), '../../') }} on {{ r.get('decidedAt') or '' }}</span>{% endif %}
+{%- if r.get('note') %}<p class="actnote">{{ inline(r.get('note') or '', '../../') }}</p>{% endif %}
+{%- endmacro %}
+<header class="ghead"><div><h1>Site log</h1>
+<p class="authline">Everything done here by anybody holding authority, and everything done
+to a run after it was archived. Every entry states who acted, when, and why, and none of it
+is ever removed: an act of authority that cannot be read back is not accountable to
+anyone.</p>
+<p class="statline"><a href="#roles">Role changes</a> · <a href="#attestations">Identity
+attestations</a> · <a href="#claims">Name claims</a> ·
+<a href="#reports">Run reports</a> ·
+<a href="#ratifications">Ratifications</a> · <a href="#removals">Removal requests</a> ·
+<a href="#edits">Expert edits</a> · <a href="#deletions">Deletions</a> · <a href="#withdrawn">Withdrawals</a> ·
+<a href="#cases">Cases</a> · <a href="#moderation">Moderation</a></p></div></header>
+{# ---- role changes: granted and taken away, site-wide, newest first ---- #}
+{% if role_events %}
+<section id="roles"><h2>Role changes ({{ role_events|length }})</h2>
+<p class="authline">Every grant and every removal, with the reason given at the time. Roles
+are not a status somebody has always had, and this is the only record of them: the forum's
+groups are printed from it.</p>
+<table><thead><tr><th>Date</th><th>Member</th><th>Change</th><th>By</th><th>Reason</th></tr></thead>
+<tbody>
+{% for ev in role_events %}
+<tr><td>{{ moment(ev.get('at') or ev.date) }}</td><td>{{ member_chip(ev.user, '../../') }}</td>
+<td>{% if ev.action == 'granted' %}<span class="chip verchip">Granted</span>{% else %}<span class="chip pendchip">Removed</span>{% endif %} {{ ROLE_LABEL.get(ev.role, ev.role) }}{% if ev.get('scope') %} · {{ scope_words(ev.get('scope')) }}{% endif %}</td>
+<td>{% if ev.by == 'founder' %}the founder{% elif ev.by == 'committee' %}a Committee vote{% else %}{{ member_chip(ev.by, '../../') }}{% endif %}</td>
+<td>{{ inline(ev.reason, '../../') }}{% if ev.get('proof') %} · <a href="{{ ev.get('proof') }}">where it was decided</a>{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="roles"><h2>Role changes</h2><p class="emptynote">No roles have changed hands yet.</p></section>
+{% endif %}
+{# ---- identity attestations: an expert vouching, on the record, that a member is an author ---- #}
+{% if attestations %}
+<section id="attestations"><h2>Identity attestations ({{ attestations|length }})</h2>
+<p class="authline">A name held for an author elsewhere is handed to a member when a
+Steering Committee member vouches for the identity, because a proof that depends on another
+site's permissions leaves out the people most likely to need it. Each entry names who vouched
+and the method, and can be challenged.</p>
+<table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Method</th></tr></thead>
+<tbody>
+{% for d, by, name, who, how in attestations %}
+<tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, '../../') }}</td>
+<td>Attested that {{ member_chip(who, '../../') }} is <b>{{ name }}</b></td>
+<td>{{ inline(how, '../../') }}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="attestations"><h2>Identity attestations</h2><p class="emptynote">Nobody has needed one yet.</p></section>
+{% endif %}
+{# ---- name claims: asked, answered, and never carrying an address ---- #}
+{% if claim_reqs %}
+<section id="claims"><h2>Name claims ({{ claim_reqs|length }})</h2>
+<p class="authline">A name held for an author elsewhere is handed over when the Steering
+Committee agrees it is theirs. The asking and the answer are both here. What the Committee
+saw of the claimant's email address is not, and never was: they see a masked form of it,
+worked out when they look, written into neither this archive nor anywhere else.</p>
+<table><thead><tr><th>Date</th><th>Member</th><th>Name and evidence</th><th>Answer</th></tr></thead>
+<tbody>
+{% for r in claim_reqs %}
+<tr><td>{{ moment(r.get('at') or r.date) }}</td><td>{{ member_chip(r.member, '../../') }}</td>
+<td><b>{{ r.identity }}</b><p class="actnote">{{ inline(r.evidence, '../../') }}</p></td>
+<td>{{ answer(r, CLAIM_CHIPS) }}
+</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="claims"><h2>Name claims</h2><p class="emptynote">Nobody has filed one yet.</p></section>
+{% endif %}
+{# ---- run reports: open ones first, then newest arrival first ---- #}
+{% if all_reports %}
+<section id="reports"><h2>Run reports ({{ all_reports|length }})</h2><div class="roster">
+{% for rep, r_ in all_reports %}
+<div class="act" id="R{{ rep.id }}">
+<div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="actmeta">{{ moment(rep.get('at') or rep.date) }} · by {{ rep.by }}</span></div>
+<p class="actnote">{{ REPORT_LABELS.get(rep.kind, rep.kind) }} ·
+{{ run_link(r_) }}
+{% if rep.get('details') %}: {{ inline(rep.get('details')) }}{% endif %}</p>
+{% if rep.status != 'open' %}
+<p class="statline">Resolution by expert {{ rep.get('resolvedBy') }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '') }}</p>
+{% endif %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="reports"><h2>Run reports</h2><p class="emptynote">No reports have been filed.</p></section>
+{% endif %}
+{# ---- ratifications and refusals: the same decision, answered either way ---- #}
+{% if decisions %}
+<section id="ratifications"><h2>Game and group decisions ({{ decisions|length }})</h2>
+<p class="authline">Historical: while ratification existed as a mechanism, experts vouched
+here for games and groups being real, distinct things. Creations are real on arrival now,
+and a mistaken one is deleted on the record; these acts remain the record of who vouched
+for what.</p>
+<table><thead><tr><th>Date</th><th>Expert</th><th>Game</th></tr></thead>
+<tbody>
+{% for when, by, title, href, what, why in decisions %}
+<tr><td>{{ moment(when) }}</td><td>{{ member_chip(by, '../../') }}</td>
+<td>{{ thing(title, href) }}
+<span class="actmeta"> {{ what }}</span>{% if why %}<p class="actnote">{{ inline(why, '../../') }}</p>{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="ratifications"><h2>Game and group decisions</h2>
+<p class="emptynote">Nothing has been ratified here yet. Games and group from the
+seeding import arrived established and were ratified by nobody on this site.</p></section>
+{% endif %}
+{# ---- removal requests: asked in public, answered in public ---- #}
+{% if all_removals %}
+<section id="removals"><h2>Removal requests ({{ all_removals|length }})</h2>
+<p class="authline">An expert never deletes a game or a group: they ask, and a site-wide
+expert answers. A granted removal takes the thing out of the index and leaves every page and
+every run exactly where it was, because the runs inside were never what was in question.</p>
+<table><thead><tr><th>Date</th><th>Asked by</th><th>What</th><th>Answer</th></tr></thead>
+<tbody>
+{% for r, title, href, kind in all_removals %}
+<tr><td>{{ moment(r.get('at') or r.date) }}</td><td>{{ member_chip(r.by, '../../') }}</td>
+<td>{{ thing(title, href) }}<span class="actmeta"> {{ kind }}</span>
+<p class="actnote">{{ inline(r.reason, '../../') }}</p></td>
+<td>{{ answer(r, REMOVAL_CHIPS) }}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="removals"><h2>Removal requests</h2>
+<p class="emptynote">Nobody has asked for anything to be removed.</p></section>
+{% endif %}
+{# ---- edits: git carries the diff, this carries the account ---- #}
+{% if edit_events %}
+<section id="edits"><h2>Edits ({{ edit_events|length }})</h2>
+<p class="authline">Authors revise their own runs; experts may correct anything inside their
+jurisdiction, member content included, and answer for it. Every revision says who, what it
+was, what it became, and why. Git history carries the exact diff and the way back.</p>
+<table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
+<tbody>
+{% for e in edit_events %}
+<tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, '../../') }}</td>
+<td><b>{{ e.key }}</b><span class="actmeta"> {{ e.kind }} · {{ e.field }}</span>
+<p class="actnote">{{ e.get('from') or '(empty)' }} → {{ e.get('to') or '(empty)' }}</p></td>
+<td>{{ inline(e.reason, '../../') }}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="edits"><h2>Edits</h2><p class="emptynote">Nothing has been revised.</p></section>
+{% endif %}
+{# ---- deletions: the log is all that remains, so it renders always ---- #}
+{% if del_events %}
+<section id="deletions"><h2>Deletions ({{ del_events|length }})</h2>
+<p class="authline">Deleted outright by an expert (runs, games, groups) or the Steering
+Committee (members): tests, spam, mistakes, things that were never really works. The thing
+is gone; who deleted it and why is not, and never will be.</p>
+<table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
+<tbody>
+{% for e in del_events %}
+<tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, '../../') }}</td>
+<td><b>{{ e.title }}</b><span class="actmeta"> {{ DEL_KIND.get(e.kind, e.kind) }} · {{ e.key }}</span>
+{%- if e.get('movedTo') %}<span class="actmeta"> · its runs moved to {{ e.get('movedTo') }}</span>{% endif %}</td>
+<td>{{ inline(e.reason, '../../') }}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="deletions"><h2>Deletions</h2><p class="emptynote">Nothing has been deleted outright.</p></section>
+{% endif %}
+{# ---- runs withdrawn, and the ones erased for good ---- #}
+{% if withdrawn_runs %}
+<section id="withdrawn"><h2>Withdrawals and erasures ({{ withdrawn_runs|length }})</h2>
+<p class="authline">A withdrawn run keeps its page as a tombstone, because a hole in the
+record is worse than an honest gap. Where every author asked for it, the movie file itself
+was permanently erased, and that is marked here.</p>
+<table><thead><tr><th>Date</th><th>By</th><th>Run</th><th>Reason</th></tr></thead>
+<tbody>
+{% for r_ in withdrawn_runs %}
+{% set w = r_.withdrawn %}
+<tr><td>{{ moment(w.get('at') or w.get('date', '')) }}</td>
+<td>{{ member_chip(w.by, '../../') }}</td>
+<td>{{ run_link(r_) }}
+{% if w.get('contentRemoved') %} <span class="chip pendchip">movie file erased</span>{% endif %}
+<span class="actmeta"> as {{ w.get('role') or 'author' }}</span></td>
+<td>{{ inline(w.get('reason') or '', '../../') }}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="withdrawn"><h2>Withdrawals and erasures</h2><p class="emptynote">Nothing has been withdrawn.</p></section>
+{% endif %}
+{# ---- open cases: a contradiction asks the people who spoke to say so again ---- #}
+{% if open_cases %}
+<section id="cases"><h2>Open cases</h2>
+<p class="authline">A contradiction never removes anybody's word by itself; it opens a case
+and asks the people who spoke to say so again.</p>
+<table><thead><tr><th>Opened</th><th>Run</th><th>State</th></tr></thead>
+<tbody>
+{% for r_, c in open_cases %}
+<tr><td>{{ c.get('opened') or '' }}</td>
+<td>{{ run_link(r_) }}</td>
+<td>case {{ c.id }} · {{ c.get('reaffirmations', [])|length }} of {{ c.verifiers|length }} verifiers
+have stood by their word</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% else %}
+<section id="cases"><h2>Open cases</h2><p class="emptynote">No case is open.</p></section>
+{% endif %}
+{# ---- moderation log: invalidations of somebody else's word ---- #}
+<section id="moderation"><h2>Moderation actions ({{ mod_entries|length }})</h2>
+<p class="authline">Moderation in moderation: every action is justified, states its reason,
+is appealable, and is logged here, in the open, permanently.</p>
+{% if mod_entries %}
+<table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+{% for d, by, kind, target, reason, r_ in mod_entries %}
+<tr><td>{{ moment(d) }}</td><td>{{ by }}</td>
+<td>Invalidated a {{ kind }} by {{ target }} on
+{{ run_link(r_) }}</td>
+<td>{{ reason }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% else %}
+<p class="emptynote">No moderation actions have been taken.</p>
+{% endif %}
+</section>

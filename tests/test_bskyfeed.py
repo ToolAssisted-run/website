@@ -95,8 +95,8 @@ def main():
             print('---', len(failures), 'failures')
             sys.exit(1 if failures else 0)
 
-        harness = '\n'.join(take_function(js, n) for n in ('escH', 'bskyPostHtml')) + """
-const linkify = (t) => escH(t).replace(/(https?:\\/\\/[^\\s<]+)/g, (u) => '<a href="' + u + '">' + u + '</a>');
+        harness = '\n'.join(take_function(js, n) for n in ('escapeHtml', 'bskyPostHtml')) + """
+const linkify = (t) => escapeHtml(t).replace(/(https?:\\/\\/[^\\s<]+)/g, (u) => '<a href="' + u + '">' + u + '</a>');
 const since = () => '1d ago';
 const payload = JSON.parse(process.argv[2]);
 console.log(JSON.stringify(payload.feed.map(

@@ -1,0 +1,49 @@
+{# The game editor: everything a covering expert may change, in one place
+   with a real UI (the page is public markup; every form is revealed only to
+   covering experts and the archivist enforces regardless). #}
+<header class="ghead"><div>
+<div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span></div>
+<h1>Edit {{ g['title'] }}</h1>
+<p class="authline">Everything a covering expert, or an editor, may change about this game. Every edit
+is logged in the open with your name, the old value and the new.</p></div>
+<div class="hbtns"><a class="btn quiet" href="../">Back to the game</a></div></header>
+<script type="application/json" id="gameeditdata">{{ json_blob(edit_data) }}</script>
+<p class="msg" id="ge-gate">Checking who you are…</p>
+<div id="geditor" hidden>
+<section><h2>Identity</h2>
+<form id="f-ge-title" class="actform">
+  <input type="hidden" name="kind" value="game">
+  <input type="hidden" name="target" value="{{ g['key'] }}">
+  <input type="hidden" name="field" value="title">
+  <label>Title <input name="value" required maxlength="120" value="{{ g['title'] }}"></label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="the reason is public"></label>
+  <button class="btn">Rename</button>
+</form>
+<form id="f-ge-thumb" class="actform">
+  <input type="hidden" name="kind" value="game">
+  <input type="hidden" name="target" value="{{ g['key'] }}">
+  <input type="hidden" name="field" value="thumbnail">
+  {% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="current thumbnail">{% else %}<p class="rules">No thumbnail set; the card falls back to the newest run frame.</p>{% endif %}
+  <label>Thumbnail (png/jpg/webp, under 256 KB)
+    <input name="thumbnail" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
+  <button class="btn">Set</button>
+</form></section>
+<section><h2>Categories</h2>
+<p class="rules">The label is what the rankings say; the rule is what a verifier holds a
+run to. A category with runs in it cannot be deleted: it is their home.</p>
+<template id="med-skeleton">{{ METRICS_ED }}</template>
+<div id="ge-cats"></div>
+<form id="f-ge-add" class="actform gecard">
+  <h3>Add a category</h3>
+  <input type="hidden" name="game" value="{{ g['key'] }}">
+  <label>Label <input name="label" required maxlength="80" placeholder="e.g. 100% completion"></label>
+  <label>Rule <input name="rule" required maxlength="500"
+    placeholder="what a verifier holds a run to"></label>
+  <label>Key (optional; derived from the label) <input name="option_key" pattern="[a-z0-9-]*"></label>
+  {{ METRICS_ED }}
+  <button class="btn">Add</button>
+</form></section>
+<p class="msg" id="ge-msg" hidden></p>
+</div>

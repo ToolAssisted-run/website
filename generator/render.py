@@ -576,9 +576,9 @@ _HTML_HELPERS = (
     'role_badges group_chip expert_line card_views chip_views md_html run_date_cell '
     'frames_html wiki_html inline author_chip member_chip thumb_html console_tick '
     'tick console_chip state_chip badge_chip dl_members dl_heldnames dl_games '
-    'primary_metric_html seo_head').split()
+    'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
-    'moment clock sec_clock run_clock fmt_metric primary_metric_text thumb_url '
+    'moment clock sec_clock run_clock primary_metric_text thumb_url '
     'thumb_alt shot_url breadcrumb_ld').split()
 _HTML_CONSTANTS = 'METRICS_ED IMPORTED_TICK FULL_TICK NONE_TICK'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '

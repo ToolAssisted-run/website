@@ -1,0 +1,31 @@
+{# The founder panel (/founder/): seating and unseating Steering Committee members #}
+<header class="ghead"><div><h1>Founder</h1>
+<p class="authline">Seating and unseating Steering Committee members. Every use of this is a
+role event with your name on it, public in the <a href="../policy/site-log/#roles">site
+log</a> and on the member's own page, and the person is told. The Committee's own route,
+deciding by poll, exists alongside this and keeps its thresholds.</p></div></header>
+<p class="msg" id="fpanel-gate">Checking who you are…</p>
+<div id="fpanel" hidden>
+<section><h2>The Committee today</h2>
+<div class="factbox">{% for m in committee_members %}<p class="statline">{{ member_chip(m, '../') }}</p>{% else %}<p class="emptynote">Nobody sits on it yet.</p>{% endfor %}</div></section>
+<section><h2>Seat somebody</h2>
+<form id="f-seat" class="actform">
+  <input type="hidden" name="action" value="granted">
+  <label>Member <input name="target" list="dl-members" required
+    placeholder="type to find a member"></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="published with the decision"></label>
+  <button class="btn">Seat</button>
+</form></section>
+<section><h2>Unseat somebody</h2>
+<form id="f-unseat" class="actform">
+  <input type="hidden" name="action" value="revoked">
+  <label>Member <select name="target">{% for m in committee_members %}<option>{{ m }}</option>{% endfor %}</select></label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="published with the decision, and they are told it"></label>
+  <button class="btn quiet">Unseat</button>
+</form></section>
+<p class="msg" id="fpanel-msg" hidden></p>
+</div>
+{{ dl_members(exclude=committee_members) }}
+<script type="application/json" id="fpaneldata">{{ json_blob({'founders': founder_now}) }}</script>

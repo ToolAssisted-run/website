@@ -36,11 +36,19 @@ never derived state** (who verified what, when; never "this run is ranked").
 - `assets/app.js`, `assets/style.css`: the frontend, real files, shipped
   verbatim. The script reads embedded `application/json` blobs and talks to
   the archivist's JSON API; it never scrapes pages.
-- `generator/render.py`: HTML helpers (escaping, chips, wiki rendering,
-  page chrome, thumbnails).
-- `generator/views/*.py`: one page family per module. A view renders its
-  pages **on import** (the template strings must keep exact indentation, so
-  the code stays top-level); `build.py` imports them in build order.
+- `generator/templates/*.html`: the markup, Jinja2, one template per page
+  (plus `_*.html` macro files for shared fragments and `base.html` for the
+  chrome). Autoescaping is on: `{{ x }}` is always text. The HTML helpers
+  below are registered as safe globals, so `{{ tick(state) }}` is markup and
+  nothing else is; `|safe` on a string is a test failure.
+- `generator/render.py`: `tpl(name, **ctx)` and the HTML helpers templates
+  call (escaping, chips, ticks, thumbnails, datalists, wiki/markdown
+  rendering, the page chrome via `page()`).
+- `generator/views/*.py`: one page family per module, and **no markup**:
+  a view sorts, filters and groups model facts, then calls `tpl()` and
+  writes the file. A view renders its pages on import; `build.py` imports
+  them in build order. `tests/test_output.py` enforces the split (no tag in
+  a view, no `|safe` on a string in a template).
 
 **Controller** — what happens when.
 - `generator/build.py`: scaffolding, build order, shared assets.

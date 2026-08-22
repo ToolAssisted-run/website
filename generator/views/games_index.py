@@ -1,24 +1,11 @@
-"""View: games index (renders on import; see views/__init__)."""
-import datetime
-import html
-import os
-import json
-import pathlib
-import re
-import shutil
-import subprocess
-import sys
-import urllib.parse
-from config import (
-    OUT,
-)
+"""View: games index, system pages and group pages (renders on import; see
+views/__init__). Markup lives in templates/games_*.html and _game_cards.html."""
+from config import OUT
 from model import (
     authors,
     nvisits,
-    visits_known,
     cat_label,
     covering_experts,
-    eff_state,
     experts_reg,
     games,
     group_games,
@@ -31,177 +18,91 @@ from model import (
     systems,
 )
 from render import (
-    FULL_TICK,
     SITE_URL,
-    breadcrumb_ld,
-    card_views,
-    chip_views,
-    NONE_TICK,
     SHIPPED_GAME_THUMBS,
-    author_chip,
-    console_tick,
-    dl_games,
-    esc,
-    inline,
-    member_chip,
+    breadcrumb_ld,
     page,
-    primary_metric_html,
-    thumb_html,
     thumb_url,
-    tick,
+    tpl,
 )
 
-# ---- games index ----
-by_sys = {}
-for key, g in games.items():
-    by_sys.setdefault(g['system'], []).append(g)
-def game_card(g, prefix='', with_system=False):
-    newest = max((r for r in g['runs'] if r.get('thumbnail')),
-                 key=lambda r: r.get('submitted') or '', default=None)
-    own = SHIPPED_GAME_THUMBS.get(g['key'])
-    tm = (f'<span class="thumb"><span class="sys">{esc(g["system"].upper())}</span>'
-          f'<img src="/thumbs/{esc(own)}" alt="" loading="lazy"></span>' if own else
-          thumb_html(newest) if newest else
-          f'<span class="thumb"><span class="sys">{esc(g["system"].upper())}</span></span>')
-    gstars = sum(nlikes(r) for r in g['runs'])
-    sysline = (f'<span class="csys">{esc(systems[g["system"]]["name"])}</span>'
-               if with_system else '')
-    return f'''<a class="card" data-stars="{gstars}" data-views="{sum(nvisits(r) for r in g['runs'])}" data-title="{esc(g['title'])}" href="{prefix}{g['key']}/">
-{tm}
-<span class="cbody"><b>{esc(g['title'])}</b>{sysline}
-<span class="cfoot"><span>{len(g['runs'])} run{'s' if len(g['runs'])!=1 else ''}</span>
-<span><span class="starglyph">★</span>{gstars}</span>{card_views(sum(nvisits(r) for r in g['runs']))}</span></span></a>'''
 
-def collage(ggames):
+def stars_of(rlist): return sum(nlikes(r) for r in rlist)
+def views_of(rlist): return sum(nvisits(r) for r in rlist)
+def runs_of(gms): return [r for g in gms for r in g['runs']]
+def nsystems(gms): return len({g['system'] for g in gms})
+
+def newest_thumb(g):
+    """The game's most recently submitted run that has a thumbnail."""
+    return max((r for r in g['runs'] if r.get('thumbnail')),
+               key=lambda r: r.get('submitted') or '', default=None)
+
+def best_thumb(rlist):
+    """The most liked run with a thumbnail: the face of a page for SEO."""
+    return max((r for r in rlist if thumb_url(r)),
+               key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
+
+def collage_tiles(ggames):
     """Up to four games, one tile each, each showing that game's most
     starred run: the face of a family (a group) or a library (a system),
     drawn from distinct games, best liked first."""
     tiles = []
-    for g in sorted(ggames, key=lambda g: (-sum(nlikes(r) for r in g['runs']),
-                                           g['title'])):
+    for g in sorted(ggames, key=lambda g: (-stars_of(g['runs']), g['title'])):
         best = max((r for r in g['runs'] if r.get('thumbnail')),
                    key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
         if best:
             tiles.append(best)
         if len(tiles) == 4:
             break
-    if not tiles:
-        # no thumbnails, or no games at all: the card still needs a face
-        word = ggames[0]['system'].upper() if ggames else 'NEW'
-        return f'<span class="thumb"><span class="sys">{esc(word)}</span></span>'
-    nsfw = any('sexual' in r.get('contentWarnings', []) for r in tiles)
-    cells = ''.join(
-        f'<span class="tile"><img class="'
-        f'{"nsfwblur" if "sexual" in r.get("contentWarnings", []) else ""}" '
-        f'src="{esc(thumb_url(r))}" alt="" loading="lazy"></span>'
-        for r in tiles)
-    badge = '<span class="nsfw18">18+</span>' if nsfw else ''
-    return (f'<span class="thumb collage" data-n="{len(tiles)}">{cells}{badge}</span>')
+    return tiles
 
-def system_card(skey, gms):
-    """One card for a whole system's library, exactly like a group's."""
-    rlist = [r for g in gms for r in g['runs']]
-    stars = sum(nlikes(r) for r in rlist)
-    return f'''<a class="card" data-stars="{stars}" data-views="{sum(nvisits(r) for r in rlist)}" data-title="{esc(systems[skey]['name'])}" href="../systems/{skey}/">
-{collage(gms)}
-<span class="cbody"><b>{esc(systems[skey]['name'])}</b>
-<span class="csys">{len(gms)} game{'s' if len(gms) != 1 else ''}</span>
-<span class="cfoot"><span>{len(rlist)} run{'s' if len(rlist) != 1 else ''}</span>
-<span><span class="starglyph">★</span>{stars}</span>{card_views(sum(nvisits(r) for r in rlist))}</span></span></a>'''
+def ranked_rows(rlist):
+    return sorted((r for r in rlist if is_ranked(r)),
+                  key=lambda r: (r['_game']['title'], cat_label(r)))
 
-sys_view = (f'''<div class="grid">{''.join(
-    system_card(skey, by_sys[skey])
-    for skey in sorted(by_sys, key=lambda k: systems[k]['name']))}</div>
-<p class="authline">{len(by_sys)} systems; every game lives on one.</p>''')
+def plural(n, word): return f'{n} {word}{"s" if n != 1 else ""}'
+
+HELPERS = dict(stars_of=stars_of, views_of=views_of, runs_of=runs_of,
+               nsystems=nsystems, newest_thumb=newest_thumb,
+               collage_tiles=collage_tiles, SHIPPED_GAME_THUMBS=SHIPPED_GAME_THUMBS)
+
+def crumb(name): return tpl('games_crumb.html', title=name).rstrip()
+
+# ---- games index ----
+by_sys = {}
+for key, g in games.items():
+    by_sys.setdefault(g['system'], []).append(g)
 
 # ---- system pages: a system's whole library, exactly like a group page ----
 (OUT / 'systems').mkdir(parents=True, exist_ok=True)
 for skey in sorted(by_sys):
     sgames = sorted(by_sys[skey], key=lambda g: g['title'].lower())
-    sruns = [r for g in sgames for r in g['runs']]
-    sstars = sum(nlikes(r) for r in sruns)
-    scards = ''.join(game_card(g, '../../games/') for g in sgames)
-    srows = []
-    for r in sorted((r for r in sruns if is_ranked(r)),
-                    key=lambda r: (r['_game']['title'], cat_label(r))):
-        rs_, vs_ = eff_state(r)
-        srows.append(f"""<tr onclick="if(!event.target.closest('a'))location='../../runs/{r['id']}/'"><td><a href="../../games/{r['_game']['key']}/">{esc(r['_game']['title'])}</a></td>
-<td>{esc(cat_label(r))}</td>
-<td>{', '.join(author_chip(a['user'], '../../') for a in r['authors'])}</td>
-<td class="num"><a href="../../runs/{r['id']}/">{primary_metric_html(r)}</a></td>
-<td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
-<td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>""")
-    stable = (f"""<h2>Records across the system</h2>
-<table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
-<th class="num"></th><th class="num">Stars</th>
-<th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
-<tbody>{''.join(srows)}</tbody></table>
-<p class="legend">{FULL_TICK} verified &nbsp;
-{NONE_TICK} pending</p>""" if srows else
-              '<p class="authline">No ranked run on this system yet.</p>')
-    sbody = f"""<header class="ghead"><div>
-<div class="chips"><span class="chip">{len(sgames)} games</span>
-<span class="chip">{len(sruns)} run{'s' if len(sruns) != 1 else ''}</span>
-<span class="chip starchip"><span class="starglyph">★</span> {sstars}</span>{chip_views(sum(nvisits(r) for r in sruns))}</div>
-<h1>{esc(systems[skey]['name'])}</h1>
-<p class="authline">Every {esc(systems[skey]['name'])} game in the library, whatever
-group each belongs to.</p></div></header>
-<div class="grid">{scards}</div>
-
-{stable}"""
+    sruns = runs_of(sgames)
+    sname = systems[skey]['name']
+    sbody = tpl('games_system.html', sname=sname, sgames=sgames, sruns=sruns,
+                srows=ranked_rows(sruns), **HELPERS)
     sdir = OUT / 'systems' / skey
     sdir.mkdir(parents=True, exist_ok=True)
-    sbest = max((r for r in sruns if thumb_url(r)),
-                key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
+    sbest = best_thumb(sruns)
     (sdir / 'index.html').write_text(page(
-        f'{systems[skey]["name"]} TAS runs and leaderboards', sbody, '../../',
-        f'<a href="../../games/">Games</a> / {esc(systems[skey]["name"])}', 'Games',
+        f'{sname} TAS runs and leaderboards', sbody, '../../', crumb(sname), 'Games',
         seo={'path': f'systems/{skey}/',
-             'description': (f'Tool-assisted speedruns on {systems[skey]["name"]}: '
-                             f'{len(sgames)} game{"s" if len(sgames) != 1 else ""}, '
-                             f'{len(sruns)} run{"s" if len(sruns) != 1 else ""}, leaderboards, '
+             'description': (f'Tool-assisted speedruns on {sname}: '
+                             f'{plural(len(sgames), "game")}, '
+                             f'{plural(len(sruns), "run")}, leaderboards, '
                              f'encodes and movie files.'),
              'image': (SITE_URL + thumb_url(sbest)) if sbest else None,
              'ld': [breadcrumb_ld([('Games', 'games/'),
-                                   (systems[skey]['name'], f'systems/{skey}/')])]}))
+                                   (sname, f'systems/{skey}/')])]}))
 
 if live_groups:
     (OUT / 'groups').mkdir(parents=True, exist_ok=True)
     for gr in live_groups:
         ggames = group_games(gr)
         grunts = group_runs(gr)
-        gstars = sum(nlikes(r) for r in grunts)
         gexperts = sorted({u for g in ggames for u in covering_experts(g['key'])})
-        cards = ''.join(game_card(g, '../../games/', with_system=True) for g in ggames)
-        rows = []
-        for r in sorted((r for r in grunts if is_ranked(r)),
-                        key=lambda r: (r['_game']['title'], cat_label(r))):
-            rs_, vs_ = eff_state(r)
-            rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='../../runs/{r['id']}/'"><td><a href="../../games/{r['_game']['key']}/">{esc(r['_game']['title'])}</a></td>
-<td>{esc(cat_label(r))}</td>
-<td>{', '.join(author_chip(a['user'], '../../') for a in r['authors'])}</td>
-<td class="num"><a href="../../runs/{r['id']}/">{primary_metric_html(r)}</a></td>
-<td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
-<td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
-        table = ('' if gr.get('synthetic') else f'''<h2>Records across the group</h2>
-<table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
-<th class="num"></th><th class="num">Stars</th>
-<th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>
-<p class="legend">{FULL_TICK} verified &nbsp;
-{NONE_TICK} pending</p>''' if rows else
-                 '<p class="authline">No ranked run in this group yet.</p>')
-        synthetic = gr.get('synthetic')
-        expline = ('' if synthetic else
-                   '<p class="authline">Group experts and above: '
-                   + ', '.join(member_chip(authors.get(u, {}).get('username', u),
-                                           '../../') for u in gexperts) + '</p>'
-                   if gexperts else '')
-        blurb = ('These games are not part of any group yet. Every game belongs '
-                 'to one, so they wait here until an expert places them in the '
-                 'group they belong to.' if synthetic else
-                 'A game group: one family of games, across every system it '
-                 'appeared on. Experts may hold a scope over a whole group.')
+        # the move form lists every game not already here, with the group
+        # each would leave
         placed_in = {k: grx['title'] for grx in live_groups
                      for k in grx.get('games', []) if grx['key'] != gr['key']}
         gact_data = {'group': gr['key'], 'experts': gexperts,
@@ -211,230 +112,32 @@ if live_groups:
                                  for k in sorted(games,
                                                  key=lambda k: games[k]['title'].lower())
                                  if k not in gr.get('games', [])]}
-        gacts = ('' if gr.get('synthetic') else
-                 '<script type="application/json" id="groupactdata">'
-                 + json.dumps(gact_data).replace('<', chr(92) + 'u003c') + '</script>'
-                 + '<div id="groupacts" class="actzone expertmenu" hidden>'
-                 '<h2>Expert menu</h2>'
-                 '<p class="rules">Only experts whose scope covers this group, and editors, '
-                 'see this box; every action here is logged in the open.</p>'
-                 '<details class="actform"><summary>Move games into this group</summary>'
-                 '<form id="f-groupmove">'
-                 '<p class="rules">Tick any games and they move into this group, each '
-                 'leaving whatever group held it; a game belongs to one group. '
-                 'A brand-new game is made on the create page instead.</p>'
-                 f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
-                 '<input type="hidden" name="move">'
-                 '<input class="gmfilter" type="search" placeholder="Type to filter games…">'
-                 '<div class="gmovelist"></div>'
-                 '<button class="btn">Move here</button></form></details>'
-                 '<details class="actform"><summary>Delete this group</summary>'
-                 '<form id="f-groupdelete">'
-                 '<p class="rules">Outright: the grouping goes, and every game in it becomes '
-                 'ungrouped, gathered by Uncategorized until somebody re-homes it. No game and '
-                 'no run is deleted. Your reason is public and permanent.</p>'
-                 f'<input type="hidden" name="group" value="{esc(gr["key"])}">'
-                 '<label>Why <input name="reason" required minlength="8" maxlength="500" '
-                 'placeholder="a test, a mistake, …"></label>'
-                 '<button class="btn danger">Delete</button></form></details>'
-                 '<p id="groupact-msg" class="actmsg" hidden></p></div>')
-
-        gbody = f'''<header class="ghead"><div>
-<div class="chips"><span class="chip">{len(ggames)} games</span>
-<span class="chip">{len(grunts)} run{'s' if len(grunts)!=1 else ''}</span>
-<span class="chip starchip"><span class="starglyph">★</span> {gstars}</span></div>
-<h1>{esc(gr['title'])}</h1>
-
-<p class="authline">{blurb}</p>{expline}</div></header>
-{'<div class="grid">' + cards + '</div>' if ggames else
- '<p class="emptynote">No games in this group yet. Experts covering it add them '
- 'right here, and anybody can put one in it at submission time.</p>'}
-
-{table}
-{gacts}'''
+        gbody = tpl('games_group.html', gr=gr, ggames=ggames, grunts=grunts,
+                    gexperts=gexperts, synthetic=bool(gr.get('synthetic')),
+                    rows=ranked_rows(grunts), gact_data=gact_data, **HELPERS)
         gdir = OUT / 'groups' / gr['key']
         gdir.mkdir(parents=True, exist_ok=True)
-        gnsys = len({g['system'] for g in ggames})
-        gbest = max((r for r in grunts if thumb_url(r)),
-                    key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
+        gnsys = nsystems(ggames)
+        gbest = best_thumb(grunts)
         (gdir / 'index.html').write_text(page(
-            f'{gr["title"]} TAS runs across {gnsys} system{"s" if gnsys != 1 else ""}',
-            gbody, '../../',
-            f'<a href="../../games/">Games</a> / {esc(gr["title"])}', 'Games',
+            f'{gr["title"]} TAS runs across {plural(gnsys, "system")}',
+            gbody, '../../', crumb(gr['title']), 'Games',
             seo={'path': f'groups/{gr["key"]}/',
                  'description': (f'{gr["title"]} tool-assisted speedruns across '
-                                 f'{gnsys} system{"s" if gnsys != 1 else ""}: {len(ggames)} '
-                                 f'game{"s" if len(ggames) != 1 else ""}, {len(grunts)} '
-                                 f'run{"s" if len(grunts) != 1 else ""}, leaderboards and records.'),
+                                 f'{plural(gnsys, "system")}: {plural(len(ggames), "game")}, '
+                                 f'{plural(len(grunts), "run")}, leaderboards and records.'),
                  'image': (SITE_URL + thumb_url(gbest)) if gbest else None,
                  'ld': [breadcrumb_ld([('Games', 'games/'),
                                        (gr['title'], f'groups/{gr["key"]}/')])]}))
 
-    def group_card(gr):
-        """One card for a whole group, thumbnailed with a collage of its
-        games."""
-        ggames = group_games(gr)
-        grunts = group_runs(gr)
-        stars = sum(nlikes(r) for r in grunts)
-        tm = collage(ggames)
-        nsys = len({g['system'] for g in ggames})
-        return f'''<a class="card" data-stars="{stars}" data-views="{sum(nvisits(r) for r in grunts)}" data-title="{esc(gr['title'])}"
-data-last="{1 if gr.get('synthetic') else 0}" href="../groups/{gr['key']}/">
-{tm}
-<span class="cbody"><b>{esc(gr['title'])}</b>
-<span class="csys">{len(ggames)} games · {nsys} system{'s' if nsys != 1 else ''}</span>
-<span class="cfoot"><span>{len(grunts)} run{'s' if len(grunts) != 1 else ''}</span>
-<span><span class="starglyph">★</span>{stars}</span>{card_views(sum(nvisits(r) for r in grunts))}</span></span></a>'''
-
-    group = [gr for gr in live_groups if not gr.get('synthetic')]
-    grp_view = f'''<div class="grid">{''.join(group_card(gr) for gr in live_groups)}</div>
-<p class="authline">{len(group)} groups, and every game belongs to one:
-those no group has claimed yet are gathered under Uncategorized.</p>'''
-else:
-    grp_view = ''          # nothing is grouped yet, so there is no group view
-
-games_sort_js = '''<script>
-(function(){
-  var sortMode = 'stars', view = 'systems';
-  // a remembered view whose section is gone (an archive with no groups yet)
-  // must not blank the page
-  try {
-    var v = localStorage.getItem('tar-games-view');
-    if (v && document.getElementById('v-' + v)) view = v;
-  } catch(e){}
-  function order(a, b){
-    // Uncategorized is a holding pen, not a group: it stays last either way
-    if ((a.dataset.last || 0) !== (b.dataset.last || 0))
-      return (a.dataset.last || 0) - (b.dataset.last || 0);
-    if (sortMode === 'stars') return b.dataset.stars - a.dataset.stars;
-    if (sortMode === 'views') return (b.dataset.views || 0) - (a.dataset.views || 0);
-    return a.dataset.title.localeCompare(b.dataset.title);
-  }
-  function resort(){
-    document.querySelectorAll('.gsects').forEach(function(wrap){   // bands
-      Array.prototype.slice.call(wrap.children).sort(order)
-        .forEach(function(s){ wrap.appendChild(s); });
-    });
-    // every card row: the shelves inside a band, and the group cards,
-    // which stand in a grid of their own with no band around them
-    document.querySelectorAll('.grid, .hrow').forEach(function(grid){
-      Array.prototype.slice.call(grid.children).sort(order)
-        .forEach(function(c){ grid.appendChild(c); });
-    });
-    document.querySelectorAll('.gsort').forEach(function(b){
-      b.classList.toggle('on', b.dataset.mode === sortMode);
-    });
-  }
-  // the list view sorts by any column; a second click flips the direction.
-  // Text columns start ascending, counts start with the biggest first.
-  var ltab = document.querySelector('#v-list table');
-  if (ltab) {
-    var lkey = 'title', lasc = true;
-    var ths = ltab.querySelectorAll('th[data-key]');
-    ths.forEach(function(th){
-      th.addEventListener('click', function(){
-        var k = th.dataset.key;
-        if (lkey === k) lasc = !lasc;
-        else { lkey = k; lasc = th.dataset.type !== 'num'; }
-        var tb = ltab.tBodies[0];
-        Array.prototype.slice.call(tb.rows).sort(function(a, b){
-          var x = a.dataset[k], y = b.dataset[k];
-          var r = th.dataset.type === 'num' ? (+x) - (+y)
-                : (x < y ? -1 : x > y ? 1 : 0);
-          return lasc ? r : -r;
-        }).forEach(function(rw){ tb.appendChild(rw); });
-        ths.forEach(function(t){ t.classList.remove('sorted'); t.removeAttribute('data-dir'); });
-        th.classList.add('sorted');
-        th.setAttribute('data-dir', lasc ? '\u25b2' : '\u25bc');
-      });
-    });
-  }
-  function apply(){
-    ['groups', 'systems', 'list'].forEach(function(k){
-      var el = document.getElementById('v-' + k);
-      if (el) el.hidden = (k !== view);
-    });
-    // the shelves size their arrows from geometry, which a hidden view
-    // has none of; a resize nudge repaints them once revealed
-    window.dispatchEvent(new Event('resize'));
-    document.querySelectorAll('.gview-btn').forEach(function(b){
-      b.classList.toggle('on', b.dataset.view === view);
-    });
-    // the list is alphabetical by definition, so a sort control there is a lie
-    var row = document.getElementById('gsortrow');
-    if (row) row.hidden = (view === 'list');
-    resort();
-  }
-  document.querySelectorAll('.gsort').forEach(function(b){
-    b.addEventListener('click', function(){ sortMode = b.dataset.mode; resort(); });
-  });
-  document.querySelectorAll('.gview-btn').forEach(function(b){
-    b.addEventListener('click', function(){
-      view = b.dataset.view;
-      try { localStorage.setItem('tar-games-view', view); } catch(e){}
-      apply();
-    });
-  });
-  apply();
-})();
-</script>'''
-
-list_rows = []
-for g in sorted(games.values(), key=lambda g: g['title'].lower()):
-    mine = [gr for gr in groups_by_game.get(g['key'], []) if has_page(gr)]
-    grp = ', '.join(f'<a href="../groups/{gr["key"]}/">{esc(gr["title"])}</a>'
-                    for gr in mine) or '<span class="faintcell">—</span>'
-    list_rows.append(f'''<tr onclick="if(!event.target.closest('a'))location='{g['key']}/'"
- data-title="{esc(g['title'].lower())}" data-sys="{esc(systems[g['system']]['name'].lower())}"
- data-grp="{esc(', '.join(gr['title'].lower() for gr in mine))}"
- data-runs="{len(g['runs'])}" data-stars="{sum(nlikes(r) for r in g['runs'])}" data-views="{sum(nvisits(r) for r in g['runs'])}">
-<td><a href="{g['key']}/">{esc(g['title'])}</a></td>
-<td>{esc(systems[g['system']]['name'])}</td><td>{grp}</td>
-<td class="num">{len(g['runs'])}</td>
-<td class="num"><span class="starglyph">★</span>{sum(nlikes(r) for r in g['runs'])}</td>
-{f'<td class="num">{card_views(sum(nvisits(r) for r in g["runs"]))}</td>' if visits_known else ''}</tr>''')
-list_view = f'''<table class="rtab"><thead><tr>
-<th data-key="title" class="sorted" data-dir="▲">Game</th>
-<th data-key="sys">System</th><th data-key="grp">Group</th>
-<th class="num" data-key="runs" data-type="num">Runs</th>
-<th class="num" data-key="stars" data-type="num">Stars</th>
-{'<th class="num" data-key="views" data-type="num">Views</th>' if visits_known else ''}</tr></thead>
-<tbody>{''.join(list_rows)}</tbody></table>'''
-
+# the list view: every game alphabetically, with the groups that hold it
+list_games = [(g, [gr for gr in groups_by_game.get(g['key'], []) if has_page(gr)])
+              for g in sorted(games.values(), key=lambda g: g['title'].lower())]
 site_experts_now = sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'})
-games_acts = ('<script type="application/json" id="gamesactdata">'
-              + json.dumps({'siteExperts': site_experts_now, 'editorZone': True}) + '</script>'
-              + '<div id="gamesacts" class="actzone" hidden>'
-              '<details class="actform"><summary>Start a group (site experts and editors)</summary>'
-              '<form id="f-newgroup">'
-              '<p class="rules">One family of games, across every system it appeared on. '
-              'It exists the moment you make it.</p>'
-              '<label>Key <input name="group" required pattern="[a-z0-9]+(-[a-z0-9]+)*" '
-              'placeholder="lowercase-with-hyphens"></label>'
-              '<label>Title <input name="title" required maxlength="80" '
-              'placeholder="Mega Man"></label>'
-              '<label>Games <input name="games" data-pick="dl-games"></label>'
-              '<button class="btn">Create</button></form></details>'
-              '<p id="gamesact-msg" class="actmsg" hidden></p></div>' + dl_games())
-
-body = f'''<header class="ghead"><div><h1>Games</h1>
-<p class="authline">{len(games)} games across {len(by_sys)} systems. Anyone can create a game;
-experts curate afterwards.</p></div>
-<div class="hbtns"><a class="btn" href="../create-game/">Create a game</a></div></header>
-<div class="dimrow gcontrols">
-<span class="dimsub nogap" id="gsortrow"><span class="dimname">Sort</span>
-<button class="dimopt gsort on" data-mode="stars"><span class="starglyph">★</span> Stars</button>
-{'<button class="dimopt gsort" data-mode="views"><svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg> Views</button>' if visits_known else ''}
-<button class="dimopt gsort" data-mode="title">By title</button></span>
-<span class="dimsub"><span class="dimname">View</span>
-{'<button class="dimopt gview-btn" data-view="groups">Groups</button>' if grp_view else ''}
-<button class="dimopt gview-btn on" data-view="systems">Systems</button>
-<button class="dimopt gview-btn" data-view="list">List</button></span></div>
-{f'<div class="gview" id="v-groups" hidden>{grp_view}</div>' if grp_view else ''}
-<div class="gview" id="v-systems">{sys_view}</div>
-<div class="gview" id="v-list" hidden>{list_view}</div>
-{games_sort_js}
-{games_acts}'''
+body = tpl('games_index.html', by_sys=by_sys,
+           sys_keys=sorted(by_sys, key=lambda k: systems[k]['name']),
+           ngroups=sum(1 for gr in live_groups if not gr.get('synthetic')),
+           list_games=list_games, site_experts_now=site_experts_now, **HELPERS)
 (OUT / 'games' / 'index.html').write_text(page(
     'Games with TAS runs', body, '../', '', 'Games',
     seo={'path': 'games/',

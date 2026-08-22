@@ -1,0 +1,288 @@
+{# A run page: header, encode, notes, community rosters, act forms, sidebar facts, expert menu. #}
+{% from '_run_pages.html' import act_row, roster_acts, case_box, nmembers %}
+<header class="ghead"><div>
+  <div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
+  <span class="chip">{{ cl }}</span>{{ state_chip(r) }}{{ console_chip(r) }}{% if open_case %}<span class="chip pendchip">Under dispute</span>{% endif %}
+  <span class="visits" id="visitbadge" title="number of visits" hidden><svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>&nbsp;<span id="visitnum"></span></span></div>
+  <h1>{{ g['title'] }}</h1>
+  <p class="authline">by {% for a in r['authors'] %}{% if not loop.first %} · {% endif %}{{ author_chip(a['user'], '../../') }}{% endfor %}</p>
+  {% if r.get('goalDescription') %}<p class="gdesc">“{{ r['goalDescription'] }}”</p>{% endif %}</div>
+  <div class="hbtns">
+    <button id="likebtn" class="likestar" title="Like this run">
+      <span class="starglyph">★</span> Like<span class="likecount" id="likecount">{{ nlikes(r) }}</span></button>
+    {% if r.get('videoOnly') %}<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>{% endif %}
+    <a class="srclink" href="https://github.com/ToolAssisted-run/archive/tree/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}">view run folder in the archive →</a>
+    <a class="srclink" href="https://github.com/ToolAssisted-run/archive/commits/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}"
+       title="every change to this run, in git, reversible">view history{% if nrev %} · {{ nrev }} revision{% if nrev != 1 %}s{% endif %}{% endif %} →</a>
+  </div>
+</header>
+{# the encode: an embedded player when a known provider hosts it, else the thumbnail;
+   runs flagged for sexual content hide it behind an age gate (app.js swaps the template in) #}
+{% set vid %}
+{% if pv %}
+<div class="player"><iframe src="{{ pv['embed'] }}" title="Run encode" allowfullscreen></iframe></div>
+<p class="srcnote">External embedded video, not hosted at toolAssisted.run · <a href="{{ enc['url'] }}">watch on {{ pv['name'] }}</a></p>
+{% elif thumb_url(r) %}
+<div class="poster"><img src="{{ thumb_url(r) }}" alt="run thumbnail"></div>
+<p class="srcnote">Thumbnail derived from the encode</p>
+{% endif %}
+{% endset %}
+{% if 'sexual' in warns and vid|trim %}
+<template id="nsfwreal">{{ vid }}</template>
+<div class="nsfw-gate" id="nsfwgate">{% if thumb_url(r) %}<img class="nsfwblur" src="{{ thumb_url(r) }}" alt="">{% endif %}
+<div class="nsfw-overlay"><p>This run is flagged for sexual content.</p>
+<button id="nsfwok" class="btn">I confirm I am 18 or older</button></div></div>
+{% else %}
+{{ vid }}
+{% endif %}
+<div class="cols">
+<div class="main">
+  {% if warns %}
+  <div class="warnbox"><b>Content notes (disclosed by the author)</b>
+  <div class="chips">{% for w in warns %}<span class="chip warnchip">{{ CW_LABELS.get(w, w) }}</span>{% endfor %}</div></div>
+  {% endif %}
+  {% if is_leg %}
+  <div class="importedbox"><b>Imported</b>
+  This run was originally published at <a href="{{ imported.get('source', '') }}">{{ imported.get('source', '') }}</a>
+  and entered this archive as a voluntary import by one of its authors, who takes the
+  responsibility for importing a collaborative work. The notes below are the author's own;
+  text not written by the authors has been removed. The original publication was verified and reproduced
+  at its source, a trusted site, so it is marked fully verified here without passing
+  through this site's standard procedure. The movie file and notes were obtained freely from
+  the source and are redistributed in observance of the Creative Commons Attribution 2.0
+  license under which they were published there.</div>
+  {% endif %}
+  {% if open_case %}
+  <div class="disputebox"><b>This run is under dispute (case {{ open_case['id'] }})</b>
+Opened by {{ open_case['openedBy'] }} on {{ open_case['date'] }}: {{ inline(open_case['reason']) }}
+Its verifiers have been asked to reaffirm ({{ open_case.get('reaffirmations', [])|length }} of {{ open_case['verifiers']|length }} votes so far).
+The run keeps its status until the case resolves; nothing is ever automatic.</div>
+  {% endif %}
+  <h2>Author's notes</h2>
+  <div class="notes">{{ wiki_html(notes_src) }}</div>
+  {% if not is_leg %}
+  {# community rosters #}
+  <h2>Reproductions ({{ live(reps)|length }})</h2>
+<div class="roster">{% if reps %}{{ roster_acts(r, reps, 'repro') }}{% else %}<p class="emptynote">No reproductions yet. Load the movie file on your own setup, confirm it syncs, and be the first; the current bounty is <b>{{ repro_bounty(r) }} contributor points</b>.</p>{% endif %}</div>
+{% if is_unclassified(r) %}
+<h2>Verifications</h2><p class="emptynote">Unclassified runs are never verified because no goal is defined. They rank by likes instead.</p>
+{% else %}
+<h2>Verifications ({{ live(vers)|length }})</h2>
+<div class="roster">{% if vers %}{{ roster_acts(r, vers, 'verify') }}{% elif enc %}<p class="emptynote">No verifications yet. Watch the encode and confirm the run achieves its stated goal.</p>{% else %}<p class="emptynote">No verifications yet, and no encode is linked, so verification is not possible until one is added.</p>{% endif %}</div>
+{% endif %}
+<h2>Console verifications ({{ cons|length }})</h2>
+<div class="roster">{% if cons %}{{ roster_acts(r, cons, 'console') }}{% else %}<p class="emptynote">Not yet played back on original hardware. This is optional and never required for ranking, and it pays <b>{{ PT_CONSOLE }} contributor points</b>.</p>{% endif %}</div>
+{% if cases %}
+<h2>Cases ({{ cases|length }})</h2><div class="roster">{% for c, pending_voters in cases %}{{ case_box(c, pending_voters) }}{% endfor %}</div>
+{% endif %}
+  {% endif %}
+  {# session-aware act forms (revealed by app.js based on identity/eligibility) #}
+<script type="application/json" id="actdata">{{ json_blob(act_data) }}</script>
+<div id="actzone" class="actzone" hidden>
+<h2>Contribute to this run</h2>
+<div class="actforms">
+<div id="f-edit-wrap" hidden><details class="actform"><summary>Edit run</summary>
+<form id="f-edit">
+  <p class="rules">Revise the run's details. Every edit is a public commit;
+  history is never erased. Authors revise their own work freely; a covering
+  expert's change carries a public reason.</p>
+  <div id="fe-authors">
+  <label>Authors (every human, honestly; type to search, click to add)</label>
+  <div class="authpick">
+    <div class="authchips"></div>
+    <input class="authsearch" placeholder="Type a username…" autocomplete="off">
+    <div class="authlist" hidden></div>
+    <input type="hidden" name="authors">
+  </div>
+  </div>
+  <label>Encode link</label><input name="encode" type="url" value="{{ enc_url }}" placeholder="https://youtu.be/…">
+  <label>Emulator / core (optional)</label><input name="emulator">
+  <label>When was the run completed? (optional; shown beside the submission date)</label>
+  <input name="completed" type="date" max="{{ today }}">
+  {% for m, mv in metric_rows %}
+  <label>{{ m['label'] }} ({{ m.get('unit') or ('seconds' if m['type'] == 'time' else 'number') }}; this category ranks by it. Leave empty to keep, 0 for not yet stated)</label>
+  <input name="metric_{{ m['key'] }}" type="number" step="any" min="0" {% if mv %}value="{{ '{:g}'.format(mv) }}"{% endif %}>
+  {% endfor %}
+  <label>Notes (<a href="../../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="12"></textarea>
+  <div id="fe-attach">
+  <label>Add supplementary files (optional: text configs, or additional movie
+  files; they join the run's attached files)</label>
+  <input name="attachments" type="file" multiple>
+  </div>
+  <label id="fe-why" hidden>Why (public, shown in the edit log)
+  <input name="reason" minlength="8" maxlength="500"
+   placeholder="published in the site log beside your name"></label>
+  <button class="btn">Save</button>
+</form></details></div>
+<div id="f-withdraw-wrap" hidden><details class="actform"><summary>Withdraw</summary>
+<form id="f-withdraw">
+  <p class="rules">Your own voluntary act as an author. For a mistake: a duplicate,
+  the wrong file, a submission that should not have been made. The run leaves the
+  listings; nothing is erased, and the reason you give is shown on its page.</p>
+  <label>Reason (public, required)</label><input name="reason" required
+   placeholder="e.g. duplicate of M100002, submitted twice by accident">
+  <button class="btn warn">Withdraw</button>
+</form></details></div>
+{% if not is_leg %}
+<div id="f-repro-wrap" hidden><details class="actform"><summary>I reproduced this run</summary>
+<form id="f-repro">
+  <p class="rules">You loaded the movie file on your own setup and it synced to the end.
+  An ending screenshot is required as proof.</p>
+  <label>Emulator / core used</label><input name="emulator" placeholder="e.g. BizHawk 2.11">
+  <label>Ending screenshot (png/jpg/webp)</label>
+  <input name="screenshot" type="file" accept=".png,.jpg,.jpeg,.webp" required>
+  <label>Notes for the next reproducer (optional)</label><textarea name="notes" rows="3"></textarea>
+  <button class="btn">Record</button>
+</form></details></div>
+<div id="f-verify-wrap" hidden><details class="actform"><summary>I verified this run</summary>
+<form id="f-verify">
+  <p class="rules">You watched the encode and confirm the run achieves its stated category goal.</p>
+  <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
+  <button class="btn">Record</button>
+</form></details></div>
+<div id="f-console-wrap" hidden><details class="actform"><summary>I played this run back on original hardware</summary>
+<form id="f-console">
+  <p class="rules">Optional and never required for ranking, and the most expensive act
+  here: you replayed the movie on the real console and recorded it. Link the recording.</p>
+  <label>Link to the recording (required)</label>
+  <input name="proof" type="url" placeholder="https://…" required>
+  <label>Hardware and setup used</label><input name="hardware" placeholder="e.g. NES + Replay device">
+  <label>Photo of the setup or the ending (optional)</label>
+  <input name="screenshot" type="file" accept=".png,.jpg,.jpeg,.webp">
+  <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
+  <button class="btn">Record</button>
+</form></details></div>
+<form id="f-vote" class="actform" hidden>
+  <h3>This run is under dispute, and you are one of its verifiers</h3>
+  <p class="rules">Recheck your verification. Reaffirming stands by it; withdrawing retracts it.</p>
+  <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
+  <div class="votebtns"><button class="btn" data-reaffirm="1">Reaffirm</button>
+  <button class="btn warn" data-reaffirm="0">Withdraw</button></div>
+</form>
+<div id="f-case-wrap" hidden><details class="actform"><summary>Dispute this run</summary>
+<form id="f-case">
+  <p class="rules">A dispute opens a case; it never auto-disqualifies. The run's verifiers
+  will be asked to reaffirm; a majority closes the case.</p>
+  <label>What is wrong? (required, shown publicly)</label>
+  <textarea name="reason" rows="3" required></textarea>
+  <button class="btn warn">Dispute</button>
+</form></details></div>
+{% endif %}
+</div>
+<p id="act-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to contribute
+to this run.</p>
+<p id="act-msg" class="actmsg" hidden></p>
+</div>
+  {% if topic %}
+  {# the run's forum topic, read and replied to in place #}
+<section id="discussion" data-topic="{{ topic }}"
+ data-url="{{ forum_url or '' }}">
+<h2>Discussion</h2>
+<div id="disc-posts"><p class="emptynote">Loading the discussion…</p></div>
+<form id="disc-reply" class="actform" hidden>
+  <label>Reply as <b id="disc-who"></b></label>
+  <textarea name="body" rows="4" placeholder="Say something about this run…"></textarea>
+  <button class="btn">Reply</button>
+  <div class="actmsg" id="disc-msg" hidden></div>
+</form>
+<p class="rules" id="disc-login" hidden>This discussion lives on
+<a href="{{ forum_url or FORUM }}">the forum</a>.
+Log in (top right) to reply from here.</p></section>
+  {% endif %}
+</div>
+<aside class="side">
+  <div class="factbox"><h4>Run</h4><dl>
+    {% if r.get('videoOnly') %}<dt>Kind</dt><dd>Video-only: no input movie exists</dd>
+    {% else %}<dt>Frames</dt><dd class="big">{{ '{:,}'.format(r['movie']['frames']) }}</dd>{% endif %}
+    {% if run_seconds(r) is not none %}<dt>Time</dt><dd>{{ t }}{% if r.get('videoOnly') %} (stated by the submitter){% endif %}</dd>{% endif %}
+    {% for m, mv in metric_rows %}<dt>{{ m['label'] }}</dt><dd>{{ fmt_metric(mv, m) }}{% if mv is none %} (not yet stated){% endif %}</dd>{% endfor %}
+    {% if not r.get('videoOnly') %}
+    <dt>Rerecords</dt><dd>{{ '{:,}'.format(r['movie'].get('rerecords') or 0) }}</dd>
+    <dt>Format</dt><dd>{{ r['movie']['format'] }}</dd>
+    {% endif %}
+    {% if r.get('completed') %}<dt>Completed</dt><dd>{{ r['completed'] }}</dd>{% endif %}
+    <dt>{{ 'Published' if is_leg else 'Submitted' }}</dt><dd>{{ (r.get('submitted') or '')[:10] }}</dd>
+    {% if is_leg %}<dt>Archived here</dt><dd>{{ archived_at(r)[:10] }}</dd>{% endif %}</dl>
+    {% if not r.get('videoOnly') %}<p class="factfoot"><a class="btn" href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ r['movie']['file'] }}">Download movie file</a></p>{% endif %}</div>
+  {% if not r.get('videoOnly') %}<div class="factbox"><h4>Reproduction info</h4><dl>
+    <dt>Emulator</dt><dd>{{ r.get('contract', {}).get('emulator') or '—' }}</dd>
+    {% if rom.get('name') %}<dt>ROM</dt><dd>{{ rom.get('name') }}</dd>{% endif %}
+    {% if rom.get('sha1') %}<dt>ROM sha1</dt><dd class='trunc'>{{ rom.get('sha1')[:12] }}…</dd>{% endif %}
+</dl></div>{% endif %}
+  {% if atts %}<div class="factbox"><h4>Attached files</h4>{% for a in atts %}<p class="statline"><a href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ a['file'] }}">{{ a['file'].split('/')[-1] }}</a> · {{ a.get('role', '') }}</p>{% endfor %}</div>{% endif %}
+  {# status lines #}
+  <div class="factbox"><h4>Status</h4>
+    <p class="statline">{% if is_leg %}{{ tick(rs) }} Reproduced at the trusted site it was imported from
+      {%- elif r.get('videoOnly') %}{{ NONE_TICK }} Reproduction not applicable: video-only, no input movie exists
+      {%- elif nrep %}{{ tick(rs) }} Reproduced by {{ nmembers(nrep) }}
+      {%- else %}{{ tick(rs) }} Not reproduced yet, an optional assurance that the movie really plays{% endif %}</p>
+    <p class="statline">{% if is_leg %}{{ tick(vs) }} Verified at the trusted site it was imported from
+      {%- elif is_unclassified(r) %}{{ NONE_TICK }} Verification not applicable: Unclassified runs rank by likes
+      {%- elif nver %}{{ tick(vs) }} Verified: ranked
+      {%- else %}{{ tick(vs) }} Not yet verified: one verification ranks this run{% endif %}</p>
+    {% if cstate == 'imported' %}<p class="statline"><span class="tick console">✓</span> Console verified at the trusted site it was imported from{% if ncons %}, and by {{ nmembers(ncons) }} here{% endif %}</p>
+    {% elif ncons %}<p class="statline"><span class="tick console">✓</span> Console verified by {{ nmembers(ncons) }}</p>
+    {% elif not is_leg %}<p class="statline">{{ NONE_TICK }} Console verification: none yet (optional)</p>{% endif %}</div>
+  {% if n_open_reports %}<div class="factbox"><h4>Reports</h4><p class="statline">⚑ {{ n_open_reports }} open · <a href="../../policy/site-log/#reports">site log</a></p></div>{% endif %}
+  <details class="actform reportbox" id="reportbox" hidden><summary>⚑ Report this run</summary>
+  <form id="f-report">
+    <label>Reason</label><select name="kind">
+      <option value="missing-content-warnings">Missing content warnings</option>
+      <option value="spam-malicious">Spam / malicious / deceitful</option>
+      <option value="miscredited">Not credited correctly</option>
+      <option value="licensing">Licensing / copyright problem</option>
+      <option value="other">Other</option></select>
+    <label>Details</label><textarea name="details" rows="3"></textarea>
+    <button class="btn warn">Report</button>
+    <p class="rules">Reports are public, get a unique id, and are addressed by the
+    game's experts; everything lands in the open moderation log.</p>
+  </form></details>
+  <p id="report-msg" class="actmsg" hidden></p>
+  <script type="application/json" id="likedata">{{ json_blob(like_data) }}</script>
+  {% if not is_leg and not is_ranked(r) %}<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>{% endif %}
+</aside></div>
+{# every expert-only action, gathered in one clearly-marked box at the
+   very bottom of the page (the orange dashed Expert menu); the forms,
+   their ids and their behavior are unchanged, only the housing moved #}
+<div id="expertmenu" class="expertmenu" hidden><h2>Expert menu</h2>
+<p class="rules">Only experts whose scope covers this game see this box; every action here is logged in the open.</p>
+<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this run</summary>
+<form id="f-rundelete">
+  <p class="rules">Outright and permanent: for tests, spam, things that are not tool-assisted
+  runs, and mistakes. A genuine work is withdrawn or erased through its own procedures, never
+  this. Your reason is all that remains, in the site log, with your name.</p>
+  <label>Why, publicly (required)</label>
+  <textarea name="reason" rows="2" required minlength="8"
+            placeholder="e.g. a test submission, not a real run"></textarea>
+  <button class="btn danger">Delete</button>
+</form></details></div>
+<div id="f-invalidate-wrap" hidden><details class="actform"><summary>Invalidate a contribution</summary>
+<form id="f-invalidate">
+  <p class="rules">For a reproduction, verification or console verification that does not
+  hold up. The act stays on the record, marked invalidated, with your reason next to it.
+  Anyone may redo it properly afterwards. This is about the quality of the check, never
+  about the run's merit.</p>
+  <label>Which contribution</label>
+  <select id="inv-target" name="target"></select>
+  <input type="hidden" name="kind" id="inv-kind">
+  <label>Why, publicly (required)</label>
+  <textarea name="reason" rows="3" required
+            placeholder="e.g. the screenshot is from a different run"></textarea>
+  <button class="btn">Invalidate</button>
+</form></details></div>
+<div id="f-resolve-wrap" hidden><details class="actform"><summary>Close a report</summary>
+<form id="f-resolve">
+  <p class="rules">Resolve it if something was done, dismiss it if nothing needed doing.
+  Either way your text is published with the report in the moderation log.</p>
+  <label>Which report</label>
+  <select id="res-report" name="report"></select>
+  <label>Outcome</label>
+  <select name="outcome">
+    <option value="resolved">Resolved: something was done</option>
+    <option value="dismissed">Dismissed: nothing needed doing</option>
+  </select>
+  <label>Your resolution, publicly (required)</label>
+  <textarea name="resolution" rows="3" required></textarea>
+  <button class="btn">Close</button>
+</form></details></div>
+<p id="expert-msg" class="actmsg" hidden></p></div>

@@ -1,0 +1,21 @@
+{# Withdrawn run page: an honest tombstone, not a 404. #}
+{% set g = r._game %}{% set w = r.withdrawn %}
+<header class="ghead"><div>
+<h1>{{ g.title }}</h1>
+<p class="authline">{% for a in r.authors %}{% if not loop.first %} · {% endif %}{{ author_chip(a.user, '../../') }}{% endfor %}</p></div></header>
+<div class="warnbox"><b>This run was withdrawn</b>
+<p class="statline">Withdrawn by {{ member_chip(w.by, '../../') }} on {{ w.date }}
+({{ w.get('role') or 'author' }}).</p>
+<p class="actnote">{{ inline(w.reason, '../../') }}</p>
+{% if w.get('contentRemoved') %}
+<p class="rules">The movie file, the notes and the thumbnail were taken down with
+this withdrawal, because publishing them was the problem. The record above stays,
+so the id is never reused and the history stays legible, and any of the authors
+can bring the work back by importing it with the others' agreement.</p>
+{% else %}
+<p class="rules">Nothing is erased here: the movie file and this record stay in
+<a href="{{ ARCHIVE_TREE }}/games/{{ g.key }}/runs/{{ r.id }}">the archive</a>. The run is
+simply no longer listed or ranked.</p>
+{% endif %}
+</div>
+<p class="statline"><a class="btn quiet" href="../../games/{{ g.key }}/">Back to {{ g.title }}</a></p>

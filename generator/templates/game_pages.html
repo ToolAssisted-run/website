@@ -1,0 +1,127 @@
+{# A game page: header, category selector, one leaderboard section per
+   category combination, the Unclassified shelf, the legend, the expert menu. #}
+{% import '_game_rows.html' as row %}
+<header class="ghead"><div>
+<div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
+<span class="chip">{{ g['runs']|length }} run{% if g['runs']|length != 1 %}s{% endif %}</span>
+<span class="chip starchip"><span class="starglyph">★</span> {{ total_likes }}</span>
+</div>
+<h1>{{ g['title'] }}</h1>{{ group_chip(g['key'], rel) }}
+{{ expert_line(g['key'], rel) }}</div>
+<div class="hbtns">{% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="">{% endif %}<div class="btnrow"><a class="btn" href="{{ rel }}submit/?game={{ g['key'] }}">Submit a run</a>
+<a class="btn quiet" href="{{ rel }}create-category/?game={{ g['key'] }}">Create a category</a>
+<a class="btn quiet" href="{{ FORUM }}/tags/c/games/12/{{ g['system'] }}-{{ g['key'].split('/')[1] }}">Discuss on the forum</a></div></div></header>
+{% if multi %}
+{# selector: one row of buttons per dimension; the goal dimension is called
+   a Category everywhere in the UI, whatever old data named it #}
+<div class="dimsel">
+{% for d in dims %}
+<div class="dimrow"><span class="dimname">{{ 'Category' if d['key'] == 'goal' else d['name'] }}</span>{% for o in d['options'] %}<button class="dimopt" data-dim="{{ d['key'] }}" data-opt="{{ o['key'] }}">{{ o['label'] }}</button>{% endfor %}</div>
+{% endfor %}
+</div>
+{% endif %}
+{% for c in combos %}
+<section class="combo" data-combo="{{ c.ckey }}"><h2>{{ c.label }}</h2>
+<div class="rules fullw rulesmd"><b>Rules:</b>{{ md_html(c.rules) }}</div>
+{% if c.custom_metrics %}
+<p class="rules"><b>Ranked by:</b> {% for m in c.mdefs %}{{ m['label'] }} ({{ 'lower' if m['better'] == 'lower' else 'higher' }} is better){% if not loop.last %}, then {% endif %}{% endfor %}</p>
+{% endif %}
+{% if c.allrs %}
+{% if c.table_runs %}
+<table><thead><tr><th>#</th><th>Author</th><th class="num">Frames</th>{% for m in c.mdefs %}<th class="num">{{ m['label'] }}</th>{% endfor %}<th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead><tbody>
+{% for r in c.table_runs %}
+<tr class="{% if loop.first %}lead{% endif %}" {{ row.onclick(r, rel) }}>
+<td class="rank">{{ loop.index }}</td><td>{{ row.authors(r, rel) }}</td>
+{{ row.frames_cell(r, rel) }}
+{{ row.metric_cells(r, c.mdefs) }}
+{{ row.stars_cell(r) }}
+{{ run_date_cell(r) }}
+{{ row.state_cells(r) }}</tr>
+{% endfor %}
+</tbody></table>
+{% else %}
+<p class="emptynote">No ranked runs yet in this category.</p>
+{% endif %}
+{% if c.pend %}
+<h3 class="pendh">Pending: awaiting reproduction and verification</h3><table><tbody>
+{% for r in c.pend %}
+<tr {{ row.onclick(r, rel) }}><td class="rank">·</td><td>{{ row.authors(r, rel) }}</td>
+{{ row.frames_cell(r, rel) }}
+{{ row.metric_cells(r, c.mdefs) }}
+{{ row.stars_cell(r) }}
+{{ run_date_cell(r) }}
+{{ row.state_cells(r) }}</tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+{% if c.history %}
+<h3 class="histh">History: earlier runs superseded by the same authors</h3><table><tbody>
+{% for r, dtxt in c.history %}
+<tr {{ row.onclick(r, rel) }}><td class="rank">·</td><td>{{ row.authors(r, rel) }}</td>
+{{ row.frames_cell(r, rel) }}
+<td class="num muted">{{ dtxt }}</td>
+{{ row.stars_cell(r) }}
+{{ run_date_cell(r) }}
+{{ row.state_cells(r) }}</tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+{% else %}
+<p class="emptynote">No runs archived yet in this combination.</p>
+{% endif %}
+</section>
+{% endfor %}
+{% if uncl_runs %}
+{# the Unclassified shelf: outside the category selector, always visible,
+   ordered purely by likes #}
+<section class="unclsect"><h2>Unclassified</h2>
+<p class="rules">Entertainment, experiments, playarounds. No defined goal; each run describes
+its own. Never verified; ranked purely by ★ likes.</p>
+<table><thead><tr><th>#</th><th>Author</th><th>Goal</th><th class="num"><span class="starglyph">★</span></th>
+<th class="num">Frames</th><th class="num">Time</th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Console</th></tr></thead>
+<tbody>
+{% for r in uncl_runs %}
+<tr class="{% if loop.first %}lead{% endif %}" {{ row.onclick(r, rel) }}>
+<td class="rank">{{ loop.index }}</td><td>{{ row.authors(r, rel) }}</td>
+<td class="udesc">{{ r.get('goalDescription') or '' }}</td>
+<td class="num"><span class="starglyph">★</span> {{ nlikes(r) }}</td>
+{{ row.frames_cell(r, rel) }}
+<td class="num">{{ run_clock(r) }}</td>
+{{ run_date_cell(r) }}
+<td class="ctr">{{ tick(eff_state(r)[0]) }}</td><td class="ctr">{{ console_tick(r) }}</td></tr>
+{% endfor %}
+</tbody></table></section>
+{% endif %}
+{% if multi %}
+<script>
+(function(){
+  var sel = {};
+  var rows = document.querySelectorAll('.dimrow');
+  function apply(){
+    var key = Array.prototype.map.call(rows, function(row){
+      return sel[row.querySelector('.dimopt').dataset.dim];
+    }).join('|');
+    document.querySelectorAll('.combo').forEach(function(s){
+      s.style.display = (s.dataset.combo === key) ? '' : 'none';
+    });
+    document.querySelectorAll('.dimopt').forEach(function(b){
+      b.classList.toggle('on', sel[b.dataset.dim] === b.dataset.opt);
+    });
+  }
+  var def = '{{ default_combo }}'.split('|');
+  rows.forEach(function(row, i){
+    sel[row.querySelector('.dimopt').dataset.dim] = def[i];
+    row.querySelectorAll('.dimopt').forEach(function(b){
+      b.addEventListener('click', function(){ sel[b.dataset.dim] = b.dataset.opt; apply(); });
+    });
+  });
+  apply();
+})();
+</script>
+{% endif %}
+
+<p class="legend">{{ IMPORTED_TICK }} Imported: verified at the trusted site it came from &nbsp;
+{{ FULL_TICK }} verified &nbsp; {{ NONE_TICK }} pending</p>
+{# deletion (public reason, runs deleted with the game) is the one
+   removal mechanism; the old ask-then-decide request flow is retired #}
+<script type="application/json" id="gameactdata">{{ json_blob(gameact_data) }}</script><div id="f-gameremove-wrap" class="actzone expertmenu" hidden><h2>Expert menu</h2><p class="rules">Only experts whose scope covers this game, and editors, see this box; every action here is logged in the open.</p><p class="statline"><a class="btn" href="edit/">Edit this game</a> Title, thumbnail and categories are edited on their own page.</p><details class="actform"><summary>Delete this game</summary><form id="f-gamedelete"><p class="rules">Outright: the game goes, and every run in it is deleted with it; each deletion lands in the public log. For a genuine work in the wrong game, move the run instead of deleting the game. Your reason is public and permanent.</p><input type="hidden" name="game" value="{{ g['key'] }}"><label>Why <input name="reason" required minlength="8" maxlength="500" placeholder="a test, spam, a duplicate record, …"></label><button class="btn danger">Delete</button></form></details><p id="gameact-msg" class="actmsg" hidden></p></div>

@@ -1,0 +1,82 @@
+{# Cards and shared fragments of the games index: a game card, a collage face,
+   a system card, a group card, the cross-library records table, and the crumb. #}
+{% macro game_card(g, prefix='', with_system=False) %}
+{% set own = SHIPPED_GAME_THUMBS.get(g['key']) %}
+{% set newest = newest_thumb(g) %}
+<a class="card" data-stars="{{ stars_of(g['runs']) }}" data-views="{{ views_of(g['runs']) }}" data-title="{{ g['title'] }}" href="{{ prefix }}{{ g['key'] }}/">
+{% if own %}
+<span class="thumb"><span class="sys">{{ g['system'].upper() }}</span><img src="/thumbs/{{ own }}" alt="" loading="lazy"></span>
+{% elif newest %}
+{{ thumb_html(newest) }}
+{% else %}
+<span class="thumb"><span class="sys">{{ g['system'].upper() }}</span></span>
+{% endif %}
+<span class="cbody"><b>{{ g['title'] }}</b>{% if with_system %}<span class="csys">{{ systems[g['system']]['name'] }}</span>{% endif %}
+<span class="cfoot"><span>{{ g['runs']|length }} run{{ 's' if g['runs']|length != 1 else '' }}</span>
+<span><span class="starglyph">★</span>{{ stars_of(g['runs']) }}</span>{{ card_views(views_of(g['runs'])) }}</span></span></a>
+{% endmacro %}
+
+{% macro collage(ggames) %}
+{# Up to four games, one tile each, each showing that game's most starred
+   run: the face of a family (a group) or a library (a system). #}
+{% set tiles = collage_tiles(ggames) %}
+{% if not tiles %}
+{# no thumbnails, or no games at all: the card still needs a face #}
+<span class="thumb"><span class="sys">{{ ggames[0]['system'].upper() if ggames else 'NEW' }}</span></span>
+{% else %}
+{% set ns = namespace(nsfw=false) %}
+<span class="thumb collage" data-n="{{ tiles|length }}">{% for r in tiles %}{% if 'sexual' in r.get('contentWarnings', []) %}{% set ns.nsfw = true %}{% endif %}<span class="tile"><img class="{{ 'nsfwblur' if 'sexual' in r.get('contentWarnings', []) else '' }}" src="{{ thumb_url(r) }}" alt="" loading="lazy"></span>{% endfor %}{% if ns.nsfw %}<span class="nsfw18">18+</span>{% endif %}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro system_card(skey, gms) %}
+{# One card for a whole system's library, exactly like a group's. #}
+{% set rlist = runs_of(gms) %}
+<a class="card" data-stars="{{ stars_of(rlist) }}" data-views="{{ views_of(rlist) }}" data-title="{{ systems[skey]['name'] }}" href="../systems/{{ skey }}/">
+{{ collage(gms) }}
+<span class="cbody"><b>{{ systems[skey]['name'] }}</b>
+<span class="csys">{{ gms|length }} game{{ 's' if gms|length != 1 else '' }}</span>
+<span class="cfoot"><span>{{ rlist|length }} run{{ 's' if rlist|length != 1 else '' }}</span>
+<span><span class="starglyph">★</span>{{ stars_of(rlist) }}</span>{{ card_views(views_of(rlist)) }}</span></span></a>
+{% endmacro %}
+
+{% macro group_card(gr) %}
+{# One card for a whole group, thumbnailed with a collage of its games. #}
+{% set ggames = group_games(gr) %}
+{% set grunts = group_runs(gr) %}
+{% set nsys = nsystems(ggames) %}
+<a class="card" data-stars="{{ stars_of(grunts) }}" data-views="{{ views_of(grunts) }}" data-title="{{ gr['title'] }}"
+data-last="{{ 1 if gr.get('synthetic') else 0 }}" href="../groups/{{ gr['key'] }}/">
+{{ collage(ggames) }}
+<span class="cbody"><b>{{ gr['title'] }}</b>
+<span class="csys">{{ ggames|length }} games · {{ nsys }} system{{ 's' if nsys != 1 else '' }}</span>
+<span class="cfoot"><span>{{ grunts|length }} run{{ 's' if grunts|length != 1 else '' }}</span>
+<span><span class="starglyph">★</span>{{ stars_of(grunts) }}</span>{{ card_views(views_of(grunts)) }}</span></span></a>
+{% endmacro %}
+
+{% macro records_table(rows, heading, empty) %}
+{# The ranked runs of a whole system or group, one row each; rows arrive
+   sorted by game title then category. #}
+{% if rows %}
+<h2>{{ heading }}</h2>
+<table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
+<th class="num"></th><th class="num">Stars</th>
+<th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
+<tbody>
+{% for r in rows %}
+{% set rs_, vs_ = eff_state(r) %}
+<tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r['id'] }}/'"><td><a href="../../games/{{ r['_game']['key'] }}/">{{ r['_game']['title'] }}</a></td>
+<td>{{ cat_label(r) }}</td>
+<td>{% for a in r['authors'] %}{{ author_chip(a['user'], '../../') }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+<td class="num"><a href="../../runs/{{ r['id'] }}/">{{ primary_metric_html(r) }}</a></td>
+<td class="num"><span class="starglyph">★</span>{{ nlikes(r) }}</td>
+<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td><td class="ctr">{{ console_tick(r) }}</td></tr>
+{% endfor %}
+</tbody></table>
+<p class="legend">{{ FULL_TICK }} verified &nbsp;
+{{ NONE_TICK }} pending</p>
+{% else %}
+<p class="authline">{{ empty }}</p>
+{% endif %}
+{% endmacro %}
+

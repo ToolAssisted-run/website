@@ -1,0 +1,141 @@
+{# The games index: three views (groups, systems, list) under one sort/view
+   control row, the view-switching script, and the site-expert group form. #}
+{% from '_game_cards.html' import system_card, group_card with context %}
+<header class="ghead"><div><h1>Games</h1>
+<p class="authline">{{ games|length }} games across {{ by_sys|length }} systems. Anyone can create a game;
+experts curate afterwards.</p></div>
+<div class="hbtns"><a class="btn" href="../create-game/">Create a game</a></div></header>
+<div class="dimrow gcontrols">
+<span class="dimsub nogap" id="gsortrow"><span class="dimname">Sort</span>
+<button class="dimopt gsort on" data-mode="stars"><span class="starglyph">★</span> Stars</button>
+{% if visits_known %}
+<button class="dimopt gsort" data-mode="views"><svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg> Views</button>
+{% endif %}
+<button class="dimopt gsort" data-mode="title">By title</button></span>
+<span class="dimsub"><span class="dimname">View</span>
+{% if live_groups %}
+<button class="dimopt gview-btn" data-view="groups">Groups</button>
+{% endif %}
+<button class="dimopt gview-btn on" data-view="systems">Systems</button>
+<button class="dimopt gview-btn" data-view="list">List</button></span></div>
+{% if live_groups %}
+<div class="gview" id="v-groups" hidden><div class="grid">{% for gr in live_groups %}{{ group_card(gr) }}{% endfor %}</div>
+<p class="authline">{{ ngroups }} groups, and every game belongs to one:
+those no group has claimed yet are gathered under Uncategorized.</p></div>
+{% endif %}
+<div class="gview" id="v-systems"><div class="grid">{% for skey in sys_keys %}{{ system_card(skey, by_sys[skey]) }}{% endfor %}</div>
+<p class="authline">{{ by_sys|length }} systems; every game lives on one.</p></div>
+<div class="gview" id="v-list" hidden><table class="rtab"><thead><tr>
+<th data-key="title" class="sorted" data-dir="▲">Game</th>
+<th data-key="sys">System</th><th data-key="grp">Group</th>
+<th class="num" data-key="runs" data-type="num">Runs</th>
+<th class="num" data-key="stars" data-type="num">Stars</th>
+{% if visits_known %}<th class="num" data-key="views" data-type="num">Views</th>{% endif %}</tr></thead>
+<tbody>
+{% for g, mine in list_games %}
+<tr onclick="if(!event.target.closest('a'))location='{{ g['key'] }}/'"
+ data-title="{{ g['title'].lower() }}" data-sys="{{ systems[g['system']]['name'].lower() }}"
+ data-grp="{{ mine|map(attribute='title')|map('lower')|join(', ') }}"
+ data-runs="{{ g['runs']|length }}" data-stars="{{ stars_of(g['runs']) }}" data-views="{{ views_of(g['runs']) }}">
+<td><a href="{{ g['key'] }}/">{{ g['title'] }}</a></td>
+<td>{{ systems[g['system']]['name'] }}</td><td>{% for gr in mine %}<a href="../groups/{{ gr['key'] }}/">{{ gr['title'] }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="faintcell">—</span>{% endfor %}</td>
+<td class="num">{{ g['runs']|length }}</td>
+<td class="num"><span class="starglyph">★</span>{{ stars_of(g['runs']) }}</td>
+{% if visits_known %}<td class="num">{{ card_views(views_of(g['runs'])) }}</td>{% endif %}</tr>
+{% endfor %}
+</tbody></table></div>
+<script>
+(function(){
+  var sortMode = 'stars', view = 'systems';
+  // a remembered view whose section is gone (an archive with no groups yet)
+  // must not blank the page
+  try {
+    var v = localStorage.getItem('tar-games-view');
+    if (v && document.getElementById('v-' + v)) view = v;
+  } catch(e){}
+  function order(a, b){
+    // Uncategorized is a holding pen, not a group: it stays last either way
+    if ((a.dataset.last || 0) !== (b.dataset.last || 0))
+      return (a.dataset.last || 0) - (b.dataset.last || 0);
+    if (sortMode === 'stars') return b.dataset.stars - a.dataset.stars;
+    if (sortMode === 'views') return (b.dataset.views || 0) - (a.dataset.views || 0);
+    return a.dataset.title.localeCompare(b.dataset.title);
+  }
+  function resort(){
+    document.querySelectorAll('.gsects').forEach(function(wrap){   // bands
+      Array.prototype.slice.call(wrap.children).sort(order)
+        .forEach(function(s){ wrap.appendChild(s); });
+    });
+    // every card row: the shelves inside a band, and the group cards,
+    // which stand in a grid of their own with no band around them
+    document.querySelectorAll('.grid, .hrow').forEach(function(grid){
+      Array.prototype.slice.call(grid.children).sort(order)
+        .forEach(function(c){ grid.appendChild(c); });
+    });
+    document.querySelectorAll('.gsort').forEach(function(b){
+      b.classList.toggle('on', b.dataset.mode === sortMode);
+    });
+  }
+  // the list view sorts by any column; a second click flips the direction.
+  // Text columns start ascending, counts start with the biggest first.
+  var ltab = document.querySelector('#v-list table');
+  if (ltab) {
+    var lkey = 'title', lasc = true;
+    var ths = ltab.querySelectorAll('th[data-key]');
+    ths.forEach(function(th){
+      th.addEventListener('click', function(){
+        var k = th.dataset.key;
+        if (lkey === k) lasc = !lasc;
+        else { lkey = k; lasc = th.dataset.type !== 'num'; }
+        var tb = ltab.tBodies[0];
+        Array.prototype.slice.call(tb.rows).sort(function(a, b){
+          var x = a.dataset[k], y = b.dataset[k];
+          var r = th.dataset.type === 'num' ? (+x) - (+y)
+                : (x < y ? -1 : x > y ? 1 : 0);
+          return lasc ? r : -r;
+        }).forEach(function(rw){ tb.appendChild(rw); });
+        ths.forEach(function(t){ t.classList.remove('sorted'); t.removeAttribute('data-dir'); });
+        th.classList.add('sorted');
+        th.setAttribute('data-dir', lasc ? '▲' : '▼');
+      });
+    });
+  }
+  function apply(){
+    ['groups', 'systems', 'list'].forEach(function(k){
+      var el = document.getElementById('v-' + k);
+      if (el) el.hidden = (k !== view);
+    });
+    // the shelves size their arrows from geometry, which a hidden view
+    // has none of; a resize nudge repaints them once revealed
+    window.dispatchEvent(new Event('resize'));
+    document.querySelectorAll('.gview-btn').forEach(function(b){
+      b.classList.toggle('on', b.dataset.view === view);
+    });
+    // the list is alphabetical by definition, so a sort control there is a lie
+    var row = document.getElementById('gsortrow');
+    if (row) row.hidden = (view === 'list');
+    resort();
+  }
+  document.querySelectorAll('.gsort').forEach(function(b){
+    b.addEventListener('click', function(){ sortMode = b.dataset.mode; resort(); });
+  });
+  document.querySelectorAll('.gview-btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      view = b.dataset.view;
+      try { localStorage.setItem('tar-games-view', view); } catch(e){}
+      apply();
+    });
+  });
+  apply();
+})();
+</script>
+<script type="application/json" id="gamesactdata">{{ json_blob({'siteExperts': site_experts_now, 'editorZone': True}) }}</script>
+<div id="gamesacts" class="actzone" hidden>
+<details class="actform"><summary>Start a group (site experts and editors)</summary>
+<form id="f-newgroup">
+<p class="rules">One family of games, across every system it appeared on. It exists the moment you make it.</p>
+<label>Key <input name="group" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="lowercase-with-hyphens"></label>
+<label>Title <input name="title" required maxlength="80" placeholder="Mega Man"></label>
+<label>Games <input name="games" data-pick="dl-games"></label>
+<button class="btn">Create</button></form></details>
+<p id="gamesact-msg" class="actmsg" hidden></p></div>{{ dl_games() }}
