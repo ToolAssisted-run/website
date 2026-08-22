@@ -14,7 +14,8 @@ from config import (
 )
 from model import (
     PT_CONSOLE,
-    PT_NEGLECT_CAP,
+    PT_REPRO_MAX,
+    PT_VERIFY_MAX,
     PT_NEGLECT_PER_DAY,
     PT_REPRO_FIRST,
     PT_REPRO_HARD,
@@ -41,9 +42,10 @@ from render import (
 # ---- contribute page ----
 need_repro = sorted([r for r in runs if eff_state(r)[0] == 'none' and not r.get('videoOnly')],
                     key=lambda r: repro_bounty(r), reverse=True)
-need_verify = [r for r in runs
-               if eff_state(r)[0] != 'imported' and not is_unclassified(r)
-               and eff_state(r)[1] == 'none']
+need_verify = sorted([r for r in runs
+                      if eff_state(r)[0] != 'imported' and not is_unclassified(r)
+                      and eff_state(r)[1] == 'none'],
+                     key=lambda r: verify_bounty(r), reverse=True)
 nr_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="window.open('../runs/{r['id']}/', '_blank')">
 <td><b>{esc(r['_game']['title'])}</b><span class="bcat">{esc(cat_label(r))}</span></td>
 <td>{esc(systems[r['_game']['system']]['name'])}</td>
@@ -144,7 +146,7 @@ anytime; the first to finish earns the points.</p></div></header>
 <section><h2>Needs verification</h2>
 <p class="rules fullw">Watch the encode and confirm the run achieves its stated category goal. <b>One
 verification ranks the run</b>, shown as verified; an expert may later invalidate a
-wrong one. The bounty <b>rises one point per day</b> the run waits, up to double.</p>
+wrong one. The bounty <b>rises one point per day</b> the run waits, up to {PT_VERIFY_MAX:,}.</p>
 {f'<div class="contscroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table></div>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
 <section><h2>Needs reproduction</h2>
 <p class="rules fullw">Load the movie file on your own setup, confirm it syncs to the end, and submit an
@@ -160,10 +162,10 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 <div class="factbox"><h4>Contributor board</h4>{board}</div>
 <div class="factbox"><h4>How points work</h4>
 <ul class="factlist">
-<li>First reproduction: <b>{PT_REPRO_FIRST}+</b> pts, rising {PT_NEGLECT_PER_DAY}/day while the run waits (up to +{PT_NEGLECT_CAP})</li>
+<li>First reproduction: <b>{PT_REPRO_FIRST}+</b> pts, rising {PT_NEGLECT_PER_DAY}/day while the run waits, up to {PT_REPRO_MAX:,}</li>
 <li>Later reproductions: <b>{PT_REPRO_LATER}</b> pts</li>
 <li>Hard-to-reproduce systems: <b>+{PT_REPRO_HARD}</b> pts on any reproduction</li>
-<li>Verification: <b>{PT_VERIFY}</b> pts</li>
+<li>First verification: <b>{PT_VERIFY}+</b> pts, rising 1/day while the run waits, up to {PT_VERIFY_MAX:,}; later verifications {PT_VERIFY}</li>
 <li>Console verification: <b>{PT_CONSOLE}</b> pts; real hardware and a public recording, never required for ranking</li>
 <li>Badges at <b>1k / 5k / 10k / 25k</b> points</li>
 </ul>

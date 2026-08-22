@@ -486,9 +486,11 @@ A category defines what it ranks by.
 Two currencies, recomputed at every build from the rosters, never stored:
 **author score** (★ likes on your runs) and **contributor points**. Weights
 (provisional, marked so on the site): first reproduction 100 + 2/day the run
-sat waiting (cap +200) · later reproductions 25 · hard-to-reproduce systems
-(flagged in systems.json) +50 on any reproduction · verification 20 ·
-console verification 1000 (real hardware, a capture setup, a recording).
+sat waiting, the whole payout topping out at 2,000 · later reproductions 25 ·
+hard-to-reproduce systems (flagged in systems.json) +50 on any reproduction ·
+first verification 20 + 1/day waiting, topping out at 1,000; later
+verifications 20 · console verification a fixed 1,000 (real hardware, a
+capture setup, a recording). Both contribute worklists sort by bounty.
 Badges by thresholds alone (1k/5k/10k/25k), never act counts. **No currency
 buys anything** (anti-farming: a currency without privileges is not worth
 gaming). Imports award nothing.
