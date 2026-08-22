@@ -111,6 +111,15 @@ what is the fold of it, never stored twice):
 | **Moderator** | Committee poll | Forum moderation; enforce on everyone; may admonish but never remove Founder/Committee |
 | **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the contributor tiers. |
 
+A Committee seat is a forum administrator by virtue of the seat: the
+archivist's role publishing (`forumapi.publish_group`) requests forum admin
+on every committee grant and revokes it on removal. Discourse only grants
+admin over the API after the acting admin confirms by email, so a grant
+lands as a confirmation link in the Founder's inbox; revocation is
+immediate. Forum tags stay enabled (every game's "Discuss" link is a tag
+page and the archivist tags each run's topic) but only staff may create or
+apply them, so members never meet a tag picker.
+
 Committee thresholds (§2): **simple majority** = >50% of votes cast in a 7-day
 window, no quorum (grants); **hard majority** = two thirds of all sitting
 members (removals, veto override, amendments). The archivist reads decisions
