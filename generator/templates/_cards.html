@@ -1,0 +1,13 @@
+{# A run as a shelf card: thumbnail, game, category, authors, and the foot
+   line (length, stars, views, state). Shared by the home shelves and any
+   other horizontal row. #}
+{% macro run_card(r) %}
+{% set g = r['_game'] %}
+{% set rs, vs = eff_state(r) %}
+<a class="card" href="runs/{{ r['id'] }}/">
+{% set dur %}<span class="dur">{{ primary_metric_text(r) }}</span>{% endset %}
+{{ thumb_html(r, dur) }}
+<span class="cbody"><b>{{ g['title'] }}</b><span class="ccat">{{ cat_label(r) }}</span>
+<span class="cauth">{{ r['authors']|map(attribute='user')|join(', ') }}</span>
+<span class="cfoot"><span>{% if r.get('videoOnly') %}{{ run_clock(r) }}{% else %}{{ '{:,}'.format(r['movie']['frames']) }}f{% endif %}</span><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if rs == 'imported' %}<span class="importedsm">Imported</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
+{% endmacro %}

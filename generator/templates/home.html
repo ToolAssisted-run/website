@@ -1,0 +1,43 @@
+{% from '_cards.html' import run_card %}
+<section class="hero">
+<div class="herogrid">
+<div class="herotext">
+<h1>Games, played beyond human limits.</h1>
+<p><b>toolAssisted.run</b> is an open community archive of tool-assisted speedruns, score
+attacks and superplays. Every run is preserved the moment it arrives; merit is
+decided in the open, by the people who care about it.</p>
+<div class="herobtns"><a class="btn" href="browse/"><span class="wide">Browse the archive</span><span class="narrow">Browse</span></a>
+<a class="btn quiet" href="contribute/">Contribute</a>
+<a class="btn quiet" href="https://github.com/ToolAssisted-run#1-community-principles"><span class="wide">Community Principles</span><span class="narrow">Principles</span></a></div>
+<div class="statstrip">
+<div class="stat"><b>{{ runs|length }}</b><span>runs</span></div>
+<div class="stat"><b>{{ games|length }}</b><span>games</span></div>
+<div class="stat"><b>{{ systems|length }}</b><span>systems</span></div>
+<div class="stat"><b>{{ authors|length }}</b><span>authors</span></div>
+<div class="stat"><b>{{ pending_count }}</b><span>pending</span></div>
+</div>
+</div>
+<aside class="heronews" id="heronews">
+<h2>News &amp; Events</h2>
+<div class="bskyfeed" id="bskyfeed" data-handle="toolassisted.run">
+<p class="emptynote">Loading the latest posts…</p>
+</div>
+</aside>
+</div></section>
+<section><h2>Freshly archived</h2>
+<div class="hwrap"><div class="hrow">{% for r in fresh %}{{ run_card(r) }}{% endfor %}</div></div></section>
+{% if liked %}<section><h2>Most liked</h2><div class="hwrap"><div class="hrow">{% for r in liked %}{{ run_card(r) }}{% endfor %}</div></div></section>{% endif %}
+{% if viewed %}<section><h2>Most viewed</h2><div class="hwrap"><div class="hrow">{% for r in viewed %}{{ run_card(r) }}{% endfor %}</div></div></section>{% endif %}
+<section class="homefoot"><div class="cols3">
+<div class="factbox"><h4>Archive first</h4><p class="statline">Runs are archived instantly into
+<a href="https://github.com/ToolAssisted-run/archive">the public archive</a> and appear
+immediately, as pending. Ranking needs one community gate: verification.</p></div>
+<div class="factbox"><h4>Open by construction</h4><p class="statline">The whole archive is
+<a href="https://github.com/ToolAssisted-run/archive">a public git repository</a> under CC BY 4.0.
+The site is generated from it; clone it and you hold the same facts we do.</p></div>
+<div class="factbox"><h4>Join in</h4><p class="statline"><a href="submit/">Submit your run</a>,
+reproduce and verify runs on the
+<a href="contribute/">Contribute board</a>, talk shop on
+<a href="{{ FORUM }}">the forum</a>, or come chat on
+<a href="https://discord.gg/VsKDT9XB6u">our Discord</a>.</p></div>
+</div></section>

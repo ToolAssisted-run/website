@@ -14,6 +14,9 @@ import shutil
 import subprocess
 import sys
 import urllib.parse
+import jinja2
+from markupsafe import Markup
+import model
 from config import (
     BETA,
     ARCHIVE,
@@ -554,53 +557,70 @@ def breadcrumb_ld(items):
 
 def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
          seo=None, full_title=False):
-    links = ''.join(
-        '<span class="navsep"></span>' if href == '|' else
-        f'<a class="nl{" on" if label == active else ""}" '
-        f'href="{href if href.startswith("http") else rel + href}">{label}</a>'
-        for href, label in NAV_LINKS)
-    betabar = ('<div class="betabar"><span class="betatag">beta</span> '
-               'This site is in open beta and under heavy development. Expect rough edges, '
-               'and please report anything broken or missing at '
-               '<a href="https://github.com/ToolAssisted-run/website/issues" target="_blank" rel="noopener noreferrer">website issues</a>.</div>'
-               if BETA else '')
-    return f'''<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title) if full_title else esc(title) + ' · toolAssisted.run'}</title>
-<script>try{{var t=localStorage.getItem('tar-theme');if(t)document.documentElement.dataset.theme=t}}catch(e){{}}</script>
-<link rel="stylesheet" href="{rel}assets/style.css?v={SITE_COMMIT or 'dev'}">
-<link rel="icon" type="image/png" sizes="32x32" href="{rel}assets/icon-32.png">
-<link rel="icon" type="image/png" sizes="512x512" href="{rel}assets/icon-512.png">
-<link rel="apple-touch-icon" href="{rel}assets/avatar-512-dark.png">
-{seo_head(dict(seo, title=seo.get('title') or (title if full_title else title + ' · toolAssisted.run'))) if seo else ''}
-{head_extra}</head><body>
-{betabar}<nav class="nav"><a class="brand" href="{rel if rel else './'}" aria-label="toolAssisted.run home"><img class="brandlogo logo-light" src="{rel}assets/logo-light.svg" alt="toolAssisted.run"><img class="brandlogo logo-dark" src="{rel}assets/logo-dark.svg" alt="toolAssisted.run"></a>
-<button class="navtoggle" id="navtoggle" aria-label="Open menu" aria-expanded="false"
- aria-controls="navlinks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-<div class="navlinks" id="navlinks">{links}</div>
-<form class="navsearch" action="{rel}browse/" method="get">
-<input type="search" name="q" placeholder="Search runs…" aria-label="Search runs"></form>
-<span id="navauth"></span>
-<button id="navoffline" class="nl navoff" hidden title="This site cannot reach the archivist right now, so logging in, submitting and contributing will not work. Reading works fine. It is usually a firewall, a VPN or a content blocker between you and forum.toolassisted.run. Click to try again.">archivist unreachable</button></nav>
-<script>window.TAR = {{api: '{ARCHIVIST}', rel: '{rel}', v: '{SITE_COMMIT or 'dev'}', experts: {EXPERT_NAMES_JS}, editors: {EDITOR_NAMES_JS}, committee: {COMMITTEE_NAMES_JS}, founders: {FOUNDER_NAMES_JS}}}</script>
-<script src="{rel}assets/app.js?v={SITE_COMMIT or 'dev'}" defer></script>
-<div class="wrap{' wrapfull' if wide else ''}">{f'<div class="crumb">{crumb}</div>' if crumb else ''}
-{body}</div>
-<footer><div class="fmain">toolAssisted.run{' · beta' if BETA else ''} · generated from
-<a href="https://github.com/ToolAssisted-run/archive">the archive</a>{f' · build <a href="https://github.com/ToolAssisted-run/website/commit/{SITE_COMMIT}">{SITE_COMMIT}</a>' if SITE_COMMIT else ''}</div>
-<div class="fsoc">
-<a class="soc soc-bluesky" href="https://bsky.app/profile/toolassisted.run" title="Bluesky" aria-label="Bluesky"></a>
-<a class="soc soc-github" href="https://github.com/ToolAssisted-run" title="GitHub" aria-label="GitHub"></a>
-<a class="soc soc-discord" href="https://discord.gg/VsKDT9XB6u" title="Discord" aria-label="Discord"></a>
-<a class="soc soc-forum" href="{FORUM}" title="Forum" aria-label="Forum"></a></div>
-<div class="fpol">
-<a href="https://github.com/ToolAssisted-run#1-community-principles">Community Principles</a> ·
-<a href="https://github.com/ToolAssisted-run#2-governance">Governance</a> ·
-<a href="https://github.com/ToolAssisted-run#3-terms-of-use">Terms of Use</a> ·
-<a href="https://github.com/ToolAssisted-run#4-code-of-conduct">Code of Conduct</a> ·
-<a href="https://github.com/ToolAssisted-run#5-privacy-policy">Privacy Policy</a> ·
-<a href="{rel}policy/site-log/">Site log</a></div>
-</footer>
-</body></html>'''
+    """The site chrome around a page body: head, nav, footer (templates/base.html)."""
+    full = title if full_title else title + ' · toolAssisted.run'
+    return tpl('base.html', title=full, body=body, rel=rel, crumb=crumb, active=active,
+               head_extra=head_extra, wide=wide,
+               seo_block=seo_head(dict(seo, title=seo.get('title') or full)) if seo else '')
+
+
+# ---------------- templates ----------------
+# Every page is a Jinja2 template under generator/templates/, rendered with
+# autoescaping on: a template writes {{ value }} and gets text, always. The
+# helpers above that build HTML (chips, ticks, thumbnails, datalists) are
+# exposed to templates as safe, so {{ tick(state) }} is markup and {{ title }}
+# is not; nothing else is trusted. Views prepare data and call tpl().
+TEMPLATES = pathlib.Path(__file__).resolve().parent / 'templates'
+
+_HTML_HELPERS = (
+    'role_badges group_chip expert_line card_views chip_views md_html run_date_cell '
+    'frames_html wiki_html inline author_chip member_chip thumb_html console_tick '
+    'tick console_chip state_chip badge_chip dl_members dl_heldnames dl_games '
+    'primary_metric_html seo_head').split()
+_TEXT_HELPERS = (
+    'moment clock sec_clock run_clock fmt_metric primary_metric_text thumb_url '
+    'thumb_alt shot_url breadcrumb_ld').split()
+_HTML_CONSTANTS = 'METRICS_ED IMPORTED_TICK FULL_TICK NONE_TICK'.split()
+_TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
+                   'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS BETA ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
+                   'FORUM SITE_COMMIT').split()
+
+def _safe(fn):
+    def wrapped(*a, **k):
+        return Markup(fn(*a, **k))
+    wrapped.__name__ = fn.__name__
+    return wrapped
+
+def _env():
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(TEMPLATES)),
+                             autoescape=True, trim_blocks=True, lstrip_blocks=True,
+                             keep_trailing_newline=True, undefined=jinja2.StrictUndefined)
+    g = globals()
+    for name in _HTML_HELPERS: env.globals[name] = _safe(g[name])
+    for name in _TEXT_HELPERS: env.globals[name] = g[name]
+    for name in _HTML_CONSTANTS: env.globals[name] = Markup(g[name])
+    for name in _TEXT_CONSTANTS: env.globals[name] = g[name]
+    # the model's derivations are text facts, never markup; templates may ask
+    # them directly (nlikes(r), eff_state(r)) instead of having every view
+    # precompute a parallel structure
+    for name, obj in vars(model).items():
+        if not name.startswith('_') and name not in env.globals:
+            env.globals[name] = obj
+    env.globals['json_blob'] = json_blob
+    env.globals['Markup'] = Markup
+    env.filters['tojson_blob'] = json_blob
+    return env
+
+def json_blob(data):
+    """JSON for an embedded <script type="application/json"> block: '<' is
+    escaped so the data can never close its own tag."""
+    return Markup(json.dumps(data).replace('<', chr(92) + 'u003c'))
+
+_ENV = None
+
+def tpl(name, **ctx):
+    """Render templates/<name> with ctx; HTML helpers are already in scope."""
+    global _ENV
+    if _ENV is None: _ENV = _env()
+    return _ENV.get_template(name).render(**ctx)
 
