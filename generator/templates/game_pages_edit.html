@@ -45,8 +45,18 @@ is logged in the open with your name, the old value and the new.</p></div>
 {% endmacro %}
 {% set released_in %}<input name="value" maxlength="10" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="YYYY, YYYY-MM or YYYY-MM-DD" value="{{ g.get('released', '') }}">{% endset %}
 {{ prop_form('released', 'Release date', released_in) }}
-{% set unofficial_in %}<select name="value"><option value="no"{% if not g.get('unofficial') %} selected{% endif %}>No: an official release</option><option value="yes"{% if g.get('unofficial') %} selected{% endif %}>Yes: a ROM hack, mod, fangame or other unofficial release</option></select>{% endset %}
-{{ prop_form('unofficial', 'Unofficial?', unofficial_in) }}
+{# the flag is a checkbox; the hidden field carries yes/no so an unticked
+   box still sends a value (app.js keeps the two in step) #}
+<form id="f-ge-unofficial" class="actform">
+  <input type="hidden" name="kind" value="game">
+  <input type="hidden" name="target" value="{{ g['key'] }}">
+  <input type="hidden" name="field" value="unofficial">
+  <input type="hidden" name="value" value="{{ 'yes' if g.get('unofficial') else 'no' }}">
+  <label class="check"><input type="checkbox" class="mirror" data-yes="yes" data-no="no"{% if g.get('unofficial') %} checked{% endif %}> <span><b>Unofficial</b> <span class="checkhint">· a ROM hack, mod, fangame or other unofficial release</span></span></label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="the reason is public"></label>
+  <button class="btn">Save</button>
+</form>
 {% set discord_in %}<input name="value" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)" value="{{ g.get('discord', '') }}">{% endset %}
 {{ prop_form('discord', 'Community Discord', discord_in) }}
 {% set website_in %}<input name="value" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}">{% endset %}

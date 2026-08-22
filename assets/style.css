@@ -608,3 +608,19 @@ footer a{color:var(--accent-text);text-decoration:none}
 .gecard input,.gecard textarea{width:100%;border:2.5px solid var(--hair);border-radius:9px;
   padding:8px 10px;background:var(--bg);color:var(--ink);font:inherit}
 .gebtns{display:flex;gap:10px;margin-top:10px}
+
+/* ---- the checkbox: one component for the whole site. Drawn by us, not the
+   browser: a 20px box with the site's hairline, Signal Green when on, the
+   tick drawn at once (no easing: frame-quantized motion). The text sits on
+   the same line, to the right, and is the click target too. ---- */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:20px;height:20px;min-width:20px;margin:0;padding:0;flex:none;border:2.5px solid var(--hairs);border-radius:6px;background:var(--bg);cursor:pointer;display:inline-grid;place-content:center;vertical-align:middle;transition:none}
+input[type=checkbox]::before{content:"";width:11px;height:11px;transform:scale(0);background:#fff;clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0,43% 62%)}
+input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+input[type=checkbox]:checked::before{transform:scale(1)}
+input[type=checkbox]:hover{border-color:var(--accent)}
+input[type=checkbox]:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+input[type=checkbox]:disabled{opacity:.5;cursor:default}
+label.check,.cwlab,.libhide{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--ink);margin:10px 0;cursor:pointer;line-height:1.4}
+label.check b{font-weight:700}
+label.check .checkhint,.cwlab .checkhint{color:var(--muted)}
+.gmovelist label{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem}

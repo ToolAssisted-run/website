@@ -191,6 +191,15 @@
     btn.classList.toggle('busy', on);
   }
   // the form's real submit button (for the busy spinner)
+  // a checkbox that mirrors into a hidden field: forms whose answer must be
+  // yes or no even when the box is left empty (a plain checkbox sends nothing)
+  document.querySelectorAll('input.mirror').forEach(function(box){
+    var hidden = box.form && box.form.querySelector('input[type=hidden][name=value]');
+    if (!hidden) return;
+    box.addEventListener('change', function(){
+      hidden.value = box.checked ? box.dataset.yes : box.dataset.no;
+    });
+  });
   function actionBtn(form){
     // the form's real submit button: never a chip's × or a helper button,
     // so the busy spinner lands on the button the member actually pressed
