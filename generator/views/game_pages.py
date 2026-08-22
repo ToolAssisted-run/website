@@ -33,7 +33,6 @@ from render import (
     run_date_cell,
     METRICS_ED,
     NONE_TICK,
-    PROV_TICK,
     SHIPPED_GAME_THUMBS,
     author_chip,
     console_tick,
@@ -262,7 +261,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {sel_js if multi else ''}
 
 <p class="legend">{IMPORTED_TICK} Imported: verified at the trusted site it came from &nbsp;
-{FULL_TICK} verified (expert) &nbsp; {PROV_TICK} verified &nbsp; {NONE_TICK} pending</p>
+{FULL_TICK} verified &nbsp; {NONE_TICK} pending</p>
 {gameacts}'''
     crumb = f'<a href="{rel}games/">Games</a> / {esc(g["title"])}'
     (gd / 'index.html').write_text(page(g['title'], body, rel, crumb, 'Games'))

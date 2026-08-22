@@ -552,16 +552,13 @@ def console_tick(r):
 
 IMPORTED_TICK = '<span class="tick imported" title="Imported: verified and reproduced at the trusted site it came from, before joining this archive">✓</span>'
 
-FULL_TICK = '<span class="tick full" title="Verified: the goal is confirmed; permanent">✓</span>'
-
-PROV_TICK = '<span class="tick prov" title="Verified: the community confirmed the goal is met; ranked. An expert verification makes it permanent">✓</span>'
+FULL_TICK = '<span class="tick full" title="Verified: a member confirmed the goal is met">✓</span>'
 
 NONE_TICK = '<span class="tick none" title="Not yet: this run is pending">—</span>'
 
 def tick(state):
     if state == 'imported': return IMPORTED_TICK
-    if state in ('community', 'confirmed'): return FULL_TICK
-    if state == 'provisional': return PROV_TICK
+    if state in ('community', 'verified'): return FULL_TICK
     return NONE_TICK
 
 def console_chip(r):

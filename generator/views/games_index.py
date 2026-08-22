@@ -34,7 +34,6 @@ from render import (
     card_views,
     chip_views,
     NONE_TICK,
-    PROV_TICK,
     SHIPPED_GAME_THUMBS,
     author_chip,
     console_tick,
@@ -134,7 +133,7 @@ for skey in sorted(by_sys):
 <th class="num"></th><th class="num">Stars</th>
 <th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
 <tbody>{''.join(srows)}</tbody></table>
-<p class="legend">{FULL_TICK} verified (expert) &nbsp; {PROV_TICK} verified &nbsp;
+<p class="legend">{FULL_TICK} verified &nbsp;
 {NONE_TICK} pending</p>""" if srows else
               '<p class="authline">No ranked run on this system yet.</p>')
     sbody = f"""<header class="ghead"><div>
@@ -176,7 +175,7 @@ if live_groups:
 <th class="num"></th><th class="num">Stars</th>
 <th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table>
-<p class="legend">{FULL_TICK} verified (expert) &nbsp; {PROV_TICK} verified &nbsp;
+<p class="legend">{FULL_TICK} verified &nbsp;
 {NONE_TICK} pending</p>''' if rows else
                  '<p class="authline">No ranked run in this group yet.</p>')
         synthetic = gr.get('synthetic')

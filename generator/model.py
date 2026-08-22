@@ -357,18 +357,16 @@ def console_state(r):
 def eff_state(r):
     """(reproduced, verified) derived from rosters; 'imported' passes through.
 
-    Verification is the ranking gate (2026-08-19): a community verification
-    makes a run provisional, which ranks; a covering expert's makes it
-    confirmed, which is permanent. Reproduction is a recorded, paid act of
-    assurance and gates nothing."""
+    Verification is the ranking gate: one live verification, from anybody,
+    makes a run verified (no tiers; an expert may later invalidate it).
+    Reproduction is a recorded, paid act of assurance and gates nothing."""
     st = r.get('status', {})
     if st.get('reproduced') == 'imported':
         return ('imported', 'imported')
     reps = live(r.get('reproductions', []))
     vers = live(r.get('verifications', []))
     rs = 'community' if reps else 'none'
-    vs = ('confirmed' if any(a.get('expert') for a in vers) else
-          'provisional' if vers else 'none')
+    vs = 'verified' if vers else 'none'
     return (rs, vs)
 
 def is_ranked(r):

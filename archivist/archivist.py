@@ -3026,7 +3026,7 @@ def verify():
         ensure_member(user)
         commit_push(f'Verify {r["id"]}: by {user}\n\nVia: archivist')
         notify_discord(f'\u2713 **{member_md(user)}** verified'
-                       + (' (expert)' if entry.get('expert') else '') + ' '
+                       + ' '
                        + movie_md(r),
                        wait_for=f'{SITE_URL}/runs/{r["id"]}/')
     return jsonify({'ok': True, 'run': r['id'], 'status': r['status'],

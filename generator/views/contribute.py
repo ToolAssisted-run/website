@@ -43,7 +43,7 @@ need_repro = sorted([r for r in runs if eff_state(r)[0] == 'none' and not r.get(
                     key=lambda r: repro_bounty(r), reverse=True)
 need_verify = [r for r in runs
                if eff_state(r)[0] != 'imported' and not is_unclassified(r)
-               and eff_state(r)[1] != 'confirmed']
+               and eff_state(r)[1] == 'none']
 nr_rows = ''.join(f'''<tr data-sys="{esc(r['_game']['system'])}" onclick="window.open('../runs/{r['id']}/', '_blank')">
 <td><b>{esc(r['_game']['title'])}</b><span class="bcat">{esc(cat_label(r))}</span></td>
 <td>{esc(systems[r['_game']['system']]['name'])}</td>
@@ -143,8 +143,8 @@ anytime; the first to finish earns the points.</p></div></header>
 <div class="main">
 <section><h2>Needs verification</h2>
 <p class="rules fullw">Watch the encode and confirm the run achieves its stated category goal. <b>One
-verification ranks the run</b>, shown as verified; a covering expert's makes it
-permanent. The bounty <b>rises one point per day</b> the run waits, up to double.</p>
+verification ranks the run</b>, shown as verified; an expert may later invalidate a
+wrong one. The bounty <b>rises one point per day</b> the run waits, up to double.</p>
 {f'<div class="contscroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>{nv_rows}</tbody></table></div>' if nv_rows else '<p class="emptynote">Nothing waiting: every run that can be verified has been.</p>'}</section>
 <section><h2>Needs reproduction</h2>
 <p class="rules fullw">Load the movie file on your own setup, confirm it syncs to the end, and submit an

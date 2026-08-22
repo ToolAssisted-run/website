@@ -208,15 +208,19 @@ recorded, paid act of assurance); console verification gates nothing.
 | Stored enum | Shown as | Meaning |
 |---|---|---|
 | `none` | Pending | awaiting its first verification |
-| `provisional` | **Verified** | one community verification; ranked |
-| `confirmed` | **Verified (expert)** | a covering expert verified it; permanent |
+| `provisional` | **Verified** | one verification, from anybody; ranked |
+| `confirmed` | **Verified** | same: a verification that happened to be an expert's. No tier, no permanence; shown identically |
 | `imported` | Imported | verified+reproduced at the trusted source site, irrevocable |
 | `not-applicable` | (explained in place) | video-only runs, repro/console gates |
 
-The stored enum names never change; only display language does. The
-expert-ness of a verification is **stamped on the act at act time**
-(`expert: true`), because scopes change and facts do not; one `/api/verify`
-endpoint serves both. Unclassified runs rank by likes and are never pending.
+**There are no verification tiers**: zero verifications is not verified,
+one (from whoever) is verified, and the verifier is trusted by default; a
+covering expert may later invalidate a wrong verification, which is the only
+expert power over the gate. The stored enum names never change, and the
+expert-ness of a verification stays **stamped on the act** (`expert: true`)
+as a fact about who acted, which nothing on the site distinguishes. One
+`/api/verify` endpoint serves everybody. Unclassified runs rank by likes and
+are never pending.
 
 **One run per author set per category** is derived, not stored: the fastest
 ranked run per exact author set counts; slower ones render in a History

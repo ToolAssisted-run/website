@@ -36,8 +36,7 @@ for r in sorted(runs, key=archived_at, reverse=True):
     rs, vs = eff_state(r)
     state = ('imported' if rs == 'imported' else
              'unclassified' if is_unclassified(r) else
-             'verified' if is_ranked(r) and vs in ('confirmed', 'imported') else
-             'provisional' if is_ranked(r) else 'pending')
+             'verified' if is_ranked(r) else 'pending')
     index.append({
         'id': r['id'], 'title': g['title'], 'sys': g['system'],
         'sysname': systems[g['system']]['name'], 'cat': cat_label(r),
@@ -58,7 +57,6 @@ if (params.get('q')) q.value = params.get('q');
 function chip(state){
   return {imported:'<span class="chip importedchip">Imported</span>',
           verified:'<span class="chip verchip">Verified</span>',
-          provisional:'<span class="chip verchip">Verified</span>',
           unclassified:'<span class="chip unclchip">Unclassified</span>',
           pending:'<span class="chip pendchip">Pending</span>'}[state];
 }
@@ -67,7 +65,6 @@ function render(){
   var rs = RUNS.filter(function(r){
     if (sys && r.sys !== sys) return false;
     if (st === 'ranked' && (r.state === 'pending')) return false;
-    if (st === 'verified' && r.state !== 'verified' && r.state !== 'provisional') return false;
     if (st && st !== 'ranked' && st !== 'verified' && r.state !== st) return false;
     if (needle){
       var hay = (r.title + ' ' + r.cat + ' ' + r.authors.join(' ') + ' ' + r.id).toLowerCase();
