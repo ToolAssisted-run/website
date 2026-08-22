@@ -127,6 +127,9 @@ def main():
     ROUTES['https://img.youtube.com/vi/NOMAXRES123/hqdefault.jpg'] = JPEG
     data, ext = providers.thumbnail('youtube', 'NOMAXRES123')
     ck('it falls back to the next template', data == JPEG, str(data)[:40])
+    ck('and the preview is told which template answered (#29)',
+       (providers.thumbnail_source('youtube', 'NOMAXRES123') or '').endswith('/NOMAXRES123/hqdefault.jpg'),
+       str(providers.thumbnail_source('youtube', 'NOMAXRES123')))
 
     ROUTES['https://ext.nicovideo.jp/api/getthumbinfo/sm9'] = (
         b'<nicovideo_thumb_response><thumb>'

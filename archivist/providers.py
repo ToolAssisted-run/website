@@ -220,5 +220,18 @@ def thumbnail(kind, vid, max_bytes=256 * 1024):
             continue
         for magic, ext in IMAGE_MAGIC:
             if data.startswith(magic):
+                LAST_THUMB_URL[(kind, vid)] = url
                 return data, ext
     return None, None
+
+# which candidate actually answered, per video: the submit preview shows the
+# same image the archive will keep, not the first template (#29: YouTube has
+# no maxresdefault for many videos, and the preview showed a broken frame)
+LAST_THUMB_URL = {}
+
+def thumbnail_source(kind, vid, max_bytes=256 * 1024):
+    """The URL of the still frame that really exists, fetching to find out."""
+    key = (kind, vid)
+    if key not in LAST_THUMB_URL:
+        thumbnail(kind, vid, max_bytes)
+    return LAST_THUMB_URL.get(key)
