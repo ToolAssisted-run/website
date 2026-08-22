@@ -711,6 +711,11 @@ def main():
         ck('the games index offers a new group',
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
 
+        contrib = all_html[out / 'contribute' / 'index.html']
+        ck('the systems filter applies after the rows it filters exist (#40)',
+           "addEventListener('DOMContentLoaded', apply)" in contrib
+           and contrib.index('#sysfilter') < contrib.index('id="nr-scroll"'))
+
         # ---------- search engines: every public page is describable ----------
         pub = [p for p, h in all_html.items() if 'content="noindex"' not in h]
         ck('every public page carries a canonical and a description',

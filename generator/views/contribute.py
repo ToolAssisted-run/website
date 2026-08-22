@@ -93,7 +93,11 @@ if worklist_systems:
       apply();
     }});
   }});
-  apply();
+  // the list sits below this script in the page: on a fresh load the rows
+  // do not exist yet when this runs, so the remembered choice filtered
+  // nothing while the buttons showed it (#40)
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+  else apply();
 }})();
 </script>'''
 open_cases = [(r, c) for r in runs for c in r.get('cases', []) if c['status'] == 'open']
