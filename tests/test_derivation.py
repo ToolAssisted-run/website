@@ -34,7 +34,8 @@ VALIDATOR = pathlib.Path.home() / 'ToolAssisted-archive' / 'validate.py'
 # weights mirrored from generator/build.py; if they change there, these
 # expectations must be updated deliberately (that is the point)
 PT_REPRO_FIRST, PT_REPRO_LATER, PT_VERIFY = 100, 25, 20
-PT_NEGLECT_PER_DAY, PT_NEGLECT_CAP, PT_REPRO_HARD = 2, 200, 50
+PT_NEGLECT_PER_DAY, PT_REPRO_MAX, PT_REPRO_HARD = 2, 2000, 50
+PT_VERIFY_MAX = 1000
 
 failures = []
 
@@ -130,7 +131,7 @@ def main():
 
         # ---------------- contributor points ----------------
         # hard system (dos), submitted 150 days ago, first reproduction today:
-        # 100 base + 50 hard + min(150*2, 200) = 350; second reproduction 75;
+        # 100 base + 50 hard + 150*2 = 450 (tops out at 2000); second reproduction 75;
         # first verification ages 1/day to double (20 + min(150,20) = 40),
         # later verifications pay the flat 20.
         pts_runs = [
@@ -154,15 +155,16 @@ def main():
         r = build(arch, out)
         ck('points build succeeds', r.returncode == 0, r.stderr[-300:])
         stats = json.loads((out / 'assets/authorstats.json').read_text())
-        want_first = PT_REPRO_FIRST + PT_REPRO_HARD + min(150 * PT_NEGLECT_PER_DAY, PT_NEGLECT_CAP)
+        want_first = min(PT_REPRO_FIRST + PT_REPRO_HARD + 150 * PT_NEGLECT_PER_DAY, PT_REPRO_MAX)
         ck('first reproduction on a hard system, long neglected',
            stats.get('rep', {}).get('contrib') == want_first,
            f'got {stats.get("rep", {}).get("contrib")} want {want_first}')
         ck('later reproduction pays base + hard bonus only',
            stats.get('rep2', {}).get('contrib') == PT_REPRO_LATER + PT_REPRO_HARD,
            str(stats.get('rep2')))
-        ck('the first verification ages to its cap',
-           stats.get('ver', {}).get('contrib') == PT_VERIFY * 2, str(stats.get('ver')))
+        ck('the first verification ages a point a day',
+           stats.get('ver', {}).get('contrib') == min(PT_VERIFY + 150, PT_VERIFY_MAX),
+           str(stats.get('ver')))
         ck('a later verification pays the flat weight',
            stats.get('ver2', {}).get('contrib') == PT_VERIFY, str(stats.get('ver2')))
         ck('imported runs award nothing', 'importer' not in stats)
@@ -209,15 +211,15 @@ def main():
 
         # neglect bonus is capped
         capped = [mkarchive.run_spec('M900313', frames=5000, authors=['Ada'],
-                                     submitted=d(400),
+                                     submitted=d(1200),
                                      status={'reproduced': 'community', 'verified': 'none'},
                                      reproductions=[{'user': 'Late', 'date': d(0)}])]
         arch = mkarchive.make_archive(td / 'a3', capped)
         out = td / 'o3'
         build(arch, out)
         stats = json.loads((out / 'assets/authorstats.json').read_text())
-        ck('neglect bonus is capped',
-           stats.get('late', {}).get('contrib') == PT_REPRO_FIRST + PT_NEGLECT_CAP,
+        ck('the first-reproduction payout tops out at its maximum',
+           stats.get('late', {}).get('contrib') == PT_REPRO_MAX,
            str(stats.get('late')))
 
         # ---------------- what counts as pending ----------------

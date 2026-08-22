@@ -38,11 +38,11 @@ PT_VERIFY = 20
 
 PT_VERIFY_AGE_PER_DAY = 1   # the first verification pays more the longer a
 
-PT_VERIFY_AGE_CAP = 20      # run waits, up to double the base
+PT_VERIFY_MAX = 1000        # run waits; the whole payout tops out here
 
 PT_NEGLECT_PER_DAY = 2
 
-PT_NEGLECT_CAP = 200
+PT_REPRO_MAX = 2000         # the whole first-reproduction payout tops out here
 
 PT_REPRO_HARD = 50   # extra for hard-to-reproduce systems (systems.json flag)
 
@@ -441,14 +441,13 @@ def days_pending(r):
 
 def repro_bounty(r):
     """Current first-reproduction payout for a still-unreproduced run."""
-    return (PT_REPRO_FIRST + hard_bonus(r)
-            + min(days_pending(r) * PT_NEGLECT_PER_DAY, PT_NEGLECT_CAP))
+    return min(PT_REPRO_FIRST + hard_bonus(r) + days_pending(r) * PT_NEGLECT_PER_DAY,
+               PT_REPRO_MAX)
 
 def verify_bounty(r):
     """Current first-verification payout for a still-unverified run:
     the base, plus one point per day waiting, capped at double."""
-    return PT_VERIFY + min(days_pending(r) * PT_VERIFY_AGE_PER_DAY,
-                           PT_VERIFY_AGE_CAP)
+    return min(PT_VERIFY + days_pending(r) * PT_VERIFY_AGE_PER_DAY, PT_VERIFY_MAX)
 
 BADGES = [(25000, '25k'), (10000, '10k'), (5000, '5k'), (1000, '1k')]
 
@@ -482,8 +481,8 @@ for r in runs:
     for i, act in enumerate(reps):
         if i == 0:
             ad = parse_date(act.get('date'))
-            neglect = min((ad - sub).days * PT_NEGLECT_PER_DAY, PT_NEGLECT_CAP) if ad and sub and ad > sub else 0
-            award(act['user'], PT_REPRO_FIRST + hard_bonus(r) + neglect,
+            neglect = (ad - sub).days * PT_NEGLECT_PER_DAY if ad and sub and ad > sub else 0
+            award(act['user'], min(PT_REPRO_FIRST + hard_bonus(r) + neglect, PT_REPRO_MAX),
                   'first reproduction', r, act.get('at') or act.get('date'))
         else:
             award(act['user'], PT_REPRO_LATER + hard_bonus(r), 'reproduction', r,
@@ -492,9 +491,8 @@ for r in runs:
     for i, act in enumerate(vers):
         if i == 0:
             ad = parse_date(act.get('date'))
-            aged = (min((ad - sub).days * PT_VERIFY_AGE_PER_DAY, PT_VERIFY_AGE_CAP)
-                    if ad and sub and ad > sub else 0)
-            award(act['user'], PT_VERIFY + aged, 'first verification', r,
+            aged = (ad - sub).days * PT_VERIFY_AGE_PER_DAY if ad and sub and ad > sub else 0
+            award(act['user'], min(PT_VERIFY + aged, PT_VERIFY_MAX), 'first verification', r,
                   act.get('at') or act.get('date'))
         else:
             award(act['user'], PT_VERIFY, 'verification', r,
