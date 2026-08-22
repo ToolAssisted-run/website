@@ -541,6 +541,14 @@ def main():
            'href="https://www.speedrun.com/tg"' in gpage_
            and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
+        # the run editor offers the content disclosures, current ones ticked (#49)
+        rpage_ = all_html[out / 'runs' / 'M900102' / 'index.html']
+        ck('the edit form carries the content warning boxes',
+           'name="content_warnings_set"' in rpage_
+           and rpage_.count('name="content_warnings"') == 4)
+        ck('the run\'s own warnings come pre-ticked',
+           'value="photosensitivity" checked' in rpage_ and 'value="sexual" checked' in rpage_
+           and 'value="strong-language" checked' not in rpage_)
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
            all(f'id="f-ge-{f}"' in gedit_ for f in ('released', 'unofficial', 'discord', 'website', 'rta')))

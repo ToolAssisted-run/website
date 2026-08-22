@@ -553,7 +553,6 @@ def submit():
         return fail('notes exceed 256 KB')
 
     # voluntary content disclosures — separate flags, shown on the run page
-    CW_ALLOWED = {'mature-violence', 'sexual', 'photosensitivity', 'strong-language'}
     content_warnings = [w for w in request.form.getlist('content_warnings')]
     if any(w not in CW_ALLOWED for w in content_warnings):
         return fail('unknown content warning flag')
@@ -1040,6 +1039,8 @@ def _deletion_gate(form, need='expert'):
 # the plain game properties (#44): release date, unofficial flag, community
 # links. One parser for the editor and for creation; an empty value means
 # "not stated" and the field is absent from the record
+CW_ALLOWED = {'mature-violence', 'sexual', 'photosensitivity', 'strong-language'}
+
 GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website', 'rta')
 
 def parse_game_property(field, raw):
@@ -2067,7 +2068,9 @@ def edit_run():
         give a reason)
     Reads: form fields run, reason, authors (authors only), notes, emulator,
         metric_<key>, completed, goalDescription, encode, time (video-only
-        runs), dry_run; files attachments (authors only)
+        runs), content_warnings (repeatable, with content_warnings_set as
+        the marker that the field was sent), dry_run; files attachments
+        (authors only)
     Answers: {ok, run, changed}; dry_run: {ok, dry_run, would_change}
     """
     edit_form = request.form
@@ -2179,6 +2182,20 @@ def edit_run():
                 else:
                     run.pop('completed', None)
                 changed.append('completed')
+        if 'content_warnings_set' in edit_form:
+            # the content disclosures (#49): the form always sends the marker,
+            # so no box ticked means "none" and clears them
+            new_warnings = sorted(set(edit_form.getlist('content_warnings')))
+            if any(w not in CW_ALLOWED for w in new_warnings):
+                return fail('unknown content warning')
+            old_warnings = sorted(run.get('contentWarnings', []))
+            if new_warnings != old_warnings:
+                befores['contentWarnings'] = ', '.join(old_warnings)
+                if new_warnings:
+                    run['contentWarnings'] = new_warnings
+                else:
+                    run.pop('contentWarnings', None)
+                changed.append('contentWarnings')
         if 'goalDescription' in edit_form:
             goal_description = (edit_form.get('goalDescription') or '').strip()
             if len(goal_description) > 500:
@@ -2258,6 +2275,7 @@ def edit_run():
                            'goalDescription': run.get('goalDescription', ''),
                            'encode': (run.get('encodes') or [{}])[0].get('url', ''),
                            'duration': run.get('duration', ''),
+                           'contentWarnings': ', '.join(run.get('contentWarnings', [])),
                            'attachments': ', '.join(name for name, _ in new_attachments),
                            }.get(field, ''))[:300]),
                      user, "The author's own revision." if is_author else reason)

@@ -78,8 +78,10 @@ def call(url, data=None, files=None, cookie=None, method=None):
         boundary = 'testboundary42'
         body = b''
         for k, v in (data or {}).items():
-            body += (f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"'
-                     f'\r\n\r\n{v}\r\n').encode()
+            # a list value is a repeated field (checkbox groups)
+            for one in (v if isinstance(v, (list, tuple)) else [v]):
+                body += (f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"'
+                         f'\r\n\r\n{one}\r\n').encode()
         for k, (fn, content) in (files or {}).items():
             body += (f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"; '
                      f'filename="{fn}"\r\nContent-Type: application/octet-stream'
@@ -624,7 +626,7 @@ def main():
             # --- the preview is the published renderer (issue #30) ---
             c, r, _ = call(U + '/api/preview', {'notes': '!!Head\r\n*one\r\n**two\r\nsee [M900010]'})
             ck('the preview renders the dialect exactly as the site does',
-               c == 200 and '<h3>Head</h3>' in r['html'] and '<li>two</li>' in r['html']
+               c == 200 and '<h3>Head</h3>' in r['html'] and '<li>two\n</li></ul>' in r['html']
                and 'href="/runs/M900010/"' in r['html'], str(r)[:200])
 
             # --- likes: one per member, never own runs, imported allowed ---
@@ -873,6 +875,28 @@ def main():
                            {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                             'emulator': 'FCEUX 2.6.5', 'completed': '2020-04-01'})
             ck('an author revises their own run', c == 200, str(r))
+            # content disclosures from the edit form (#49): set, then cleared
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                            'content_warnings_set': '1',
+                            'content_warnings': ['photosensitivity', 'strong-language']})
+            rj = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('an author sets content warnings from the edit form (#49)',
+               c == 200 and 'contentWarnings' in r['changed']
+               and rj.get('contentWarnings') == ['photosensitivity', 'strong-language'], str(r))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                            'content_warnings_set': '1', 'content_warnings': 'nonsense'})
+            ck('an unknown content warning is refused', c == 400, str(r))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                            'content_warnings_set': '1'})
+            rj = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('no box ticked clears the warnings', c == 200 and 'contentWarnings' not in rj, str(r))
+            elog = json.loads((work / 'edits.json').read_text())['events']
+            ck('warning edits are logged with before and after',
+               any(e['field'] == 'contentWarnings' and e['from'] == 'photosensitivity, strong-language'
+                   and e['to'] == '' for e in elog), str(elog[-2:]))
             c, r, _ = call(U + '/api/edit',
                            {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                             'encode': 'https://youtu.be/X7oXnw7X0kQ'})

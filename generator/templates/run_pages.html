@@ -99,6 +99,13 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <label>Emulator / core (optional)</label><input name="emulator">
   <label>When was the run completed? (optional; shown beside the submission date)</label>
   <input name="completed" type="date" max="{{ today }}">
+  <label>Content disclosures, to warn viewers about:</label>
+  <input type="hidden" name="content_warnings_set" value="1">
+  <div class="cwrow">
+  {% for key, label in CW_LABELS.items() %}
+    <label class="cwlab"><input type="checkbox" name="content_warnings" value="{{ key }}"{% if key in warns %} checked{% endif %}> {{ label }}</label>
+  {% endfor %}
+  </div>
   {% for m, mv in metric_rows %}
   <label>{{ m['label'] }} ({{ m.get('unit') or ('seconds' if m['type'] == 'time' else 'number') }}; this category ranks by it. Leave empty to keep, 0 for not yet stated)</label>
   <input name="metric_{{ m['key'] }}" type="number" step="any" min="0" {% if mv %}value="{{ '{:g}'.format(mv) }}"{% endif %}>
