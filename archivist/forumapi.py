@@ -216,9 +216,28 @@ def publish_group(role, username, add=True):
         verb, method = ('added to', 'PUT') if add else ('removed from', 'DELETE')
         discourse_api(f'/groups/{grp["id"]}/members.json', method,
                       {'usernames': username})
-        return f'{verb} the forum group {group}'
+        note = f'{verb} the forum group {group}'
     except Exception as e:                                     # noqa: BLE001
         return f'forum group not updated ({e})'
+    if role == 'committee':
+        note += '; ' + sync_forum_admin(username, add)
+    return note
+
+def sync_forum_admin(username, add):
+    """A Committee seat is a forum administrator by virtue of the seat.
+    Discourse will not grant admin over the API without the acting admin
+    confirming by email, so a grant is a request that lands in the
+    Founder's inbox; a revocation takes effect at once. Best effort."""
+    try:
+        uid = discourse_api(f'/u/{urllib.parse.quote(username)}.json')['user']['id']
+        if add:
+            r = discourse_api(f'/admin/users/{uid}/grant_admin', 'PUT', {})
+            return ('forum admin requested (confirmation email sent to the founder)'
+                    if r.get('email_confirmation_required') else 'made a forum admin')
+        discourse_api(f'/admin/users/{uid}/revoke_admin', 'PUT', {})
+        return 'forum admin revoked'
+    except Exception as e:                                     # noqa: BLE001
+        return f'forum admin not synced ({e})'
 
 def sync_expert_group(username, add=True):
     """Kept for the expert paths, which only ever touch the one group."""
