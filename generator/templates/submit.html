@@ -38,6 +38,8 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     <div class="authlist" hidden></div>
     <input type="hidden" name="authors">
   </div>
+  {# shown once a second author is on the list (app.js): the policy, discreetly #}
+  <p class="rules coauthnote" hidden><a href="../policy/co-authors/">Submitting a work with co-authors? Read the Multiple author submission policy first.</a></p>
   <label>Encode link (required; verification and the run's thumbnail derive from it).
   Accepted: {{ provider_names }}.</label>
   <input id="s-encode" name="encode" type="url" required placeholder="https://youtu.be/…">

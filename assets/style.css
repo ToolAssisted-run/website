@@ -624,3 +624,8 @@ label.check,.cwlab,.libhide{display:flex;align-items:center;gap:10px;font-size:.
 label.check b{font-weight:700}
 label.check .checkhint,.cwlab .checkhint{color:var(--muted)}
 .gmovelist label{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem}
+/* the import page: the source row stands apart from the notice above it */
+#imp-sources{margin-top:22px}
+.coauthnote{margin:4px 0 0}
+.policy ol,.policy ul{padding-left:24px;margin:8px 0}
+.policy li{margin:4px 0}
