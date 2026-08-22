@@ -145,6 +145,15 @@ FMT_EXAMPLES = [
     ('# first&#10;# second', 'Numbered list'),
     ('| cell | cell | (and || header || cells)', 'Tables, one row per line'),
     ('%%%', 'Forced line break'),
+    ('https://example.com', 'Bare URLs link by themselves; put a ! in front to keep one as text'),
+    ('[https://example.com/shot.png|w=480|right]', 'Image, embedded (options: w=, h=, alt=, title=, left, right); a bare image URL embeds too'),
+    ('** nested item&#10;## nested number', 'Nested lists: one more * or # per level'),
+    (';Term: definition', 'Definition list'),
+    (' preformatted', 'A line starting with a space is preformatted (monospace, kept as written)'),
+    ('((small)) {{teletype}} ---struck---', 'Small text, teletype, strikethrough'),
+    ('%%TAB Show inputs%%&#10;long text&#10;%%TAB_END%%', 'Foldable section (TASVideos tabs); an empty first tab makes the next one start closed'),
+    ('[#1] in the text, then [1] note at the end', 'Footnotes'),
+    ('[1032S] or [Forum/Topics/629|label]', 'TASVideos submissions, forum topics and wiki pages link to tasvideos.org'),
 ]
 # the source column is written with &#10; standing for a newline inside one cell
 examples = [dict(src=src.replace('&#10;', chr(10)), what=what) for src, what in FMT_EXAMPLES]

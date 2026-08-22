@@ -81,6 +81,8 @@ jobs:
 
       - name: Preview parity tests
         run: python3 website/tests/test_preview_parity.py
+      - name: Notes dialect tests
+        run: python3 website/tests/test_wikitext.py
 
       - name: News feed tests
         run: python3 website/tests/test_bskyfeed.py
