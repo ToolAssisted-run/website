@@ -536,6 +536,9 @@ def main():
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
            all(f'id="f-ge-{f}"' in gedit_ for f in ('released', 'unofficial', 'discord', 'website', 'rta')))
+        ck('the unofficial flag is a real checkbox mirrored into the field',
+           'class="mirror"' in gedit_ and ' checked>' in gedit_
+           and 'name="value" value="yes"' in gedit_)
         ck('the editor shows the current values', 'value="1989-03"' in gedit_
            and 'value="https://discord.gg/tg1"' in gedit_)
         ck('a game without properties shows none',

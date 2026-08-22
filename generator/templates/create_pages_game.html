@@ -8,7 +8,7 @@ Experts curate afterwards, and a mistaken creation is deleted on the record.</p>
   <label>System</label><select name="system">{% for k, v in sys_list %}<option value="{{ k }}">{{ v.name }}</option>{% endfor %}</select>
   {# the game properties (#44), all optional; a covering expert can set them later too #}
   <label>Release date (optional)</label><input name="released" maxlength="10" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="YYYY, YYYY-MM or YYYY-MM-DD">
-  <label>Unofficial? <input type="checkbox" name="unofficial" value="yes"> a ROM hack, mod, fangame or other unofficial release</label>
+  <label class="check"><input type="checkbox" name="unofficial" value="yes"> <span><b>Unofficial</b> <span class="checkhint">· a ROM hack, mod, fangame or other unofficial release</span></span></label>
   <label>Community Discord (optional)</label><input name="discord" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)">
   <label>Community website (optional)</label><input name="website" type="url" maxlength="300" placeholder="https://…">
   <label>RTA leaderboards (optional)</label><input name="rta" type="url" maxlength="300" placeholder="https://… (where the real-time records live)">

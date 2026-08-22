@@ -90,7 +90,7 @@ data-last="{{ 1 if gr.get('synthetic') else 0 }}" href="../groups/{{ gr['key'] }
 <button class="dimopt lsort" data-mode="views">Views</button>
 <button class="dimopt lsort" data-mode="title">By title</button>
 <button class="dimopt lsort" data-mode="released">Release date</button></span>
-<label class="dimsub libhide"><input type="checkbox" id="hide-unofficial"> Hide unofficial games</label></div>
+<label class="dimsub libhide"><input type="checkbox" id="hide-unofficial"> <span>Hide unofficial games</span></label></div>
 <script>
 // the controls stand above the grid, so this runs before the grid exists:
 // wait for the document, like every inline script that reaches forward (#40)
