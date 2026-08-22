@@ -95,3 +95,30 @@ import views.sitelog  # noqa: F401,E402  (renders its pages on import)
 (OUT / 'assets' / 'style.css').write_text(
     (REPO_ROOT / 'assets' / 'style.css').read_text())
 print(f'built {sum(1 for _ in OUT.rglob("*") if _.is_file())} files -> {OUT}')
+
+# ---------------- search engines: sitemap and robots ----------------
+# Every public content page, with the day it last changed; tooling pages
+# (submit, panels, editors, mocks) carry noindex and stay out of the map.
+import re as _re
+SITE = 'https://toolassisted.run'
+_skip = _re.compile(r'^(submit|claim|import|expert|founder|committee|create-game|'
+                    r'create-category|mock)/|/edit/$')
+_entries = []
+for _p in sorted(OUT.rglob('index.html')):
+    _relp = _p.relative_to(OUT).as_posix()[:-len('index.html')]
+    if _skip.search(_relp) or '<meta name="robots" content="noindex">' in _p.read_text():
+        continue
+    _entries.append(_relp)
+_today = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
+(OUT / 'sitemap.xml').write_text(
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + ''.join(f'<url><loc>{SITE}/{_e}</loc><lastmod>{_today}</lastmod></url>\n' for _e in _entries)
+    + '</urlset>\n')
+(OUT / 'robots.txt').write_text(
+    'User-agent: *\nAllow: /\n'
+    + ''.join(f'Disallow: /{_d}/\n' for _d in ('submit', 'claim', 'import', 'expert', 'founder',
+                                                 'committee', 'create-game', 'create-category', 'mock'))
+    + 'Disallow: /games/*/edit/\n'
+    + f'Sitemap: {SITE}/sitemap.xml\n')
+print(f'sitemap: {len(_entries)} urls')

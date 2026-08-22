@@ -45,5 +45,8 @@ the stars their runs have earned. Click any column to re-sort.</p></div>
 <tbody>{''.join(arows)}</tbody></table>
 <p class="legend">Do you come from another community? <a href="../claim/">Claim your name</a></p>
 '''
-(OUT / 'authors' / 'index.html').write_text(page('Members', body, '../', '', 'Members'))
+(OUT / 'authors' / 'index.html').write_text(page(
+    'Members and TAS authors', body, '../', '', 'Members',
+    seo={'path': 'authors/',
+         'description': 'The members and authors of toolAssisted.run, with their runs, stars and roles.'}))
 

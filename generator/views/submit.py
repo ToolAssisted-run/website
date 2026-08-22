@@ -133,5 +133,5 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
 </form></details></div>
 <p id="s-msg" class="actmsg" hidden></p>'''
 (OUT / 'submit').mkdir(exist_ok=True)
-(OUT / 'submit' / 'index.html').write_text(page('Submit', body, '../', '', 'Submit'))
+(OUT / 'submit' / 'index.html').write_text(page('Submit', body, '../', '', 'Submit', seo={'path': 'submit/', 'noindex': True}))
 

@@ -31,6 +31,8 @@ from model import (
 )
 from render import (
     FULL_TICK,
+    SITE_URL,
+    breadcrumb_ld,
     card_views,
     chip_views,
     NONE_TICK,
@@ -148,9 +150,19 @@ group each belongs to.</p></div></header>
 {stable}"""
     sdir = OUT / 'systems' / skey
     sdir.mkdir(parents=True, exist_ok=True)
+    sbest = max((r for r in sruns if thumb_url(r)),
+                key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
     (sdir / 'index.html').write_text(page(
-        systems[skey]['name'], sbody, '../../',
-        f'<a href="../../games/">Games</a> / {esc(systems[skey]["name"])}', 'Games'))
+        f'{systems[skey]["name"]} TAS runs and leaderboards', sbody, '../../',
+        f'<a href="../../games/">Games</a> / {esc(systems[skey]["name"])}', 'Games',
+        seo={'path': f'systems/{skey}/',
+             'description': (f'Tool-assisted speedruns on {systems[skey]["name"]}: '
+                             f'{len(sgames)} game{"s" if len(sgames) != 1 else ""}, '
+                             f'{len(sruns)} run{"s" if len(sruns) != 1 else ""}, leaderboards, '
+                             f'encodes and movie files.'),
+             'image': (SITE_URL + thumb_url(sbest)) if sbest else None,
+             'ld': [breadcrumb_ld([('Games', 'games/'),
+                                   (systems[skey]['name'], f'systems/{skey}/')])]}))
 
 if live_groups:
     (OUT / 'groups').mkdir(parents=True, exist_ok=True)
@@ -241,9 +253,21 @@ if live_groups:
 {gacts}'''
         gdir = OUT / 'groups' / gr['key']
         gdir.mkdir(parents=True, exist_ok=True)
+        gnsys = len({g['system'] for g in ggames})
+        gbest = max((r for r in grunts if thumb_url(r)),
+                    key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
         (gdir / 'index.html').write_text(page(
-            gr['title'], gbody, '../../',
-            f'<a href="../../games/">Games</a> / {esc(gr["title"])}', 'Games'))
+            f'{gr["title"]} TAS runs across {gnsys} system{"s" if gnsys != 1 else ""}',
+            gbody, '../../',
+            f'<a href="../../games/">Games</a> / {esc(gr["title"])}', 'Games',
+            seo={'path': f'groups/{gr["key"]}/',
+                 'description': (f'{gr["title"]} tool-assisted speedruns across '
+                                 f'{gnsys} system{"s" if gnsys != 1 else ""}: {len(ggames)} '
+                                 f'game{"s" if len(ggames) != 1 else ""}, {len(grunts)} '
+                                 f'run{"s" if len(grunts) != 1 else ""}, leaderboards and records.'),
+                 'image': (SITE_URL + thumb_url(gbest)) if gbest else None,
+                 'ld': [breadcrumb_ld([('Games', 'games/'),
+                                       (gr['title'], f'groups/{gr["key"]}/')])]}))
 
     def group_card(gr):
         """One card for a whole group, thumbnailed with a collage of its
@@ -406,7 +430,12 @@ experts curate afterwards.</p></div>
 <div class="gview" id="v-list" hidden>{list_view}</div>
 {games_sort_js}
 {games_acts}'''
-(OUT / 'games' / 'index.html').write_text(page('Games', body, '../', '', 'Games'))
+(OUT / 'games' / 'index.html').write_text(page(
+    'Games with TAS runs', body, '../', '', 'Games',
+    seo={'path': 'games/',
+         'description': (f'{len(games)} games across {len(by_sys)} systems with tool-assisted '
+                         f'speedruns on toolAssisted.run, by system, by game group, and as a list.'),
+         'ld': [breadcrumb_ld([('Games', 'games/')])]}))
 
 # The expert roster is not a page of its own: a role is a property of a
 # member, so it shows as a badge on the members list and as a history at the

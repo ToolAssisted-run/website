@@ -27,6 +27,7 @@ from model import (
     systems,
 )
 from render import (
+    SITE_URL,
     card_views,
     esc,
     page,
@@ -118,7 +119,20 @@ reproduce and verify runs on the
 <a href="{FORUM}">the forum</a>, or come chat on
 <a href="https://discord.gg/VsKDT9XB6u">our Discord</a>.</p></div>
 </div></section>'''
-(OUT / 'index.html').write_text(page('Home', body))
+(OUT / 'index.html').write_text(page(
+    'toolAssisted.run · the open archive of tool-assisted speedruns', body, full_title=True,
+    seo={'path': '',
+         'description': ('An open community archive of tool-assisted speedruns, score attacks '
+                         'and superplays: every run preserved the moment it arrives, ranked by '
+                         'community verification, with encodes and movie files.'),
+         'ld': [{'@context': 'https://schema.org', '@type': 'WebSite',
+                 'name': 'toolAssisted.run', 'url': SITE_URL + '/',
+                 'potentialAction': {'@type': 'SearchAction',
+                                     'target': SITE_URL + '/browse/?q={search_term_string}',
+                                     'query-input': 'required name=search_term_string'}},
+                {'@context': 'https://schema.org', '@type': 'Organization',
+                 'name': 'toolAssisted.run', 'url': SITE_URL + '/',
+                 'logo': SITE_URL + '/assets/avatar-512-dark.png'}]}))
 
 # ---- 404 ----
 # Deliberately self-contained: a 404 is served for a path of any depth, so the
