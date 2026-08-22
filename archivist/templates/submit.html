@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>archivist · submit</title>
+  <style>
+    body { font-family: system-ui; max-width: 560px; margin: 40px auto; padding: 0 16px; line-height: 1.5; }
+    label { display: block; margin: 12px 0 3px; font-size: .85rem; color: #555; }
+    input, select, textarea { width: 100%; padding: 8px; border: 1.5px solid #bbb; border-radius: 7px; font: inherit; }
+    button { margin-top: 16px; padding: 10px 18px; background: #22C55E; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    h1 { font-size: 1.3rem; }
+    .note { font-size: .8rem; color: #777; }
+  </style>
+</head>
+<body>
+  <h1>toolAssisted.run · submit a run <small style="color:#D97706">(beta)</small></h1>
+  <p class="note">Movie file + metadata only, never ROMs. Text attachments (configs) allowed,
+  128&nbsp;KB each. Your run is archived immediately, as pending.</p>
+
+  <form method="post" action="api/submit" enctype="multipart/form-data">
+    <label>Submitter key</label>
+    <input name="key" type="password" required>
+
+    <label>Your username</label>
+    <input name="submitter" required>
+
+    <label>Game</label>
+    <select name="game">
+      {% for game in games %}
+      <option>{{ game }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Category (goal key)</label>
+    <input name="goal" placeholder="e.g. any" required>
+
+    <label>Authors (comma-separated)</label>
+    <input name="authors" required>
+
+    <label>Encode link (YouTube, required; verification and the run thumbnail derive from it)</label>
+    <input name="encode" type="url" required placeholder="https://youtu.be/…">
+
+    <label>Emulator / core</label>
+    <input name="emulator" placeholder="e.g. BizHawk 2.11">
+
+    <label>ROM name</label>
+    <input name="rom_name">
+    <label>ROM sha1 (optional)</label>
+    <input name="rom_sha1">
+
+    <label>Movie file</label>
+    <input name="movie" type="file" required>
+
+    <label>Voluntary content disclosures</label>
+    <label><input type="checkbox" name="content_warnings" value="mature-violence" style="width:auto"> Mature / violent content</label>
+    <label><input type="checkbox" name="content_warnings" value="sexual" style="width:auto"> Sexual content</label>
+    <label><input type="checkbox" name="content_warnings" value="photosensitivity" style="width:auto"> Photosensitivity (flashing lights)</label>
+    <label><input type="checkbox" name="content_warnings" value="strong-language" style="width:auto"> Strong language</label>
+
+    <label>Attachments (optional: text configs, or additional movie files)</label>
+    <input name="attachments" type="file" multiple>
+
+    <label>Notes</label>
+    <textarea name="notes" rows="8"></textarea>
+
+    <label><input type="checkbox" name="consent" value="yes" required style="width:auto">
+      I license this submission under CC BY 4.0, I have read and agree with the
+      <a href="https://github.com/ToolAssisted-run#1-community-principles" target="_blank">Community
+      Principles, Terms of Use, Code of Conduct and Privacy Policy</a>, and I confirm everything
+      here is complete and truthful, especially the authorship.</label>
+
+    <button>Submit to the archive</button>
+  </form>
+
+  <hr style="margin:32px 0;border:none;border-top:1.5px solid #ddd">
+
+  <h1>Reproduce a run</h1>
+  <p class="note">You loaded the movie file on your own setup and it synced to the end.
+  Ending screenshot required as proof. You cannot reproduce your own run.</p>
+  <form method="post" action="api/reproduce" enctype="multipart/form-data">
+    <label>Submitter key</label>
+    <input name="key" type="password" required>
+
+    <label>Your username</label>
+    <input name="user" required>
+
+    <label>Run id</label>
+    <input name="run" placeholder="e.g. M100001" required>
+
+    <label>Emulator / core used</label>
+    <input name="emulator" placeholder="e.g. BizHawk 2.11">
+
+    <label>Ending screenshot (png/jpg/webp)</label>
+    <input name="screenshot" type="file" accept=".png,.jpg,.jpeg,.webp" required>
+
+    <label>Notes for the next reproducer (optional)</label>
+    <textarea name="notes" rows="3"></textarea>
+
+    <button>Record reproduction</button>
+  </form>
+
+  <hr style="margin:32px 0;border:none;border-top:1.5px solid #ddd">
+
+  <h1>Verify a run</h1>
+  <p class="note">You watched the encode and confirm the run achieves its stated category goal.
+  You cannot verify your own run.</p>
+  <form method="post" action="api/verify">
+    <label>Submitter key</label>
+    <input name="key" type="password" required>
+
+    <label>Your username</label>
+    <input name="user" required>
+
+    <label>Run id</label>
+    <input name="run" placeholder="e.g. M100001" required>
+
+    <label>Notes (optional)</label>
+    <textarea name="notes" rows="3"></textarea>
+
+    <button>Record verification</button>
+  </form>
+</body>
+</html>
