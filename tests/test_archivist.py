@@ -1004,6 +1004,19 @@ def main():
                                              'emulator': 'BizHawk 2.12',
                                              'notes': 'Updated notes.'})
             ck('author edit ok', c == 200 and set(r['changed']) == {'notes', 'emulator'}, str(r))
+            # issue #38: the form sends every field; only real differences count,
+            # and a browser's CRLF in the textarea is not a difference
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'emulator': 'BizHawk 2.12',
+                                             'notes': 'Updated notes.\r\n'})
+            ck('resending identical values changes nothing',
+               c == 400 and 'nothing to change' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'emulator': 'BizHawk 2.12',
+                                             'notes': 'Updated notes.\r\n',
+                                             'completed': '2020-01-02'})
+            ck('only the field that differs is recorded as changed',
+               c == 200 and r['changed'] == ['completed'], str(r))
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
                                              'run': 'M900010', 'metric_score': '123'})
             ck('a metric the category does not state is refused',
