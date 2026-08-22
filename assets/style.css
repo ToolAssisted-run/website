@@ -276,9 +276,6 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .importedbox b{display:block;color:var(--imported);margin-bottom:4px}
 .disputebox{background:rgba(217,119,6,.07);border:2.5px solid rgba(217,119,6,.35);border-left:5px solid #D97706;border-radius:10px;padding:14px 16px;font-size:.88rem;color:var(--muted);margin-bottom:20px}
 .disputebox b{display:block;color:#D97706;margin-bottom:4px}
-.rn-h{font-size:.95rem;margin:16px 0 8px}
-.rolenote{padding:14px 16px}
-.rn-edits{margin-top:6px;font-size:.76rem;color:var(--faint)}
 .upheldchip{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.45);color:#DC2626;font-weight:700}
 .draftbox{background:rgba(217,119,6,.07);border:2.5px solid rgba(217,119,6,.35);border-left:5px solid #D97706;border-radius:10px;padding:10px 14px;font-size:.85rem;color:var(--muted);margin-bottom:18px}
 .notes{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);font-size:.92rem}

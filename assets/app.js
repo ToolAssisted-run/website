@@ -1101,15 +1101,9 @@
       if (!isAuthor && !D.imported) {
         if (!D.videoOnly) {
           if (D.reproduced.indexOf(u) < 0) arm('f-repro', '/api/reproduce');
-          else arm('f-note-repro', '/api/note', function(form){
-            form.querySelector('[name=notes]').value = D.roleNotes.reproducer || '';
-          });
         }
         if (D.hasEncode && D.verified.indexOf(u) < 0) arm('f-verify', '/api/verify');
         if (!D.videoOnly && (D.consoled || []).indexOf(u) < 0) arm('f-console', '/api/console-verify');
-        if (D.verified.indexOf(u) >= 0) arm('f-note-verify', '/api/note', function(form){
-          form.querySelector('[name=notes]').value = D.roleNotes.verifier || '';
-        });
         if (D.openCase) {
           if (D.openCase.verifiers.indexOf(u) >= 0 && D.openCase.voted.indexOf(u) < 0) {
             var vf = document.getElementById('f-vote');
@@ -1185,11 +1179,6 @@
           });
           arm('f-resolve', '/api/report/resolve');
         }
-      }
-      if ((D.noteExperts || []).indexOf(u) >= 0) {
-        arm('f-expertnote', '/api/note', function(form){
-          form.querySelector('[name=notes]').value = D.roleNotes.expert || '';
-        });
       }
       if (anything) zone.hidden = false;
     });

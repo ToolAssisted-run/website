@@ -1077,20 +1077,8 @@ def main():
             ck("supplementary files are the authors' own",
                c == 403 and 'authors' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'helper', 'run': 'M900010',
-                                             'role': 'reproducer', 'notes': 'Shared repro knowledge.'})
-            ck('reproducer notes update', c == 200 and r['editors'] == ['helper'], str(r))
-            c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'stranger', 'run': 'M900010',
-                                             'role': 'verifier', 'notes': 'x'})
-            ck('note without roster entry rejected', c == 400)
-            c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'groupexpert', 'run': 'M900010',
-                                             'role': 'expert', 'notes': 'Solid work.'})
-            ck('game-group expert note ok', c == 200, str(r))
-            c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'eien86', 'run': 'M900010',
-                                             'role': 'expert', 'notes': 'x'})
-            ck('site-wide expert rejected for notes', c == 403)
-            c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'stranger', 'run': 'M900010',
-                                             'role': 'expert', 'notes': 'x'})
-            ck('non-expert note rejected', c == 403)
+                                             'role': 'reproducer', 'notes': 'x'})
+            ck('the retired community-notes endpoint is gone', c == 404, str(r)[:80])
 
             # --- movie-format attachments allowed, binary text rejected ---
             c, r, _ = call(U + '/api/submit', sub,
