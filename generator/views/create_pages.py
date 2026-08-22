@@ -64,8 +64,9 @@ submit form; a category always belongs to a game.</p>
 (OUT / 'create-game').mkdir(exist_ok=True)
 (OUT / 'create-game' / 'index.html').write_text(
     page('Create a game', game_body, '../', '<a href="../games/">Games</a> / Create a game',
-         'Games'))
+         'Games', seo={'path': 'create-game/', 'noindex': True}))
 (OUT / 'create-category').mkdir(exist_ok=True)
 (OUT / 'create-category' / 'index.html').write_text(
     page('Create a category', cat_body, '../',
-         '<a href="../games/">Games</a> / Create a category', 'Games'))
+         '<a href="../games/">Games</a> / Create a category', 'Games',
+         seo={'path': 'create-category/', 'noindex': True}))

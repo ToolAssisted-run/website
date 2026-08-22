@@ -39,7 +39,10 @@ from model import (
 )
 from render import (
     CW_LABELS,
+    SITE_URL,
+    breadcrumb_ld,
     md_html,
+    primary_metric_text,
     NONE_TICK,
     author_chip,
     console_chip,
@@ -518,6 +521,33 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
     crumb = (f'<a href="../../browse/">Runs</a> / '
              f'<a href="../../games/{g["key"]}/">{esc(g["title"])}</a> / {r["id"]}')
     (OUT / 'runs' / r['id']).mkdir(parents=True, exist_ok=True)
+    who = ', '.join(a['user'] for a in r['authors'])
+    sysname = systems[g['system']]['name']
+    secs = run_seconds(r)
+    tu = thumb_url(r)
+    seo_title = (f'{g["title"]} ({g["system"].upper()}) TAS in {primary_metric_text(r)} '
+                 f'by {who} · {cl}')
+    state_word = ('Imported' if is_leg else 'Verified' if is_ranked(r) else 'Pending verification')
+    seo_desc = (f'{g["title"]} ({sysname}) tool-assisted speedrun, {cl}, '
+                f'{primary_metric_text(r)} by {who}. {state_word}. Watch the encode'
+                + ('' if r.get('videoOnly') else ' and download the movie file')
+                + ' on toolAssisted.run.')
+    ld = [breadcrumb_ld([('Games', 'games/'), (sysname, f'systems/{g["system"]}/'),
+                         (g['title'], f'games/{g["key"]}/'), (cl, f'runs/{r["id"]}/')])]
+    if enc:
+        video = {'@context': 'https://schema.org', '@type': 'VideoObject',
+                 'name': seo_title, 'description': seo_desc,
+                 'uploadDate': (r.get('submitted') or '')[:10],
+                 'url': f'{SITE_URL}/runs/{r["id"]}/',
+                 'embedUrl': providers.resolve(enc['url'])['embed']}
+        if tu:
+            video['thumbnailUrl'] = SITE_URL + tu
+        if secs:
+            video['duration'] = f'PT{int(secs // 3600)}H{int(secs % 3600 // 60)}M{int(secs % 60)}S'
+        ld.append(video)
     (OUT / 'runs' / r['id'] / 'index.html').write_text(
-        page(f'{g["title"]} · {cl}', body, '../../', crumb, 'Runs', wide=True))
+        page(seo_title, body, '../../', crumb, 'Runs', wide=True,
+             seo={'path': f'runs/{r["id"]}/', 'description': seo_desc,
+                  'image': (SITE_URL + tu) if tu else None, 'type': 'video.other' if enc else 'article',
+                  'ld': ld}))
 

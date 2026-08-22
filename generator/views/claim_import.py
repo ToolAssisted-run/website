@@ -97,7 +97,7 @@ claim a name</a></p>
 {dl_members()}
 {dl_heldnames()}'''
 (OUT / 'claim').mkdir(exist_ok=True)
-(OUT / 'claim' / 'index.html').write_text(page('Claim your identity', body, '../'))
+(OUT / 'claim' / 'index.html').write_text(page('Claim your identity', body, '../', seo={'path': 'claim/', 'noindex': True}))
 
 # ---- self-service import page ----
 body = '''<header class="ghead"><div><h1>Import my runs</h1>
@@ -139,5 +139,5 @@ identity</a> first.</p>
 <pre class="implog" id="imp-log"></pre>
 </div>'''
 (OUT / 'import').mkdir(exist_ok=True)
-(OUT / 'import' / 'index.html').write_text(page('Import my runs', body, '../'))
+(OUT / 'import' / 'index.html').write_text(page('Import my runs', body, '../', seo={'path': 'import/', 'noindex': True}))
 

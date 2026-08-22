@@ -181,7 +181,11 @@ information (time, frames, rerecords) directly from the file, marked below.</p>
 <th class="num">Parsed</th></tr></thead>
 <tbody>{gt_rows}</tbody></table></section>'''
 (OUT / 'tools').mkdir(exist_ok=True)
-(OUT / 'tools' / 'index.html').write_text(page('Tools', body, '../', '', 'Tools'))
+(OUT / 'tools' / 'index.html').write_text(page(
+    'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',
+    seo={'path': 'tools/',
+         'description': ('Emulators with rerecording and movie formats, plus game-specific '
+                         'tool-assisted speedrun tools, each linked to its home.')}))
 
 # ---- formatting guide ----
 FMT_EXAMPLES = [
@@ -216,5 +220,7 @@ Plain paragraphs need no markup at all; blank lines separate them.</p></div></he
 <li>YouTube embeds must sit alone on their own line to become a player; inline they render as a link.</li>
 </ul></div></section>'''
 (OUT / 'formatting').mkdir(exist_ok=True)
-(OUT / 'formatting' / 'index.html').write_text(page('Formatting guide', body, '../'))
+(OUT / 'formatting' / 'index.html').write_text(page(
+    'Formatting guide', body, '../',
+    seo={'path': 'formatting/', 'description': 'The markup accepted in run notes on toolAssisted.run.'}))
 

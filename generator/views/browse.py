@@ -111,5 +111,9 @@ body = f'''<header class="ghead"><div><h1>Runs</h1>
 <tbody id="brows"></tbody></table>
 {browse_js}'''
 (OUT / 'browse').mkdir(exist_ok=True)
-(OUT / 'browse' / 'index.html').write_text(page('Runs', body, '../', '', 'Runs'))
+(OUT / 'browse' / 'index.html').write_text(page(
+    'All TAS runs', body, '../', '', 'Runs',
+    seo={'path': 'browse/',
+         'description': ('Every tool-assisted speedrun archived on toolAssisted.run, searchable '
+                         'by game, category and author, with verification state and stars.')}))
 

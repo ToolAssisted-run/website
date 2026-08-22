@@ -521,13 +521,19 @@ def thumb_url(r):
         return f'/thumbs/{shipped}'
     return f'{ARCHIVE_RAW}/games/{r["_game"]["key"]}/runs/{r["id"]}/{t}'
 
+def thumb_alt(r):
+    """What the thumbnail is, for image search and screen readers."""
+    g = r['_game']
+    who = ', '.join(a['user'] for a in r['authors'])
+    return f'{g["title"]} ({g["system"].upper()}) TAS by {who}'
+
 def thumb_html(r, dur=''):
     """Card thumbnail: the frame derived from the encode, with the system code
     beneath as the fallback while it loads (or for runs still missing one).
     Sexual-content flags blur it behind the 18+ gate."""
     tu = thumb_url(r)
     nsfw = 'sexual' in r.get('contentWarnings', [])
-    img = (f'<img class="{"nsfwblur" if nsfw else ""}" src="{esc(tu)}" alt="" loading="lazy">'
+    img = (f'<img class="{"nsfwblur" if nsfw else ""}" src="{esc(tu)}" alt="{esc(thumb_alt(r))}" loading="lazy">'
            if tu else '')
     badge = '<span class="nsfw18">18+</span>' if nsfw else ''
     return (f'<span class="thumb"><span class="sys">{esc(r["_game"]["system"].upper())}</span>'
@@ -634,7 +640,53 @@ def dl_games():
                    if k not in grouped and not g.get('rejected') and not g.get('removed'))
     return f'<datalist id="dl-games">{opts}</datalist>'
 
-def page(title, body, rel='', crumb='', active='', head_extra='', wide=False):
+SITE_URL = 'https://toolassisted.run'
+DEFAULT_IMAGE = SITE_URL + '/assets/avatar-512-dark.png'
+
+def seo_head(seo):
+    """The search-engine and share-card head block. `seo` carries:
+    path (site-relative, ends with /), description, image (absolute URL),
+    ld (a list of JSON-LD objects), noindex (bool), type (og:type).
+    Every public page gets a canonical, a description, Open Graph and a
+    Twitter card; content pages add structured data on top."""
+    if not seo:
+        return ''
+    url = SITE_URL + '/' + seo.get('path', '').lstrip('/')
+    desc = esc(seo.get('description', ''))
+    img = esc(seo.get('image') or DEFAULT_IMAGE)
+    out = []
+    if seo.get('noindex'):
+        out.append('<meta name="robots" content="noindex">')
+    out.append(f'<link rel="canonical" href="{esc(url)}">')
+    if desc:
+        out.append(f'<meta name="description" content="{desc}">')
+    out.append(f'<meta property="og:site_name" content="toolAssisted.run">')
+    out.append(f'<meta property="og:type" content="{esc(seo.get("type", "website"))}">')
+    out.append(f'<meta property="og:url" content="{esc(url)}">')
+    out.append(f'<meta property="og:title" content="{esc(seo.get("title", ""))}">')
+    if desc:
+        out.append(f'<meta property="og:description" content="{desc}">')
+    out.append(f'<meta property="og:image" content="{img}">')
+    out.append('<meta name="twitter:card" content="summary_large_image">')
+    out.append(f'<meta name="twitter:title" content="{esc(seo.get("title", ""))}">')
+    if desc:
+        out.append(f'<meta name="twitter:description" content="{desc}">')
+    out.append(f'<meta name="twitter:image" content="{img}">')
+    for obj in seo.get('ld', []):
+        out.append('<script type="application/ld+json">'
+                   + json.dumps(obj, ensure_ascii=False).replace('<', '\\u003c')
+                   + '</script>')
+    return '\n'.join(out)
+
+def breadcrumb_ld(items):
+    """items: [(name, site-relative path), ...] from the home down."""
+    return {'@context': 'https://schema.org', '@type': 'BreadcrumbList',
+            'itemListElement': [
+                {'@type': 'ListItem', 'position': i + 1, 'name': n,
+                 'item': SITE_URL + '/' + p.lstrip('/')} for i, (n, p) in enumerate(items)]}
+
+def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
+         seo=None, full_title=False):
     links = ''.join(
         '<span class="navsep"></span>' if href == '|' else
         f'<a class="nl{" on" if label == active else ""}" '
@@ -648,12 +700,13 @@ def page(title, body, rel='', crumb='', active='', head_extra='', wide=False):
     return f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title)} · toolAssisted.run</title>
+<title>{esc(title) if full_title else esc(title) + ' · toolAssisted.run'}</title>
 <script>try{{var t=localStorage.getItem('tar-theme');if(t)document.documentElement.dataset.theme=t}}catch(e){{}}</script>
 <link rel="stylesheet" href="{rel}assets/style.css?v={SITE_COMMIT or 'dev'}">
 <link rel="icon" type="image/png" sizes="32x32" href="{rel}assets/icon-32.png">
 <link rel="icon" type="image/png" sizes="512x512" href="{rel}assets/icon-512.png">
 <link rel="apple-touch-icon" href="{rel}assets/avatar-512-dark.png">
+{seo_head(dict(seo, title=seo.get('title') or (title if full_title else title + ' · toolAssisted.run'))) if seo else ''}
 {head_extra}</head><body>
 {betabar}<nav class="nav"><a class="brand" href="{rel if rel else './'}" aria-label="toolAssisted.run home"><img class="brandlogo logo-light" src="{rel}assets/logo-light.svg" alt="toolAssisted.run"><img class="brandlogo logo-dark" src="{rel}assets/logo-dark.svg" alt="toolAssisted.run"></a>
 <button class="navtoggle" id="navtoggle" aria-label="Open menu" aria-expanded="false"

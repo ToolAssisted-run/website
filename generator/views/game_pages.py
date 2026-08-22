@@ -29,7 +29,10 @@ from model import (
 from render import (
     FULL_TICK,
     IMPORTED_TICK,
+    SITE_URL,
+    breadcrumb_ld,
     md_html,
+    thumb_url,
     run_date_cell,
     METRICS_ED,
     NONE_TICK,
@@ -264,7 +267,20 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {FULL_TICK} verified &nbsp; {NONE_TICK} pending</p>
 {gameacts}'''
     crumb = f'<a href="{rel}games/">Games</a> / {esc(g["title"])}'
-    (gd / 'index.html').write_text(page(g['title'], body, rel, crumb, 'Games'))
+    sysname = systems[g['system']]['name']
+    ncat = sum(len(d['options']) for d in g['categories']['dimensions'])
+    best = max((r for r in g['runs'] if thumb_url(r)),
+               key=lambda r: (nlikes(r), r.get('submitted') or ''), default=None)
+    (gd / 'index.html').write_text(page(
+        f'{g["title"]} ({g["system"].upper()}) TAS runs and leaderboard', body, rel, crumb, 'Games',
+        seo={'path': f'games/{g["key"]}/',
+             'description': (f'All tool-assisted speedruns of {g["title"]} ({sysname}): '
+                             f'{len(g["runs"])} run{"s" if len(g["runs"]) != 1 else ""} across '
+                             f'{ncat} categor{"ies" if ncat != 1 else "y"}, with leaderboards, '
+                             f'encodes and movie files.'),
+             'image': (SITE_URL + thumb_url(best)) if best else None,
+             'ld': [breadcrumb_ld([('Games', 'games/'), (sysname, f'systems/{g["system"]}/'),
+                                   (g['title'], f'games/{g["key"]}/')])]}))
 
     # ---- the game editor: everything a covering expert may change, in one
     # place with a real UI (the page is public markup; every form is revealed
@@ -331,5 +347,5 @@ run to. A category with runs in it cannot be deleted: it is their home.</p>
     (gd / 'edit' / 'index.html').write_text(page(
         f"Edit {g['title']}", ebody, erel,
         f'<a href="{erel}games/">Games</a> / <a href="../">{esc(g["title"])}</a> / Edit',
-        'Games'))
+        'Games', seo={'path': f'games/{g["key"]}/edit/', 'noindex': True}))
 

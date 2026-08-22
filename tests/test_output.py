@@ -710,6 +710,25 @@ def main():
            and 'f-groupremove' not in grh and 'f-groupdelete' in grh, grh[:200])
         ck('the games index offers a new group',
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
+
+        # ---------- search engines: every public page is describable ----------
+        pub = [p for p, h in all_html.items() if 'content="noindex"' not in h]
+        ck('every public page carries a canonical and a description',
+           all('rel="canonical"' in all_html[p] and 'name="description"' in all_html[p]
+               for p in pub), str([p.parent.name for p in pub
+                                   if 'rel="canonical"' not in all_html[p]][:3]))
+        ck('a run page carries VideoObject and breadcrumb structured data',
+           '"@type": "VideoObject"' in all_html[out / 'runs' / 'M900101' / 'index.html']
+           and '"@type": "BreadcrumbList"' in all_html[out / 'runs' / 'M900101' / 'index.html'])
+        ck('run titles say TAS, the system, the time and the authors',
+           re.search(r'<title>[^<]*\(NES\) TAS in [^<]* by ', all_html[out / 'runs' / 'M900101' / 'index.html']) is not None)
+        smap = (out / 'sitemap.xml').read_text()
+        ck('the sitemap lists exactly the indexable pages',
+           smap.count('<url>') == len(pub) and 'submit/' not in smap and '/edit/' not in smap,
+           f'{smap.count("<url>")} vs {len(pub)}')
+        ck('robots.txt points at the sitemap and fences the tooling',
+           'Sitemap: https://toolassisted.run/sitemap.xml' in (out / 'robots.txt').read_text()
+           and 'Disallow: /submit/' in (out / 'robots.txt').read_text())
         gidx = all_html[out / 'games' / 'index.html']
         ck('the list view sorts by any column',
            gidx.count('data-key="') == 5 and 'data-runs=' in gidx

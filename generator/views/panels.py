@@ -171,7 +171,7 @@ already cover, never wider than your own.</p></section>
 <script type="application/json" id="paneldata">{json.dumps(panel_data).replace('<', chr(92) + 'u003c')}</script>'''
 (OUT / 'expert').mkdir(parents=True, exist_ok=True)
 (OUT / 'expert' / 'index.html').write_text(
-    page('Expert panel', body, '../', '<a href="../">Home</a> / Expert panel'))
+    page('Expert panel', body, '../', '<a href="../">Home</a> / Expert panel', seo={'path': 'expert/', 'noindex': True}))
 
 # ---- founder panel ----
 founder_now = sorted({ev['user'].lower() for (u, role, sc), ev in ROLES_NOW.items()
@@ -213,7 +213,7 @@ deciding by poll, exists alongside this and keeps its thresholds.</p></div></hea
 <script type="application/json" id="fpaneldata">{json.dumps({'founders': founder_now}).replace('<', chr(92) + 'u003c')}</script>'''
 (OUT / 'founder').mkdir(parents=True, exist_ok=True)
 (OUT / 'founder' / 'index.html').write_text(
-    page('Founder', body, '../', '<a href="../">Home</a> / Founder'))
+    page('Founder', body, '../', '<a href="../">Home</a> / Founder', seo={'path': 'founder/', 'noindex': True}))
 
 # ---- steering committee panel ----
 # Name claims are answered here rather than on the claim page, because the
@@ -306,5 +306,5 @@ group grants nothing.</p>
                            if e['scope'] == 'site'})}).replace('<', chr(92) + 'u003c')}</script>'''
 (OUT / 'committee').mkdir(parents=True, exist_ok=True)
 (OUT / 'committee' / 'index.html').write_text(
-    page('Steering Committee', body, '../', '<a href="../">Home</a> / Steering Committee'))
+    page('Steering Committee', body, '../', '<a href="../">Home</a> / Steering Committee', seo={'path': 'committee/', 'noindex': True}))
 

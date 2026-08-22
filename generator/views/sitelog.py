@@ -334,7 +334,10 @@ is appealable, and is logged here, in the open, permanently.</p>
 # there is one text to read and one place to amend it; only the moderation
 # log is generated here, because it is derived from archive data.
 (OUT / 'policy' / 'site-log').mkdir(parents=True, exist_ok=True)
-(OUT / 'policy' / 'site-log' / 'index.html').write_text(page('Site log', modlog, '../../'))
+(OUT / 'policy' / 'site-log' / 'index.html').write_text(page(
+    'Site log', modlog, '../../',
+    seo={'path': 'policy/site-log/',
+         'description': 'Every act of authority on toolAssisted.run, in the open: appointments, edits, deletions, decisions.'}))
 # The log used to live at /policy/moderation-log/ and that address is in the
 # footer of every page ever served, in forum posts and in the archivist's own
 # replies. Pages has no rewrites, so the old path keeps a page of its own that
@@ -347,6 +350,6 @@ is appealable, and is logged here, in the open, permanently.</p>
     '<a href="../site-log/">site log</a>, which carries every act of authority '
     'here rather than only that one. Taking you there.</p></div></header>',
     '../../', '',
-    head_extra='<link rel="canonical" href="../site-log/">'
-               '<meta http-equiv="refresh" content="1; url=../site-log/">'))
+    head_extra='<meta http-equiv="refresh" content="1; url=../site-log/">',
+    seo={'path': 'policy/site-log/', 'noindex': True}))
 

@@ -650,6 +650,17 @@ archivist, module responsibilities). What matters designwise:
   been updated · Refresh") offers the reload. Never automatic: the reload
   is the reader's. (The pill earns its keep again whenever the Pages
   standby, with its `max-age=600`, is in front.)
+- **Search engines**: every public page carries a canonical URL, a meta
+  description, Open Graph and Twitter cards (the run's thumbnail as image),
+  and JSON-LD: BreadcrumbList on content pages, VideoObject on run pages
+  (encode embed, thumbnail, duration), Person on profiles, WebSite with a
+  SearchAction plus Organization on the home page. Titles name the search
+  vocabulary: "Prince of Persia (DOS) TAS in 18:50 by GMP · Any%"; games,
+  groups, systems and authors follow the same pattern. Thumbnails carry
+  "<game> (<SYS>) TAS by <authors>" alt text. The build writes `sitemap.xml`
+  (every indexable page) and `robots.txt`; tooling pages (submit, claim,
+  import, panels, create pages, game editors, mocks) are noindexed and
+  fenced. Search Console and Bing Webmaster verification are operator steps.
 - **Confirmations mean "and you can see it"**: every successful write's
   response carries the archive revision it produced (`serial`, injected by
   the archivist for every non-dry POST), and the buildstamp carries the

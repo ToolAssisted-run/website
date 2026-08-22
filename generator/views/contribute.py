@@ -178,5 +178,9 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 {open_cases_box}
 </aside></div>'''
 (OUT / 'contribute').mkdir(exist_ok=True)
-(OUT / 'contribute' / 'index.html').write_text(page('Contribute', body, '../', '', 'Contribute'))
+(OUT / 'contribute' / 'index.html').write_text(page(
+    'Contribute: verify and reproduce TAS runs', body, '../', '', 'Contribute',
+    seo={'path': 'contribute/',
+         'description': ('The public worklist: verify and reproduce tool-assisted speedruns, '
+                         'earn contributor points, no assignment needed.')}))
 

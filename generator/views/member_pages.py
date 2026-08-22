@@ -33,6 +33,7 @@ from model import (
     withdrawn_runs,
 )
 from render import (
+    SITE_URL,
     moment,
     author_chip,
     badge_chip,
@@ -174,8 +175,16 @@ are not a status somebody has always had: this is where that is visible.</p>
 <tbody>{''.join(rows)}</tbody></table></details></section>{contrib_html}{roles_html}'''
     (OUT / 'authors' / profile_slug(uname)).mkdir(parents=True, exist_ok=True)
     (OUT / 'authors' / profile_slug(uname) / 'index.html').write_text(
-        page(a['username'], body, '../../', f'<a href="../">Members</a> / {esc(a["username"])}',
-             'Members'))
+        page(f'{a["username"]} · TAS runs and contributions', body, '../../',
+             f'<a href="../">Members</a> / {esc(a["username"])}', 'Members',
+             seo={'path': f'authors/{profile_slug(uname)}/',
+                  'description': (f'{a["username"]} on toolAssisted.run: '
+                                  f'{len(mine)} tool-assisted speedrun{"s" if len(mine) != 1 else ""}, '
+                                  f'contributions and role history.'),
+                  'type': 'profile',
+                  'ld': [{'@context': 'https://schema.org', '@type': 'Person',
+                          'name': a['username'],
+                          'url': f'{SITE_URL}/authors/{profile_slug(uname)}/'}]}))
 
 # withdrawn runs still get a page: an honest tombstone, not a 404
 for r in withdrawn_runs:
@@ -200,5 +209,6 @@ simply no longer listed or ranked.</p>'''}</div>
     d = OUT / 'runs' / r['id']
     d.mkdir(parents=True, exist_ok=True)
     (d / 'index.html').write_text(page(f"{g['title']} (withdrawn)", body, '../../',
-                                       f'<a href="../../browse/">Runs</a> / {esc(r["id"])}'))
+                                       f'<a href="../../browse/">Runs</a> / {esc(r["id"])}',
+                                       seo={'path': f'runs/{r["id"]}/', 'noindex': True}))
 
