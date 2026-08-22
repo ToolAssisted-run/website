@@ -145,12 +145,12 @@ work · withdraw any run in scope. Experts never
 judge merit: reproduction and verification stay open to all; experts police
 the trust layer's quality and curate taxonomy.
 
-**Badges are about the movies** — the site shows exactly two: **Expert**
-(unqualified; which scopes is on the member's page) and **Contributor** with
-its milestone (Contributor, then 1k/5k/10k/25k — the leaderboard thresholds
-themselves, one green chip filling up). Governance roles are recorded and
-shown in each member's role log, never as chips beside a name. There is no
-Founder badge.
+**Badges**: the site shows four chips beside a name: **Steering Committee**
+(green), **Expert** (unqualified; which scopes is on the member's page),
+**Editor** (blue), and **Contributor** with its milestone (Contributor, then
+1k/5k/10k/25k: the leaderboard thresholds themselves, one green chip filling
+up). Founder and Moderator are recorded and shown in each member's role log,
+never as chips.
 
 **Standing interpretation, the Founder panel**: the constitution names no
 seat/unseat mechanism, and the panel IS that mechanism: the Founder seats and

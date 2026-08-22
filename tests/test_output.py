@@ -439,10 +439,11 @@ def main():
         ck('the expert badge does not try to name a scope',
            'the whole site' not in rows_html and 'Expert ·' not in rows_html,
            rows_html[:200])
-        # governance is recorded, in the role log and on the forum; a badge
-        # beside a name here says what somebody does with runs
-        ck('no governance role is a badge',
-           'role-committee' not in rows_html and 'role-moderator' not in rows_html,
+        # the Committee wears its chip; Founder and Moderator stay in the role log
+        ck('the Steering Committee is a badge',
+           'rolechip role-committee">Steering Committee' in rows_html, rows_html[:200])
+        ck('founder and moderator are not badges',
+           'role-founder' not in rows_html and 'role-moderator' not in rows_html,
            rows_html[:200])
         # earned, not granted: one act is enough
         ck('a member who has earned a point is badged a contributor',

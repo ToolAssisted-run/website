@@ -61,11 +61,12 @@ from model import (
 def role_badges(name):
     """What a member is, as chips, in as few words as the truth allows.
 
-    Two survive, and neither is a governance role. Expert says 'Expert' and
-    stops: it used to name the scope, which reads well for one game and falls
-    apart for the real case, since scopes need not be related, so the chip
-    either lies by naming one of them or turns into a list. Contributor is
-    earned rather than granted, by a single act on a run.
+    Steering Committee, Expert, Editor, and the earned Contributor tier.
+    Expert says 'Expert' and stops: it used to name the scope, which reads
+    well for one game and falls apart for the real case, since scopes need
+    not be related, so the chip either lies by naming one of them or turns
+    into a list. Contributor is earned rather than granted, by a single act
+    on a run. No Founder or Moderator chip.
     """
     # one chip per role, not per scope: three expert scopes is still one Expert
     held = {role for role, scope in roles_of(name)}

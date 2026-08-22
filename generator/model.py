@@ -123,7 +123,8 @@ def scope_words(scope):
         return g['title'] if g else scope
     return systems.get(scope, {}).get('name', scope)
 
-BADGED_ROLES = ('expert', 'editor')
+# widest first: the Committee chip leads, then what somebody does with runs
+BADGED_ROLES = ('committee', 'expert', 'editor')
 
 def roles_of(name):
     """Every role this member holds today, widest first."""
