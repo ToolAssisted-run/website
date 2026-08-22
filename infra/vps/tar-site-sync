@@ -9,5 +9,8 @@ git fetch -q origin
 git reset -q --hard origin/main
 git clean -qfd
 cp archivist/*.py /opt/archivist/
+# the archivist's own page templates ride along with its code
+rm -rf /opt/archivist/templates
+cp -r archivist/templates /opt/archivist/templates
 systemctl restart archivist
 echo "synced to $(git rev-parse --short HEAD): $(git log -1 --format=%s)"
