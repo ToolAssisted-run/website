@@ -8,6 +8,7 @@
 <div class="statstrip">
 <div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
 <div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>
+{% if visits_known %}<div class="stat"><b>{{ EYE_ICON }}{{ '{:,}'.format(st.views) }}</b><span>views</span></div>{% endif %}
 <div class="stat"><b>{{ st.contrib }}</b><span>contributor score</span></div>
 </div>
 {% if my_news %}

@@ -443,6 +443,22 @@ def main():
         ck('the most viewed shelf appears only where visit counts live',
            'Most viewed' in home6c and 'Most viewed' not in home6
            and 'M900342' in home6c.split('Most viewed')[1], home6c[:80])
+        # an author's views: the sum over every run they authored, shown on
+        # the members index and the profile only where counts live
+        members6c = (out2 / 'authors' / 'index.html').read_text()
+        members6 = (out / 'authors' / 'index.html').read_text()
+        ck('members index carries a Views column only with visit counts',
+           'Views</th>' in members6c and 'Views</th>' not in members6)
+        ada_row = [ln for ln in members6c.split('<tr') if '<b>Ada</b>' in ln][0]
+        ck('the member row sums the views of their runs, right of author score',
+           '<td class="num">7</td>' in ada_row
+           and ada_row.index('starglyph') < ada_row.index('<td class="num">7</td>'),
+           ada_row[:300])
+        prof6c = (out2 / 'authors' / 'ada' / 'index.html').read_text()
+        ck('the profile shows the views stat beside author score',
+           '<span>views</span>' in prof6c and '7</b><span>views</span>' in prof6c
+           and prof6c.index('author score') < prof6c.index('<span>views</span>'),
+           prof6c[prof6c.find('statstrip'):prof6c.find('statstrip') + 400])
 
         # ---------------- per-category metrics ranking ----------------
         # A category ranks by its own metric hierarchy: score (higher wins),

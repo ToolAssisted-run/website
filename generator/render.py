@@ -192,6 +192,10 @@ def primary_metric_text(r):
     n = f'{v:,.3f}'.rstrip('0').rstrip('.')
     return f'{n} {m["unit"]}' if m.get('unit') else n
 
+EYE_ICON = ('<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true">'
+            '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>'
+            '<circle cx="12" cy="12" r="2.6"/></svg>')
+
 def card_views(n):
     """The little eye a card carries, zero included. Visit counts are host
     state, absent on CI and the standby; only there does the eye vanish,
@@ -596,7 +600,7 @@ _HTML_HELPERS = (
 _TEXT_HELPERS = (
     'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
     'thumb_alt shot_url breadcrumb_ld').split()
-_HTML_CONSTANTS = 'METRICS_ED IMPORTED_TICK FULL_TICK NONE_TICK'.split()
+_HTML_CONSTANTS = 'METRICS_ED IMPORTED_TICK FULL_TICK NONE_TICK EYE_ICON'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
                    'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS BETA ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
                    'FORUM SITE_COMMIT').split()
