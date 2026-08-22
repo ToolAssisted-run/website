@@ -424,9 +424,6 @@ def main():
             ck('a view-as key on a non-Committee account changes nothing',
                stl['state'].get('f-invalidate-wrap', {}).get('hidden') is False,
                str(stl['state'].get('f-invalidate-wrap')))
-            ck('the expert notes stay with the game-scoped experts',
-               st.get('f-expertnote-wrap', {}).get('hidden') is True,
-               'site scope should not edit the expert notes')
 
         # a blocked archivist: an empty nav is indistinguishable from a broken
         # page, and that is exactly how this was reported

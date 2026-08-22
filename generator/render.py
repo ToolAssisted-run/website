@@ -100,12 +100,6 @@ def expert_line(game_key, rel):
     return ('<p class="authline">Experts: '
             + ' · '.join(member_chip(u, rel) for u in who) + '</p>')
 
-def note_experts(game_key):
-    """Expert-notes eligibility is deliberately narrower: the game's or the
-    game group's experts only, never site-wide scope."""
-    reach = scopes_over(game_key) - {'site'}
-    return sorted({e['user'].lower() for e in experts_reg if e['scope'] in reach})
-
 def esc(s): return html.escape(str(s), quote=True)
 
 

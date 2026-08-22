@@ -254,11 +254,6 @@ roster, spent forever — invalidation does not refund the slot)
 Author self-acts are refused with names resolved through renames (see §6).
 Imported runs refuse all acts: they are irrevocably verified.
 
-### Community notes and roles on a run
-
-Each run page carries reproducer/verifier/expert **role notes** (shared text
-per role, editable only by holders of that role on that run; editors listed).
-
 ### Disputes (cases)
 
 A dispute opens a case, never auto-disqualifies. The **verifier set is

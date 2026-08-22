@@ -46,7 +46,6 @@ from render import (
     fmt_metric,
     inline,
     member_chip,
-    note_experts,
     page,
     run_clock,
     shot_url,
@@ -268,13 +267,10 @@ Log in (top right) to reply from here.</p></section>'''
         'emulator': r.get('contract', {}).get('emulator') or '',
         'completed': r.get('completed') or '',
         'notesUrl': f'{ARCHIVE_RAW}/games/{g["key"]}/runs/{r["id"]}/notes.md',
-        'roleNotes': {k: (r.get('roleNotes', {}).get(k) or {}).get('text', '')
-                      for k in ('reproducer', 'verifier', 'expert')},
         # two different permissions, and they were both called 'experts': the
         # second overwrote the first, so a site-wide expert saw no act forms at
         # all. Acts use the covering scope; the expert notes are deliberately
         # narrower (the game's or its group's experts, never site-wide).
-        'noteExperts': note_experts(g['key']),
         'videoOnly': bool(r.get('videoOnly')),
         'reproducedNames': [a['user'] for a in r.get('reproductions', [])
                             if not a.get('invalidated')],
@@ -285,24 +281,6 @@ Log in (top right) to reply from here.</p></section>'''
         'openReports': [{'id': x['id'], 'kind': x['kind'], 'by': x['by']}
                         for x in r.get('reports', []) if x['status'] == 'open'],
     }
-    def role_panel(key, title, who):
-        rn = (r.get('roleNotes') or {}).get(key) or {}
-        text = rn.get('text', '')
-        editors = ', '.join(e['user'] for e in rn.get('editors', []))
-        body = (f'<div class="notes rolenote">{inline(text)}</div>' if text else
-                f'<p class="emptynote">Empty: no {who} has written here yet.</p>')
-        attribution = (f'<p class="actmeta rn-edits">Edited by {esc(editors)}</p>'
-                       if editors else '')
-        return f'<h3 class="rn-h">{title}</h3>{body}{attribution}'
-    # a video-only run has nothing to reproduce, so the reproducer panel
-    # (and its edit form) never exists on it
-    role_notes_html = ('<h2>Community notes</h2>'
-                       + ('' if is_leg or r.get('videoOnly') else
-                          role_panel('reproducer', 'Reproducer notes', 'reproducer'))
-                       + ('' if is_leg else
-                          role_panel('verifier', 'Verifier notes', 'verifier'))
-                       + role_panel('expert', 'Expert notes', 'expert'))
-
     withdraw_form = '''
 <div id="f-withdraw-wrap" hidden><details class="actform"><summary>Withdraw</summary>
 <form id="f-withdraw">
@@ -358,22 +336,7 @@ Log in (top right) to reply from here.</p></section>'''
   <textarea name="reason" rows="3" required></textarea>
   <button class="btn warn">Dispute</button>
 </form></details></div>
-<div id="f-note-repro-wrap" hidden><details class="actform"><summary>Edit the reproducer notes</summary>
-<form id="f-note-repro">
-  <p class="rules">A shared box for everyone who reproduced this run: the how-to knowledge
-  base for the next reproducer. Your name joins the editor list.</p>
-  <input type="hidden" name="role" value="reproducer">
-  <textarea name="notes" rows="4"></textarea>
-  <button class="btn">Save</button>
-</form></details></div>
-<div id="f-note-verify-wrap" hidden><details class="actform"><summary>Edit the verifier notes</summary>
-<form id="f-note-verify">
-  <p class="rules">A shared box for everyone who verified this run. Your name joins the
-  editor list.</p>
-  <input type="hidden" name="role" value="verifier">
-  <textarea name="notes" rows="3"></textarea>
-  <button class="btn">Save</button>
-</form>'''
+'''
     act_html = f'''
 <script type="application/json" id="actdata">{json.dumps(act_data).replace('<', chr(92) + 'u003c')}</script>
 <div id="actzone" class="actzone" hidden>
@@ -467,14 +430,6 @@ to this run.</p>
   <textarea name="resolution" rows="3" required></textarea>
   <button class="btn">Close</button>
 </form></details></div>
-<div id="f-expertnote-wrap" hidden><details class="actform"><summary>Edit the expert notes</summary>
-<form id="f-expertnote">
-  <p class="rules">The experts' shared word on this run, editable only by the game's or
-  game group's experts. Your name joins the editor list.</p>
-  <input type="hidden" name="role" value="expert">
-  <textarea name="notes" rows="3"></textarea>
-  <button class="btn">Save</button>
-</form></details></div>
 <p id="expert-msg" class="actmsg" hidden></p></div>'''
 
     dispute_banner = ''
@@ -509,7 +464,6 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <h2>Author's notes</h2>
   <div class="notes">{wiki_html(re.sub(r'^>.*$', '', r['_notes'], flags=re.M))}</div>
   {roster_html}
-  {role_notes_html}
   {act_html}
   {discussion_html}
 </div>
