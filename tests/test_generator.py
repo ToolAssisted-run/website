@@ -137,6 +137,8 @@ def main():
            '<dt>Completed</dt><dd>2021-10-26</dd>' in ren)
         ck('the board leads with the completion date when one is stated',
            'title="completion date">2021-10-26' in rd('games/nes/pinball/index.html'))
+        ck('so does the profile listing (#39)',
+           'title="completion date">2021-10-26' in rd('authors/newstar/index.html'))
         # 1317419 frames at 1000/s is 22 minutes, not 6 hours
         ck('a movie with its own frame rate runs on its own clock',
            '21:57.419' in rd('runs/M900005/index.html'))

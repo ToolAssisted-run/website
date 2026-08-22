@@ -34,6 +34,7 @@ from model import (
 )
 from render import (
     SITE_URL,
+    run_date_cell,
     moment,
     author_chip,
     badge_chip,
@@ -66,7 +67,7 @@ for uname, a in authors.items():
 <td>{esc(cat_label(r))}</td>
 <td class="num"><a href="../../runs/{r['id']}/">{primary_metric_html(r)}</a></td>
 <td class="num"><span class="starglyph">★</span>{nlikes(r)}</td>
-<td>{esc((r.get('submitted') or '')[:10])}</td>
+{run_date_cell(r)}
 <td class="ctr">{tick(rs_)}</td><td class="ctr">{tick(vs_)}</td><td class="ctr">{console_tick(r)}</td></tr>''')
     contrib = points.get(uname)
     cpts = contrib['points'] if contrib else 0
