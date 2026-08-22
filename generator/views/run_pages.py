@@ -39,6 +39,7 @@ from model import (
 )
 from render import (
     CW_LABELS,
+    md_html,
     NONE_TICK,
     author_chip,
     console_chip,
@@ -123,7 +124,9 @@ for r in runs:
                     f'<img src="{esc(shot_url(r, act["screenshot"]))}" '
                     f'alt="ending screenshot by {esc(act["user"])}" loading="lazy"></a>') if act.get('screenshot') else ''
             meta = ' · '.join(x for x in [esc(act.get('date') or ''), esc(act.get('emulator') or '')] if x)
-            note = f'<p class="actnote">{inline(act["notes"])}</p>' if act.get('notes') else ''
+            # a reproducer's notes are a how-to for the next reproducer:
+            # markdown, so steps and settings can be lists and code
+            note = f'<div class="actnote rulesmd">{md_html(act["notes"])}</div>' if act.get('notes') else ''
             invnote = (f'<p class="invnote">Invalidated by expert {esc(inv["by"])} on {esc(inv["date"])}: '
                        f'{esc(inv["reason"])}</p>') if inv else ''
             rep_items.append(f'<div class="act{" invalid" if inv else ""}"><div class="acthead">'
