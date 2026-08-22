@@ -28,6 +28,15 @@ GIT_SSH = os.environ.get('GIT_SSH_COMMAND', 'ssh -i /opt/archivist/deploy_key -o
 
 DISCOURSE_URL = os.environ.get('DISCOURSE_URL', 'https://forum.toolassisted.run')
 
+# Every outgoing request names the archivist. The forum sits behind Cloudflare
+# since 2026-08-22, whose bot protection answers urllib's default agent
+# ("Python-urllib/3.x") with 403; a named agent passes. Installed once here,
+# so every urlopen in every module carries it without each call site knowing.
+USER_AGENT = 'toolAssisted.run archivist (+https://toolassisted.run)'
+_opener = urllib.request.build_opener()
+_opener.addheaders = [('User-Agent', USER_AGENT)]
+urllib.request.install_opener(_opener)
+
 DISCOURSE_KEY = os.environ.get('DISCOURSE_KEY', '')
 
 BOT_USER = 'archivist'          # our own account, never a role holder
