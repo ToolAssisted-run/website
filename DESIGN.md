@@ -380,6 +380,25 @@ concerns use **contact@toolassisted.run** (§10).
 - Every game and group page ends with the **Expert menu** (§9) holding the
   governance acts for those entitled; content editing lives on the editor.
 
+### Game properties
+
+A game record carries, beyond title and system, four optional facts about
+the game itself: **released** (first public release, at whatever precision
+is known: `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, shown as "1989", "March 1989"
+or "3 March 1989"), **unofficial** (a ROM hack, mod, fangame or other
+unofficial release; absent means official), **discord** (a permanent invite
+to the game's community server; only `discord.gg/…` and
+`discord.com/invite/…` are accepted) and **website** (the community hub,
+wiki or leaderboard). They are set at creation by whoever creates the game,
+and afterwards by a covering expert or an editor through the game editor,
+one logged edit per field; an empty value clears the field. The game page
+shows the release date and the unofficial mark as chips beside the system,
+and the two links as buttons in the header, opened apart and referrer-free.
+Group and system pages sort their cards by stars, views, title or release
+date (oldest first, undated last) and can hide unofficial games. The slug
+stays derived from the title and is not customisable: it is the archive
+path and every link into it.
+
 ### Per-category metrics (shipped 2026-08-20)
 
 A category defines what it ranks by.

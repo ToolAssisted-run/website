@@ -1,6 +1,6 @@
 {# A group page: one family of games across every system, its records, and
    the expert menu (move games in, delete the group). #}
-{% from '_game_cards.html' import game_card, records_table with context %}
+{% from '_game_cards.html' import game_card, records_table, library_controls with context %}
 <header class="ghead"><div>
 <div class="chips"><span class="chip">{{ ggames|length }} games</span>
 <span class="chip">{{ grunts|length }} run{{ 's' if grunts|length != 1 else '' }}</span>
@@ -13,6 +13,7 @@
 {% endif %}
 </div></header>
 {% if ggames %}
+{{ library_controls() }}
 <div class="grid">{% for g in ggames %}{{ game_card(g, '../../games/', with_system=True) }}{% endfor %}</div>
 {% else %}
 <p class="emptynote">No games in this group yet. Experts covering it add them right here, and anybody can put one in it at submission time.</p>

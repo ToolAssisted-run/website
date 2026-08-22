@@ -3,7 +3,7 @@
 {% macro game_card(g, prefix='', with_system=False) %}
 {% set own = SHIPPED_GAME_THUMBS.get(g['key']) %}
 {% set newest = newest_thumb(g) %}
-<a class="card" data-stars="{{ stars_of(g['runs']) }}" data-views="{{ views_of(g['runs']) }}" data-title="{{ g['title'] }}" href="{{ prefix }}{{ g['key'] }}/">
+<a class="card" data-stars="{{ stars_of(g['runs']) }}" data-views="{{ views_of(g['runs']) }}" data-title="{{ g['title'] }}" data-released="{{ g.get('released', '') }}"{% if g.get('unofficial') %} data-unofficial="1"{% endif %} href="{{ prefix }}{{ g['key'] }}/">
 {% if own %}
 <span class="thumb"><span class="sys">{{ g['system'].upper() }}</span><img src="/thumbs/{{ own }}" alt="" loading="lazy"></span>
 {% elif newest %}
@@ -80,3 +80,41 @@ data-last="{{ 1 if gr.get('synthetic') else 0 }}" href="../groups/{{ gr['key'] }
 {% endif %}
 {% endmacro %}
 
+
+{% macro library_controls() %}
+{# sort and filter for a library of game cards (a group or a system page):
+   by stars, views, title or release date; unofficial games can be hidden.
+   The cards carry the facts as data attributes; the script below reorders. #}
+<div class="dimrow libctl"><span class="dimsub nogap"><span class="dimname">Sort</span>
+<button class="dimopt lsort on" data-mode="stars"><span class="starglyph">★</span> Stars</button>
+<button class="dimopt lsort" data-mode="views">Views</button>
+<button class="dimopt lsort" data-mode="title">By title</button>
+<button class="dimopt lsort" data-mode="released">Release date</button></span>
+<label class="dimsub libhide"><input type="checkbox" id="hide-unofficial"> Hide unofficial games</label></div>
+<script>
+(function(){
+  var grid = document.querySelector('.grid'), mode = 'stars';
+  if (!grid) return;
+  function order(a, b){
+    if (mode === 'stars') return b.dataset.stars - a.dataset.stars;
+    if (mode === 'views') return (b.dataset.views || 0) - (a.dataset.views || 0);
+    if (mode === 'released') {
+      // oldest first; a game with no date goes last, alphabetical among those
+      var x = a.dataset.released || '9999', y = b.dataset.released || '9999';
+      if (x !== y) return x < y ? -1 : 1;
+    }
+    return a.dataset.title.localeCompare(b.dataset.title);
+  }
+  function apply(){
+    Array.prototype.slice.call(grid.children).sort(order).forEach(function(c){ grid.appendChild(c); });
+    document.querySelectorAll('.lsort').forEach(function(b){ b.classList.toggle('on', b.dataset.mode === mode); });
+    var hide = document.getElementById('hide-unofficial').checked;
+    grid.querySelectorAll('.card').forEach(function(c){ c.hidden = hide && c.dataset.unofficial === '1'; });
+  }
+  document.querySelectorAll('.lsort').forEach(function(b){
+    b.addEventListener('click', function(){ mode = b.dataset.mode; apply(); });
+  });
+  document.getElementById('hide-unofficial').addEventListener('change', apply);
+})();
+</script>
+{% endmacro %}

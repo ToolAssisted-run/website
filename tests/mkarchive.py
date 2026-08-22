@@ -126,7 +126,8 @@ def run_spec(rid, game='nes/testgame', goal='fastest', authors=('Ada',),
 
 
 def make_archive(root, runs, systems=None, experts=None, authors_extra=None, ratified=None, empty_games=None, claims=None,
-                 game_titles=None, categories=None, nonmembers=None, groups=None, role_events=None):
+                 game_titles=None, categories=None, nonmembers=None, groups=None, role_events=None,
+                 game_props=None):
     """Write a valid archive containing exactly `runs`.
 
     runs: list of dicts from run_spec(). Recognised keys beyond run.json's own
@@ -139,6 +140,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
     # {'sys/slug': {'ratifiedBy': 'Who', 'ratifiedAt': '2026-01-01'}}
     ratified = dict(ratified or {})
     game_titles = dict(game_titles or {})
+    game_props = dict(game_props or {})   # game key -> extra game.json fields (#44)
     (root / 'authors').mkdir(parents=True, exist_ok=True)
     (root / 'systems.json').write_text(json.dumps(systems, indent=1) + '\n')
     # roles are a log of grants, so a fixture roster is a list of grant events
@@ -199,7 +201,8 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             (gdir / 'game.json').write_text(json.dumps(
                 {'title': game_titles.get(spec['game'], gslug.replace('-', ' ').title()),
                  'system': sys_slug, 'established': True,
-                 **(ratified.get(spec['game']) or {})}, indent=1) + '\n')
+                 **(ratified.get(spec['game']) or {}),
+                 **(game_props.get(spec['game']) or {})}, indent=1) + '\n')
             seen_games[spec['game']] = categories.copy() if categories else {
                 'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': []}]}
         cats = seen_games[spec['game']]

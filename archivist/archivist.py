@@ -15,6 +15,7 @@ Every route answers JSON; the site (a static build) is the only frontend,
 and it talks to this service through these endpoints alone.
 """
 import base64
+import datetime
 import hashlib
 import hmac
 import io
@@ -1091,9 +1092,49 @@ def _deletion_gate(form, need='expert'):
                                 'log entry is all that remains of it')
     return actor, reason, None
 
+# the plain game properties (#44): release date, unofficial flag, community
+# links. One parser for the editor and for creation; an empty value means
+# "not stated" and the field is absent from the record
+GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website')
+
+def parse_game_property(field, raw):
+    """(value, error) for one game property from form text; None clears."""
+    text = (raw or '').strip()
+    if not text:
+        return None, None
+    if field == 'released':
+        if not re.fullmatch(r'\d{4}(-\d{2}(-\d{2})?)?', text):
+            return None, 'release date is YYYY, YYYY-MM or YYYY-MM-DD'
+        parts = [int(x) for x in text.split('-')]
+        if not (1950 <= parts[0] <= 2100):
+            return None, 'release year out of range'
+        if len(parts) > 1 and not (1 <= parts[1] <= 12):
+            return None, 'release month out of range'
+        if len(parts) > 2:
+            try:
+                datetime.date(*parts)
+            except ValueError:
+                return None, 'that release date does not exist'
+        return text, None
+    if field == 'unofficial':
+        if text.lower() in ('1', 'true', 'yes', 'on'):
+            return True, None
+        if text.lower() in ('0', 'false', 'no', 'off'):
+            return None, None
+        return None, 'unofficial is yes or no'
+    if field == 'discord':
+        if not re.fullmatch(r'https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+', text):
+            return None, 'a Discord invite looks like https://discord.gg/xxxx'
+        return text, None
+    if field == 'website':
+        if len(text) > 300 or not re.fullmatch(r'https?://[^\s<>"\']+', text):
+            return None, 'the community website is an http(s) URL'
+        return text, None
+    return None, f'unknown property {field}'
+
 EXPERT_EDITABLE = {'run': ('duration', 'goal', 'encode', 'goalDescription',
                            'notes', 'movie'),
-                   'game': ('title', 'thumbnail'),
+                   'game': ('title', 'thumbnail') + GAME_PROPERTY_FIELDS,
                    'category': ('label', 'rule', 'metrics'),
                    'group': ('title',)}
 
@@ -1277,6 +1318,23 @@ def expert_edit():
                 if old_value == value:
                     return fail('that is already its title')
                 game['title'] = value
+            elif field in GAME_PROPERTY_FIELDS:
+                # the game properties (#44): an empty value clears the field
+                old_value = game.get(field, '')
+                value, property_error = parse_game_property(field, value)
+                if property_error:
+                    return fail(property_error)
+                if value is None:
+                    value = ''
+                if old_value == value:
+                    return fail(f'that is already its {field}')
+                if value == '':
+                    game.pop(field, None)
+                else:
+                    game[field] = value
+                # the record keeps the typed value (a real boolean); the log
+                # and the answer carry it as text like every other edit
+                old_value, value = str(old_value), str(value)
             else:
                 screenshot_upload = request.files.get('thumbnail')
                 if not screenshot_upload or not screenshot_upload.filename:
@@ -1668,7 +1726,8 @@ def game_create():
 
     Who: any member; placing the game into a group needs scope over the
         group, or the editor role
-    Reads: form fields system, title, group (optional key), cat_label,
+    Reads: form fields system, title, group (optional key), released,
+        unofficial, discord, website (optional properties, #44), cat_label,
         cat_rule, cat_key, metrics (JSON array), dry_run
     Answers: {ok, game, category, group, note}; 409 when the game exists
     """
@@ -1709,7 +1768,15 @@ def game_create():
             return fail(f'{expert} holds no scope covering the '
                         f'{group["title"]} group', 403)
         today = time.strftime('%Y-%m-%d', time.gmtime())
-        game = {'title': title, 'system': system, 'createdBy': expert,
+        properties = {}
+        for property_field in GAME_PROPERTY_FIELDS:
+            property_value, property_error = parse_game_property(
+                property_field, game_form.get(property_field))
+            if property_error:
+                return fail(property_error)
+            if property_value is not None:
+                properties[property_field] = property_value
+        game = {'title': title, 'system': system, 'createdBy': expert, **properties,
                 'createdAt': today}
         cat_label = (game_form.get('cat_label') or 'fastest completion').strip()[:80]
         cat_rule = (game_form.get('cat_rule')
