@@ -15,10 +15,11 @@
 <div class="hbtns">{% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="">{% endif %}<div class="btnrow"><a class="btn" href="{{ rel }}submit/?game={{ g['key'] }}">Submit a run</a>
 <a class="btn quiet" href="{{ rel }}create-category/?game={{ g['key'] }}">Create a category</a>
 <a class="btn quiet" href="{{ FORUM }}/tags/c/games/12/{{ g['system'] }}-{{ g['key'].split('/')[1] }}">Discuss on the forum</a></div>
-{% if g.get('discord') or g.get('website') %}
+{% if g.get('discord') or g.get('website') or g.get('rta') %}
 {# the community's own places: external, so they open apart and carry no referrer #}
 <div class="btnrow">{% if g.get('discord') %}<a class="btn quiet ext" href="{{ g['discord'] }}" target="_blank" rel="noopener noreferrer">Community Discord ↗</a>{% endif %}
-{% if g.get('website') %}<a class="btn quiet ext" href="{{ g['website'] }}" target="_blank" rel="noopener noreferrer">Community website ↗</a>{% endif %}</div>
+{% if g.get('website') %}<a class="btn quiet ext" href="{{ g['website'] }}" target="_blank" rel="noopener noreferrer">Community website ↗</a>{% endif %}
+{% if g.get('rta') %}<a class="btn quiet ext" href="{{ g['rta'] }}" target="_blank" rel="noopener noreferrer">RTA leaderboards ↗</a>{% endif %}</div>
 {% endif %}</div></header>
 {% if multi %}
 {# selector: one row of buttons per dimension; the goal dimension is called

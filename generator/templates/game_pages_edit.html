@@ -51,6 +51,8 @@ is logged in the open with your name, the old value and the new.</p></div>
 {{ prop_form('discord', 'Community Discord', discord_in) }}
 {% set website_in %}<input name="value" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}">{% endset %}
 {{ prop_form('website', 'Community website', website_in) }}
+{% set rta_in %}<input name="value" type="url" maxlength="300" placeholder="https://… (where the real-time records live, e.g. speedrun.com)" value="{{ g.get('rta', '') }}">{% endset %}
+{{ prop_form('rta', 'RTA leaderboards', rta_in) }}
 </section>
 <section><h2>Categories</h2>
 <p class="rules">The label is what the rankings say; the rule is what a verifier holds a
