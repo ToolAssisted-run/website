@@ -78,6 +78,11 @@ def main():
         rd4 = make_run(tmp, 'M900004', 4444, {'reproduced': 'none', 'verified': 'none'},
                        {'authors': [{'user': 'OldTimer'}], 'submittedBy': 'OldTimer',
                         'completed': '2021-10-26'})
+        # submitted after M900004 but finished years earlier: the profile must
+        # list it below, since the date it shows is the older one (#47)
+        make_run(tmp, 'M900006', 5000, {'reproduced': 'none', 'verified': 'none'},
+                 {'authors': [{'user': 'OldTimer'}], 'submittedBy': 'OldTimer',
+                  'submitted': '2026-08-21T00:00:00Z', 'completed': '2015-01-01'})
         make_run(tmp, 'M900005', 1317419, {'reproduced': 'none', 'verified': 'none'},
                  {'movie': {'file': 'M900005.bk2', 'format': 'bk2', 'frames': 1317419,
                             'fps': 1000.0, 'rerecords': 1, 'start': 'power-on'}})
@@ -139,12 +144,15 @@ def main():
            'title="completion date">2021-10-26' in rd('games/nes/pinball/index.html'))
         ck('so does the profile listing (#39)',
            'title="completion date">2021-10-26' in rd('authors/newstar/index.html'))
+        prof = rd('authors/newstar/index.html')
+        ck('the profile sorts by the date it shows, not the submission day (#47)',
+           0 < prof.find('M900004') < prof.find('M900006'))
         # 1317419 frames at 1000/s is 22 minutes, not 6 hours
         ck('a movie with its own frame rate runs on its own clock',
            '21:57.419' in rd('runs/M900005/index.html'))
         stats = json.loads(rd('assets/authorstats.json'))
         ck('stats count the former-name run for the member',
-           stats.get('newstar', {}).get('runs') == 1)
+           stats.get('newstar', {}).get('runs') == 2)   # M900004 and the #47 fixture
         ck('home hero', 'beyond human limits' in home)
         ck('home stats strip', 'statstrip' in home)
         ck('nav auth probe', 'navauth' in home)

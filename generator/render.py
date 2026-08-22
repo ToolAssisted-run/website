@@ -29,6 +29,7 @@ from config import (
 )
 from model import (
     BADGED_ROLES,
+    board_date,
     visits_known,
     ROLES_NOW,
     ROLE_LABEL,
@@ -263,10 +264,9 @@ def run_date_cell(r):
     """The run's primary date on a board: the completion date the authors
     stated when they stated one, the submission day otherwise. A future
     history tab wants the same rule."""
-    c = (r.get('completed') or '').strip()
-    if c:
-        return f'<td title="completion date">{esc(c)}</td>'
-    return f'<td title="submission date">{esc((r.get("submitted") or "")[:10])}</td>'
+    if (r.get('completed') or '').strip():
+        return f'<td title="completion date">{esc(board_date(r))}</td>'
+    return f'<td title="submission date">{esc(board_date(r))}</td>'
 
 def frames_html(r):
     """The frames cell: a count for a movie, a dash for a video-only run,

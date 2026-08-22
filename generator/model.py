@@ -520,6 +520,12 @@ for lst in author_news.values():
     # ISO strings order correctly either way
     lst.sort(key=lambda e: e['at'] or e['date'], reverse=True)
 
+def board_date(r):
+    """The date a board shows and sorts by (#39, #47): the completion date
+    the authors stated, the submission day otherwise. One rule for both, so
+    a list never looks unsorted against its own column."""
+    return (r.get('completed') or '').strip() or (r.get('submitted') or '')[:10]
+
 # ---- author stats (menu + profiles) ----
 author_stats = {}
 for uname, a in authors.items():
