@@ -305,6 +305,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .acthead{display:flex;gap:10px;align-items:baseline}
 .actmeta{font-size:.78rem;color:var(--faint);font-family:ui-monospace,monospace}
 .actnote{font-size:.86rem;color:var(--muted);margin-top:4px}
+.factfoot{margin-top:12px;text-align:left}
 .invnote{font-size:.8rem;color:#DC2626;margin-top:6px}
 .shot{display:inline-block;margin-top:8px}
 .shot img{max-width:240px;max-height:180px;border-radius:8px;border:2.5px solid var(--hair);display:block}

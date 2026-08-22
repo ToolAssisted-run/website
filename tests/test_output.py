@@ -828,12 +828,12 @@ def main():
         # ---------- revisions are visible, small, and counted ----------
         r101 = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('a revised run carries the small history link with its count',
-           'change history · 2 revisions' in r101 and '/commits/' in r101,
-           r101[r101.find('change history') - 50:][:160])
+           'view history · 2 revisions' in r101 and '/commits/' in r101,
+           r101[r101.find('view history') - 50:][:160])
         r107 = all_html[out / 'runs' / 'M900107' / 'index.html']
         ck('an unrevised run still links its history, uncounted',
-           'change history →' in r107 and 'revision' not in
-           r107[r107.find('change history'):r107.find('change history') + 60], r107[:100])
+           'view history →' in r107 and 'revision' not in
+           r107[r107.find('view history'):r107.find('view history') + 60], r107[:100])
         ck('the site log accounts for both kinds of editor',
            '<h2>Edits (2)' in all_html[out / 'policy' / 'site-log' / 'index.html']
            and 'Authors revise their own runs' in all_html[
