@@ -141,7 +141,7 @@ FMT_EXAMPLES = [
     ('[user:eien86]', 'Reference a member or author: links their profile'),
     ('%%SRC_EMBED&#10;code here&#10;%%END_EMBED', 'Code box (verbatim, no formatting inside)'),
     ('%%QUOTE name&#10;quoted text&#10;%%QUOTE_END', 'Quotation block with optional attribution'),
-    ('__bold__ and &#39;&#39;italic&#39;&#39;', 'Bold and italic'),
+    ('__bold__ and ''italic''', 'Bold and italic'),
     ('# first&#10;# second', 'Numbered list'),
     ('| cell | cell | (and || header || cells)', 'Tables, one row per line'),
     ('%%%', 'Forced line break'),
