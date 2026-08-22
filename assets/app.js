@@ -136,8 +136,11 @@
     var selected = (initial || []).slice();
     var KNOWN = [];
     authorNames().then(function(n){ KNOWN = n; });
+    // the co-author policy link beside the picker appears with the second author
+    var coauthNote = pick.parentNode && pick.parentNode.querySelector('.coauthnote');
     function sync(){
       field.value = selected.join(',');
+      if (coauthNote) coauthNote.hidden = selected.length < 2;
       chipsBox.innerHTML = '';
       selected.forEach(function(name){
         var c = el('span', 'authchip', name);
