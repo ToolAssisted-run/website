@@ -1,0 +1,98 @@
+{# The expert panel (/expert/): every power an expert holds, in one place, shown only to the people who hold it #}
+<header class="ghead"><div><h1>Expert panel</h1>
+<p class="authline">The scopes you hold, and the things holding them lets you do. Every
+one of these is public the moment you do it: it lands in the archive with your name, your
+reason and the date, and shows in the role log on the member's page.</p></div></header>
+<p class="msg" id="panel-gate">Checking who you are…</p>
+<div id="panel" hidden>
+<section><h2>Your scopes</h2>
+<div id="panel-scopes" class="factbox"></div>
+<p class="legend">A scope nests: the whole site covers every system, a system covers its
+games, a game group covers the games in it. You may appoint anybody to a scope you
+already cover, never wider than your own.</p></section>
+
+
+<section><details class="secfold menufold"><summary><h2>Make somebody an expert for a game</h2></summary>
+<form id="f-appoint-game" class="actform">
+  <p class="rules">Downward only: you may hand out authority over a game you already
+  cover. Members who already speak for it, through the game, its group, its system or
+  the whole site, are not listed: a narrower appointment would add nothing.</p>
+  <label>Game <select name="scope" id="appoint-game"></select></label>
+  <label>Member <select name="user" id="appoint-game-user"></select></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="what makes them the right person for it"></label>
+  <button class="btn">Appoint</button>
+</form></details></section>
+
+<section><details class="secfold menufold"><summary><h2>Make somebody an expert for a group</h2></summary>
+<form id="f-appoint-group" class="actform">
+  <p class="rules">A group expert speaks for every game in it, now and as it grows.
+  Members who already cover the group are not listed.</p>
+  <label>Group <select name="scope" id="appoint-group"></select></label>
+  <label>Member <select name="user" id="appoint-group-user"></select></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="what makes them the right person for it"></label>
+  <button class="btn">Appoint</button>
+</form></details></section>
+
+<section id="appoint-wide-wrap" hidden><details class="secfold menufold">
+<summary><h2>Make somebody an expert for a system</h2></summary>
+<form id="f-appoint-wide" class="actform">
+  <p class="rules">A whole system, every game in it. Wider than this, the whole site, is
+  the Steering Committee's to give, from its own panel.</p>
+  <label>Scope <select name="scope" id="appoint-wide"></select></label>
+  <label>Member <select name="user" id="appoint-wide-user"></select></label>
+  <label>Why them <input name="reason" required minlength="8" maxlength="500"
+    placeholder="what makes them the right person for it"></label>
+  <button class="btn">Appoint</button>
+</form></details></section>
+
+<section><details class="secfold menufold"><summary><h2>Step down</h2></summary>
+<form id="f-resign" class="actform">
+  <p class="rules">Yours alone: it needs nobody's agreement and happens at once. Leave the
+  scope empty to step down from all of them.</p>
+  <label>Scope <select name="scope" id="resign-scope"></select></label>
+  <button class="btn quiet">Step down</button>
+</form></details></section>
+
+<section><details class="secfold menufold"><summary><h2>Create a group</h2></summary>
+<form id="f-groupnew" class="actform">
+  <p class="rules">A group is one family of games, across every system it appeared on. You
+  may gather games you already speak for. It exists the moment you create it; a mistaken
+  one is deleted on the record. A game belongs to exactly one group.</p>
+  <label>Key <input name="group" required pattern="[a-z0-9]+(-[a-z0-9]+)*"
+    placeholder="lowercase-with-hyphens, used in the address"></label>
+  <label>Title <input name="title" required maxlength="80" placeholder="Mega Man"></label>
+  <label>Games <input name="games"></label>
+  <datalist id="panel-gamelist"></datalist>
+  <button class="btn">Create</button>
+</form></details></section>
+
+<section><details class="secfold menufold"><summary><h2>Change a group</h2></summary>
+<form id="f-groupedit" class="actform">
+  <label>Group <select name="group" id="groupedit-key"></select></label>
+  <label>Add games <input name="add"></label>
+  <label>Remove games <input name="remove"></label>
+  <label>New title <input name="title" maxlength="80" placeholder="leave empty to keep it"></label>
+  <button class="btn quiet">Save</button>
+</form></details></section>
+
+<section id="panel-annul-wrap" hidden>
+<details class="secfold menufold"><summary><h2>Annul an appointment</h2></summary>
+<form id="f-annul" class="actform">
+  <p class="rules">The Committee decides this, not you: point at the post carrying its
+  poll (Principles 2.5.4). The poll must be restricted to the Committee, public, and
+  closed, and a simple majority of the whole Committee must have voted for it.</p>
+  <label>Expert <input name="target" list="panel-expertlist" required
+    placeholder="type to find the expert"></label>
+  <datalist id="panel-expertlist"></datalist>
+  <label>Scope <input name="scope" list="panel-scopelist"
+    placeholder="leave empty for every scope they hold"></label>
+  <label>Forum post id <input name="post" required pattern="[0-9]+"
+    placeholder="the post carrying the poll"></label>
+  <button class="btn quiet">Apply</button>
+</form></details></section>
+<datalist id="panel-scopelist"></datalist>
+<p class="msg" id="panel-msg" hidden></p>
+</div>
+<script type="application/json" id="paneldata">{{ json_blob(panel_data) }}</script>

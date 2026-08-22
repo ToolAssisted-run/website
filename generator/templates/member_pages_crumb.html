@@ -1,0 +1,2 @@
+{# Breadcrumb fragments for the member and withdrawn-run pages (passed to page()). #}
+{% if kind == 'author' %}<a href="../">Members</a> / {{ label }}{% else %}<a href="../../browse/">Runs</a> / {{ label }}{% endif %}

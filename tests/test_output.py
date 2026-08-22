@@ -190,7 +190,23 @@ def check_inline_scripts(out, label):
        str(bad[:2]))
 
 
+def check_markup_lives_in_templates():
+    """The view/template split (issue #23): a view module prepares data and
+    calls tpl(); every tag lives under generator/templates/. A tag in a view
+    is a regression, as is a template reaching for |safe to smuggle markup
+    through (HTML helpers are registered safe in render.py already)."""
+    tag = re.compile(r'<[a-zA-Z][a-zA-Z0-9-]*[\s>/]')
+    for view in sorted((REPO / 'generator' / 'views').glob('*.py')):
+        ck(f'no markup in views/{view.name}', not tag.search(view.read_text()))
+    templates = sorted((REPO / 'generator' / 'templates').glob('*.html'))
+    ck('every view has templates to render from', len(templates) >= 13)
+    for t in templates:
+        ck(f'{t.name} does not |safe a string',
+           not re.search(r"'[^']*'\s*\|\s*safe", t.read_text()))
+
+
 def main():
+    check_markup_lives_in_templates()
     with tempfile.TemporaryDirectory() as td:
         td = pathlib.Path(td)
 
@@ -316,7 +332,7 @@ def main():
         ck('sexual content gates the media', 'nsfwgate' in warned and 'nsfwblur' in warned)
         uncl = all_html[out / 'runs' / 'M900103' / 'index.html']
         ck('unclassified goal description escaped',
-           '&quot;quotes&quot;' in uncl and '&lt;angles&gt;' in uncl)
+           ('&quot;quotes&quot;' in uncl or '&#34;quotes&#34;' in uncl) and '&lt;angles&gt;' in uncl)
         modlog = all_html[out / 'policy' / 'moderation-log' / 'index.html']
         ck('report anchors match their links',
            set(re.findall(r'id="(R\d+)"', modlog)) ==

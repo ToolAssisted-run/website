@@ -1,5 +1,5 @@
-"""One module per page family. A view renders its pages ON IMPORT (the
-template strings must keep their exact indentation, so the code stays
-top-level); build.py imports them in build order, exactly the order the
-monolith executed. Views read the model and call render helpers; they
-never derive facts of their own."""
+"""One module per page family. A view prepares data from the model (sorting,
+filtering, grouping) and renders it through `render.tpl()` from a Jinja2
+template under generator/templates/; it carries no markup of its own. Views
+render their pages ON IMPORT; build.py imports them in build order. Views
+read the model and call render helpers; they never derive facts of their own."""

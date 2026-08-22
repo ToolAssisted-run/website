@@ -1,22 +1,6 @@
 """View: tools (renders on import; see views/__init__)."""
-import datetime
-import html
-import os
-import json
-import pathlib
-import re
-import shutil
-import subprocess
-import sys
-import urllib.parse
-from config import (
-    FORUM,
-    OUT,
-)
-from render import (
-    esc,
-    page,
-)
+from config import OUT
+from render import page, tpl
 
 # ---- tools page ----
 EMULATORS = [
@@ -43,10 +27,7 @@ EMULATORS = [
     ('MAME-rr', 'https://github.com/TASEmulators/mame-rr', 'Arcade', '.mar'),
     ('FBNeo / FB Alpha', 'https://github.com/finalburnneo/FBNeo', 'Arcade', '.fbm'),
 ]
-emu_rows = ''.join(f'<tr><td><b><a href="{esc(u)}">{esc(n)}</a></b></td><td>{esc(s)}</td>'
-                   f'<td class="num"><code>{esc(x)}</code></td>'
-                   f'<td class="num"><span class="tick-yes">✓</span></td></tr>'
-                   for n, u, s, x in EMULATORS)
+emulators = [dict(name=n, url=u, systems=sy, formats=x) for n, u, sy, x in EMULATORS]
 
 # (tool, link, game/engine, movie format, parsed mechanically at submission)
 # surveyed from the community's collections; ordered by game
@@ -135,51 +116,10 @@ GAME_TOOLS = [
     ('gz / practice macros', 'https://github.com/glankk/gz',
      "Zelda: Ocarina of Time and Majora's Mask (N64)", '.gzm', True),
 ]
-gt_rows = ''.join(
-    f'<tr><td><b><a href="{esc(u)}">{esc(n)}</a></b></td><td>{esc(g)}</td>'
-    f'<td><code>{esc(x)}</code></td>'
-    f'<td class="num">{"<span class=tick-yes>✓</span>" if p else "<span class=tick-no>—</span>"}</td></tr>'
-    for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4]))
-body = f'''<header class="ghead"><div><h1>Tools</h1>
-<p class="authline">You can create your run with any emulator and any tools you like; you only
-need to submit the encoded video. Below are the TAS tools commonly used.</p>
-</div></header>
-<div class="resourcebox"><b>Need help with any of these tools?</b>
-Ask on <a href="{FORUM}">our forum</a> or on
-<a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
-will point you the right way.</div>
-<section><h2>miniHawk <span class="chip pendchip">in development</span></h2>
-<div class="policy fullw"><p><b>miniHawk</b> is this site\'s endorsed emulator, a re-implementation
-of <a href="https://github.com/TASEmulators/BizHawk">BizHawk</a> built around three ideas:
-<b>modular emulation cores</b>, <b>performance</b>, and a <b>higher standard of
-reproducibility</b>: every core runs waterboxed, and the movie format carries extended
-build environment metadata.
-<a href="https://github.com/ToolAssisted-run/miniHawk">Follow it on GitHub</a>.</p></div></section>
-<section><h2>Botting and brute-forcing tools</h2>
-<div class="cols3">
-<div class="factbox"><h4>jaffarPlus</h4><p class="statline">A high-performance botting
-engine for routing and solving games by massive state-space search.
-<a href="https://github.com/SergioMartin86/jaffarPlus">Source on GitHub</a>.</p></div>
-<div class="factbox"><h4>AdvancedBot</h4><p class="statline">A botting external tool for
-BizHawk, searching inputs from inside the emulator itself, by toca.
-<a href="https://github.com/toca-1/advancedbot-bizhawk">Source on GitHub</a>.</p></div>
-</div></section>
-<section><h2>Emulator-based TAS tools</h2>
-<p class="rules fullw">These are emulators capable of running many different games. You can
-attach their movie files to your submission as supplementary data beside your run video; for
-most of these formats we extract the relevant information (time, frames, rerecords) directly
-from the file.</p>
-<table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
-<th class="num">Parsed</th></tr></thead>
-<tbody>{emu_rows}</tbody></table></section>
-<section><h2>Game-specific TAS tools</h2>
-<p class="rules fullw">These tools create tool-assisted runs inside one game or engine, with no
-emulator involved. You can attach their input or replay files to your submission as
-supplementary data beside your run video; for some of these formats we extract the relevant
-information (time, frames, rerecords) directly from the file, marked below.</p>
-<table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
-<th class="num">Parsed</th></tr></thead>
-<tbody>{gt_rows}</tbody></table></section>'''
+# parsed formats first, then the rest in survey order
+game_tools = [dict(name=n, url=u, game=g, format=x, parsed=p)
+              for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4])]
+body = tpl('tools.html', emulators=emulators, game_tools=game_tools)
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page(
     'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',
@@ -206,19 +146,9 @@ FMT_EXAMPLES = [
     ('| cell | cell | (and || header || cells)', 'Tables, one row per line'),
     ('%%%', 'Forced line break'),
 ]
-fmt_rows = ''.join(
-    f'<tr><td><code>{esc(src.replace("&#10;", chr(10)))}</code></td><td>{esc(what)}</td></tr>'
-    for src, what in FMT_EXAMPLES)
-body = f'''<header class="ghead"><div><h1>Formatting guide</h1>
-<p class="authline">The markup accepted in run notes, on submission and on later edits.
-Plain paragraphs need no markup at all; blank lines separate them.</p></div></header>
-<table><thead><tr><th>You write</th><th>You get</th></tr></thead>
-<tbody>{fmt_rows}</tbody></table>
-<section><h2>Notes</h2><div class="policy"><ul>
-<li>Anything not listed above renders as plain text; nothing breaks, it just is not special.</li>
-<li>This dialect is compatible with the notes of imported runs, so imported write-ups render as intended.</li>
-<li>YouTube embeds must sit alone on their own line to become a player; inline they render as a link.</li>
-</ul></div></section>'''
+# the source column is written with &#10; standing for a newline inside one cell
+examples = [dict(src=src.replace('&#10;', chr(10)), what=what) for src, what in FMT_EXAMPLES]
+body = tpl('tools_formatting.html', examples=examples)
 (OUT / 'formatting').mkdir(exist_ok=True)
 (OUT / 'formatting' / 'index.html').write_text(page(
     'Formatting guide', body, '../',

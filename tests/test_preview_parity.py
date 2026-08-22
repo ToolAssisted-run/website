@@ -96,7 +96,7 @@ def take_function(js, name):
 
 def client_render(node, app_js, td, snippets):
     """Run the emitted renderNotes over the same snippets under node."""
-    parts = [take_function(app_js, n) for n in ('escH', 'inlineMd', 'renderNotes')]
+    parts = [take_function(app_js, n) for n in ('escapeHtml', 'inlineMd', 'renderNotes')]
     harness = '\n'.join(parts) + """
 const snippets = JSON.parse(process.argv[2]);
 console.log(JSON.stringify(snippets.map(renderNotes)));

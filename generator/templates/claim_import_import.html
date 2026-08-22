@@ -1,0 +1,39 @@
+{# The self-service import page: policy text and the (script-driven) scan, pick and progress blocks. #}
+<header class="ghead"><div><h1>Import my runs</h1>
+<p class="authline">Bring your published runs from other TAS / speedrun sites into the
+archive. Voluntary, repeatable, yours.</p></div></header>
+<div class="policy fullw">
+<p><b>What happens.</b> Your movie files and your own submission notes enter this archive
+credited to you and marked <b>Imported</b>, distributed under their original Creative
+Commons license and linking back to where they were published. Judge and staff text is
+stripped at the boundary; only your words travel. Publication descriptions are never used,
+and the import reads from a maintained snapshot, never from the source site itself.</p>
+<p><b>You pick.</b> Nothing is imported unpicked: the scan lists what the snapshot holds
+for you, and only the runs you tick come over. Only runs not yet archived are ever
+added; nothing is overwritten or duplicated. Come back any time to pick up runs you
+publish elsewhere later.</p>
+<p><b>Co-authored works are yours to answer for.</b> You can tick a run you made with
+others, and importing it is <b>your responsibility</b>: you are saying your co-authors are
+fine with it being here. The run credits every author and records you as the importer. If a
+co-author objects, any author can have it withdrawn, and all authors together can have it
+permanently erased
+(<a href="https://github.com/ToolAssisted-run#1-community-principles">Principles</a>).</p>
+<p><b>Requirements.</b> Log in via the forum and <a href="../claim/">claim your
+identity</a> first.</p>
+</div>
+<div class="actmsg" id="imp-msg" hidden></div>
+<div class="dimrow" id="imp-sources" hidden><span class="dimname">Import from</span>
+<button class="btn" id="imp-scan">TASVideos</button></div>
+<div id="imp-ctl" hidden>
+<p class="statline" id="imp-scanline"></p>
+<p class="impstart">
+  <button class="btn quiet" id="imp-solo" hidden>Select my solo runs</button>
+  <button class="btn quiet" id="imp-clear" hidden>Clear</button>
+  <button class="btn" id="imp-run" hidden></button></p>
+<div class="rules fullw implist" id="imp-list" hidden></div>
+</div>
+<div id="imp-prog" hidden>
+<div class="pbar"><div class="pfill" id="imp-fill"></div></div>
+<p class="statline"><b id="imp-count"></b></p>
+<pre class="implog" id="imp-log"></pre>
+</div>

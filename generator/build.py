@@ -8,9 +8,10 @@ contributor points are derived from the stored facts (rosters), never stored.
 Architecture (see ARCHITECTURE.md):
   config.py    deployment constants (Model and View both read it)
   model.py     the archive loaded + every derivation        (Model)
-  render.py    HTML helpers, page chrome, asset registries  (View glue)
+  render.py    tpl() + the HTML helpers templates call    (View glue)
   assets/      app.js + style.css, real files               (View)
-  views/*.py   one page family per module                   (View)
+  templates/   the markup, Jinja2, one file per page       (View)
+  views/*.py   one page family per module, data prep only (View)
   build.py     scaffolding and build order                  (Controller)
 
 Usage: build.py [archive_dir] [out_dir]

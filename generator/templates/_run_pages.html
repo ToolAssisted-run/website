@@ -1,0 +1,48 @@
+{# Macros for run pages: one community act (reproduction / verification / console), a case box, a member count. #}
+{% macro nmembers(n) %}{{ n }} member{% if n != 1 %}s{% endif %}{% endmacro %}
+
+{% macro invnote(inv) %}
+{% if inv %}<p class="invnote">Invalidated by expert {{ inv['by'] }} on {{ inv['date'] }}: {{ inv['reason'] }}</p>{% endif %}
+{% endmacro %}
+
+{% macro shot(r, act, alt) %}
+{% if act.get('screenshot') %}<a class="shot" href="{{ shot_url(r, act['screenshot']) }}"><img src="{{ shot_url(r, act['screenshot']) }}" {% if alt %}alt="{{ alt }}" loading="lazy"{% else %}loading="lazy" alt=""{% endif %}></a>{% endif %}
+{% endmacro %}
+
+{# kind: 'repro' (markdown notes, ending screenshot, emulator), 'verify' (inline notes),
+   'console' (hardware, recording link, optional photo) #}
+{% macro act_row(r, act, kind) %}
+{% set inv = act.get('invalidated') %}
+<div class="act{% if inv %} invalid{% endif %}"><div class="acthead">{{ member_chip(act['user'], '../../') }}<span class="actmeta">
+{%- if kind == 'repro' %}{{ [act.get('date') or '', act.get('emulator') or '']|select|join(' · ') }}
+{%- elif kind == 'console' %}{{ act.get('date') or '' }} · {% if act.get('hardware') %}{{ act['hardware'] }} · {% endif %}<a href="{{ act['proof'] }}">recording</a>
+{%- else %}{{ act.get('date') or '' }}{% endif %}</span></div>
+{% if act.get('notes') %}
+{% if kind == 'repro' %}
+{# a reproducer's notes are a how-to for the next reproducer:
+   markdown, so steps and settings can be lists and code #}
+<div class="actnote rulesmd">{{ md_html(act['notes']) }}</div>
+{% else %}
+<p class="actnote">{{ inline(act['notes']) }}</p>
+{% endif %}
+{% endif %}
+{% if kind == 'repro' %}{{ shot(r, act, 'ending screenshot by ' ~ act['user']) }}{% elif kind == 'console' %}{{ shot(r, act, '') }}{% endif %}
+{{ invnote(inv) }}</div>
+{% endmacro %}
+
+{% macro roster_acts(r, acts, kind) %}
+{% for act in acts %}{{ act_row(r, act, kind) }}{% endfor %}
+{% endmacro %}
+
+{% macro case_box(c, pending_voters) %}
+<div class="act"><div class="acthead"><b>Case {{ c['id'] }}</b>
+{% if c['status'] == 'open' %}<span class="chip pendchip">Open</span>
+{% elif c['status'] == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
+{% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
+<span class="actmeta">opened by {{ c['openedBy'] }} · {{ c['date'] }}</span></div>
+<p class="actnote">{{ inline(c['reason']) }}</p>
+{% for v in c.get('reaffirmations', []) %}
+<p class="statline">{{ member_chip(v['user'], '../../') }}: {{ 'reaffirmed' if v['reaffirm'] else 'withdrew' }} on {{ v['date'] }}{% if v.get('notes') %} · {{ inline(v['notes']) }}{% endif %}</p>
+{% endfor %}
+{% if c['status'] == 'open' and pending_voters %}<p class="statline muted">Awaiting: {{ pending_voters|join(', ') }}</p>{% endif %}</div>
+{% endmacro %}

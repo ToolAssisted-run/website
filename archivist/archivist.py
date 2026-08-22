@@ -173,6 +173,13 @@ sso_nonces = {}   # nonce -> expiry
 
 @app.after_request
 def cors(resp):
+    """Let the site's origin call this service with credentials: CORS
+    headers on /api/*, /login and /logout.
+
+    Who: every response (after_request hook), no auth of its own
+    Reads: the request path
+    Answers: the same response, with Access-Control-* and Vary headers added
+    """
     if request.path.startswith('/api/') or request.path in ('/login', '/logout'):
         resp.headers['Access-Control-Allow-Origin'] = SITE_ORIGIN
         resp.headers['Access-Control-Allow-Credentials'] = 'true'
@@ -191,18 +198,23 @@ def stamp_serial(resp):
             and resp.status_code == 200
             and resp.mimetype == 'application/json'):
         try:
-            j = json.loads(resp.get_data())
+            body = json.loads(resp.get_data())
         except Exception:                                     # noqa: BLE001
             return resp
-        if isinstance(j, dict) and j.get('ok') and not j.get('dry_run') \
-                and 'serial' not in j:
-            j['serial'] = current_serial()
-            resp.set_data(json.dumps(j))
+        if isinstance(body, dict) and body.get('ok') and not body.get('dry_run') \
+                and 'serial' not in body:
+            body['serial'] = current_serial()
+            resp.set_data(json.dumps(body))
     return resp
 
 @app.get('/login')
 def login():
-    """Redirect to the forum (DiscourseConnect provider) to authenticate."""
+    """Redirect to the forum (DiscourseConnect provider) to authenticate.
+
+    Who: anybody
+    Reads: nothing; mints a nonce that the callback must return
+    Answers: a 302 to the forum SSO provider; 501 when SSO is not configured
+    """
     if not SSO_SECRET:
         return fail('SSO is not configured', 501)
     nonce = secrets.token_urlsafe(16)
@@ -218,6 +230,14 @@ def login():
 
 @app.get('/login/callback')
 def login_callback():
+    """The forum's SSO return leg: check the signature and the nonce, note the
+    member, and set the session cookie.
+
+    Who: anybody carrying a payload the forum signed
+    Reads: query args `sso` (base64 payload with nonce, username, external_id) and `sig`
+    Answers: a 302 to the site root with the tar_session cookie; 403 on a bad
+        signature or nonce; 502 when the payload names no user
+    """
     sso = request.args.get('sso', '')
     sig = request.args.get('sig', '')
     if not sso or not hmac.compare_digest(sig, sso_sign(sso.encode())):
@@ -239,7 +259,13 @@ def login_callback():
 @app.get('/logout')
 def logout():
     """End the session HERE and on the forum — otherwise 'Log in' silently
-    re-authenticates against the still-live Discourse session."""
+    re-authenticates against the still-live Discourse session.
+
+    Who: anybody; needs no session to succeed
+    Reads: nothing
+    Answers: a 302 to the forum logout (or the site root when SSO is off) with the
+        tar_session cookie cleared
+    """
     back = SITE_ORIGIN + '/'
     if SSO_SECRET:
         payload = urllib.parse.urlencode({'return_sso_url': back, 'logout': 'true'})
@@ -255,67 +281,80 @@ def logout():
 
 @app.get('/api/me')
 def me():
-    u = session_user()
-    return jsonify({'ok': True, 'user': u, 'loggedIn': bool(u),
-                    'avatar': avatar_for(u) if u else None})
+    """Who the session cookie says is logged in.
 
-def auth_precheck(f):
+    Who: anybody
+    Reads: the tar_session cookie only
+    Answers: {ok, user, loggedIn, avatar}
+    """
+    username = session_user()
+    return jsonify({'ok': True, 'user': username, 'loggedIn': bool(username),
+                    'avatar': avatar_for(username) if username else None})
+
+def auth_precheck(form):
     """Cheap auth gate to run BEFORE any git work: a valid session or the
     shared key. Full identity resolution happens later in request_identity."""
     if session_user():
         if not origin_ok():
             return fail('cross-origin request refused', 403)
         return None
-    if f.get('key') == SUBMIT_KEY:
+    if form.get('key') == SUBMIT_KEY:
         return None
     return fail('log in via the forum, or provide the submitter key', 403)
 
-def request_identity(f, field='user'):
+def request_identity(form, field='user'):
     """Who is acting: a logged-in session's username wins; otherwise the shared
     key plus an explicit username (operator/v0 path). Returns (user, error)."""
-    su = session_user()
-    if su:
+    session_name = session_user()
+    if session_name:
         if not origin_ok():
             return None, fail('cross-origin request refused', 403)
-        if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', su):
+        if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', session_name):
             return None, fail('session username is not archive-safe', 400)
-        return su, None
-    if f.get('key') != SUBMIT_KEY:
+        return session_name, None
+    if form.get('key') != SUBMIT_KEY:
         return None, fail('log in via the forum, or provide the submitter key', 403)
-    user = (f.get(field) or '').strip()
+    user = (form.get(field) or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', user):
         return None, fail(f'{field} must be a valid username')
     return user, None
 
-def act_common(f):
+def act_common(form):
     """Shared validation for /api/reproduce and /api/verify.
     Returns (error_response, run_dir, run, user) — error_response is None on success."""
-    user, err_ = request_identity(f)
-    if err_:
-        return err_, None, None, None
-    run_id = (f.get('run') or '').strip()
+    user, error = request_identity(form)
+    if error:
+        return error, None, None, None
+    run_id = (form.get('run') or '').strip()
     if not re.fullmatch(r'M[0-9]+', run_id):
         return fail('run must be a run id like M100001'), None, None, None
-    rdir = find_run(run_id)
-    if not rdir:
+    run_dir = find_run(run_id)
+    if not run_dir:
         return fail(f'unknown run {run_id}', 404), None, None, None
-    r = json.loads((rdir / 'run.json').read_text())
-    if r.get('withdrawn'):
+    run = json.loads((run_dir / 'run.json').read_text())
+    if run.get('withdrawn'):
         return fail(f'{run_id} has been withdrawn; no further acts apply'), None, None, None
-    if r.get('status', {}).get('reproduced') == 'imported':
+    if run.get('status', {}).get('reproduced') == 'imported':
         return fail('Imported runs are irrevocably verified; no further acts apply'), None, None, None
-    if current_name(user).lower() in run_authors_now(r):
+    if current_name(user).lower() in run_authors_now(run):
         return fail('authors cannot act on their own run'), None, None, None
-    notes = (f.get('notes') or '').strip()
+    notes = (form.get('notes') or '').strip()
     if len(notes) > ACT_NOTES_MAX:
         return fail(f'notes exceed {ACT_NOTES_MAX} characters'), None, None, None
-    return None, rdir, r, user
+    return None, run_dir, run, user
 
 @app.get('/')
 def form():
-    games = sorted(f'{p.parent.parent.name}/{p.parent.name}'
-                   for p in ARCHIVE.glob('games/*/*/game.json'))
-    opts = ''.join(f'<option>{g}</option>' for g in games)
+    """The archivist's own minimal HTML page: submit, reproduce and verify
+    forms for the shared-key operator path (the site is the real frontend).
+
+    Who: anybody may load it; the forms it posts need the submitter key
+    Reads: nothing
+    Answers: an HTML page
+    """
+    games = sorted(f'{game_file.parent.parent.name}/{game_file.parent.name}'
+                   for game_file in ARCHIVE.glob('games/*/*/game.json'))
+    options_html = ''.join(f'<option>{game_key}</option>' for game_key in games)
     return f'''<!DOCTYPE html><html><head><meta charset="utf-8"><title>archivist · submit</title>
 <style>body{{font-family:system-ui;max-width:560px;margin:40px auto;padding:0 16px;line-height:1.5}}
 label{{display:block;margin:12px 0 3px;font-size:.85rem;color:#555}}
@@ -328,7 +367,7 @@ h1{{font-size:1.3rem}} .note{{font-size:.8rem;color:#777}}</style></head><body>
 <form method="post" action="api/submit" enctype="multipart/form-data">
 <label>Submitter key</label><input name="key" type="password" required>
 <label>Your username</label><input name="submitter" required>
-<label>Game</label><select name="game">{opts}</select>
+<label>Game</label><select name="game">{options_html}</select>
 <label>Category (goal key)</label><input name="goal" placeholder="e.g. any" required>
 <label>Authors (comma-separated)</label><input name="authors" required>
 <label>Encode link (YouTube, required; verification and the run thumbnail derive from it)</label>
@@ -377,16 +416,16 @@ def read_attachments(existing=None):
     size-capped) or additional movie files. `existing` counts a run's
     current attachments against the caps. Returns ([(name, bytes)], error)."""
     existing = existing or []
-    atts = []
+    attachments = []
     total = 0
     movie_atts = sum(1 for a in existing
                      if pathlib.Path(a['file']).suffix.lower().lstrip('.') in MOVIE_EXTS)
-    for fs in request.files.getlist('attachments'):
-        if not fs.filename:
+    for upload in request.files.getlist('attachments'):
+        if not upload.filename:
             continue
-        name = re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(fs.filename).name)
+        name = re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(upload.filename).name)
         suffix = pathlib.Path(name).suffix.lower()
-        data = fs.read()
+        data = upload.read()
         if suffix.lstrip('.') in MOVIE_EXTS:
             if len(data) > MOVIE_MAX:
                 return None, fail(f'movie attachment {name!r} exceeds 16 MB')
@@ -402,79 +441,89 @@ def read_attachments(existing=None):
         else:
             return None, fail(f'attachment {name!r}: only text/config files or '
                               f'movie formats are allowed')
-        atts.append((name, data))
-    if len(atts) + len(existing) > ATTACH_MAX_COUNT:
+        attachments.append((name, data))
+    if len(attachments) + len(existing) > ATTACH_MAX_COUNT:
         return None, fail('too many attachments (max 8)')
     if movie_atts > 4:
         return None, fail('too many movie attachments (max 4)')
     if total > ATTACH_MAX_TOTAL:
         return None, fail('text attachments exceed 512 KB total')
-    return atts, None
+    return attachments, None
 
 @app.post('/api/submit')
 def submit():
-    f = request.form
-    submitter, err_ = request_identity(f, 'submitter')
-    if err_:
-        return err_
-    if f.get('consent') != 'yes':
+    """Archive a new run, pending, as a per-run folder plus one commit.
+
+    Who: a logged-in member, or the shared `key` plus `submitter`
+    Reads: form fields consent, game (system/slug), goal, goal_description,
+        metric_<key>, authors (comma-separated), video_only, time,
+        encode, emulator, rom_name, rom_sha1, completed, notes,
+        content_warnings (repeatable), dry_run; files movie, attachments
+    Answers: {ok, id, archive, forum}; dry_run: {ok, dry_run, would_be, run,
+        game_key}; 409 when the movie or encode is already archived
+    """
+    submission = request.form
+    submitter, error = request_identity(submission, 'submitter')
+    if error:
+        return error
+    if submission.get('consent') != 'yes':
         return fail('submission requires consent: licensing under CC BY 4.0, agreeing '
                     'with the Community Principles, Terms of Use, Code of Conduct and '
                     'Privacy Policy, and confirming the information, especially '
                     'authorship, is complete and truthful')
 
     # --- game and category exist beforehand (creation has its own flow) ---
-    gsel = (f.get('game') or '').strip()
-    m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', gsel)
-    if not m:
+    game_selection = (submission.get('game') or '').strip()
+    game_match = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', game_selection)
+    if not game_match:
         return fail('game must be system/slug; create the game first at '
                     '/create-game/ if it is not archived yet')
-    system, slug = m.groups()
-    game, cats = load_game(system, slug)
+    system, slug = game_match.groups()
+    game, categories = load_game(system, slug)
     if not game:
         return fail(f'unknown game {system}/{slug}; create it first at /create-game/')
 
-    goal = (f.get('goal') or '').strip()
+    goal = (submission.get('goal') or '').strip()
     goal_description = ''
     dim_keys = {}
     if goal == 'unclassified':
         # special category on every game: no defined goal, the run describes
         # its own; never verifiable, ranked by likes alone
-        goal_description = (f.get('goal_description') or '').strip()[:200]
+        goal_description = (submission.get('goal_description') or '').strip()[:200]
         if not goal_description:
             return fail('Unclassified runs must describe their goal '
                         '(goal_description); it is shown in the ranking')
         dim_keys = {'goal': 'unclassified'}
-    for d in cats['dimensions']:
-        if goal in {o['key'] for o in d['options']}:
-            dim_keys[d['key']] = goal
+    for dimension in categories['dimensions']:
+        if goal in {option['key'] for option in dimension['options']}:
+            dim_keys[dimension['key']] = goal
     if not dim_keys:
         return fail(f'unknown category {goal!r} for {system}/{slug}; create it '
                     f'first from the game page')
 
     # --- the category's metrics decide what the submitter must state ---
-    goal_opt = next((o for d in cats['dimensions'] for o in d['options']
-                     if o['key'] == goal), None)
+    goal_opt = next((option for dimension in categories['dimensions'] for option in dimension['options']
+                     if option['key'] == goal), None)
     metric_defs = (goal_opt or {}).get('metrics')
-    wants_time = metric_defs is None or any(mm['key'] == 'time'
-                                            for mm in metric_defs)
+    wants_time = metric_defs is None or any(metric_def['key'] == 'time'
+                                            for metric_def in metric_defs)
     stated_metrics = {}
-    for mm in (metric_defs or []):
-        if mm['key'] == 'time':
+    for metric_def in (metric_defs or []):
+        if metric_def['key'] == 'time':
             continue                    # derived for movies, stated via `time`
-        raw = (f.get(f'metric_{mm["key"]}') or '').strip()
-        if raw == '':
-            return fail(f'this category ranks by {mm["label"]}: state its '
-                        f'value (metric_{mm["key"]})')
+        raw_value = (submission.get(f'metric_{metric_def["key"]}') or '').strip()
+        if raw_value == '':
+            return fail(f'this category ranks by {metric_def["label"]}: state its '
+                        f'value (metric_{metric_def["key"]})')
         try:
-            val = float(raw)
+            value = float(raw_value)
         except ValueError:
-            return fail(f'{mm["label"]} must be a number (seconds for times)')
-        if val < 0:
-            return fail(f'{mm["label"]} cannot be negative')
-        stated_metrics[mm['key']] = val
+            return fail(f'{metric_def["label"]} must be a number (seconds for times)')
+        if value < 0:
+            return fail(f'{metric_def["label"]} cannot be negative')
+        stated_metrics[metric_def['key']] = value
 
-    authors = [a.strip() for a in (f.get('authors') or '').split(',') if a.strip()]
+    authors = [a.strip() for a in (submission.get('authors') or '').split(',') if a.strip()]
     if not authors:
         return fail('at least one author required')
 
@@ -483,24 +532,24 @@ def submit():
     # be reproduced, in emulator or on console, and it says so; verification
     # still gates its ranking like any other run's. The submitter states the
     # time, since there are no frames to derive it from.
-    video_only = (f.get('video_only') or '').strip() in ('1', 'true', 'yes', 'on')
-    mov = request.files.get('movie')
+    video_only = (submission.get('video_only') or '').strip() in ('1', 'true', 'yes', 'on')
+    movie_upload = request.files.get('movie')
     if video_only:
-        if mov and mov.filename:
+        if movie_upload and movie_upload.filename:
             return fail('you attached a movie file and called the run video-only; '
                         'pick one')
         duration = None
         if wants_time and goal != 'unclassified':
             # the category ranks by time and there are no frames to derive it
             # from, so the submitter states it
-            stated = (f.get('time') or '').strip()
-            m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated)
-            if not m_t:
+            stated = (submission.get('time') or '').strip()
+            time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated)
+            if not time_match:
                 return fail('a video-only run in a time-ranked category needs its '
                             'time, stated as [h:]mm:ss or [h:]mm:ss.mmm')
-            h, mnt, sec, frac = m_t.groups()
-            duration = (int(h or 0) * 3600 + int(mnt) * 60 + int(sec)
-                        + (int(frac.ljust(3, "0")) / 1000 if frac else 0.0))
+            hours, minutes, seconds, fraction = time_match.groups()
+            duration = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
+                        + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))
             if duration <= 0:
                 return fail('a run that takes no time at all is not a run')
         ext = None
@@ -508,19 +557,19 @@ def submit():
         movie_sha1 = None
         parsed = {'frames': None, 'rerecords': None, 'start': None, 'fps': None}
     else:
-        if not mov or not mov.filename:
+        if not movie_upload or not movie_upload.filename:
             return fail('movie file required, or mark the run video-only and state '
                         'its time')
         duration = None
-        ext = mov.filename.rsplit('.', 1)[-1].lower()
+        ext = movie_upload.filename.rsplit('.', 1)[-1].lower()
         if ext not in MOVIE_EXTS:
             return fail(f'movie extension .{ext} not a known TAS format')
-        movie_bytes = mov.read()
+        movie_bytes = movie_upload.read()
         if len(movie_bytes) > MOVIE_MAX:
             return fail('movie exceeds 16 MB')
         if not movie_bytes:
             return fail('movie file is empty')
-        parsed = movieparse.parse(mov.filename, movie_bytes)
+        parsed = movieparse.parse(movie_upload.filename, movie_bytes)
         if not parsed['ok']:
             return fail(f'movie did not parse as .{ext}: {parsed["error"]}')
         movie_sha1 = hashlib.sha1(movie_bytes).hexdigest()
@@ -528,24 +577,24 @@ def submit():
     # --- encode (mandatory) + thumbnail derived from it ---
     # The encode is validated here and the run's thumbnail is a frame of it
     # (maxres, falling back to hq) — no author upload, nothing to moderate.
-    encode = (f.get('encode') or '').strip()
-    enc = providers.resolve(encode)
-    if not enc:
+    encode = (submission.get('encode') or '').strip()
+    encode_provider = providers.resolve(encode)
+    if not encode_provider:
         return fail('an encode link is required, from one of: '
                     + ', '.join(providers.names())
                     + ' (the run thumbnail is derived from it)')
-    thumb_bytes, thumb_ext = providers.thumbnail(enc['kind'], enc['id'], THUMB_MAX)
+    thumb_bytes, thumb_ext = providers.thumbnail(encode_provider['kind'], encode_provider['id'], THUMB_MAX)
     if not thumb_bytes:
         return fail(f'the encode link does not resolve to a watchable '
-                    f'{enc["name"]} video; check the URL (the run thumbnail is '
+                    f'{encode_provider["name"]} video; check the URL (the run thumbnail is '
                     f'derived from it)')
 
     # --- attachments: text configs, or additional movie files ---
-    atts, att_err = read_attachments()
-    if att_err:
-        return att_err
+    attachments, attachment_error = read_attachments()
+    if attachment_error:
+        return attachment_error
 
-    completed = (f.get('completed') or '').strip()
+    completed = (submission.get('completed') or '').strip()
     if completed:
         if not re.fullmatch(r'(19[89]\d|20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])',
                             completed):
@@ -553,7 +602,7 @@ def submit():
         if completed > time.strftime('%Y-%m-%d', time.gmtime()):
             return fail('completed cannot be in the future')
 
-    notes = (f.get('notes') or '').strip()
+    notes = (submission.get('notes') or '').strip()
     if len(notes.encode()) > NOTES_MAX:
         return fail('notes exceed 256 KB')
 
@@ -564,8 +613,8 @@ def submit():
         return fail('unknown content warning flag')
 
     rom = {}
-    if f.get('rom_name'): rom['name'] = f.get('rom_name').strip()[:200]
-    rom_sha = (f.get('rom_sha1') or '').strip()
+    if submission.get('rom_name'): rom['name'] = submission.get('rom_name').strip()[:200]
+    rom_sha = (submission.get('rom_sha1') or '').strip()
     if rom_sha:
         # typed by hand now (#41): refuse what is not a sha1 rather than
         # dropping it silently and archiving a run that claims a ROM it
@@ -574,7 +623,7 @@ def submit():
             return fail('rom_sha1 must be exactly 40 hexadecimal characters')
         rom['sha1'] = rom_sha.lower()
 
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = submission.get('dry_run') in ('1', 'true', 'yes')
 
     with lock:
         checkout_branch()
@@ -584,11 +633,11 @@ def submit():
         if video_only:
             # no bytes to compare, so the encode is the fingerprint: the same
             # video twice is the same run twice
-            for rj_ in ARCHIVE.glob('games/*/*/runs/*/run.json'):
-                doc_ = json.loads(rj_.read_text())
-                if any(e.get('url') == encode for e in doc_.get('encodes', [])):
+            for other_run_json in ARCHIVE.glob('games/*/*/runs/*/run.json'):
+                other_run = json.loads(other_run_json.read_text())
+                if any(e.get('url') == encode for e in other_run.get('encodes', [])):
                     return fail(f'this video is already archived as '
-                                f'{doc_["id"]}: the encode is the run, and it is '
+                                f'{other_run["id"]}: the encode is the run, and it is '
                                 f'the same encode', 409)
         else:
             dup_id, why = duplicate_of(movie_sha1, f'{system}/{slug}',
@@ -597,9 +646,9 @@ def submit():
                 return fail(f'this run is already archived as {dup_id}: it has {why}. '
                             f'If it is an improvement, submit the faster movie; if the '
                             f'archived one is wrong, its authors can edit it.', 409)
-        rid = next_id()
-        run_id = f'M{rid}'
-        rdir = ARCHIVE / 'games' / system / slug / 'runs' / run_id
+        run_number = next_id()
+        run_id = f'M{run_number}'
+        run_dir = ARCHIVE / 'games' / system / slug / 'runs' / run_id
         run = {
             'id': run_id, 'game': f'{system}/{slug}', 'category': dim_keys,
             'authors': [{'user': a} for a in authors],
@@ -615,31 +664,31 @@ def submit():
             'thumbnail': 'thumb' + thumb_ext,
             **({'goalDescription': goal_description} if goal_description else {}),
             **({'contentWarnings': content_warnings} if content_warnings else {}),
-            'contract': {'emulator': (f.get('emulator') or '').strip(), **({'rom': rom} if rom else {})},
+            'contract': {'emulator': (submission.get('emulator') or '').strip(), **({'rom': rom} if rom else {})},
             'status': ({'reproduced': 'not-applicable', 'verified': 'none',
                         'console': 'not-applicable'} if video_only else
                        {'reproduced': 'none', 'verified': 'none', 'console': 'none'}),
-            'encodes': [{'kind': enc['kind'], 'url': encode}],
-            'attachments': [{'file': f'attachments/{n}', 'role': 'submitted attachment'} for n, _ in atts],
+            'encodes': [{'kind': encode_provider['kind'], 'url': encode}],
+            'attachments': [{'file': f'attachments/{name}', 'role': 'submitted attachment'} for name, _ in attachments],
             **({'completed': completed} if completed else {}),
             'submitted': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
             'submittedBy': submitter,
         }
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_be': run_id, 'run': run,
                             'game_key': f'{system}/{slug}'})
         ensure_member(submitter)
-        rdir.mkdir(parents=True)
+        run_dir.mkdir(parents=True)
         if not video_only:
-            (rdir / f'{run_id}.{ext}').write_bytes(movie_bytes)
-        (rdir / ('thumb' + thumb_ext)).write_bytes(thumb_bytes)
-        (rdir / 'run.json').write_text(json.dumps(run, indent=1))
+            (run_dir / f'{run_id}.{ext}').write_bytes(movie_bytes)
+        (run_dir / ('thumb' + thumb_ext)).write_bytes(thumb_bytes)
+        (run_dir / 'run.json').write_text(json.dumps(run, indent=1))
         if notes:
-            (rdir / 'notes.md').write_text(notes + '\n')
-        if atts:
-            (rdir / 'attachments').mkdir()
-            for n, data in atts:
-                (rdir / 'attachments' / n).write_bytes(data)
+            (run_dir / 'notes.md').write_text(notes + '\n')
+        if attachments:
+            (run_dir / 'attachments').mkdir()
+            for name, data in attachments:
+                (run_dir / 'attachments' / name).write_bytes(data)
 
         title = f"New run archived: {game['title']} ({goal}) by {', '.join(authors)}"
         # topics BEFORE the push: written after it, the pointers sat only in
@@ -647,7 +696,7 @@ def submit():
         # leaving orphan topics and run pages with no visible discussion
         ensure_game_topic(system, slug, game['title'])
         if ensure_topic(run, game['title'], system, slug, goal, authors):
-            (rdir / 'run.json').write_text(json.dumps(run, indent=1))
+            (run_dir / 'run.json').write_text(json.dumps(run, indent=1))
         commit_push(f'Archive {run_id}: {game["title"]} ({goal}) by {", ".join(authors)}\n\n'
                     f'Submitted-By: {submitter}\nVia: archivist')
         notify_discord(f'\U0001f3ac New run archived: '
@@ -671,137 +720,157 @@ except (OSError, ValueError):
 
 @app.post('/api/visit')
 def visit():
-    rid = (request.form.get('run') or '').strip()
-    if not re.fullmatch(r'M[0-9]+', rid):
+    """Count one visit to a run page.
+
+    Who: anybody; no auth, nothing but a number is stored
+    Reads: form field run
+    Answers: {ok, run, visits}
+    """
+    run_id = (request.form.get('run') or '').strip()
+    if not re.fullmatch(r'M[0-9]+', run_id):
         return fail('run must be an id like M100001')
-    if not find_run(rid):
-        return fail(f'unknown run {rid}', 404)
+    if not find_run(run_id):
+        return fail(f'unknown run {run_id}', 404)
     with _visits_lock:
-        _visits[rid] = _visits.get(rid, 0) + 1
-        n = _visits[rid]
+        _visits[run_id] = _visits.get(run_id, 0) + 1
+        count = _visits[run_id]
         try:
             VISITS_FILE.write_text(json.dumps(_visits))
         except OSError as exc:
             LOG.warning('visits file not writable: %s', exc)
-    return jsonify({'ok': True, 'run': rid, 'visits': n})
+    return jsonify({'ok': True, 'run': run_id, 'visits': count})
 
 @app.post('/api/reproduce')
 def reproduce():
-    """Record a community reproduction: mandatory ending screenshot as proof."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    """Record a community reproduction: mandatory ending screenshot as proof.
+
+    Who: a member (session, or `key` plus `user`) who is not one of the
+        run's authors; refused on Imported, withdrawn and video-only runs
+    Reads: form fields run, emulator, notes, dry_run; file screenshot (png/jpg/webp)
+    Answers: {ok, run, status, reproductions}; dry_run: {ok, dry_run,
+        would_record, status}
+    """
+    reproduction_form = request.form
+    dry_run = reproduction_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(reproduction_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        err_resp, rdir, r, user = act_common(f)
-        if err_resp:
-            return err_resp
-        if r.get('videoOnly'):
+        act_error, run_dir, run, user = act_common(reproduction_form)
+        if act_error:
+            return act_error
+        if run.get('videoOnly'):
             return fail('this run is video-only: there is no input movie to '
                         'replay, so reproduction does not apply')
-        if user.lower() in {a['user'].lower() for a in r.get('reproductions', [])}:
+        if user.lower() in {a['user'].lower() for a in run.get('reproductions', [])}:
             return fail('you have already reproduced this run; one reproduction per member')
 
-        shot = request.files.get('screenshot')
-        if not shot or not shot.filename:
+        screenshot_upload = request.files.get('screenshot')
+        if not screenshot_upload or not screenshot_upload.filename:
             return fail('an ending screenshot is required as proof of sync')
-        ext = pathlib.Path(shot.filename).suffix.lower()
+        ext = pathlib.Path(screenshot_upload.filename).suffix.lower()
         if ext not in IMAGE_MAGIC:
             return fail('screenshot must be png, jpg or webp')
-        data = shot.read()
-        if len(data) > SHOT_MAX_EACH:
+        screenshot_bytes = screenshot_upload.read()
+        if len(screenshot_bytes) > SHOT_MAX_EACH:
             return fail('screenshot exceeds 512 KB')
-        if not any(data.startswith(m) for m in IMAGE_MAGIC[ext]):
+        if not any(screenshot_bytes.startswith(magic) for magic in IMAGE_MAGIC[ext]):
             return fail(f'screenshot is not a real {ext} image')
-        existing = sum(sp.stat().st_size for sp in (rdir / 'reproductions').glob('*')
-                       if sp.is_file()) if (rdir / 'reproductions').exists() else 0
-        if existing + len(data) > SHOT_MAX_TOTAL:
+        stored_bytes = sum(sp.stat().st_size for sp in (run_dir / 'reproductions').glob('*')
+                       if sp.is_file()) if (run_dir / 'reproductions').exists() else 0
+        if stored_bytes + len(screenshot_bytes) > SHOT_MAX_TOTAL:
             return fail('this run has reached its screenshot storage cap')
 
-        n = len(r.get('reproductions', [])) + 1
-        shot_rel = f'reproductions/{n}-{user}{ext}'
+        ordinal = len(run.get('reproductions', [])) + 1
+        shot_rel = f'reproductions/{ordinal}-{user}{ext}'
         entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'screenshot': shot_rel}
-        if (f.get('emulator') or '').strip():
-            entry['emulator'] = f.get('emulator').strip()[:120]
-        if (f.get('notes') or '').strip():
-            entry['notes'] = f.get('notes').strip()
-        r.setdefault('reproductions', []).append(entry)
-        sync_status(r)
-        if dry:
+        if (reproduction_form.get('emulator') or '').strip():
+            entry['emulator'] = reproduction_form.get('emulator').strip()[:120]
+        if (reproduction_form.get('notes') or '').strip():
+            entry['notes'] = reproduction_form.get('notes').strip()
+        run.setdefault('reproductions', []).append(entry)
+        sync_status(run)
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_record': entry,
-                            'status': r['status']})
+                            'status': run['status']})
 
-        (rdir / 'reproductions').mkdir(exist_ok=True)
-        (rdir / shot_rel).write_bytes(data)
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+        (run_dir / 'reproductions').mkdir(exist_ok=True)
+        (run_dir / shot_rel).write_bytes(screenshot_bytes)
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
-        commit_push(f'Reproduce {r["id"]}: by {user}\n\nVia: archivist')
-        notify_discord(f'\u21bb **{member_md(user)}** reproduced ' + movie_md(r),
-                       wait_for=f'{SITE_URL}/runs/{r["id"]}/')
-    return jsonify({'ok': True, 'run': r['id'], 'status': r['status'],
-                    'reproductions': len([a for a in r['reproductions'] if not a.get('invalidated')])})
+        commit_push(f'Reproduce {run["id"]}: by {user}\n\nVia: archivist')
+        notify_discord(f'\u21bb **{member_md(user)}** reproduced ' + movie_md(run),
+                       wait_for=f'{SITE_URL}/runs/{run["id"]}/')
+    return jsonify({'ok': True, 'run': run['id'], 'status': run['status'],
+                    'reproductions': len([a for a in run['reproductions'] if not a.get('invalidated')])})
 
 @app.post('/api/invalidate')
 def invalidate():
     """An expert invalidates a faulty reproduction/verification — a logged,
     appealable moderation act, never automatic. The run recomputes and the act
-    can be redone by anyone else."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    can be redone by anyone else.
+
+    Who: an expert covering the run's game (`key` plus `expert`, or session)
+    Reads: form fields run, kind (reproduction|verification|console), target
+        (the username whose act it is), reason, dry_run
+    Answers: {ok, run, status, note}; dry_run: {ok, dry_run, would_invalidate,
+        status}
+    """
+    invalidation_form = request.form
+    dry_run = invalidation_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(invalidation_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        expert, error = request_identity(invalidation_form, 'expert')
+        if error:
+            return error
+        run_id = (invalidation_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        r = json.loads((rdir / 'run.json').read_text())
-        if r.get('status', {}).get('reproduced') == 'imported':
+        run = json.loads((run_dir / 'run.json').read_text())
+        if run.get('status', {}).get('reproduced') == 'imported':
             return fail('Imported runs are irrevocably verified; no further acts apply')
-        game_key = r['game']
+        game_key = run['game']
         if not expert_covers(expert, game_key):
             return fail(f'{expert!r} is not an expert covering {game_key}', 403)
-        kind = (f.get('kind') or '').strip()
+        kind = (invalidation_form.get('kind') or '').strip()
         # console verification lives in its own roster, hence the mapping
         ROSTER = {'reproduction': 'reproductions', 'verification': 'verifications',
                   'console': 'consoleVerifications'}
         if kind not in ROSTER:
             return fail('kind must be reproduction, verification or console')
-        target = (f.get('target') or '').strip()
-        reason = (f.get('reason') or '').strip()
+        target = (invalidation_form.get('target') or '').strip()
+        reason = (invalidation_form.get('reason') or '').strip()
         if not reason:
             return fail('an invalidation must state its reason; it is logged in the open')
         if len(reason) > ACT_NOTES_MAX:
             return fail(f'reason exceeds {ACT_NOTES_MAX} characters')
-        acts = r.get(ROSTER[kind], [])
+        acts = run.get(ROSTER[kind], [])
         act = next((a for a in acts if a['user'].lower() == target.lower()
                     and not a.get('invalidated')), None)
         if not act:
             return fail(f'no live {kind} by {target!r} on {run_id}', 404)
         act['invalidated'] = {'by': expert, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                               'reason': reason}
-        sync_status(r)
-        if dry:
+        sync_status(run)
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_invalidate': act,
-                            'status': r['status']})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+                            'status': run['status']})
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(expert)
         commit_push(f'Invalidate {kind} on {run_id}: {target} by expert {expert}\n\n'
                     f'Reason: {reason}\nVia: archivist')
-    return jsonify({'ok': True, 'run': run_id, 'status': r['status'],
+    return jsonify({'ok': True, 'run': run_id, 'status': run['status'],
                     'note': 'Logged in the open site log; appealable; '
                             'the act may be redone by any other member.'})
 
@@ -821,12 +890,12 @@ def parse_metric_defs(raw):
         return None, 'metrics must be a JSON array'
     if not isinstance(rows, list) or len(rows) > 4:
         return None, 'metrics: at most four, as a JSON array'
-    out, seen = [], set()
+    defs, seen = [], set()
     for row in rows:
         if not isinstance(row, dict):
             return None, 'each metric is an object'
         if row.get('key') == 'time':
-            m = {'key': 'time', 'label': str(row.get('label') or 'Time')[:40],
+            metric = {'key': 'time', 'label': str(row.get('label') or 'Time')[:40],
                  'type': 'time', 'better': 'lower'}
         else:
             label = str(row.get('label') or '').strip()[:40]
@@ -835,56 +904,61 @@ def parse_metric_defs(raw):
             key = slugify(str(row.get('key') or label))
             if not key or key == 'unclassified':
                 return None, f'bad metric key for {label!r}'
-            mtype = row.get('type')
+            metric_type = row.get('type')
             better = row.get('better')
-            if mtype not in ('time', 'number'):
+            if metric_type not in ('time', 'number'):
                 return None, f'{label}: type must be time or number'
             if better not in ('lower', 'higher'):
                 return None, f'{label}: better must be lower or higher'
-            m = {'key': key, 'label': label, 'type': mtype, 'better': better}
+            metric = {'key': key, 'label': label, 'type': metric_type, 'better': better}
             unit = str(row.get('unit') or '').strip()[:12]
             if unit:
-                m['unit'] = unit
-        if m['key'] in seen:
-            return None, f'duplicate metric key {m["key"]!r}'
-        seen.add(m['key'])
-        out.append(m)
-    return (out or None), None
+                metric['unit'] = unit
+        if metric['key'] in seen:
+            return None, f'duplicate metric key {metric["key"]!r}'
+        seen.add(metric['key'])
+        defs.append(metric)
+    return (defs or None), None
 
 
-def _category_gate(f, need_expert=True):
+def _category_gate(form, need_expert=True):
     """Shared by the category endpoints: who is asking, over which game, and
     the game's categories document. Creation is everybody's; everything else
-    needs a covering expert. Returns (actor, game_key, cfile, cats, error)."""
-    actor, err_ = request_identity(f, 'expert' if need_expert else 'user')
-    if err_:
-        return None, None, None, None, err_
-    game_key = (f.get('game') or '').strip()
+    needs a covering expert. Returns (actor, game_key, categories_file, categories, error)."""
+    actor, error = request_identity(form, 'expert' if need_expert else 'user')
+    if error:
+        return None, None, None, None, error
+    game_key = (form.get('game') or '').strip()
     if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', game_key):
         return None, None, None, None, fail('game must be system/slug')
-    cfile = ARCHIVE / 'games' / game_key / 'categories.json'
-    if not cfile.exists():
+    categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
+    if not categories_file.exists():
         return None, None, None, None, fail(f'unknown game {game_key}', 404)
     if need_expert and not expert_covers(actor, game_key) \
             and not is_editor(actor):
         return None, None, None, None, fail(
             f'{actor!r} is not an expert covering {game_key}, nor an editor', 403)
-    return actor, game_key, cfile, json.loads(cfile.read_text()), None
+    return actor, game_key, categories_file, json.loads(categories_file.read_text()), None
 
 
 @app.get('/api/categories')
 def categories_of_game():
     """A game's category definitions, fresh from the checkout (refreshed at
     most 20 s old). The submit form asks here instead of the raw-file CDN,
-    whose 5-minute cache showed a renamed category under its old label."""
+    whose 5-minute cache showed a renamed category under its old label.
+
+    Who: anybody
+    Reads: query arg game (system/slug)
+    Answers: the categories.json document with ok: true, Cache-Control: no-store
+    """
     game_key = (request.args.get('game') or '').strip()
     if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', game_key):
         return fail('game must be system/slug')
     refresh_archive()
-    cfile = ARCHIVE / 'games' / game_key / 'categories.json'
-    if not cfile.exists():
+    categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
+    if not categories_file.exists():
         return fail(f'unknown game {game_key}', 404)
-    resp = jsonify({'ok': True, **json.loads(cfile.read_text())})
+    resp = jsonify({'ok': True, **json.loads(categories_file.read_text())})
     resp.headers['Cache-Control'] = 'no-store'
     return resp
 
@@ -892,24 +966,31 @@ def categories_of_game():
 def category_add():
     """Any member adds a category (creation is everybody's; only experts
     edit what exists). The creator defines its metrics; the edit log carries
-    the act."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    the act.
+
+    Who: any member (session, or `key` plus `user`)
+    Reads: form fields game, label, rule, option_key, metrics (JSON array),
+        reason, dry_run
+    Answers: {ok, game, key, label}; dry_run: {ok, dry_run, key}; 409 when the
+        key exists
+    """
+    category_form = request.form
+    dry_run = category_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(category_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        expert, game_key, cfile, cats, err_ = _category_gate(f, need_expert=False)
-        if err_:
-            return err_
-        mdefs, merr = parse_metric_defs(f.get('metrics'))
-        if merr:
-            return fail(merr)
-        label = (f.get('label') or '').strip()
-        rule = (f.get('rule') or '').strip()
+        expert, game_key, categories_file, categories, error = _category_gate(category_form, need_expert=False)
+        if error:
+            return error
+        metric_defs, metric_error = parse_metric_defs(category_form.get('metrics'))
+        if metric_error:
+            return fail(metric_error)
+        label = (category_form.get('label') or '').strip()
+        rule = (category_form.get('rule') or '').strip()
         if not (1 <= len(label) <= 80):
             return fail('a label fits in 80 characters')
         if not (1 <= len(rule) <= 500):
@@ -917,36 +998,36 @@ def category_add():
                         'holds a run to')
         # 'key' is the submitter-key auth field; the option key travels as
         # option_key (the same collision removal/decide once had)
-        okey = slugify((f.get('option_key') or label).strip())
-        if not okey:
+        option_key = slugify((category_form.get('option_key') or label).strip())
+        if not option_key:
             return fail('the label yields an empty key')
-        if okey == 'unclassified':
+        if option_key == 'unclassified':
             return fail('unclassified is reserved: every game already has it')
-        dim = next((d for d in cats['dimensions'] if d['key'] == 'goal'),
-                   cats['dimensions'][0] if cats['dimensions'] else None)
-        if dim is None:
-            cats['dimensions'] = [{'key': 'goal', 'name': 'Category', 'options': []}]
-            dim = cats['dimensions'][0]
-        if any(o['key'] == okey for d in cats['dimensions'] for o in d['options']):
-            return fail(f'{okey!r} already exists on this game', 409)
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'key': okey})
-        dim['options'].append({'key': okey, 'label': label, 'rule': rule,
-                               **({'metrics': mdefs} if mdefs else {})})
-        cfile.write_text(json.dumps(cats, indent=1) + '\n')
-        log_edit('category', f'{game_key}:{okey}', 'added', '', label, expert,
-                 (f.get('reason') or 'Created it.').strip()[:500])
+        goal_dimension = next((d for d in categories['dimensions'] if d['key'] == 'goal'),
+                   categories['dimensions'][0] if categories['dimensions'] else None)
+        if goal_dimension is None:
+            categories['dimensions'] = [{'key': 'goal', 'name': 'Category', 'options': []}]
+            goal_dimension = categories['dimensions'][0]
+        if any(o['key'] == option_key for d in categories['dimensions'] for o in d['options']):
+            return fail(f'{option_key!r} already exists on this game', 409)
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'key': option_key})
+        goal_dimension['options'].append({'key': option_key, 'label': label, 'rule': rule,
+                               **({'metrics': metric_defs} if metric_defs else {})})
+        categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+        log_edit('category', f'{game_key}:{option_key}', 'added', '', label, expert,
+                 (category_form.get('reason') or 'Created it.').strip()[:500])
         ensure_member(expert)
-        gtitle = json.loads((ARCHIVE / 'games' / game_key / 'game.json')
+        game_title = json.loads((ARCHIVE / 'games' / game_key / 'game.json')
                             .read_text()).get('title', game_key)
-        commit_push(f'Category add {game_key}:{okey}: by {expert}\n\n'
+        commit_push(f'Category add {game_key}:{option_key}: by {expert}\n\n'
                     f'Label: {label}\nVia: archivist')
         notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** created the category '
                        f'[{label}](<{SITE_URL}/games/{game_key}/>) in '
-                       f'[[{game_key.split("/")[0].upper()}] {gtitle}]'
+                       f'[[{game_key.split("/")[0].upper()}] {game_title}]'
                        f'(<{SITE_URL}/games/{game_key}/>)',
                        wait_for=f'{SITE_URL}/games/{game_key}/')
-    return jsonify({'ok': True, 'game': game_key, 'key': okey, 'label': label})
+    return jsonify({'ok': True, 'game': game_key, 'key': option_key, 'label': label})
 
 
 
@@ -954,52 +1035,57 @@ def category_add():
 @app.post('/api/category/delete')
 def category_delete():
     """Remove an option no run has ever used. Anything referenced stays: a
-    category with runs in it is the runs' home, not clutter."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    category with runs in it is the runs' home, not clutter.
+
+    Who: an expert covering the game, or an editor (`key` plus `expert`)
+    Reads: form fields game, option, reason, dry_run
+    Answers: {ok, game, removed}; 409 while any run sits in the category
+    """
+    category_form = request.form
+    dry_run = category_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(category_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        expert, game_key, cfile, cats, err_ = _category_gate(f)
-        if err_:
-            return err_
-        okey = (f.get('option') or '').strip()
-        opt = next((o for d in cats['dimensions'] for o in d['options']
-                    if o['key'] == okey), None)
-        if not opt:
-            return fail(f'{game_key} defines no category {okey!r}', 404)
-        users = [json.loads(rj.read_text())['id']
-                 for rj in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
-                 if (json.loads(rj.read_text()).get('category') or {}).get('goal') == okey]
-        if users:
-            return fail(f'{okey!r} holds {len(users)} run(s) ({", ".join(users[:4])}'
-                        f'{"…" if len(users) > 4 else ""}); a category with runs '
+        expert, game_key, categories_file, categories, error = _category_gate(category_form)
+        if error:
+            return error
+        option_key = (category_form.get('option') or '').strip()
+        option = next((option for dimension in categories['dimensions'] for option in dimension['options']
+                    if option['key'] == option_key), None)
+        if not option:
+            return fail(f'{game_key} defines no category {option_key!r}', 404)
+        runs_in_category = [json.loads(run_json_path.read_text())['id']
+                 for run_json_path in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
+                 if (json.loads(run_json_path.read_text()).get('category') or {}).get('goal') == option_key]
+        if runs_in_category:
+            return fail(f'{option_key!r} holds {len(runs_in_category)} run(s) ({", ".join(runs_in_category[:4])}'
+                        f'{"…" if len(runs_in_category) > 4 else ""}); a category with runs '
                         f'in it is their home, not clutter', 409)
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True})
-        for d in cats['dimensions']:
-            d['options'] = [o for o in d['options'] if o['key'] != okey]
-        cfile.write_text(json.dumps(cats, indent=1) + '\n')
-        log_edit('category', f'{game_key}:{okey}', 'removed', opt.get('label', okey),
+        for dimension in categories['dimensions']:
+            dimension['options'] = [option for option in dimension['options'] if option['key'] != option_key]
+        categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+        log_edit('category', f'{game_key}:{option_key}', 'removed', option.get('label', option_key),
                  '', expert,
-                 (f.get('reason') or 'Removed unused by a covering expert.').strip()[:500])
+                 (category_form.get('reason') or 'Removed unused by a covering expert.').strip()[:500])
         ensure_member(expert)
-        commit_push(f'Category remove {game_key}:{okey}: by expert {expert}\n\n'
+        commit_push(f'Category remove {game_key}:{option_key}: by expert {expert}\n\n'
                     f'Via: archivist')
-    return jsonify({'ok': True, 'game': game_key, 'removed': okey})
+    return jsonify({'ok': True, 'game': game_key, 'removed': option_key})
 
 
 
-def _deletion_gate(f, need='expert'):
+def _deletion_gate(form, need='expert'):
     """Common to every delete: who is asking, and why, said properly."""
-    actor, err_ = request_identity(f, 'expert')
-    if err_:
-        return None, None, err_
-    reason = (f.get('reason') or '').strip()
+    actor, error = request_identity(form, 'expert')
+    if error:
+        return None, None, error
+    reason = (form.get('reason') or '').strip()
     if not (8 <= len(reason) <= 500):
         return None, None, fail('say why, publicly: a deletion is permanent and the '
                                 'log entry is all that remains of it')
@@ -1014,22 +1100,32 @@ EXPERT_EDITABLE = {'run': ('duration', 'goal', 'encode', 'goalDescription',
 @app.post('/api/expert/edit')
 def expert_edit():
     """An expert corrects the record inside their jurisdiction, field by field,
-    each change logged with who, from, to, and why."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    each change logged with who, from, to, and why.
+
+    Who: an expert covering the target; an editor for library shape only
+        (game title and thumbnail, category fields, group titles, and
+        moving a run between goals)
+    Reads: form fields kind (run|game|category|group), target, field, value,
+        reason (8 to 500 chars), dry_run; files movie (run.movie) and
+        thumbnail (game.thumbnail)
+    Answers: {ok, kind, key, field, from, to}, plus runs_seeded for category
+        metrics; dry_run: {ok, dry_run, field, from, to}
+    """
+    edit_form = request.form
+    dry_run = edit_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        actor, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        kind = (f.get('kind') or '').strip()
-        key = (f.get('target') or '').strip()
-        field = (f.get('field') or '').strip()
-        value = (f.get('value') or '').strip()
-        reason = (f.get('reason') or '').strip()
+        auth_error = auth_precheck(edit_form)
+        if auth_error:
+            return auth_error
+        actor, error = request_identity(edit_form, 'expert')
+        if error:
+            return error
+        kind = (edit_form.get('kind') or '').strip()
+        target = (edit_form.get('target') or '').strip()
+        field = (edit_form.get('field') or '').strip()
+        value = (edit_form.get('value') or '').strip()
+        reason = (edit_form.get('reason') or '').strip()
         if kind not in EXPERT_EDITABLE:
             return fail('kind must be run, game, category or group')
         if field not in EXPERT_EDITABLE[kind] and not (
@@ -1039,16 +1135,16 @@ def expert_edit():
                         f'is never edited by anybody but its author.')
         if not (8 <= len(reason) <= 500):
             return fail('say why, publicly: the edit log carries your reason')
-        if not dry:
+        if not dry_run:
             checkout_branch()
 
         if kind == 'run':
-            if not re.fullmatch(r'M[0-9]+', key):
+            if not re.fullmatch(r'M[0-9]+', target):
                 return fail('target must be a run id like M100001')
-            rdir = find_run(key)
-            if not rdir:
-                return fail(f'unknown run {key}', 404)
-            game_key = f'{rdir.parent.parent.parent.name}/{rdir.parent.parent.name}'
+            run_dir = find_run(target)
+            if not run_dir:
+                return fail(f'unknown run {target}', 404)
+            game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
             if not expert_covers(actor, game_key):
                 # an editor shapes the library, not the runs: the one run
                 # field that is library shape is which category it sits in
@@ -1056,258 +1152,258 @@ def expert_edit():
                     return fail(f'{actor!r} is not an expert covering {game_key}'
                                 f' (an editor may only move a run between '
                                 f'categories)', 403)
-            r = json.loads((rdir / 'run.json').read_text())
+            run = json.loads((run_dir / 'run.json').read_text())
             if field.startswith('metric:'):
-                mkey = field.split(':', 1)[1]
+                metric_key = field.split(':', 1)[1]
                 try:
-                    new_v = float(value)
+                    new_value = float(value)
                 except ValueError:
                     return fail('value must be a number (seconds for times)')
-                if new_v < 0:
+                if new_value < 0:
                     return fail('a metric value cannot be negative')
-                old_v = (r.get('metrics') or {}).get(mkey, 0)
-                r.setdefault('metrics', {})[mkey] = new_v
-                value = str(new_v)
+                old_value = (run.get('metrics') or {}).get(metric_key, 0)
+                run.setdefault('metrics', {})[metric_key] = new_value
+                value = str(new_value)
             elif field == 'duration':
-                if not r.get('videoOnly'):
+                if not run.get('videoOnly'):
                     return fail('only a video-only run has a stated time to correct; '
                                 'a movie derives its time from its frames')
-                m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
+                time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
                                    value)
-                if not m_t:
+                if not time_match:
                     return fail('value must be a time, [h:]mm:ss or [h:]mm:ss.mmm')
-                h, mnt, sec, frac = m_t.groups()
-                new_v = (int(h or 0) * 3600 + int(mnt) * 60 + int(sec)
-                         + (int(frac.ljust(3, "0")) / 1000 if frac else 0.0))
-                if new_v <= 0:
+                hours, minutes, seconds, fraction = time_match.groups()
+                new_value = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
+                         + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))
+                if new_value <= 0:
                     return fail('a run that takes no time at all is not a run')
-                old_v = r.get('duration')
-                r['duration'] = new_v
+                old_value = run.get('duration')
+                run['duration'] = new_value
             elif field == 'goal':
-                cats = json.loads((rdir.parent.parent / 'categories.json').read_text())
-                valid = {o['key'] for d in cats['dimensions'] for o in d['options']}
-                valid.add('unclassified')
-                if value not in valid:
+                categories = json.loads((run_dir.parent.parent / 'categories.json').read_text())
+                valid_goals = {o['key'] for d in categories['dimensions'] for o in d['options']}
+                valid_goals.add('unclassified')
+                if value not in valid_goals:
                     return fail(f'{value!r} is not a goal this game defines')
                 if value == 'unclassified' and any(
-                        not v.get('invalidated') for v in r.get('verifications', [])):
+                        not v.get('invalidated') for v in run.get('verifications', [])):
                     return fail('this run holds live verifications, which are bound '
                                 'to its goal; unclassifying it would void them, and '
                                 'that is not an edit')
-                old_v = (r.get('category') or {}).get('goal')
-                if old_v == value:
+                old_value = (run.get('category') or {}).get('goal')
+                if old_value == value:
                     return fail('that is already its goal')
-                r.setdefault('category', {})['goal'] = value
+                run.setdefault('category', {})['goal'] = value
             elif field == 'encode':
-                enc = providers.resolve(value)
-                if not enc:
+                encode_provider = providers.resolve(value)
+                if not encode_provider:
                     return fail('value must be a watchable encode URL on a platform '
                                 'we accept')
-                old_v = (r.get('encodes') or [{}])[0].get('url', '')
-                r['encodes'] = [{'kind': enc['kind'], 'url': value}]
+                old_value = (run.get('encodes') or [{}])[0].get('url', '')
+                run['encodes'] = [{'kind': encode_provider['kind'], 'url': value}]
             elif field == 'goalDescription':
                 if len(value) > 500:
                     return fail('a goal description fits in 500 characters')
-                old_v = r.get('goalDescription', '')
+                old_value = run.get('goalDescription', '')
                 if value:
-                    r['goalDescription'] = value
+                    run['goalDescription'] = value
                 else:
-                    r.pop('goalDescription', None)
-                if is_uncl_run(r) and not value:
+                    run.pop('goalDescription', None)
+                if is_uncl_run(run) and not value:
                     return fail('an Unclassified run states its own goal; it cannot '
                                 'lose its description')
             elif field == 'notes':
                 if len(value.encode()) > 64 * 1024:
                     return fail('notes fit in 64 KB')
-                nfile = rdir / 'notes.md'
-                old_v = (nfile.read_text()[:300] if nfile.exists() else '')
-                if dry:
+                notes_file = run_dir / 'notes.md'
+                old_value = (notes_file.read_text()[:300] if notes_file.exists() else '')
+                if dry_run:
                     return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                    'from': old_v, 'to': value[:300]})
+                                    'from': old_value, 'to': value[:300]})
                 if value:
-                    nfile.write_text(value + ('\n' if not value.endswith('\n') else ''))
-                elif nfile.exists():
-                    nfile.unlink()
+                    notes_file.write_text(value + ('\n' if not value.endswith('\n') else ''))
+                elif notes_file.exists():
+                    notes_file.unlink()
             elif field == 'movie':
-                if r.get('videoOnly'):
+                if run.get('videoOnly'):
                     return fail('a video-only run has no movie file to replace')
-                newmov = request.files.get('movie')
-                if not newmov or not newmov.filename:
+                new_movie_upload = request.files.get('movie')
+                if not new_movie_upload or not new_movie_upload.filename:
                     return fail('attach the replacement movie file')
-                mext = newmov.filename.rsplit('.', 1)[-1].lower()
-                if mext not in MOVIE_EXTS:
-                    return fail(f'movie extension .{mext} not a known TAS format')
-                mbytes = newmov.read()
-                if not mbytes or len(mbytes) > MOVIE_MAX:
+                movie_ext = new_movie_upload.filename.rsplit('.', 1)[-1].lower()
+                if movie_ext not in MOVIE_EXTS:
+                    return fail(f'movie extension .{movie_ext} not a known TAS format')
+                movie_bytes = new_movie_upload.read()
+                if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
                     return fail('movie must be non-empty and under 16 MB')
-                mparsed = movieparse.parse(newmov.filename, mbytes)
-                if not mparsed['ok']:
-                    return fail(f'movie did not parse as .{mext}: {mparsed["error"]}')
-                old_v = f"{r['movie']['file']} (sha1 {r['movie'].get('sha1', '?')[:12]})"
-                value = f"{r['id']}.{mext} (sha1 {hashlib.sha1(mbytes).hexdigest()[:12]})"
-                if dry:
+                parsed_movie = movieparse.parse(new_movie_upload.filename, movie_bytes)
+                if not parsed_movie['ok']:
+                    return fail(f'movie did not parse as .{movie_ext}: {parsed_movie["error"]}')
+                old_value = f"{run['movie']['file']} (sha1 {run['movie'].get('sha1', '?')[:12]})"
+                value = f"{run['id']}.{movie_ext} (sha1 {hashlib.sha1(movie_bytes).hexdigest()[:12]})"
+                if dry_run:
                     return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                    'from': old_v, 'to': value})
-                (rdir / r['movie']['file']).unlink(missing_ok=True)
-                (rdir / f"{r['id']}.{mext}").write_bytes(mbytes)
-                r['movie'] = {'file': f"{r['id']}.{mext}", 'format': mext,
-                              'sha1': hashlib.sha1(mbytes).hexdigest(),
-                              'frames': mparsed['frames'],
-                              'rerecords': mparsed['rerecords'],
-                              'start': mparsed['start'],
-                              **({'fps': mparsed['fps']} if mparsed.get('fps') else {})}
-            if dry:
+                                    'from': old_value, 'to': value})
+                (run_dir / run['movie']['file']).unlink(missing_ok=True)
+                (run_dir / f"{run['id']}.{movie_ext}").write_bytes(movie_bytes)
+                run['movie'] = {'file': f"{run['id']}.{movie_ext}", 'format': movie_ext,
+                              'sha1': hashlib.sha1(movie_bytes).hexdigest(),
+                              'frames': parsed_movie['frames'],
+                              'rerecords': parsed_movie['rerecords'],
+                              'start': parsed_movie['start'],
+                              **({'fps': parsed_movie['fps']} if parsed_movie.get('fps') else {})}
+            if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                'from': old_v, 'to': value})
-            (rdir / 'run.json').write_text(json.dumps(
-                {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
-            log_edit('run', key, field, old_v, value, actor, reason)
+                                'from': old_value, 'to': value})
+            (run_dir / 'run.json').write_text(json.dumps(
+                {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
+            log_edit('run', target, field, old_value, value, actor, reason)
 
         elif kind == 'game':
-            m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', key)
-            if not m:
+            target_match = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', target)
+            if not target_match:
                 return fail('target must be system/slug')
-            gfile = ARCHIVE / 'games' / key / 'game.json'
-            if not gfile.exists():
-                return fail(f'unknown game {key}', 404)
-            if not expert_covers(actor, key) and not is_editor(actor):
-                return fail(f'{actor!r} is not an expert covering {key}, '
+            game_file = ARCHIVE / 'games' / target / 'game.json'
+            if not game_file.exists():
+                return fail(f'unknown game {target}', 404)
+            if not expert_covers(actor, target) and not is_editor(actor):
+                return fail(f'{actor!r} is not an expert covering {target}, '
                             f'nor an editor', 403)
-            game = json.loads(gfile.read_text())
+            game = json.loads(game_file.read_text())
             if field == 'title':
                 if not (1 <= len(value) <= 120):
                     return fail('a title fits in 120 characters')
-                old_v = game.get('title')
-                if old_v == value:
+                old_value = game.get('title')
+                if old_value == value:
                     return fail('that is already its title')
                 game['title'] = value
             else:
-                shot = request.files.get('thumbnail')
-                if not shot or not shot.filename:
+                screenshot_upload = request.files.get('thumbnail')
+                if not screenshot_upload or not screenshot_upload.filename:
                     return fail('attach the thumbnail image')
-                fext = pathlib.Path(shot.filename).suffix.lower()
-                sext = '.jpg' if fext == '.jpeg' else fext
-                if sext not in IMAGE_MAGIC:
+                upload_ext = pathlib.Path(screenshot_upload.filename).suffix.lower()
+                stored_ext = '.jpg' if upload_ext == '.jpeg' else upload_ext
+                if stored_ext not in IMAGE_MAGIC:
                     return fail('thumbnail must be png, jpg or webp')
-                data = shot.read()
-                if not data or len(data) > THUMB_MAX:
+                image_bytes = screenshot_upload.read()
+                if not image_bytes or len(image_bytes) > THUMB_MAX:
                     return fail(f'thumbnail must be non-empty and under '
                                 f'{THUMB_MAX >> 10} KB')
-                if not any(data.startswith(m_) for m_ in IMAGE_MAGIC[sext]):
+                if not any(image_bytes.startswith(magic) for magic in IMAGE_MAGIC[stored_ext]):
                     return fail('that file is not the image its name claims')
-                old_v = game.get('thumbnail', '')
-                value = f'thumb{sext}'
-                if dry:
+                old_value = game.get('thumbnail', '')
+                value = f'thumb{stored_ext}'
+                if dry_run:
                     return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                    'from': old_v, 'to': value})
-                if old_v:
-                    (ARCHIVE / 'games' / key / old_v).unlink(missing_ok=True)
-                (ARCHIVE / 'games' / key / value).write_bytes(data)
+                                    'from': old_value, 'to': value})
+                if old_value:
+                    (ARCHIVE / 'games' / target / old_value).unlink(missing_ok=True)
+                (ARCHIVE / 'games' / target / value).write_bytes(image_bytes)
                 game['thumbnail'] = value
-            if dry:
+            if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                'from': old_v, 'to': value})
-            gfile.write_text(json.dumps(game, indent=1) + '\n')
-            log_edit('game', key, field, old_v, value, actor, reason)
+                                'from': old_value, 'to': value})
+            game_file.write_text(json.dumps(game, indent=1) + '\n')
+            log_edit('game', target, field, old_value, value, actor, reason)
 
         elif kind == 'category':
-            m = re.fullmatch(r'([a-z0-9-]+/[a-z0-9-]+):([a-z0-9-]+)', key)
-            if not m:
+            target_match = re.fullmatch(r'([a-z0-9-]+/[a-z0-9-]+):([a-z0-9-]+)', target)
+            if not target_match:
                 return fail('target must be system/slug:option')
-            game_key, okey = m.group(1), m.group(2)
-            cfile = ARCHIVE / 'games' / game_key / 'categories.json'
-            if not cfile.exists():
+            game_key, option_key = target_match.group(1), target_match.group(2)
+            categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
+            if not categories_file.exists():
                 return fail(f'unknown game {game_key}', 404)
             if not expert_covers(actor, game_key) and not is_editor(actor):
                 return fail(f'{actor!r} is not an expert covering {game_key}, '
                             f'nor an editor', 403)
-            cats = json.loads(cfile.read_text())
-            opt = next((o for d in cats['dimensions'] for o in d['options']
-                        if o['key'] == okey), None)
-            if not opt:
-                return fail(f'{game_key} defines no category {okey!r}', 404)
+            categories = json.loads(categories_file.read_text())
+            option = next((o for d in categories['dimensions'] for o in d['options']
+                        if o['key'] == option_key), None)
+            if not option:
+                return fail(f'{game_key} defines no category {option_key!r}', 404)
             if field == 'metrics':
-                mdefs, merr = parse_metric_defs(value)
-                if merr:
-                    return fail(merr)
-                old_defs = opt.get('metrics')
-                old_v = json.dumps(old_defs) if old_defs else '(classic: time)'
-                new_v = json.dumps(mdefs) if mdefs else '(classic: time)'
-                if old_v == new_v:
+                metric_defs, metric_error = parse_metric_defs(value)
+                if metric_error:
+                    return fail(metric_error)
+                old_defs = option.get('metrics')
+                old_value = json.dumps(old_defs) if old_defs else '(classic: time)'
+                new_value = json.dumps(metric_defs) if metric_defs else '(classic: time)'
+                if old_value == new_value:
                     return fail('that is already its metric definition')
-                if dry:
+                if dry_run:
                     return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                    'from': old_v, 'to': new_v})
-                if mdefs:
-                    opt['metrics'] = mdefs
+                                    'from': old_value, 'to': new_value})
+                if metric_defs:
+                    option['metrics'] = metric_defs
                 else:
-                    opt.pop('metrics', None)
-                cfile.write_text(json.dumps(cats, indent=1) + '\n')
+                    option.pop('metrics', None)
+                categories_file.write_text(json.dumps(categories, indent=1) + '\n')
                 # a freshly added metric writes the explicit empty value onto
                 # every run already in the category: nothing gets unranked,
                 # zeros rank last, and the experts fill them in from here
-                old_keys = {m['key'] for m in (old_defs or [])}
-                fresh = [m['key'] for m in (mdefs or [])
-                         if m['key'] != 'time' and m['key'] not in old_keys]
+                old_keys = {metric_def['key'] for metric_def in (old_defs or [])}
+                fresh = [metric_def['key'] for metric_def in (metric_defs or [])
+                         if metric_def['key'] != 'time' and metric_def['key'] not in old_keys]
                 touched = 0
                 if fresh:
-                    for rj in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json'):
-                        rr = json.loads(rj.read_text())
-                        if (rr.get('category') or {}).get('goal') != okey:
+                    for run_json_path in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json'):
+                        category_run = json.loads(run_json_path.read_text())
+                        if (category_run.get('category') or {}).get('goal') != option_key:
                             continue
-                        for kf in fresh:
-                            rr.setdefault('metrics', {}).setdefault(kf, 0)
-                        rj.write_text(json.dumps(rr, indent=1) + '\n')
+                        for fresh_key in fresh:
+                            category_run.setdefault('metrics', {}).setdefault(fresh_key, 0)
+                        run_json_path.write_text(json.dumps(category_run, indent=1) + '\n')
                         touched += 1
-                log_edit('category', key, field, old_v[:300], new_v[:300],
+                log_edit('category', target, field, old_value[:300], new_value[:300],
                          actor, reason)
                 ensure_member(actor)
-                commit_push(f'Expert edit category {key}: metrics\n\n'
+                commit_push(f'Expert edit category {target}: metrics\n\n'
                             f'By: {actor}\nReason: {reason}\n'
                             f'Runs seeded with empty values: {touched}\n'
                             f'Via: archivist')
-                return jsonify({'ok': True, 'kind': kind, 'key': key,
-                                'field': field, 'from': old_v, 'to': new_v,
+                return jsonify({'ok': True, 'kind': kind, 'key': target,
+                                'field': field, 'from': old_value, 'to': new_value,
                                 'runs_seeded': touched})
             limit = 80 if field == 'label' else 500
             if not (1 <= len(value) <= limit):
                 return fail(f'a {field} fits in {limit} characters')
-            old_v = opt.get(field, '')
-            if old_v == value:
+            old_value = option.get(field, '')
+            if old_value == value:
                 return fail(f'that is already its {field}')
-            opt[field] = value
-            if dry:
+            option[field] = value
+            if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                'from': old_v, 'to': value})
-            cfile.write_text(json.dumps(cats, indent=1) + '\n')
-            log_edit('category', key, field, old_v, value, actor, reason)
+                                'from': old_value, 'to': value})
+            categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+            log_edit('category', target, field, old_value, value, actor, reason)
 
         else:
-            doc = load_groups()
-            gr = next((g for g in doc['groups'] if g['key'] == key.lower()), None)
-            if not gr:
-                return fail(f'no group with the key {key!r}', 404)
-            if not covers_group(actor, gr) and not is_editor(actor):
-                return fail(f'{actor} holds no scope covering the {gr["title"]} group',
+            groups_doc = load_groups()
+            group = next((g for g in groups_doc['groups'] if g['key'] == target.lower()), None)
+            if not group:
+                return fail(f'no group with the key {target!r}', 404)
+            if not covers_group(actor, group) and not is_editor(actor):
+                return fail(f'{actor} holds no scope covering the {group["title"]} group',
                             403)
             if not (1 <= len(value) <= 80):
                 return fail('a title fits in 80 characters')
-            old_v = gr.get('title')
-            if old_v == value:
+            old_value = group.get('title')
+            if old_value == value:
                 return fail('that is already its title')
-            gr['title'] = value
-            if dry:
+            group['title'] = value
+            if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                'from': old_v, 'to': value})
-            save_groups(doc)
-            log_edit('group', key.lower(), field, old_v, value, actor, reason)
+                                'from': old_value, 'to': value})
+            save_groups(groups_doc)
+            log_edit('group', target.lower(), field, old_value, value, actor, reason)
 
         ensure_member(actor)
-        commit_push(f'Expert edit {kind} {key}: {field}\n\n'
-                    f'From: {str(old_v)[:120]}\nTo: {value[:120]}\n'
+        commit_push(f'Expert edit {kind} {target}: {field}\n\n'
+                    f'From: {str(old_value)[:120]}\nTo: {value[:120]}\n'
                     f'By: {actor}\nReason: {reason}\nVia: archivist')
-    return jsonify({'ok': True, 'kind': kind, 'key': key, 'field': field,
-                    'from': old_v, 'to': value})
+    return jsonify({'ok': True, 'kind': kind, 'key': target, 'field': field,
+                    'from': old_value, 'to': value})
 
 @app.post('/api/run/delete')
 def run_delete():
@@ -1317,34 +1413,38 @@ def run_delete():
     all-author erasure (Terms 3.1). It exists for things that were never
     really works; the reason is public and permanent even though the run is
     neither.
+
+    Who: an expert covering the run's game (`key` plus `expert`)
+    Reads: form fields run, reason (8 to 500 chars), dry_run
+    Answers: {ok, deleted, note}; dry_run: {ok, dry_run, would_delete, game}
     """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    deletion_form = request.form
+    dry_run = deletion_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        actor, reason, err_ = _deletion_gate(f)
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        auth_error = auth_precheck(deletion_form)
+        if auth_error:
+            return auth_error
+        actor, reason, error = _deletion_gate(deletion_form)
+        if error:
+            return error
+        run_id = (deletion_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        game_key = f'{rdir.parent.parent.parent.name}/{rdir.parent.parent.name}'
+        game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
         if not expert_covers(actor, game_key):
             return fail(f'{actor!r} is not an expert covering {game_key}', 403)
-        r = json.loads((rdir / 'run.json').read_text())
-        title = f'{game_key} ({(r.get("category") or {}).get("goal", "?")})'
-        if dry:
+        run = json.loads((run_dir / 'run.json').read_text())
+        title = f'{game_key} ({(run.get("category") or {}).get("goal", "?")})'
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_delete': run_id,
                             'game': game_key})
         checkout_branch()
-        rdir = find_run(run_id)
-        if not rdir:
+        run_dir = find_run(run_id)
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        shutil.rmtree(rdir)
+        shutil.rmtree(run_dir)
         log_deletion('run', run_id, title, actor, reason)
         ensure_member(actor)
         commit_push(f'Delete {run_id}: by expert {actor}\n\nReason: {reason}\nVia: archivist')
@@ -1361,64 +1461,68 @@ def game_delete():
     deletions.json beside the game's, so the log carries the whole act, and
     git history keeps the bytes. Works that were genuine but mis-homed are
     moved by an expert run edit, never by deletion.
+
+    Who: an expert covering the game
+    Reads: form fields game (system/slug), reason, dry_run
+    Answers: {ok, deleted, runs_deleted}
     """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    deletion_form = request.form
+    dry_run = deletion_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        actor, reason, err_ = _deletion_gate(f)
-        if err_:
-            return err_
-        m = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', (f.get('game') or '').strip())
-        if not m:
+        auth_error = auth_precheck(deletion_form)
+        if auth_error:
+            return auth_error
+        actor, reason, error = _deletion_gate(deletion_form)
+        if error:
+            return error
+        game_match = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', (deletion_form.get('game') or '').strip())
+        if not game_match:
             return fail('game must be system/slug')
-        game_key = m.group(0)
-        system, slug = m.groups()
-        gdir = ARCHIVE / 'games' / system / slug
-        if not (gdir / 'game.json').exists():
+        game_key = game_match.group(0)
+        system, slug = game_match.groups()
+        game_dir = ARCHIVE / 'games' / system / slug
+        if not (game_dir / 'game.json').exists():
             return fail(f'unknown game {game_key}', 404)
         if not expert_covers(actor, game_key):
             return fail(f'{actor!r} is not an expert covering {game_key}', 403)
-        game = json.loads((gdir / 'game.json').read_text())
-        run_dirs = sorted(d for d in (gdir / 'runs').glob('M*') if d.is_dir())
-        if dry:
+        game = json.loads((game_dir / 'game.json').read_text())
+        run_dirs = sorted(run_dir for run_dir in (game_dir / 'runs').glob('M*') if run_dir.is_dir())
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_delete': game_key,
-                            'runs_deleted': [d.name for d in run_dirs]})
+                            'runs_deleted': [run_dir.name for run_dir in run_dirs]})
         checkout_branch()
-        gdir = ARCHIVE / 'games' / system / slug
-        if not (gdir / 'game.json').exists():
+        game_dir = ARCHIVE / 'games' / system / slug
+        if not (game_dir / 'game.json').exists():
             return fail(f'unknown game {game_key}', 404)
-        run_dirs = sorted(d for d in (gdir / 'runs').glob('M*') if d.is_dir())
+        run_dirs = sorted(run_dir for run_dir in (game_dir / 'runs').glob('M*') if run_dir.is_dir())
         deleted_runs = []
-        for d in run_dirs:
+        for run_dir in run_dirs:
             try:
-                rdoc = json.loads((d / 'run.json').read_text())
-                rtitle = f'{game.get("title", game_key)} ' \
-                         f'({(rdoc.get("category") or {}).get("goal", "?")})'
+                run_doc = json.loads((run_dir / 'run.json').read_text())
+                run_title = f'{game.get("title", game_key)} ' \
+                         f'({(run_doc.get("category") or {}).get("goal", "?")})'
             except Exception:                                 # noqa: BLE001
-                rtitle = game.get('title', game_key)
-            log_deletion('run', d.name, rtitle, actor,
+                run_title = game.get('title', game_key)
+            log_deletion('run', run_dir.name, run_title, actor,
                          f'Its game {game_key} was deleted. {reason}')
-            deleted_runs.append(d.name)
-        shutil.rmtree(gdir)
+            deleted_runs.append(run_dir.name)
+        shutil.rmtree(game_dir)
         # the game leaves any group it sat in; a group cannot hold a ghost
-        doc = load_groups()
+        groups_doc = load_groups()
         changed = False
-        for gr in doc['groups']:
-            if game_key in gr.get('games', []):
-                gr['games'] = [g for g in gr['games'] if g != game_key]
+        for group in groups_doc['groups']:
+            if game_key in group.get('games', []):
+                group['games'] = [g for g in group['games'] if g != game_key]
                 changed = True
         if changed:
-            save_groups(doc)
-        today_ = time.strftime('%Y-%m-%d', time.gmtime())
-        for (u, role, scope), ev in list(held_roles().items()):
+            save_groups(groups_doc)
+        today = time.strftime('%Y-%m-%d', time.gmtime())
+        for (holder, role, scope), event in list(held_roles().items()):
             if role == 'expert' and scope == game_key:
-                append_role_event({'user': ev['user'], 'role': 'expert',
+                append_role_event({'user': event['user'], 'role': 'expert',
                                    'scope': scope, 'action': 'revoked', 'by': actor,
-                                   'date': today_, 'at': now_iso(),
+                                   'date': today, 'at': now_iso(),
                                    'reason': f'The game was deleted. {reason}'})
         log_deletion('game', game_key, game.get('title', game_key), actor, reason)
         ensure_member(actor)
@@ -1431,48 +1535,53 @@ def game_delete():
 @app.post('/api/group/delete')
 def group_delete():
     """An expert deletes a group outright; its games become ungrouped and the
-    derived Unclassified group picks them up at the next build."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    derived Unclassified group picks them up at the next build.
+
+    Who: an expert whose scope covers the group, or an editor
+    Reads: form fields group (key), reason, dry_run
+    Answers: {ok, deleted, released}
+    """
+    deletion_form = request.form
+    dry_run = deletion_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        actor, reason, err_ = _deletion_gate(f)
-        if err_:
-            return err_
-        key = (f.get('group') or '').strip().lower()
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr:
-            return fail(f'no group with the key {key!r}', 404)
-        if not covers_group(actor, gr) and not is_editor(actor):
-            return fail(f'{actor} holds no scope covering the {gr["title"]} group', 403)
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_delete': key,
-                            'released': gr.get('games', [])})
+        auth_error = auth_precheck(deletion_form)
+        if auth_error:
+            return auth_error
+        actor, reason, error = _deletion_gate(deletion_form)
+        if error:
+            return error
+        group_key = (deletion_form.get('group') or '').strip().lower()
+        groups_doc = load_groups()
+        group = next((g for g in groups_doc['groups'] if g['key'] == group_key), None)
+        if not group:
+            return fail(f'no group with the key {group_key!r}', 404)
+        if not covers_group(actor, group) and not is_editor(actor):
+            return fail(f'{actor} holds no scope covering the {group["title"]} group', 403)
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_delete': group_key,
+                            'released': group.get('games', [])})
         checkout_branch()
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr:
-            return fail(f'no group with the key {key!r}', 404)
-        released = gr.get('games', [])
-        doc['groups'] = [g for g in doc['groups'] if g['key'] != key]
-        save_groups(doc)
-        today_ = time.strftime('%Y-%m-%d', time.gmtime())
-        for (u, role, scope), ev in list(held_roles().items()):
-            if role == 'expert' and scope == f'group:{key}':
-                append_role_event({'user': ev['user'], 'role': 'expert',
+        groups_doc = load_groups()
+        group = next((g for g in groups_doc['groups'] if g['key'] == group_key), None)
+        if not group:
+            return fail(f'no group with the key {group_key!r}', 404)
+        released = group.get('games', [])
+        groups_doc['groups'] = [g for g in groups_doc['groups'] if g['key'] != group_key]
+        save_groups(groups_doc)
+        today = time.strftime('%Y-%m-%d', time.gmtime())
+        for (holder, role, scope), event in list(held_roles().items()):
+            if role == 'expert' and scope == f'group:{group_key}':
+                append_role_event({'user': event['user'], 'role': 'expert',
                                    'scope': scope, 'action': 'revoked', 'by': actor,
-                                   'date': today_, 'at': now_iso(),
+                                   'date': today, 'at': now_iso(),
                                    'reason': f'The group was deleted. {reason}'})
-        log_deletion('group', key, gr.get('title', key), actor, reason)
+        log_deletion('group', group_key, group.get('title', group_key), actor, reason)
         ensure_member(actor)
-        commit_push(f'Delete group {key}: by expert {actor}\n\n'
+        commit_push(f'Delete group {group_key}: by expert {actor}\n\n'
                     f'Reason: {reason}\nReleased: {", ".join(released) or "no games"}\n'
                     f'Via: archivist')
-    return jsonify({'ok': True, 'deleted': key, 'released': released})
+    return jsonify({'ok': True, 'deleted': group_key, 'released': released})
 
 @app.post('/api/member/delete')
 def member_delete():
@@ -1481,30 +1590,35 @@ def member_delete():
     Refused while the member holds any role or authored any run: those are
     real entanglements with the community and each has its own procedure.
     Their name in other runs' credits is text and stays.
+
+    Who: a Steering Committee member; a sitting Committee member is the
+        Founder's alone to delete, and the Founder is nobody's
+    Reads: form fields target (username), reason, dry_run
+    Answers: {ok, deleted, roles_revoked}; 409 while the member authored runs
     """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    deletion_form = request.form
+    dry_run = deletion_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        actor, reason, err_ = _deletion_gate(f)
-        if err_:
-            return err_
+        auth_error = auth_precheck(deletion_form)
+        if auth_error:
+            return auth_error
+        actor, reason, error = _deletion_gate(deletion_form)
+        if error:
+            return error
         if not is_committee(actor):
             return fail('only the Steering Committee deletes a member', 403)
-        target = (f.get('target') or '').strip()
+        target = (deletion_form.get('target') or '').strip()
         if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', target):
             return fail('target must be the member being deleted')
-        afile = ARCHIVE / 'authors' / f'{selfimport.slugify(target)}.json'
-        if not afile.exists():
+        author_file = ARCHIVE / 'authors' / f'{selfimport.slugify(target)}.json'
+        if not author_file.exists():
             return fail(f'no member record for {target}', 404)
         if target.lower() == actor.lower():
             return fail('deleting yourself is not a decision to make alone; ask '
                         'another Committee member')
-        target_roles = [(role, scope) for (u, role, scope) in held_roles()
-                        if u == target.lower()]
+        target_roles = [(role, scope) for (holder, role, scope) in held_roles()
+                        if holder == target.lower()]
         # The Committee does not eat itself: a sitting Committee member is the
         # Founder's alone to delete, and the Founder is nobody's (2.2.2).
         if any(role == 'founder' for role, s in target_roles):
@@ -1512,36 +1626,36 @@ def member_delete():
         if any(role == 'committee' for role, s in target_roles) and not is_founder(actor):
             return fail('a sitting Committee member is deleted by the Founder alone, '
                         'never by fellow Committee members', 403)
-        tl = target.lower()
-        authored = [rj for rj in ARCHIVE.glob('games/*/*/runs/*/run.json')
-                    if any(a.get('user', '').lower() == tl
-                           for a in json.loads(rj.read_text()).get('authors', []))]
-        if authored:
-            return fail(f'{target} authored {len(authored)} archived run(s); a member '
+        target_lower = target.lower()
+        authored_runs = [run_json_path for run_json_path in ARCHIVE.glob('games/*/*/runs/*/run.json')
+                    if any(a.get('user', '').lower() == target_lower
+                           for a in json.loads(run_json_path.read_text()).get('authors', []))]
+        if authored_runs:
+            return fail(f'{target} authored {len(authored_runs)} archived run(s); a member '
                         f'with works here is removed through withdrawal or erasure, '
                         f'never a record deletion', 409)
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_delete': target})
         checkout_branch()
-        if not afile.exists():
+        if not author_file.exists():
             return fail(f'no member record for {target}', 404)
         # the deletion revokes whatever they held, in the same commit: a
         # deleted member on the roster would be a ghost with authority
-        today_ = time.strftime('%Y-%m-%d', time.gmtime())
+        today = time.strftime('%Y-%m-%d', time.gmtime())
         for role, scope in target_roles:
-            ev = {'user': target, 'role': role, 'action': 'revoked', 'by': actor,
-                  'date': today_, 'at': now_iso(), 'reason': f'Member deleted. {reason}'}
+            event = {'user': target, 'role': role, 'action': 'revoked', 'by': actor,
+                  'date': today, 'at': now_iso(), 'reason': f'Member deleted. {reason}'}
             if scope:
-                ev['scope'] = scope
-            append_role_event(ev)
-        afile.unlink()
+                event['scope'] = scope
+            append_role_event(event)
+        author_file.unlink()
         log_deletion('member', target, target, actor, reason)
         commit_push(f'Delete member {target}: by {actor}\n\n'
                     f'Reason: {reason}\nVia: archivist')
     for role, scope in target_roles:
         publish_group(role, target, add=False)
     return jsonify({'ok': True, 'deleted': target,
-                    'roles_revoked': [r for r, s in target_roles]})
+                    'roles_revoked': [role for role, s in target_roles]})
 
 @app.post('/api/game/create')
 def game_create():
@@ -1551,20 +1665,26 @@ def game_create():
     way round, for an expert filling out a group before anybody has archived a
     run of it. Real on arrival, like every creation here; a mistaken one is
     deleted on the record.
+
+    Who: any member; placing the game into a group needs scope over the
+        group, or the editor role
+    Reads: form fields system, title, group (optional key), cat_label,
+        cat_rule, cat_key, metrics (JSON array), dry_run
+    Answers: {ok, game, category, group, note}; 409 when the game exists
     """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    game_form = request.form
+    dry_run = game_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        expert, err_ = request_identity(f, 'user')
-        if err_:
-            return err_
-        system = (f.get('system') or '').strip()
-        title = (f.get('title') or '').strip()[:120]
-        gkey = (f.get('group') or '').strip().lower()
+        auth_error = auth_precheck(game_form)
+        if auth_error:
+            return auth_error
+        expert, error = request_identity(game_form, 'user')
+        if error:
+            return error
+        system = (game_form.get('system') or '').strip()
+        title = (game_form.get('title') or '').strip()[:120]
+        group_key = (game_form.get('group') or '').strip().lower()
         if system not in json.loads((ARCHIVE / 'systems.json').read_text()):
             return fail(f'unknown system {system!r}: systems are curated')
         if not title:
@@ -1575,63 +1695,63 @@ def game_create():
         game_key = f'{system}/{slug}'
         if (ARCHIVE / 'games' / system / slug / 'game.json').exists():
             return fail(f'{game_key} already exists', 409)
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == gkey), None) if gkey else None
-        if gkey and not gr:
-            return fail(f'no group with the key {gkey!r}', 404)
+        groups_doc = load_groups()
+        group = next((g for g in groups_doc['groups'] if g['key'] == group_key), None) if group_key else None
+        if group_key and not group:
+            return fail(f'no group with the key {group_key!r}', 404)
         # Authority: over the group you are filling out, or over the system the
         # game lands in. A group expert creating into their own group is the
         # case this exists for, and the game is not in the group yet, so the
         # group is what has to be checked rather than the game.
         # creation is everybody's (good faith; experts moderate). Placing
         # the game into a group is curation and still needs scope over it.
-        if gr and not covers_group(expert, gr) and not is_editor(expert):
+        if group and not covers_group(expert, group) and not is_editor(expert):
             return fail(f'{expert} holds no scope covering the '
-                        f'{gr["title"]} group', 403)
-        today_ = time.strftime('%Y-%m-%d', time.gmtime())
+                        f'{group["title"]} group', 403)
+        today = time.strftime('%Y-%m-%d', time.gmtime())
         game = {'title': title, 'system': system, 'createdBy': expert,
-                'createdAt': today_}
-        cat_label = (f.get('cat_label') or 'fastest completion').strip()[:80]
-        cat_rule = (f.get('cat_rule')
+                'createdAt': today}
+        cat_label = (game_form.get('cat_label') or 'fastest completion').strip()[:80]
+        cat_rule = (game_form.get('cat_rule')
                     or 'Complete the game as fast as possible.').strip()[:500]
-        cat_key = slugify(f.get('cat_key') or cat_label)
-        mdefs, merr = parse_metric_defs(f.get('metrics'))
-        if merr:
-            return fail(merr)
+        cat_key = slugify(game_form.get('cat_key') or cat_label)
+        metric_defs, metric_error = parse_metric_defs(game_form.get('metrics'))
+        if metric_error:
+            return fail(metric_error)
         if not cat_key or cat_key == 'unclassified':
             return fail('bad first-category key')
-        first_cat = {'key': cat_key, 'label': cat_label, 'rule': cat_rule,
-                     **({'metrics': mdefs} if mdefs else {})}
-        if dry:
+        first_category = {'key': cat_key, 'label': cat_label, 'rule': cat_rule,
+                     **({'metrics': metric_defs} if metric_defs else {})}
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': game_key,
-                            'game': game, 'category': first_cat,
-                            'group': gkey or None})
+                            'game': game, 'category': first_category,
+                            'group': group_key or None})
         checkout_branch()
-        gdir = ARCHIVE / 'games' / system / slug
-        if (gdir / 'game.json').exists():
+        game_dir = ARCHIVE / 'games' / system / slug
+        if (game_dir / 'game.json').exists():
             return fail(f'{game_key} already exists', 409)
-        gdir.mkdir(parents=True, exist_ok=True)
-        (gdir / 'game.json').write_text(json.dumps(game, indent=1) + '\n')
-        (gdir / 'categories.json').write_text(json.dumps(
+        game_dir.mkdir(parents=True, exist_ok=True)
+        (game_dir / 'game.json').write_text(json.dumps(game, indent=1) + '\n')
+        (game_dir / 'categories.json').write_text(json.dumps(
             {'dimensions': [{'key': 'goal', 'name': 'Category',
-                             'options': [first_cat]}]}, indent=1) + '\n')
-        (gdir / 'runs').mkdir(exist_ok=True)
-        if gkey:
-            doc = load_groups()
-            gr = next((g for g in doc['groups'] if g['key'] == gkey), None)
-            gr['games'] = sorted(set(gr['games']) | {game_key})
-            save_groups(doc)
+                             'options': [first_category]}]}, indent=1) + '\n')
+        (game_dir / 'runs').mkdir(exist_ok=True)
+        if group_key:
+            groups_doc = load_groups()
+            group = next((g for g in groups_doc['groups'] if g['key'] == group_key), None)
+            group['games'] = sorted(set(group['games']) | {game_key})
+            save_groups(groups_doc)
         ensure_member(expert)
         ensure_game_topic(*game_key.split('/'), title)
         commit_push(f'Create {game_key}: by {expert}\n\n'
                     f'Title: {title}\nFirst category: {cat_key}\n'
-                    f'Group: {gkey or "none"}\nVia: archivist')
+                    f'Group: {group_key or "none"}\nVia: archivist')
         notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** created the '
                        f'[game](<{SITE_URL}/games/{game_key}/>) {title}'
-                       + (f' in the {gkey} group' if gkey else ''),
+                       + (f' in the {group_key} group' if group_key else ''),
                        wait_for=f'{SITE_URL}/games/{game_key}/')
     return jsonify({'ok': True, 'game': game_key, 'category': cat_key,
-                    'group': gkey or None,
+                    'group': group_key or None,
                     'note': 'It has no runs yet, so it shows as an empty game until '
                             'somebody archives one.'})
 @app.post('/api/group/create')
@@ -1642,20 +1762,26 @@ def group_create():
     You may only gather games you already have authority over, which is the same
     rule appointment follows. An empty group is site scope only, since there is
     nothing yet to derive authority from.
+
+    Who: an expert whose scope covers every listed game (site scope for an
+        empty group), or an editor
+    Reads: form fields group (key), title, games (space or comma separated
+        system/slug keys), dry_run
+    Answers: {ok, group, games, note}; 409 when the key or a game is taken
     """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    group_form = request.form
+    dry_run = group_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        key = (f.get('group') or '').strip().lower()
-        title = (f.get('title') or '').strip()
-        games = [g.strip() for g in (f.get('games') or '').replace(',', ' ').split() if g.strip()]
+        auth_error = auth_precheck(group_form)
+        if auth_error:
+            return auth_error
+        expert, error = request_identity(group_form, 'expert')
+        if error:
+            return error
+        key = (group_form.get('group') or '').strip().lower()
+        title = (group_form.get('title') or '').strip()
+        games = [g.strip() for g in (group_form.get('games') or '').replace(',', ' ').split() if g.strip()]
         if not re.fullmatch(r'[a-z0-9]+(-[a-z0-9]+)*', key or ''):
             return fail('the group key must be lowercase words joined by hyphens')
         if key in ('uncategorized', 'unclassified'):
@@ -1663,34 +1789,34 @@ def group_create():
                         f'every game no group has claimed')
         if not (1 <= len(title) <= 80):
             return fail('a group needs a title')
-        doc = load_groups()
-        if any(g['key'] == key for g in doc['groups']):
+        groups_doc = load_groups()
+        if any(g['key'] == key for g in groups_doc['groups']):
             return fail(f'a group with the key {key!r} already exists', 409)
-        for g in games:
-            if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', g) or \
-                    not (ARCHIVE / 'games' / g / 'game.json').is_file():
-                return fail(f'no such game: {g!r}', 404)
-            other = next((x for x in doc['groups'] if g in x.get('games', [])), None)
+        for game_key in games:
+            if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', game_key) or \
+                    not (ARCHIVE / 'games' / game_key / 'game.json').is_file():
+                return fail(f'no such game: {game_key!r}', 404)
+            other = next((x for x in groups_doc['groups'] if game_key in x.get('games', [])), None)
             if other:
-                return fail(f'{g} already belongs to the {other["title"]} group; a game '
+                return fail(f'{game_key} already belongs to the {other["title"]} group; a game '
                             f'belongs to one', 409)
-        holder = {'key': key, 'games': games}
-        if not covers_group(expert, holder) and not is_editor(expert):
+        prospective_group = {'key': key, 'games': games}
+        if not covers_group(expert, prospective_group) and not is_editor(expert):
             return fail(f'{expert} holds no scope covering '
                         f'{"every game listed" if games else "an empty group"}; '
                         f'a group gathers games you already speak for', 403)
-        today_ = time.strftime('%Y-%m-%d', time.gmtime())
+        today = time.strftime('%Y-%m-%d', time.gmtime())
         # real on arrival: ratification is gone as a mechanism
         entry = {'key': key, 'title': title, 'games': games,
-                 'createdBy': expert, 'createdAt': today_}
-        if dry:
+                 'createdBy': expert, 'createdAt': today}
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': entry})
         checkout_branch()
-        doc = load_groups()
-        if any(g['key'] == key for g in doc['groups']):
+        groups_doc = load_groups()
+        if any(g['key'] == key for g in groups_doc['groups']):
             return fail(f'a group with the key {key!r} already exists', 409)
-        doc['groups'].append(entry)
-        save_groups(doc)
+        groups_doc['groups'].append(entry)
+        save_groups(groups_doc)
         ensure_member(expert)
         commit_push(f'Group {key}: created by {expert}\n\n'
                     f'Title: {title}\nGames: {", ".join(games) or "none yet"}\n'
@@ -1708,97 +1834,103 @@ def group_edit():
     """Add, move in or remove games, or retitle. Adding needs authority over
     the game as well as the group: a group is not a way to reach games you do
     not cover. `move` differs from `add` in one way: it pulls the game out of
-    whatever group holds it, because a game belongs to one group."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    whatever group holds it, because a game belongs to one group.
+
+    Who: an expert whose scope covers the group, or an editor; adding or
+        moving a game in needs scope over that game too
+    Reads: form fields group, add, move, remove (game key lists), title, dry_run
+    Answers: {ok, group, games, title}; dry_run: {ok, dry_run, would_hold, title}
+    """
+    group_form = request.form
+    dry_run = group_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        key = (f.get('group') or '').strip().lower()
-        add = [g.strip() for g in (f.get('add') or '').replace(',', ' ').split() if g.strip()]
-        move = [g.strip() for g in (f.get('move') or '').replace(',', ' ').split() if g.strip()]
-        drop = [g.strip() for g in (f.get('remove') or '').replace(',', ' ').split() if g.strip()]
-        title = (f.get('title') or '').strip()
+        auth_error = auth_precheck(group_form)
+        if auth_error:
+            return auth_error
+        expert, error = request_identity(group_form, 'expert')
+        if error:
+            return error
+        key = (group_form.get('group') or '').strip().lower()
+        add = [g.strip() for g in (group_form.get('add') or '').replace(',', ' ').split() if g.strip()]
+        move = [g.strip() for g in (group_form.get('move') or '').replace(',', ' ').split() if g.strip()]
+        drop = [g.strip() for g in (group_form.get('remove') or '').replace(',', ' ').split() if g.strip()]
+        title = (group_form.get('title') or '').strip()
         if not (add or move or drop or title):
             return fail('nothing to change')
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr:
+        groups_doc = load_groups()
+        group = next((g for g in groups_doc['groups'] if g['key'] == key), None)
+        if not group:
             return fail(f'no group with the key {key!r}', 404)
-        if not covers_group(expert, gr) and not is_editor(expert):
-            return fail(f'{expert} holds no scope covering the {gr["title"]} group', 403)
-        for g in add:
-            if not (ARCHIVE / 'games' / g / 'game.json').is_file():
-                return fail(f'no such game: {g!r}', 404)
-            if not expert_covers(expert, g) and not is_editor(expert):
-                return fail(f'{expert} holds no scope covering {g}; a group cannot '
+        if not covers_group(expert, group) and not is_editor(expert):
+            return fail(f'{expert} holds no scope covering the {group["title"]} group', 403)
+        for game_key in add:
+            if not (ARCHIVE / 'games' / game_key / 'game.json').is_file():
+                return fail(f'no such game: {game_key!r}', 404)
+            if not expert_covers(expert, game_key) and not is_editor(expert):
+                return fail(f'{expert} holds no scope covering {game_key}; a group cannot '
                             f'reach a game its curator may not speak for', 403)
-            if g in gr['games']:
-                return fail(f'{g} is already in this group', 409)
-            other = next((x for x in doc['groups'] if x['key'] != key and g in x.get('games', [])),
+            if game_key in group['games']:
+                return fail(f'{game_key} is already in this group', 409)
+            other = next((x for x in groups_doc['groups'] if x['key'] != key and game_key in x.get('games', [])),
                          None)
             if other:
-                return fail(f'{g} already belongs to the {other["title"]} group; a game '
+                return fail(f'{game_key} already belongs to the {other["title"]} group; a game '
                             f'belongs to one (move it instead)', 409)
-        for g in move:
-            if not (ARCHIVE / 'games' / g / 'game.json').is_file():
-                return fail(f'no such game: {g!r}', 404)
-            if not expert_covers(expert, g) and not is_editor(expert):
-                return fail(f'{expert} holds no scope covering {g}; a group cannot '
+        for game_key in move:
+            if not (ARCHIVE / 'games' / game_key / 'game.json').is_file():
+                return fail(f'no such game: {game_key!r}', 404)
+            if not expert_covers(expert, game_key) and not is_editor(expert):
+                return fail(f'{expert} holds no scope covering {game_key}; a group cannot '
                             f'reach a game its curator may not speak for', 403)
-            if g in gr['games']:
-                return fail(f'{g} is already in this group', 409)
-        for g in drop:
-            if g not in gr['games']:
-                return fail(f'{g} is not in this group', 404)
+            if game_key in group['games']:
+                return fail(f'{game_key} is already in this group', 409)
+        for game_key in drop:
+            if game_key not in group['games']:
+                return fail(f'{game_key} is not in this group', 404)
         if title and not (1 <= len(title) <= 80):
             return fail('a title must be under 80 characters')
-        after = sorted((set(gr['games']) | set(add) | set(move)) - set(drop))
-        if dry:
+        after = sorted((set(group['games']) | set(add) | set(move)) - set(drop))
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_hold': after,
-                            'title': title or gr['title']})
+                            'title': title or group['title']})
         checkout_branch()
-        doc = load_groups()
-        gr = next((g for g in doc['groups'] if g['key'] == key), None)
-        if not gr:
+        groups_doc = load_groups()
+        group = next((g for g in groups_doc['groups'] if g['key'] == key), None)
+        if not group:
             return fail(f'no group with the key {key!r}', 404)
-        before_games = list(gr['games'])
-        before_title = gr['title']
+        before_games = list(group['games'])
+        before_title = group['title']
         # a move pulls the game out of whatever group held it, first
         moved_from = {}
-        for other in doc['groups']:
+        for other in groups_doc['groups']:
             if other['key'] == key:
                 continue
-            hits = [g for g in move if g in other.get('games', [])]
+            hits = [game_key for game_key in move if game_key in other.get('games', [])]
             if hits:
-                other['games'] = [g for g in other['games'] if g not in hits]
-                for g in hits:
-                    moved_from[g] = other['key']
-        gr['games'] = sorted((set(gr['games']) | set(add) | set(move)) - set(drop))
+                other['games'] = [game_key for game_key in other['games'] if game_key not in hits]
+                for game_key in hits:
+                    moved_from[game_key] = other['key']
+        group['games'] = sorted((set(group['games']) | set(add) | set(move)) - set(drop))
         if title:
-            gr['title'] = title
-        save_groups(doc)
-        what = ', '.join(filter(None, [
+            group['title'] = title
+        save_groups(groups_doc)
+        change_summary = ', '.join(filter(None, [
             f'+{" ".join(add)}' if add else '',
-            ' '.join(f'{g} moved in from {moved_from[g]}' if g in moved_from
-                     else f'{g} moved in' for g in move) if move else '',
+            ' '.join(f'{game_key} moved in from {moved_from[game_key]}' if game_key in moved_from
+                     else f'{game_key} moved in' for game_key in move) if move else '',
             f'-{" ".join(drop)}' if drop else '',
             f'retitled {title!r}' if title else '']))
         log_edit('group', key, 'games' if (add or move or drop) else 'title',
                  ', '.join(before_games) if (add or move or drop) else before_title,
-                 ', '.join(gr['games']) if (add or move or drop) else gr['title'],
-                 expert, f'Changed from the group form: {what}')
+                 ', '.join(group['games']) if (add or move or drop) else group['title'],
+                 expert, f'Changed from the group form: {change_summary}')
         ensure_member(expert)
-        commit_push(f'Group {key}: {what}\n\nBy: {expert}\nVia: archivist')
+        commit_push(f'Group {key}: {change_summary}\n\nBy: {expert}\nVia: archivist')
         notify_discord(f'\U0001f5c2\ufe0f **{member_md(expert)}** changed the '
-                       f'[group](<{SITE_URL}/groups/{key}/>) {gr["title"]}: {what}',
+                       f'[group](<{SITE_URL}/groups/{key}/>) {group["title"]}: {change_summary}',
                        wait_for=f'{SITE_URL}/groups/{key}/')
-    return jsonify({'ok': True, 'group': key, 'games': gr['games'], 'title': gr['title']})
+    return jsonify({'ok': True, 'group': key, 'games': group['games'], 'title': group['title']})
 
 
 REPORT_KINDS = {'missing-content-warnings', 'spam-malicious', 'miscredited',
@@ -1807,98 +1939,109 @@ REPORT_KINDS = {'missing-content-warnings', 'spam-malicious', 'miscredited',
 @app.post('/api/report')
 def report():
     """Report a run — public, uniquely identified, addressed by the covering
-    expert, permanently listed in the site log."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    expert, permanently listed in the site log.
+
+    Who: any member
+    Reads: form fields run, kind (one of REPORT_KINDS), details, dry_run
+    Answers: {ok, run, report: 'R<id>', note}; dry_run: {ok, dry_run, would_file}
+    """
+    report_form = request.form
+    dry_run = report_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(report_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        user, err_ = request_identity(f)
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        user, error = request_identity(report_form)
+        if error:
+            return error
+        run_id = (report_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        kind = (f.get('kind') or '').strip()
+        kind = (report_form.get('kind') or '').strip()
         if kind not in REPORT_KINDS:
             return fail(f'kind must be one of: {", ".join(sorted(REPORT_KINDS))}')
-        details = (f.get('details') or '').strip()
+        details = (report_form.get('details') or '').strip()
         if len(details) > ACT_NOTES_MAX:
             return fail(f'details exceed {ACT_NOTES_MAX} characters')
         if kind == 'other' and not details:
             return fail("an 'other' report needs details")
-        r = json.loads((rdir / 'run.json').read_text())
-        rep = {'id': next_report_id(), 'by': user,
+        run = json.loads((run_dir / 'run.json').read_text())
+        report_entry = {'id': next_report_id(), 'by': user,
                'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                'kind': kind, 'status': 'open'}
         if details:
-            rep['details'] = details
-        r.setdefault('reports', []).append(rep)
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_file': rep})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+            report_entry['details'] = details
+        run.setdefault('reports', []).append(report_entry)
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_file': report_entry})
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
-        commit_push(f'Report R{rep["id"]} on {run_id}: {kind} by {user}\n\nVia: archivist')
-    return jsonify({'ok': True, 'run': run_id, 'report': f'R{rep["id"]}',
+        commit_push(f'Report R{report_entry["id"]} on {run_id}: {kind} by {user}\n\nVia: archivist')
+    return jsonify({'ok': True, 'run': run_id, 'report': f'R{report_entry["id"]}',
                     'note': 'Filed in the open. The covering expert will address it; '
                             'it is permanently listed in the site log.'})
 
 @app.post('/api/report/resolve')
 def report_resolve():
-    """The covering expert resolves or dismisses a report — logged in the open."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    """The covering expert resolves or dismisses a report — logged in the open.
+
+    Who: an expert covering the run's game
+    Reads: form fields run, report (id number), outcome (resolved|dismissed),
+        resolution, dry_run
+    Answers: {ok, report, status}
+    """
+    resolution_form = request.form
+    dry_run = resolution_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(resolution_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        expert, err_ = request_identity(f, 'expert')
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        expert, error = request_identity(resolution_form, 'expert')
+        if error:
+            return error
+        run_id = (resolution_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        r = json.loads((rdir / 'run.json').read_text())
-        if not expert_covers(expert, r['game']):
-            return fail(f'{expert!r} is not an expert covering {r["game"]}', 403)
+        run = json.loads((run_dir / 'run.json').read_text())
+        if not expert_covers(expert, run['game']):
+            return fail(f'{expert!r} is not an expert covering {run["game"]}', 403)
         try:
-            rep_id = int(f.get('report') or '')
+            report_id = int(resolution_form.get('report') or '')
         except ValueError:
             return fail('report must be a report id number')
-        rep = next((x for x in r.get('reports', []) if x['id'] == rep_id), None)
-        if not rep:
-            return fail(f'no report R{rep_id} on this run', 404)
-        if rep['status'] != 'open':
-            return fail(f'report R{rep_id} is already {rep["status"]}')
-        outcome = (f.get('outcome') or '').strip()
+        report_entry = next((x for x in run.get('reports', []) if x['id'] == report_id), None)
+        if not report_entry:
+            return fail(f'no report R{report_id} on this run', 404)
+        if report_entry['status'] != 'open':
+            return fail(f'report R{report_id} is already {report_entry["status"]}')
+        outcome = (resolution_form.get('outcome') or '').strip()
         if outcome not in ('resolved', 'dismissed'):
             return fail('outcome must be resolved or dismissed')
-        resolution = (f.get('resolution') or '').strip()
+        resolution = (resolution_form.get('resolution') or '').strip()
         if not resolution:
             return fail('a public resolution text is required; it is logged in the open')
         if len(resolution) > ACT_NOTES_MAX:
             return fail(f'resolution exceeds {ACT_NOTES_MAX} characters')
-        rep['status'] = outcome
-        rep['resolvedBy'] = expert
-        rep['resolvedAt'] = time.strftime('%Y-%m-%d', time.gmtime())
-        rep['resolution'] = resolution
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_resolve': rep})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+        report_entry['status'] = outcome
+        report_entry['resolvedBy'] = expert
+        report_entry['resolvedAt'] = time.strftime('%Y-%m-%d', time.gmtime())
+        report_entry['resolution'] = resolution
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_resolve': report_entry})
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(expert)
-        commit_push(f'Report R{rep_id} {outcome} on {run_id}: by expert {expert}\n\n'
+        commit_push(f'Report R{report_id} {outcome} on {run_id}: by expert {expert}\n\n'
                     f'Resolution: {resolution}\nVia: archivist')
-    return jsonify({'ok': True, 'report': f'R{rep_id}', 'status': outcome})
+    return jsonify({'ok': True, 'report': f'R{report_id}', 'status': outcome})
 
 @app.post('/api/edit')
 def edit_run():
@@ -1906,181 +2049,189 @@ def edit_run():
     correct the same details, one run at a time, always with a public reason
     (the same logged, git-reversible trail as /api/expert/edit; the author
     list and supplementary uploads stay the authors' alone). Git history is
-    the audit trail — nothing is erased."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    the audit trail — nothing is erased.
+
+    Who: one of the run's authors, or an expert covering its game (who must
+        give a reason)
+    Reads: form fields run, reason, authors (authors only), notes, emulator,
+        metric_<key>, completed, goalDescription, encode, time (video-only
+        runs), dry_run; files attachments (authors only)
+    Answers: {ok, run, changed}; dry_run: {ok, dry_run, would_change}
+    """
+    edit_form = request.form
+    dry_run = edit_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(edit_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        user, err_ = request_identity(f)
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        user, error = request_identity(edit_form)
+        if error:
+            return error
+        run_id = (edit_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        r = json.loads((rdir / 'run.json').read_text())
-        is_author = current_name(user).lower() in run_authors_now(r)
-        if not is_author and not expert_covers(user, r['game']):
+        run = json.loads((run_dir / 'run.json').read_text())
+        is_author = current_name(user).lower() in run_authors_now(run)
+        if not is_author and not expert_covers(user, run['game']):
             return fail("only the run's authors or a covering expert may edit it", 403)
-        reason = (f.get('reason') or '').strip()
+        reason = (edit_form.get('reason') or '').strip()
         if not is_author and not (8 <= len(reason) <= 500):
             return fail('an expert edit states its public reason (8 to 500 '
                         'characters), published in the edit log')
         changed = []
-        befores = {'emulator': r.get('contract', {}).get('emulator', '')}
-        if 'authors' in f:
+        befores = {'emulator': run.get('contract', {}).get('emulator', '')}
+        if 'authors' in edit_form:
             if not is_author:
                 return fail("an author list is never an expert's edit: who made "
                             "a thing is moderation's question", 403)
-            new_authors = [a.strip() for a in (f.get('authors') or '').split(',') if a.strip()]
+            new_authors = [a.strip() for a in (edit_form.get('authors') or '').split(',') if a.strip()]
             if not new_authors:
                 return fail('a run needs at least one author')
-            acted = ({current_name(x['user']).lower() for x in r.get('reproductions', [])}
-                     | {current_name(x['user']).lower() for x in r.get('verifications', [])}
-                     | {current_name(l['user']).lower() for l in r.get('likes', [])})
+            acted = ({current_name(x['user']).lower() for x in run.get('reproductions', [])}
+                     | {current_name(x['user']).lower() for x in run.get('verifications', [])}
+                     | {current_name(l['user']).lower() for l in run.get('likes', [])})
             clash = [a for a in new_authors if current_name(a).lower() in acted]
             if clash:
                 return fail(f'cannot credit {", ".join(clash)} as author: they already '
                             f'reproduced, verified, or liked this run (authors may not '
                             f'act on their own runs)')
-            if [a['user'] for a in r['authors']] != new_authors:
-                r['authors'] = [{'user': a} for a in new_authors]
+            if [a['user'] for a in run['authors']] != new_authors:
+                run['authors'] = [{'user': a} for a in new_authors]
                 changed.append('authors')
-                if not dry:
+                if not dry_run:
                     ensure_member(user)
         # Only what actually differs is a change (issue #38): the form sends
         # every field every time, and a browser textarea submits CRLF, which
         # used to rewrite an untouched 96-line notes file on every edit.
-        if 'notes' in f:
-            notes = (f.get('notes') or '').replace('\r\n', '\n').replace('\r', '\n')
+        if 'notes' in edit_form:
+            notes = (edit_form.get('notes') or '').replace('\r\n', '\n').replace('\r', '\n')
             if len(notes.encode()) > 1024 * 1024:
                 return fail('notes exceed 1 MB')
             notes = notes.rstrip() + '\n'
             try:
-                old_notes = (rdir / 'notes.md').read_text()
+                old_notes = (run_dir / 'notes.md').read_text()
             except OSError:
                 old_notes = ''
             if old_notes.rstrip() + '\n' != notes:
                 changed.append('notes')
-        if 'emulator' in f:
-            new_emu = (f.get('emulator') or '').strip()[:120]
-            if new_emu != r.get('contract', {}).get('emulator', ''):
-                r.setdefault('contract', {})['emulator'] = new_emu
+        if 'emulator' in edit_form:
+            new_emulator = (edit_form.get('emulator') or '').strip()[:120]
+            if new_emulator != run.get('contract', {}).get('emulator', ''):
+                run.setdefault('contract', {})['emulator'] = new_emulator
                 changed.append('emulator')
         # stated metric values: only the keys this run's category defines;
         # an empty field leaves the value untouched, an explicit 0 returns
         # it to "not yet stated" (which ranks last)
-        _sys, _slug = r['game'].split('/')
-        _g, _cats = load_game(_sys, _slug)
-        _goal = (r.get('category') or {}).get('goal')
-        _opt = next((o for dd in (_cats or {}).get('dimensions', [])
-                     for o in dd['options'] if o['key'] == _goal), None)
-        _mkeys = {mm['key'] for mm in (_opt or {}).get('metrics', [])
+        system, slug = run['game'].split('/')
+        game, categories = load_game(system, slug)
+        goal = (run.get('category') or {}).get('goal')
+        option = next((o for dimension in (categories or {}).get('dimensions', [])
+                     for o in dimension['options'] if o['key'] == goal), None)
+        metric_keys = {mm['key'] for mm in (option or {}).get('metrics', [])
                   if mm['key'] != 'time'}
-        for fk in list(f.keys()):
-            if not fk.startswith('metric_'):
+        for form_key in list(edit_form.keys()):
+            if not form_key.startswith('metric_'):
                 continue
-            mkey = fk[len('metric_'):]
-            raw = (f.get(fk) or '').strip()
+            metric_key = form_key[len('metric_'):]
+            raw = (edit_form.get(form_key) or '').strip()
             if raw == '':
                 continue
-            if mkey not in _mkeys:
-                return fail(f'this category states no metric {mkey!r}')
+            if metric_key not in metric_keys:
+                return fail(f'this category states no metric {metric_key!r}')
             try:
-                mval = float(raw)
+                metric_value = float(raw)
             except ValueError:
-                return fail(f'{mkey} must be a number (seconds for times)')
-            if mval < 0:
-                return fail(f'{mkey} cannot be negative')
-            if mval == (r.get('metrics') or {}).get(mkey, 0):
+                return fail(f'{metric_key} must be a number (seconds for times)')
+            if metric_value < 0:
+                return fail(f'{metric_key} cannot be negative')
+            if metric_value == (run.get('metrics') or {}).get(metric_key, 0):
                 continue
-            befores[f'metric:{mkey}'] = str((r.get('metrics') or {}).get(mkey, 0))
-            r.setdefault('metrics', {})[mkey] = mval
-            changed.append(f'metric:{mkey}')
-        if 'completed' in f:
-            cv = (f.get('completed') or '').strip()
-            if cv:
+            befores[f'metric:{metric_key}'] = str((run.get('metrics') or {}).get(metric_key, 0))
+            run.setdefault('metrics', {})[metric_key] = metric_value
+            changed.append(f'metric:{metric_key}')
+        if 'completed' in edit_form:
+            completed_value = (edit_form.get('completed') or '').strip()
+            if completed_value:
                 if not re.fullmatch(r'(19[89]\d|20\d{2})-(0[1-9]|1[0-2])'
-                                    r'-(0[1-9]|[12]\d|3[01])', cv):
+                                    r'-(0[1-9]|[12]\d|3[01])', completed_value):
                     return fail('completed must be a date like 2021-10-26')
-                if cv > time.strftime('%Y-%m-%d', time.gmtime()):
+                if completed_value > time.strftime('%Y-%m-%d', time.gmtime()):
                     return fail('completed cannot be in the future')
-            if cv != r.get('completed', ''):
-                befores['completed'] = r.get('completed', '')
-                if cv:
-                    r['completed'] = cv
+            if completed_value != run.get('completed', ''):
+                befores['completed'] = run.get('completed', '')
+                if completed_value:
+                    run['completed'] = completed_value
                 else:
-                    r.pop('completed', None)
+                    run.pop('completed', None)
                 changed.append('completed')
-        if 'goalDescription' in f:
-            gd = (f.get('goalDescription') or '').strip()
-            if len(gd) > 500:
+        if 'goalDescription' in edit_form:
+            goal_description = (edit_form.get('goalDescription') or '').strip()
+            if len(goal_description) > 500:
                 return fail('a goal description fits in 500 characters')
-            if is_uncl_run(r) and not gd:
+            if is_uncl_run(run) and not goal_description:
                 return fail('an Unclassified run states its own goal; it cannot lose '
                             'its description')
-            if gd != r.get('goalDescription', ''):
-                befores['goalDescription'] = r.get('goalDescription', '')
-                if gd:
-                    r['goalDescription'] = gd
+            if goal_description != run.get('goalDescription', ''):
+                befores['goalDescription'] = run.get('goalDescription', '')
+                if goal_description:
+                    run['goalDescription'] = goal_description
                 else:
-                    r.pop('goalDescription', None)
+                    run.pop('goalDescription', None)
                 changed.append('goalDescription')
-        if 'encode' in f:
-            enc_v = (f.get('encode') or '').strip()
-            if enc_v:
-                enc_r = providers.resolve(enc_v)
-                if not enc_r:
+        if 'encode' in edit_form:
+            encode_url = (edit_form.get('encode') or '').strip()
+            if encode_url:
+                encode_provider = providers.resolve(encode_url)
+                if not encode_provider:
                     return fail('encode must be a watchable URL on a platform we accept')
-                if enc_v != (r.get('encodes') or [{}])[0].get('url', ''):
-                    befores['encode'] = (r.get('encodes') or [{}])[0].get('url', '')
-                    r['encodes'] = [{'kind': enc_r['kind'], 'url': enc_v}]
+                if encode_url != (run.get('encodes') or [{}])[0].get('url', ''):
+                    befores['encode'] = (run.get('encodes') or [{}])[0].get('url', '')
+                    run['encodes'] = [{'kind': encode_provider['kind'], 'url': encode_url}]
                     changed.append('encode')
-        if 'time' in f and r.get('videoOnly'):
-            m_t = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
-                               (f.get('time') or '').strip())
-            if not m_t:
+        if 'time' in edit_form and run.get('videoOnly'):
+            time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
+                               (edit_form.get('time') or '').strip())
+            if not time_match:
                 return fail('time must be [h:]mm:ss or [h:]mm:ss.mmm')
-            h, mnt, sec, frac = m_t.groups()
-            dur = (int(h or 0) * 3600 + int(mnt) * 60 + int(sec)
-                   + (int(frac.ljust(3, "0")) / 1000 if frac else 0.0))
-            if dur <= 0:
+            hours, minutes, seconds, fraction = time_match.groups()
+            duration = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
+                   + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))
+            if duration <= 0:
                 return fail('a run that takes no time at all is not a run')
-            befores['duration'] = str(r.get('duration'))
-            r['duration'] = dur
+            befores['duration'] = str(run.get('duration'))
+            run['duration'] = duration
             changed.append('duration')
-        new_atts, att_err = read_attachments(r.get('attachments') or [])
-        if att_err:
-            return att_err
-        if new_atts:
+        new_attachments, attachment_error = read_attachments(run.get('attachments') or [])
+        if attachment_error:
+            return attachment_error
+        if new_attachments:
             if not is_author:
                 return fail("supplementary files are the authors' own uploads", 403)
-            have = {a['file'] for a in r.get('attachments') or []}
-            clash = [n for n, _ in new_atts if f'attachments/{n}' in have]
+            existing_files = {a['file'] for a in run.get('attachments') or []}
+            clash = [name for name, _ in new_attachments if f'attachments/{name}' in existing_files]
             if clash:
                 return fail(f'attachment {clash[0]!r} already exists on this run')
-            r.setdefault('attachments', []).extend(
-                {'file': f'attachments/{n}', 'role': 'supplementary'}
-                for n, _ in new_atts)
+            run.setdefault('attachments', []).extend(
+                {'file': f'attachments/{name}', 'role': 'supplementary'}
+                for name, _ in new_attachments)
             changed.append('attachments')
         if not changed:
             return fail('nothing to change: every value sent already matches the '
                         'record (send notes, emulator, completed, goalDescription, '
                         'encode, attachments, or, video-only, time)')
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_change': changed})
         if 'notes' in changed:
-            (rdir / 'notes.md').write_text(notes)
-        if new_atts:
-            (rdir / 'attachments').mkdir(exist_ok=True)
-            for n, data in new_atts:
-                (rdir / 'attachments' / n).write_bytes(data)
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+            (run_dir / 'notes.md').write_text(notes)
+        if new_attachments:
+            (run_dir / 'attachments').mkdir(exist_ok=True)
+            for name, data in new_attachments:
+                (run_dir / 'attachments' / name).write_bytes(data)
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         # every revision joins the same history the expert edits live in: the
         # author owes nobody a justification for editing their own work, but
         # the history prevails either way
@@ -2088,14 +2239,14 @@ def edit_run():
             log_edit('run', run_id, field,
                      befores.get(field, '(previous value in git history)'),
                      ('(see the run)' if field in ('notes', 'authors') else
-                      str((r.get('metrics') or {}).get(field.split(':', 1)[1], '')
+                      str((run.get('metrics') or {}).get(field.split(':', 1)[1], '')
                           if field.startswith('metric:') else
-                          {'emulator': r.get('contract', {}).get('emulator', ''),
-                           'completed': r.get('completed', ''),
-                           'goalDescription': r.get('goalDescription', ''),
-                           'encode': (r.get('encodes') or [{}])[0].get('url', ''),
-                           'duration': r.get('duration', ''),
-                           'attachments': ', '.join(n for n, _ in new_atts),
+                          {'emulator': run.get('contract', {}).get('emulator', ''),
+                           'completed': run.get('completed', ''),
+                           'goalDescription': run.get('goalDescription', ''),
+                           'encode': (run.get('encodes') or [{}])[0].get('url', ''),
+                           'duration': run.get('duration', ''),
+                           'attachments': ', '.join(name for name, _ in new_attachments),
                            }.get(field, ''))[:300]),
                      user, "The author's own revision." if is_author else reason)
         commit_push(f'Edit {run_id}: {", ".join(changed)} by '
@@ -2106,15 +2257,20 @@ def edit_run():
 def preview_notes():
     """The submit preview, rendered by the very code that renders the
     published page (issue #30). Cross-references get a plain link here;
-    the published page dresses them with the run's title and thumbnail."""
+    the published page dresses them with the run's title and thumbnail.
+
+    Who: anybody
+    Reads: form field notes
+    Answers: {ok, html}, Cache-Control: no-store
+    """
     import wikitext
     text = (request.form.get('notes') or '').replace('\r\n', '\n')
     if len(text.encode()) > 1024 * 1024:
         return fail('notes exceed 1 MB')
-    def refs(t):
-        t = re.sub(r'\[M([0-9]+)\]', r'<a class="runref" href="/runs/M\1/">M\1</a>', t)
-        t = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', r'<span class="au">\1</span>', t)
-        return t
+    def refs(markup):
+        markup = re.sub(r'\[M([0-9]+)\]', r'<a class="runref" href="/runs/M\1/">M\1</a>', markup)
+        markup = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', r'<span class="au">\1</span>', markup)
+        return markup
     resp = jsonify({'ok': True, 'html': wikitext.wiki_html(text, refs=refs)})
     resp.headers['Cache-Control'] = 'no-store'
     return resp
@@ -2123,110 +2279,125 @@ def preview_notes():
 def like():
     """Thumbs-up: everybody except the run's own authors, one per run.
     Works on any run, Imported included — it feeds player points and orders
-    the Unclassified rankings."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    the Unclassified rankings.
+
+    Who: any member except the run's authors
+    Reads: form fields run, dry_run
+    Answers: {ok, run, liked, likes}
+    """
+    like_form = request.form
+    dry_run = like_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(like_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        user, err_ = request_identity(f)
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        user, error = request_identity(like_form)
+        if error:
+            return error
+        run_id = (like_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        r = json.loads((rdir / 'run.json').read_text())
-        if r.get('withdrawn'):
+        run = json.loads((run_dir / 'run.json').read_text())
+        if run.get('withdrawn'):
             return fail(f'{run_id} has been withdrawn; no further acts apply')
-        if current_name(user).lower() in run_authors_now(r):
+        if current_name(user).lower() in run_authors_now(run):
             return fail('authors cannot like their own run')
         # The same star both ways: a second press takes the like back. Taking
         # it back deletes the entry outright, no tombstone and no log line, as
         # if it never happened: a like is a mood, not an act of authority, and
         # nobody owes the record an explanation for a change of heart. (The
         # git commit remains, as every commit does.)
-        had = [l for l in r.get('likes', []) if l['user'].lower() == user.lower()]
-        if had:
-            r['likes'] = [l for l in r['likes'] if l['user'].lower() != user.lower()]
+        existing_like = [l for l in run.get('likes', []) if l['user'].lower() == user.lower()]
+        if existing_like:
+            run['likes'] = [l for l in run['likes'] if l['user'].lower() != user.lower()]
             liked = False
         else:
-            r.setdefault('likes', []).append(
+            run.setdefault('likes', []).append(
                 {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso()})
             liked = True
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'liked': liked,
-                            'likes': len(r['likes'])})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+                            'likes': len(run['likes'])})
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'{"Like" if liked else "Unlike"} {run_id}: by {user}\n\nVia: archivist')
-    return jsonify({'ok': True, 'run': run_id, 'liked': liked, 'likes': len(r['likes'])})
+    return jsonify({'ok': True, 'run': run_id, 'liked': liked, 'likes': len(run['likes'])})
 
 @app.post('/api/case/open')
 def case_open():
     """A dispute opens a case — never auto-disqualifies. The run's verifiers
-    (snapshotted now) are asked to reaffirm."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    (snapshotted now) are asked to reaffirm.
+
+    Who: a member who is not one of the run's authors
+    Reads: form fields run, reason, notes, dry_run
+    Answers: {ok, run, case, verifiersAsked}; dry_run: {ok, dry_run, would_open}
+    """
+    case_form = request.form
+    dry_run = case_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(case_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        err_resp, rdir, r, user = act_common(f)
-        if err_resp:
-            return err_resp
-        reason = (f.get('reason') or '').strip()
+        act_error, run_dir, run, user = act_common(case_form)
+        if act_error:
+            return act_error
+        reason = (case_form.get('reason') or '').strip()
         if not reason:
             return fail('a dispute needs a reason')
         if len(reason) > ACT_NOTES_MAX:
             return fail(f'reason exceeds {ACT_NOTES_MAX} characters')
-        live_v = [a for a in r.get('verifications', []) if not a.get('invalidated')]
-        if not live_v:
+        live_verifications = [a for a in run.get('verifications', []) if not a.get('invalidated')]
+        if not live_verifications:
             return fail('this run has no live verifications to dispute')
-        if any(c.get('status') == 'open' for c in r.get('cases', [])):
+        if any(c.get('status') == 'open' for c in run.get('cases', [])):
             return fail('this run already has an open case')
-        case = {'id': max([c['id'] for c in r.get('cases', [])] + [0]) + 1,
+        case = {'id': max([c['id'] for c in run.get('cases', [])] + [0]) + 1,
                 'openedBy': user,
                 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                 'reason': reason,
-                'verifiers': [a['user'] for a in live_v],
+                'verifiers': [a['user'] for a in live_verifications],
                 'reaffirmations': [],
                 'status': 'open'}
-        r.setdefault('cases', []).append(case)
-        if dry:
+        run.setdefault('cases', []).append(case)
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_open': case})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
-        commit_push(f'Case {case["id"]} opened on {r["id"]}: by {user}\n\nVia: archivist')
-    return jsonify({'ok': True, 'run': r['id'], 'case': case['id'],
+        commit_push(f'Case {case["id"]} opened on {run["id"]}: by {user}\n\nVia: archivist')
+    return jsonify({'ok': True, 'run': run['id'], 'case': case['id'],
                     'verifiersAsked': case['verifiers']})
 
 @app.post('/api/case/vote')
 def case_vote():
-    """A snapshotted verifier reaffirms (or withdraws) their verification."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    """A snapshotted verifier reaffirms (or withdraws) their verification.
+
+    Who: a verifier snapshotted on the case when it opened
+    Reads: form fields run, case (id number), reaffirm, notes, dry_run
+    Answers: {ok, run, case, case_status, status}
+    """
+    vote_form = request.form
+    dry_run = vote_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(vote_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        err_resp, rdir, r, user = act_common(f)
-        if err_resp:
-            return err_resp
+        act_error, run_dir, run, user = act_common(vote_form)
+        if act_error:
+            return act_error
         try:
-            case_id = int(f.get('case') or '')
+            case_id = int(vote_form.get('case') or '')
         except ValueError:
             return fail('case must be a case id number')
-        case = next((c for c in r.get('cases', []) if c['id'] == case_id), None)
+        case = next((c for c in run.get('cases', []) if c['id'] == case_id), None)
         if not case:
             return fail(f'no case {case_id} on this run', 404)
         if case['status'] != 'open':
@@ -2235,16 +2406,16 @@ def case_vote():
             return fail('only the verifiers asked at case-open time may vote')
         if user.lower() in {v['user'].lower() for v in case.get('reaffirmations', [])}:
             return fail('you have already voted on this case')
-        reaffirm = f.get('reaffirm') in ('1', 'true', 'yes')
+        reaffirm = vote_form.get('reaffirm') in ('1', 'true', 'yes')
         today = time.strftime('%Y-%m-%d', time.gmtime())
         vote = {'user': user, 'date': today, 'at': now_iso(), 'reaffirm': reaffirm}
-        if (f.get('notes') or '').strip():
-            vote['notes'] = f.get('notes').strip()
+        if (vote_form.get('notes') or '').strip():
+            vote['notes'] = vote_form.get('notes').strip()
         case.setdefault('reaffirmations', []).append(vote)
         if not reaffirm:
-            for a in r.get('verifications', []):
-                if a['user'].lower() == user.lower() and not a.get('invalidated'):
-                    a['invalidated'] = {'by': user, 'date': today, 'at': now_iso(),
+            for verification in run.get('verifications', []):
+                if verification['user'].lower() == user.lower() and not verification.get('invalidated'):
+                    verification['invalidated'] = {'by': user, 'date': today, 'at': now_iso(),
                                         'reason': f'withdrew during case {case_id}'}
         case['status'] = case_derived_status(case)
         if case['status'] != 'open':
@@ -2255,32 +2426,38 @@ def case_vote():
             # pending and OTHER members may verify it (each member has one
             # verification per run, spent whether or not it survived)
             snapshot = {u.lower() for u in case['verifiers']}
-            for a in r.get('verifications', []):
-                if a['user'].lower() in snapshot and not a.get('invalidated'):
-                    a['invalidated'] = {'by': 'case', 'date': today, 'at': now_iso(),
+            for verification in run.get('verifications', []):
+                if verification['user'].lower() in snapshot and not verification.get('invalidated'):
+                    verification['invalidated'] = {'by': 'case', 'date': today, 'at': now_iso(),
                                         'reason': f'case {case_id} upheld'}
-        sync_status(r)
-        if dry:
+        sync_status(run)
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_vote': vote,
-                            'case_status': case['status'], 'status': r['status']})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+                            'case_status': case['status'], 'status': run['status']})
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
-        commit_push(f'Case {case_id} vote on {r["id"]}: '
+        commit_push(f'Case {case_id} vote on {run["id"]}: '
                     f'{"reaffirmed" if reaffirm else "withdrawn"} by {user}\n\nVia: archivist')
-    return jsonify({'ok': True, 'run': r['id'], 'case': case_id,
-                    'case_status': case['status'], 'status': r['status']})
+    return jsonify({'ok': True, 'run': run['id'], 'case': case_id,
+                    'case_status': case['status'], 'status': run['status']})
 
 @app.post('/api/expert/appoint')
 def expert_appoint():
-    """An expert appoints another, downward and in the open."""
-    f = request.form
-    appointer, err_ = request_identity(f, 'expert')
-    if err_:
-        return err_
-    user = (f.get('user') or '').strip()
-    scope = (f.get('scope') or '').strip()
-    reason = (f.get('reason') or '').strip()
+    """An expert appoints another, downward and in the open.
+
+    Who: a Committee member, or an expert whose own scope covers the target
+        scope (`key` plus `expert`)
+    Reads: form fields user, scope, reason (8 to 500 chars), dry_run
+    Answers: {ok, user, scope, by, forum, note}
+    """
+    appointment_form = request.form
+    appointer, error = request_identity(appointment_form, 'expert')
+    if error:
+        return error
+    user = (appointment_form.get('user') or '').strip()
+    scope = (appointment_form.get('scope') or '').strip()
+    reason = (appointment_form.get('reason') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', user):
         return fail('user must be the forum account being appointed')
     if not scope_exists(scope):
@@ -2290,14 +2467,14 @@ def expert_appoint():
                     "people's work")
     if len(reason) > 500:
         return fail('reason must be under 500 characters')
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = appointment_form.get('dry_run') in ('1', 'true', 'yes')
 
     refresh_archive()
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
         roster = load_experts()
-        held = [e for e in roster if e['user'].lower() == appointer.lower()]
+        appointer_scopes = [e for e in roster if e['user'].lower() == appointer.lower()]
         # Two doors in (Principles 2.5.3 and 2.5.6): any single Committee
         # member may appoint an expert at any scope, the whole site included,
         # and an expert appoints downward into scopes their own scope covers.
@@ -2305,7 +2482,7 @@ def expert_appoint():
         # could clone themselves without anybody wider agreeing; a Committee
         # seat is the wider agreement.
         if not (is_committee(appointer)
-                or any(scope_covers(e['scope'], scope) for e in held)):
+                or any(scope_covers(e['scope'], scope) for e in appointer_scopes)):
             return fail(f'{appointer} holds no scope that covers {scope} and no '
                         f'Committee seat; appointment runs downward, or from the '
                         f'Committee (Principles 2.5.3)', 403)
@@ -2323,7 +2500,7 @@ def expert_appoint():
         entry = {'user': user, 'role': 'expert', 'scope': scope, 'action': 'granted',
                  'by': appointer, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'reason': reason}
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_append': entry})
         append_role_event(entry)
         ensure_member(user)
@@ -2342,24 +2519,29 @@ def editor_appoint():
 
     The library's shape, nothing else (see is_editor). Unscoped, so there is
     no downward door: only the Committee gives it. Taking it away is a role
-    removal like any other: a Committee poll through /api/role/decide."""
-    f = request.form
-    appointer, err_ = request_identity(f, 'expert')
-    if err_:
-        return err_
-    user = (f.get('user') or '').strip()
-    reason = (f.get('reason') or '').strip()
+    removal like any other: a Committee poll through /api/role/decide.
+
+    Who: a Committee member (`key` plus `expert`)
+    Reads: form fields user, reason, dry_run
+    Answers: {ok, user, by, note}
+    """
+    appointment_form = request.form
+    appointer, error = request_identity(appointment_form, 'expert')
+    if error:
+        return error
+    user = (appointment_form.get('user') or '').strip()
+    reason = (appointment_form.get('reason') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', user):
         return fail('user must be the forum account being appointed')
     if len(reason) < 8:
         return fail('say why, publicly: the appointment is published with your name')
     if len(reason) > 500:
         return fail('reason must be under 500 characters')
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = appointment_form.get('dry_run') in ('1', 'true', 'yes')
 
     refresh_archive()
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
         if not is_committee(appointer):
             return fail(f'{appointer} holds no Committee seat; the editor role '
@@ -2372,7 +2554,7 @@ def editor_appoint():
         entry = {'user': user, 'role': 'editor', 'action': 'granted',
                  'by': appointer, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
                  'at': now_iso(), 'reason': reason}
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_append': entry})
         append_role_event(entry)
         ensure_member(user)
@@ -2393,14 +2575,18 @@ def discourse_hook():
     shared secret. Private messages are never relayed, whatever they are, and
     neither are the archivist bot's own posts, which announce things the other
     notifications already said.
+
+    Who: Discourse, proven by the HMAC in X-Discourse-Event-Signature
+    Reads: the raw JSON body (post) and the X-Discourse-Event header
+    Answers: {ok} or {ok, ignored: why}
     """
     if not DISCOURSE_HOOK_SECRET:
         return fail('forum hooks are not configured on this server', 503)
     raw = request.get_data()
     sig = request.headers.get('X-Discourse-Event-Signature', '')
-    want = 'sha256=' + hmac.new(DISCOURSE_HOOK_SECRET.encode(), raw,
+    expected_sig = 'sha256=' + hmac.new(DISCOURSE_HOOK_SECRET.encode(), raw,
                                 hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(sig, want):
+    if not hmac.compare_digest(sig, expected_sig):
         return fail('bad hook signature', 403)
     if request.headers.get('X-Discourse-Event') != 'post_created':
         return jsonify({'ok': True, 'ignored': 'not a post_created event'})
@@ -2411,15 +2597,15 @@ def discourse_hook():
     if post.get('topic_archetype') != 'regular':
         # a private message is private; it does not go to Discord, ever
         return jsonify({'ok': True, 'ignored': 'not a public topic'})
-    who = post.get('username') or 'somebody'
-    if who == BOT_USER:
+    poster = post.get('username') or 'somebody'
+    if poster == BOT_USER:
         return jsonify({'ok': True, 'ignored': 'our own bot'})
     title = post.get('topic_title') or 'a topic'
     excerpt = re.sub(r'<[^>]+>', '', post.get('cooked') or '').strip()
     excerpt = (excerpt[:140] + '\u2026') if len(excerpt) > 140 else excerpt
     link = (f'{DISCOURSE_URL}/t/{post.get("topic_id")}/{post.get("post_number")}'
             if post.get('topic_id') else DISCOURSE_URL)
-    notify_discord(f'\U0001f4ac **{member_md(who)}** posted in [{title}](<{link}>): {excerpt}')
+    notify_discord(f'\U0001f4ac **{member_md(poster)}** posted in [{title}](<{link}>): {excerpt}')
     return jsonify({'ok': True})
 
 @app.post('/api/roles/publish')
@@ -2434,19 +2620,23 @@ def roles_publish():
     granted through the archivist and recorded in roles.json, and this only ever
     prints that record into the forum. It cannot write to the archive, which is
     what makes it safe to run after every role event instead of by hand.
+
+    Who: a site-wide expert (`key` plus `expert`)
+    Reads: form field dry_run
+    Answers: {ok, dry_run, groups, note}
     """
-    f = request.form
-    caller, err_ = request_identity(f, 'expert')
-    if err_:
-        return err_
+    publish_form = request.form
+    caller, error = request_identity(publish_form, 'expert')
+    if error:
+        return error
     refresh_archive(0)          # publishing must print the truth, not a cache
     if not is_site_expert(caller):
         return fail('only site-wide experts may publish the roster', 403)
     if not DISCOURSE_KEY:
         return fail('the forum is not configured on this server', 503)
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
-    report = publish_roles(dry=dry)
-    return jsonify({'ok': True, 'dry_run': dry, 'groups': report,
+    dry_run = publish_form.get('dry_run') in ('1', 'true', 'yes')
+    report = publish_roles(dry=dry_run)
+    return jsonify({'ok': True, 'dry_run': dry_run, 'groups': report,
                     'note': 'Membership of these groups is derived from roles.json. '
                             'Editing a group on the forum grants nothing and is '
                             'undone by the next publish.'})
@@ -2459,18 +2649,22 @@ def founder_committee():
     keeps its thresholds; this is the Founder acting as Founder. Every use is a
     role event with 'founder' on it, public in the site log and on the member's
     page, and the person is told. It is not quiet power, it is fast power.
+
+    Who: the Founder (`key` plus `user`)
+    Reads: form fields target, action (granted|revoked), reason, dry_run
+    Answers: {ok, target, action, by, forum, told}
     """
-    f = request.form
-    caller, err_ = request_identity(f, 'user')
-    if err_:
-        return err_
+    decision_form = request.form
+    caller, error = request_identity(decision_form, 'user')
+    if error:
+        return error
     refresh_archive()
     if not is_founder(caller):
         return fail('only the Founder does this; the Committee route is '
                     '/api/role/decide with a poll', 403)
-    target = (f.get('target') or '').strip()
-    action = (f.get('action') or '').strip()
-    reason = (f.get('reason') or '').strip()
+    target = (decision_form.get('target') or '').strip()
+    action = (decision_form.get('action') or '').strip()
+    reason = (decision_form.get('reason') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', target):
         return fail('target must be the forum account the decision is about')
     if action not in ('granted', 'revoked'):
@@ -2478,9 +2672,9 @@ def founder_committee():
     if not (8 <= len(reason) <= 500):
         return fail('say why, publicly: a seat on the Committee is authority over '
                     'the whole place')
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = decision_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
         holds = any(u == target.lower() and r == 'committee'
                     for (u, r, s) in held_roles())
@@ -2495,14 +2689,14 @@ def founder_committee():
                  'by': caller, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'reason': f'{"Seated" if action == "granted" else "Unseated"} by the '
                            f'Founder. {reason}'}
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_append': entry})
         append_role_event(entry)
         if action == 'granted':
             ensure_member(target)
         commit_push(f'Committee: {target} {action} by the Founder\n\n'
                     f'Reason: {reason}\nVia: archivist')
-    note_ = publish_group('committee', target, add=(action == 'granted'))
+    forum_note = publish_group('committee', target, add=(action == 'granted'))
     told = send_pm(
         target,
         f'You were {"seated on" if action == "granted" else "unseated from"} '
@@ -2511,7 +2705,7 @@ def founder_committee():
          f'the Steering Committee.\n\nReason given: {reason}\n\n'
          f'The decision is public in the site log and on your member page.'))
     return jsonify({'ok': True, 'target': target, 'action': action, 'by': caller,
-                    'forum': note_, 'told': told})
+                    'forum': forum_note, 'told': told})
 
 GRANT_WORDS = ('grant', 'appoint', 'yes', 'approve', 'in favour', 'in favor', 'for')
 
@@ -2524,16 +2718,22 @@ def role_decide():
     genuine, checkable, finished Committee decision, and appends the event with
     the post as proof so anybody can go and check the call themselves. Joining a
     Discourse group is not how a role is granted, and never was a decision.
+
+    Who: any member records it; the Committee poll named by `post` decides
+    Reads: form fields target, role (committee|moderator|editor), action
+        (granted|revoked), post (forum post id), reason, dry_run
+    Answers: {ok, user, role, action, votes, committee, proof, forum}; 409 when
+        the poll falls short
     """
-    f = request.form
-    caller, err_ = request_identity(f, 'user')
-    if err_:
-        return err_
-    target = (f.get('target') or '').strip()
-    role = (f.get('role') or '').strip()
-    action = (f.get('action') or '').strip()
-    post_id = (f.get('post') or '').strip()
-    reason = (f.get('reason') or '').strip()
+    decision_form = request.form
+    caller, error = request_identity(decision_form, 'user')
+    if error:
+        return error
+    target = (decision_form.get('target') or '').strip()
+    role = (decision_form.get('role') or '').strip()
+    action = (decision_form.get('action') or '').strip()
+    post_id = (decision_form.get('post') or '').strip()
+    reason = (decision_form.get('reason') or '').strip()
     if role not in ('committee', 'moderator', 'editor'):
         return fail('role must be committee, moderator or editor; an expert scope '
                     'is appointed downward instead, and annulled by /api/expert/annul')
@@ -2545,9 +2745,9 @@ def role_decide():
         return fail('post must be the id of the forum post carrying the Committee poll')
     if reason and len(reason) > 400:
         return fail('reason must be under 400 characters')
-    poll, perr = read_committee_poll(post_id)
-    if perr:
-        return fail(perr, 409)
+    poll, poll_error = read_committee_poll(post_id)
+    if poll_error:
+        return fail(poll_error, 409)
     size = committee_size()
     if size <= 0:
         return fail('the Committee is empty in the archive; there is nothing to '
@@ -2571,14 +2771,14 @@ def role_decide():
                     f'{"grant" if action == "granted" else "remove"} this role; '
                     f'{needed} is required (Principles '
                     f'{"2.3.3" if action == "granted" else "2.3.5"})', 409)
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = decision_form.get('dry_run') in ('1', 'true', 'yes')
     proof = f'{DISCOURSE_URL}/p/{post_id}'
     label = {'committee': 'the Steering Committee', 'moderator': 'moderator',
              'editor': 'editor'}[role]
 
     refresh_archive()
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
         holds = any(u == target.lower() and r == role
                     for (u, r, s) in held_roles())
@@ -2589,12 +2789,12 @@ def role_decide():
         if action == 'granted' and forum_account_exists(target) is False:
             return fail(f'no forum account named {target}; they need one before a '
                         f'role means anything', 404)
-        said = f' {reason}' if reason else ''
+        reason_suffix = f' {reason}' if reason else ''
         entry = {'user': target, 'role': role, 'action': action, 'by': 'committee',
                  'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'proof': proof,
                  'reason': (f'{"Joined" if action == "granted" else "Left"} {label} '
-                            f'by a Committee vote, {votes} of {size}.{said}')}
-        if dry:
+                            f'by a Committee vote, {votes} of {size}.{reason_suffix}')}
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_append': entry,
                             'votes': votes, 'committee': size, 'proof': proof})
         append_role_event(entry)
@@ -2603,9 +2803,9 @@ def role_decide():
         commit_push(f'Roles: {target} {action} {role} by Committee vote\n\n'
                     f'Vote: {votes} of {size}\nProof: {proof}\n'
                     f'Recorded by: {caller}\nVia: archivist')
-    note = publish_group(role, target, add=(action == 'granted'))
+    forum_note = publish_group(role, target, add=(action == 'granted'))
     return jsonify({'ok': True, 'user': target, 'role': role, 'action': action,
-                    'votes': votes, 'committee': size, 'proof': proof, 'forum': note})
+                    'votes': votes, 'committee': size, 'proof': proof, 'forum': forum_note})
 
 @app.post('/api/expert/annul')
 def expert_annul():
@@ -2615,21 +2815,25 @@ def expert_annul():
     checks it was a genuine Committee decision with a majority of the Committee
     behind it, and then edits the roster. Everything a member needs to check the
     call themselves is in the post it names.
+
+    Who: any member applies it; the Committee poll named by `post` decides
+    Reads: form fields target, scope (optional: every scope), post, dry_run
+    Answers: {ok, target, dropped, votes, committee, proof, forum}
     """
-    f = request.form
-    caller, err_ = request_identity(f, 'user')
-    if err_:
-        return err_
-    target = (f.get('target') or '').strip()
-    scope = (f.get('scope') or '').strip()
-    post_id = (f.get('post') or '').strip()
+    annulment_form = request.form
+    caller, error = request_identity(annulment_form, 'user')
+    if error:
+        return error
+    target = (annulment_form.get('target') or '').strip()
+    scope = (annulment_form.get('scope') or '').strip()
+    post_id = (annulment_form.get('post') or '').strip()
     if not target:
         return fail('target must be the expert whose appointment is annulled')
     if not post_id.isdigit():
         return fail('post must be the id of the forum post carrying the Committee poll')
-    poll, perr = read_committee_poll(post_id)
-    if perr:
-        return fail(perr, 409)
+    poll, poll_error = read_committee_poll(post_id)
+    if poll_error:
+        return fail(poll_error, 409)
     size = committee_size()
     if size <= 0:
         return fail('the committee group is empty or unreadable; nothing to count '
@@ -2638,105 +2842,115 @@ def expert_annul():
     if for_annul * 2 <= size:
         return fail(f'{for_annul} of {size} committee members voted to annul; a simple '
                     f'majority of the Committee is required', 409)
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = annulment_form.get('dry_run') in ('1', 'true', 'yes')
     proof = f'{DISCOURSE_URL}/p/{post_id}'
     refresh_archive()
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
-        mine = [e for e in load_experts()
-                if e['user'].lower() == target.lower()
-                and (not scope or e['scope'] == scope)]
-        dropped = len(mine)
+        matching_scopes = [appointment for appointment in load_experts()
+                if appointment['user'].lower() == target.lower()
+                and (not scope or appointment['scope'] == scope)]
+        dropped = len(matching_scopes)
         if not dropped:
             return fail(f'{target} holds no such scope', 404)
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_drop': dropped,
                             'votes': for_annul, 'committee': size, 'proof': proof})
         today = time.strftime('%Y-%m-%d', time.gmtime())
-        for e in mine:
+        for appointment in matching_scopes:
             append_role_event({
-                'user': target, 'role': 'expert', 'scope': e['scope'],
+                'user': target, 'role': 'expert', 'scope': appointment['scope'],
                 'action': 'revoked', 'by': 'committee', 'date': today, 'at': now_iso(), 'proof': proof,
                 'reason': f'Annulled by a Committee vote, {for_annul} of {size}.'})
         commit_push(f'Annul: {target} loses {scope or "every scope"}\n\n'
                     f'Committee vote: {for_annul} of {size}\nProof: {proof}\n'
                     f'Applied by: {caller}\nVia: archivist')
-    still = any(e['user'].lower() == target.lower() for e in load_experts())
-    note = sync_expert_group(target, add=False) if not still else 'still an expert elsewhere'
+    still = any(appointment['user'].lower() == target.lower() for appointment in load_experts())
+    forum_note = sync_expert_group(target, add=False) if not still else 'still an expert elsewhere'
     return jsonify({'ok': True, 'target': target, 'dropped': dropped,
-                    'votes': for_annul, 'committee': size, 'proof': proof, 'forum': note})
+                    'votes': for_annul, 'committee': size, 'proof': proof, 'forum': forum_note})
 
 @app.post('/api/expert/resign')
 def expert_resign():
-    """Step down from a scope. Always available, needs nobody's agreement."""
-    f = request.form
-    user, err_ = request_identity(f, 'user')
-    if err_:
-        return err_
-    scope = (f.get('scope') or '').strip()
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    """Step down from a scope. Always available, needs nobody's agreement.
+
+    Who: the expert themselves (`key` plus `user`)
+    Reads: form fields scope (optional: every scope), dry_run
+    Answers: {ok, user, dropped, forum}
+    """
+    resignation_form = request.form
+    user, error = request_identity(resignation_form, 'user')
+    if error:
+        return error
+    scope = (resignation_form.get('scope') or '').strip()
+    dry_run = resignation_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
-        mine = [e for e in load_experts()
-                if e['user'].lower() == user.lower() and (not scope or e['scope'] == scope)]
-        if not mine:
+        matching_scopes = [appointment for appointment in load_experts()
+                if appointment['user'].lower() == user.lower() and (not scope or appointment['scope'] == scope)]
+        if not matching_scopes:
             return fail(f'{user} holds no such scope', 404)
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_drop': len(mine)})
-        dropped = len(mine)
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_drop': len(matching_scopes)})
+        dropped = len(matching_scopes)
         today = time.strftime('%Y-%m-%d', time.gmtime())
-        for e in mine:
-            append_role_event({'user': user, 'role': 'expert', 'scope': e['scope'],
+        for appointment in matching_scopes:
+            append_role_event({'user': user, 'role': 'expert', 'scope': appointment['scope'],
                                'action': 'revoked', 'by': user, 'date': today, 'at': now_iso(),
                                'reason': 'Stepped down of their own accord.'})
         commit_push(f'Resign: {user} steps down from '
                     f'{scope or "every scope"}\n\nVia: archivist')
-    keep = load_experts()
-    still = any(e['user'].lower() == user.lower() for e in keep)
-    note = sync_expert_group(user, add=False) if not still else 'still an expert elsewhere'
-    return jsonify({'ok': True, 'user': user, 'dropped': dropped, 'forum': note})
+    remaining_roster = load_experts()
+    still = any(appointment['user'].lower() == user.lower() for appointment in remaining_roster)
+    forum_note = sync_expert_group(user, add=False) if not still else 'still an expert elsewhere'
+    return jsonify({'ok': True, 'user': user, 'dropped': dropped, 'forum': forum_note})
 
 @app.post('/api/claim/request')
 def claim_request():
-    """Ask to be handed a name held for an author elsewhere."""
-    f = request.form
-    member, err_ = request_identity(f, 'member')
-    if err_:
-        return err_
-    identity = (f.get('identity') or '').strip()
-    evidence = (f.get('evidence') or '').strip()
+    """Ask to be handed a name held for an author elsewhere.
+
+    Who: any member (`key` plus `member`)
+    Reads: form fields identity, evidence (8 to 1000 chars), dry_run
+    Answers: {ok, request, note}; 409 when the name is claimed or a claim is open
+    """
+    claim_form = request.form
+    member, error = request_identity(claim_form, 'member')
+    if error:
+        return error
+    identity = (claim_form.get('identity') or '').strip()
+    evidence = (claim_form.get('evidence') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', identity):
         return fail('identity must be the name you are claiming')
     if not (8 <= len(evidence) <= 1000):
         return fail('say what shows the name is yours: a post from that account, a '
                     'channel hosting your encodes, anything somebody can check')
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = claim_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        afile = ARCHIVE / 'authors' / f'{selfimport.slugify(identity)}.json'
-        if afile.exists():
-            rec = json.loads(afile.read_text())
-            if rec.get('claimed'):
+        author_file = ARCHIVE / 'authors' / f'{selfimport.slugify(identity)}.json'
+        if author_file.exists():
+            author_record = json.loads(author_file.read_text())
+            if author_record.get('claimed'):
                 return fail(f'{identity} is already claimed by '
-                            f'{rec.get("claimedBy") or "somebody"}', 409)
-        doc = load_claims()
-        if any(r['status'] == 'open' and r['identity'].lower() == identity.lower()
-               for r in doc['requests']):
+                            f'{author_record.get("claimedBy") or "somebody"}', 409)
+        claims_doc = load_claims()
+        if any(claim['status'] == 'open' and claim['identity'].lower() == identity.lower()
+               for claim in claims_doc['requests']):
             return fail(f'a claim for {identity} is already open', 409)
-        if any(r['status'] == 'open' and r['member'].lower() == member.lower()
-               for r in doc['requests']):
+        if any(claim['status'] == 'open' and claim['member'].lower() == member.lower()
+               for claim in claims_doc['requests']):
             return fail('you already have a claim open; it has to be answered first', 409)
         entry = {'member': member, 'identity': identity, 'evidence': evidence,
                  'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'status': 'open'}
-        if dry:
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_file': entry})
         checkout_branch()
-        doc = load_claims()
-        doc['requests'].append(entry)
-        save_claims(doc)
+        claims_doc = load_claims()
+        claims_doc['requests'].append(entry)
+        save_claims(claims_doc)
         ensure_member(member)
         commit_push(f'Claim requested: {member} asks for {identity}\n\n'
                     f'Evidence: {evidence}\nVia: archivist')
@@ -2752,20 +2966,24 @@ def claim_pending():
 
     Carries the requester's forum email, read live and never stored, so the
     Committee can reach somebody about their own claim.
+
+    Who: those who decide claims (the Steering Committee)
+    Reads: nothing beyond identity
+    Answers: {ok, pending, note}
     """
-    f = request.form
-    caller, err_ = request_identity(f, 'user')
-    if err_:
-        return err_
+    request_form = request.form
+    caller, error = request_identity(request_form, 'user')
+    if error:
+        return error
     refresh_archive(0)
     if not may_decide_claims(caller):
         return fail('the Steering Committee answers name claims', 403)
-    out = []
-    for r in load_claims()['requests']:
-        if r['status'] != 'open':
+    pending_claims = []
+    for claim in load_claims()['requests']:
+        if claim['status'] != 'open':
             continue
-        out.append(dict(r, email=member_email_masked(r['member'])))
-    return jsonify({'ok': True, 'pending': out,
+        pending_claims.append(dict(claim, email=member_email_masked(claim['member'])))
+    return jsonify({'ok': True, 'pending': pending_claims,
                     'note': 'The addresses here are masked and read from the forum as '
                             'you ask for them. The whole address is never sent by this '
                             'service, is not in the archive, and never appears on the '
@@ -2773,85 +2991,90 @@ def claim_pending():
 
 @app.post('/api/claim/decide')
 def claim_decide():
-    """The Committee answers a claim, and the person is told either way."""
-    f = request.form
-    caller, err_ = request_identity(f, 'user')
-    if err_:
-        return err_
+    """The Committee answers a claim, and the person is told either way.
+
+    Who: those who decide claims, never on their own claim
+    Reads: form fields identity, action (approved|denied), note, dry_run
+    Answers: {ok, identity, member, action, by, rename, told}
+    """
+    decision_form = request.form
+    caller, error = request_identity(decision_form, 'user')
+    if error:
+        return error
     refresh_archive()
     if not may_decide_claims(caller):
         return fail('the Steering Committee answers name claims', 403)
-    identity = (f.get('identity') or '').strip()
-    action = (f.get('action') or '').strip()
-    note_ = (f.get('note') or '').strip()
+    identity = (decision_form.get('identity') or '').strip()
+    action = (decision_form.get('action') or '').strip()
+    decision_note = (decision_form.get('note') or '').strip()
     if action not in ('approved', 'denied'):
         return fail('action must be approved or denied')
-    if action == 'denied' and not (8 <= len(note_) <= 500):
+    if action == 'denied' and not (8 <= len(decision_note) <= 500):
         return fail('say why it was denied: the person is told, and they can answer it')
-    if len(note_) > 500:
+    if len(decision_note) > 500:
         return fail('note must be under 500 characters')
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = decision_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        doc = load_claims()
-        req = next((r for r in doc['requests']
-                    if r['status'] == 'open' and r['identity'].lower() == identity.lower()),
+        claims_doc = load_claims()
+        open_claim = next((claim for claim in claims_doc['requests']
+                    if claim['status'] == 'open' and claim['identity'].lower() == identity.lower()),
                    None)
-        if not req:
+        if not open_claim:
             return fail(f'no claim for {identity} is open', 404)
-        if req['member'].lower() == caller.lower():
+        if open_claim['member'].lower() == caller.lower():
             return fail('you cannot answer your own claim', 403)
-        today_ = time.strftime('%Y-%m-%d', time.gmtime())
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'request': req, 'would': action})
+        today = time.strftime('%Y-%m-%d', time.gmtime())
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'request': open_claim, 'would': action})
         checkout_branch()
-        doc = load_claims()
-        req = next((r for r in doc['requests']
-                    if r['status'] == 'open' and r['identity'].lower() == identity.lower()),
+        claims_doc = load_claims()
+        open_claim = next((claim for claim in claims_doc['requests']
+                    if claim['status'] == 'open' and claim['identity'].lower() == identity.lower()),
                    None)
-        if not req:
+        if not open_claim:
             return fail(f'no claim for {identity} is open', 404)
-        req.update(status=action, decidedBy=caller, decidedAt=today_, note=note_)
-        member = req['member']
+        open_claim.update(status=action, decidedBy=caller, decidedAt=today, note=decision_note)
+        member = open_claim['member']
         if action == 'approved':
-            adir = ARCHIVE / 'authors'
-            afile = adir / f'{selfimport.slugify(req["identity"])}.json'
-            rec = json.loads(afile.read_text()) if afile.exists() else {
-                'username': req['identity']}
-            if rec.get('claimed') and (rec.get('claimedBy') or '').lower() != member.lower():
-                return fail(f'{req["identity"]} is already claimed by '
-                            f'{rec.get("claimedBy")}', 409)
-            rec.update({'username': rec.get('username') or req['identity'],
-                        'claimed': True, 'claimedBy': member, 'claimedAt': today_, 'claimedAtTime': now_iso(),
+            authors_dir = ARCHIVE / 'authors'
+            author_file = authors_dir / f'{selfimport.slugify(open_claim["identity"])}.json'
+            author_record = json.loads(author_file.read_text()) if author_file.exists() else {
+                'username': open_claim['identity']}
+            if author_record.get('claimed') and (author_record.get('claimedBy') or '').lower() != member.lower():
+                return fail(f'{open_claim["identity"]} is already claimed by '
+                            f'{author_record.get("claimedBy")}', 409)
+            author_record.update({'username': author_record.get('username') or open_claim['identity'],
+                        'claimed': True, 'claimedBy': member, 'claimedAt': today, 'claimedAtTime': now_iso(),
                         'claimMethod': 'committee', 'attestedBy': caller,
                         'attestation': (f'Claim approved by the Steering Committee. '
-                                        f'{req["evidence"]}')[:1000]})
-            adir.mkdir(exist_ok=True)
-            afile.write_text(json.dumps(rec, indent=1) + '\n')
+                                        f'{open_claim["evidence"]}')[:1000]})
+            authors_dir.mkdir(exist_ok=True)
+            author_file.write_text(json.dumps(author_record, indent=1) + '\n')
             # the claimed record IS this person's member record now; the one
             # their registration name wrote at first login is superseded, and
             # keeping it would list a member who no longer exists
-            oldf = adir / f'{selfimport.slugify(member)}.json'
-            if oldf != afile and oldf.exists():
-                oldf.unlink()
-        save_claims(doc)
-        commit_push(f'Claim {action}: {member} for {req["identity"]}\n\n'
-                    f'By: {caller}\n' + (f'Note: {note_}\n' if note_ else '')
+            old_record_file = authors_dir / f'{selfimport.slugify(member)}.json'
+            if old_record_file != author_file and old_record_file.exists():
+                old_record_file.unlink()
+        save_claims(claims_doc)
+        commit_push(f'Claim {action}: {member} for {open_claim["identity"]}\n\n'
+                    f'By: {caller}\n' + (f'Note: {decision_note}\n' if decision_note else '')
                     + 'Via: archivist')
-    rename_note = (unlock_forum_username(member, req['identity'])
+    rename_note = (unlock_forum_username(member, open_claim['identity'])
                    if action == 'approved' else 'no rename')
     told = send_pm(
         member,
-        f'Your claim to the name {req["identity"]} was {action}',
-        (f'The Steering Committee {action} your claim to **{req["identity"]}**.\n\n'
+        f'Your claim to the name {open_claim["identity"]} was {action}',
+        (f'The Steering Committee {action} your claim to **{open_claim["identity"]}**.\n\n'
          + (f'Your forum account has been renamed and the name is yours. Your profile '
             f'now carries an **Import my movies** button for your publications '
             f'at the site the name comes from, co-authored ones included; '
             f'importing a co-authored work is your responsibility.\n\n'
             if action == 'approved' else '')
-         + (f'Reason given: {note_}\n\n' if note_ else '')
+         + (f'Reason given: {decision_note}\n\n' if decision_note else '')
          + f'Answered by {caller}. You can reply to this message if you think this '
            f'is wrong; the decision is recorded in the site log either way.'))
-    return jsonify({'ok': True, 'identity': req['identity'], 'member': member,
+    return jsonify({'ok': True, 'identity': open_claim['identity'], 'member': member,
                     'action': action, 'by': caller, 'rename': rename_note,
                     'told': told})
 
@@ -2872,17 +3095,21 @@ def claim_attest():
     site log shows it. A ban elsewhere is not a status here (Principles
     1.4, 1.5) and never blocks an attestation. Wrong calls are visible and
     revocable, which is the honest trade for accepting human judgement.
+
+    Who: those who decide claims (`key` plus `expert`)
+    Reads: form fields member, identity, method (12 to 1000 chars), dry_run
+    Answers: {ok, identity, member, attestedBy, rename, note}
     """
-    f = request.form
-    expert, err_ = request_identity(f, 'expert')
-    if err_:
-        return err_
+    attestation_form = request.form
+    expert, error = request_identity(attestation_form, 'expert')
+    if error:
+        return error
     refresh_archive()
     if not may_decide_claims(expert):
         return fail('only the Steering Committee assesses identity', 403)
-    member = (f.get('member') or '').strip()
-    identity = (f.get('identity') or '').strip()
-    method = (f.get('method') or '').strip()
+    member = (attestation_form.get('member') or '').strip()
+    identity = (attestation_form.get('identity') or '').strip()
+    method = (attestation_form.get('method') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', member):
         return fail('member must be the forum account being attested')
     if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', identity):
@@ -2892,17 +3119,17 @@ def claim_attest():
                     'whole point of an attestation')
     if len(method) > 1000:
         return fail('method must be under 1000 characters')
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    dry_run = attestation_form.get('dry_run') in ('1', 'true', 'yes')
 
     with lock:
-        if not dry:
+        if not dry_run:
             checkout_branch()
-        adir = ARCHIVE / 'authors'
-        afile = adir / f'{selfimport.slugify(identity)}.json'
-        rec = json.loads(afile.read_text()) if afile.exists() else {'username': identity}
-        if rec.get('claimed') and (rec.get('claimedBy') or '').lower() != member.lower():
-            return fail(f'{identity} is already claimed by {rec.get("claimedBy")}', 409)
-        rec.update({'username': rec.get('username') or identity,
+        authors_dir = ARCHIVE / 'authors'
+        author_file = authors_dir / f'{selfimport.slugify(identity)}.json'
+        author_record = json.loads(author_file.read_text()) if author_file.exists() else {'username': identity}
+        if author_record.get('claimed') and (author_record.get('claimedBy') or '').lower() != member.lower():
+            return fail(f'{identity} is already claimed by {author_record.get("claimedBy")}', 409)
+        author_record.update({'username': author_record.get('username') or identity,
                     'claimed': True,
                     'claimedBy': member,
                     'claimedAt': time.strftime('%Y-%m-%d', time.gmtime()),
@@ -2910,17 +3137,17 @@ def claim_attest():
                     'claimMethod': 'attested',
                     'attestedBy': expert,
                     'attestation': method})
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_write': rec})
-        adir.mkdir(exist_ok=True)
-        afile.write_text(json.dumps(rec, indent=1) + '\n')
-        oldf = adir / f'{selfimport.slugify(member)}.json'
-        if oldf != afile and oldf.exists():
-            oldf.unlink()
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_write': author_record})
+        authors_dir.mkdir(exist_ok=True)
+        author_file.write_text(json.dumps(author_record, indent=1) + '\n')
+        old_record_file = authors_dir / f'{selfimport.slugify(member)}.json'
+        if old_record_file != author_file and old_record_file.exists():
+            old_record_file.unlink()
         commit_push(f'Attest {identity}: verified by expert {expert}\n\n'
                     f'Member: {member}\nMethod: {method}\nVia: archivist')
     rename_note = unlock_forum_username(member, identity)
-    return jsonify({'ok': True, 'identity': rec['username'], 'member': member,
+    return jsonify({'ok': True, 'identity': author_record['username'], 'member': member,
                     'attestedBy': expert, 'rename': rename_note,
                     'note': 'The attestation is public: it names you as the expert who '
                             'made the call, and the site log carries it. The '
@@ -2947,27 +3174,32 @@ def _refresh_dumps():
 def _import_identity():
     """Self-service import is session-only: the logged-in member must BE the
     claimed author. Returns (canonical_username, error)."""
-    su = session_user()
-    if not su:
+    session_name = session_user()
+    if not session_name:
         return None, fail('log in via the forum to import your movies', 403)
     if not origin_ok():
         return None, fail('cross-origin request refused', 403)
-    if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', su):
+    if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', session_name):
         return None, fail('session username is not archive-safe', 400)
-    afile = ARCHIVE / 'authors' / f'{selfimport.slugify(su)}.json'
-    if not afile.exists():
+    author_file = ARCHIVE / 'authors' / f'{selfimport.slugify(session_name)}.json'
+    if not author_file.exists():
         return None, fail('imports are available once you have claimed the identity', 403)
-    a = json.loads(afile.read_text())
-    if not a.get('claimed') or a.get('username', '').lower() != su.lower():
+    author_record = json.loads(author_file.read_text())
+    if not author_record.get('claimed') or author_record.get('username', '').lower() != session_name.lower():
         return None, fail('imports are available once you have claimed the identity', 403)
-    return a['username'], None
+    return author_record['username'], None
 
 @app.post('/api/import/scan')
 def import_scan():
-    """What of my TASVideos catalog is not in the archive yet?"""
-    user, err = _import_identity()
-    if err:
-        return err
+    """What of my TASVideos catalog is not in the archive yet?
+
+    Who: a logged-in member who has claimed the identity (session only)
+    Reads: nothing
+    Answers: {ok, user} plus selfimport.scan's result
+    """
+    user, error = _import_identity()
+    if error:
+        return error
     if not (DUMPS_DIR / 'metadata' / 'publications.json').exists():
         return fail('the tasvideos backup is not available on this server; try later', 503)
     _refresh_dumps()
@@ -2979,10 +3211,15 @@ def import_scan():
 @app.post('/api/import/run')
 def import_run():
     """Import the next batch of my pending TASVideos publications. Call
-    repeatedly until remaining is 0; each batch is one archive commit."""
-    user, err = _import_identity()
-    if err:
-        return err
+    repeatedly until remaining is 0; each batch is one archive commit.
+
+    Who: a logged-in member who has claimed the identity (session only)
+    Reads: form field select (publication ids)
+    Answers: {ok, user} plus selfimport.import_batch's result
+    """
+    user, error = _import_identity()
+    if error:
+        return error
     if not (DUMPS_DIR / 'metadata' / 'publications.json').exists():
         return fail('the tasvideos backup is not available on this server; try later', 503)
     _refresh_dumps()
@@ -3001,23 +3238,23 @@ def import_run():
         return fail('that is more than one member has ever published; check the list')
     with lock:
         checkout_branch()
-        res = selfimport.import_batch(DUMPS_DIR, ARCHIVE, user,
+        result = selfimport.import_batch(DUMPS_DIR, ARCHIVE, user,
                                       time.strftime('%Y-%m-%d', time.gmtime()),
                                       THUMB_FETCH_BASE, limit=6, select=select)
-        if res['imported']:
-            res['topics'] = topics_for_imported(ARCHIVE, res['imported'])
-            commit_push(f"Self-import for {user}: {', '.join(res['imported'])}")
-    if res['imported']:
+        if result['imported']:
+            result['topics'] = topics_for_imported(ARCHIVE, result['imported'])
+            commit_push(f"Self-import for {user}: {', '.join(result['imported'])}")
+    if result['imported']:
         # one line per batch, not per movie: a large import in six-movie
         # batches would otherwise flood the channel. The first few ids carry
         # the links; the source stays implicit, each run page naming its own.
-        ids = res['imported']
-        shown = ', '.join(f'[{i}](<{SITE_URL}/runs/{i}/>)' for i in ids[:3])
-        more = f' +{len(ids) - 3} more' if len(ids) > 3 else ''
-        word = 'movie' if len(ids) == 1 else f'{len(ids)} movies'
+        imported_ids = result['imported']
+        shown = ', '.join(f'[{i}](<{SITE_URL}/runs/{i}/>)' for i in imported_ids[:3])
+        more = f' +{len(imported_ids) - 3} more' if len(imported_ids) > 3 else ''
+        word = 'movie' if len(imported_ids) == 1 else f'{len(imported_ids)} movies'
         notify_discord(f'\U0001f4e5 **{member_md(user)}** imported {word}: {shown}{more}',
-                       wait_for=f'{SITE_URL}/runs/{ids[0]}/')
-    return jsonify({'ok': True, 'user': user, **res})
+                       wait_for=f'{SITE_URL}/runs/{imported_ids[0]}/')
+    return jsonify({'ok': True, 'user': user, **result})
 
 @app.post('/api/verify')
 def verify():
@@ -3028,48 +3265,54 @@ def verify():
     verified (expert), which is permanent. (The archive's enum names stay
     provisional/confirmed; only the words people see changed.) Who the verifier was at the moment of
     the act is stamped on the act, because scopes change and facts do not.
+
+    Who: a member who is not one of the run's authors; the run needs an
+        encode and a defined goal
+    Reads: form fields run, notes, dry_run
+    Answers: {ok, run, status, verifications}; dry_run: {ok, dry_run,
+        would_record, status}
     """
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    verification_form = request.form
+    dry_run = verification_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(verification_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        err_resp, rdir, r, user = act_common(f)
-        if err_resp:
-            return err_resp
-        if user.lower() in {a['user'].lower() for a in r.get('verifications', [])}:
+        act_error, run_dir, run, user = act_common(verification_form)
+        if act_error:
+            return act_error
+        if user.lower() in {a['user'].lower() for a in run.get('verifications', [])}:
             return fail('you have already verified this run; one verification per member')
-        if (r.get('category') or {}).get('goal') == 'unclassified':
+        if (run.get('category') or {}).get('goal') == 'unclassified':
             return fail('Unclassified runs cannot be verified because no goal is defined; '
                         'they can be reproduced and liked')
-        if not r.get('encodes'):
+        if not run.get('encodes'):
             return fail('this run has no encode linked; verification needs one to judge from')
 
         entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso()}
-        game_key_v = f'{rdir.parent.parent.parent.name}/{rdir.parent.parent.name}'
-        if expert_covers(user, game_key_v):
+        game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
+        if expert_covers(user, game_key):
             entry['expert'] = True
-        if (f.get('notes') or '').strip():
-            entry['notes'] = f.get('notes').strip()
-        r.setdefault('verifications', []).append(entry)
-        sync_status(r)
-        if dry:
+        if (verification_form.get('notes') or '').strip():
+            entry['notes'] = verification_form.get('notes').strip()
+        run.setdefault('verifications', []).append(entry)
+        sync_status(run)
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_record': entry,
-                            'status': r['status']})
+                            'status': run['status']})
 
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
-        commit_push(f'Verify {r["id"]}: by {user}\n\nVia: archivist')
+        commit_push(f'Verify {run["id"]}: by {user}\n\nVia: archivist')
         notify_discord(f'\u2713 **{member_md(user)}** verified'
                        + ' '
-                       + movie_md(r),
-                       wait_for=f'{SITE_URL}/runs/{r["id"]}/')
-    return jsonify({'ok': True, 'run': r['id'], 'status': r['status'],
-                    'verifications': len([a for a in r['verifications'] if not a.get('invalidated')])})
+                       + movie_md(run),
+                       wait_for=f'{SITE_URL}/runs/{run["id"]}/')
+    return jsonify({'ok': True, 'run': run['id'], 'status': run['status'],
+                    'verifications': len([a for a in run['verifications'] if not a.get('invalidated')])})
 
 @app.post('/api/withdraw')
 def withdraw():
@@ -3079,45 +3322,50 @@ def withdraw():
     expert who must remove a run deletes it, on the record). Nothing is
     erased: the record, the movie file and the reason stay in the archive,
     because the principles forbid erasing a contribution (1.2, 2.8.2). The
-    site stops listing it and says why."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    site stops listing it and says why.
+
+    Who: one of the run's authors
+    Reads: form fields run, reason, dry_run
+    Answers: {ok, run, withdrawn}
+    """
+    withdrawal_form = request.form
+    dry_run = withdrawal_form.get('dry_run') in ('1', 'true', 'yes')
     refresh_archive()
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(withdrawal_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        user, err_ = request_identity(f)
-        if err_:
-            return err_
-        run_id = (f.get('run') or '').strip()
-        rdir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
-        if not rdir:
+        user, error = request_identity(withdrawal_form)
+        if error:
+            return error
+        run_id = (withdrawal_form.get('run') or '').strip()
+        run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
+        if not run_dir:
             return fail(f'unknown run {run_id}', 404)
-        r = json.loads((rdir / 'run.json').read_text())
-        is_author = current_name(user).lower() in run_authors_now(r)
+        run = json.loads((run_dir / 'run.json').read_text())
+        is_author = current_name(user).lower() in run_authors_now(run)
         if not is_author:
             return fail("withdrawing is the author's own voluntary act; an expert "
                         "who must remove a run deletes it instead", 403)
-        if r.get('withdrawn'):
+        if run.get('withdrawn'):
             return fail(f'{run_id} is already withdrawn')
-        reason = (f.get('reason') or '').strip()
+        reason = (withdrawal_form.get('reason') or '').strip()
         if not reason:
             return fail('a withdrawal must state its reason; it is shown in the open')
         if len(reason) > ACT_NOTES_MAX:
             return fail(f'reason exceeds {ACT_NOTES_MAX} characters')
 
-        r['withdrawn'] = {'by': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
+        run['withdrawn'] = {'by': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                           'reason': reason, 'role': 'author'}
-        if dry:
-            return jsonify({'ok': True, 'dry_run': True, 'would_withdraw': r['withdrawn']})
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_withdraw': run['withdrawn']})
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Withdraw {run_id}: by {user}\n\nReason: {reason}\nVia: archivist')
-    return jsonify({'ok': True, 'run': run_id, 'withdrawn': r['withdrawn']})
+    return jsonify({'ok': True, 'run': run_id, 'withdrawn': run['withdrawn']})
 
 @app.post('/api/console-verify')
 def console_verify():
@@ -3125,71 +3373,77 @@ def console_verify():
 
     An optional signal beside verification (the one gate). It is the most
     expensive act anyone can perform here, so it carries a public recording
-    and pays accordingly."""
-    f = request.form
-    dry = f.get('dry_run') in ('1', 'true', 'yes')
+    and pays accordingly.
+
+    Who: a member who is not one of the run's authors; not on video-only runs
+    Reads: form fields run, proof (URL of the recording), hardware, notes,
+        dry_run; optional file screenshot
+    Answers: {ok, run, proof, consoleVerifications}
+    """
+    verification_form = request.form
+    dry_run = verification_form.get('dry_run') in ('1', 'true', 'yes')
     with lock:
-        err0 = auth_precheck(f)
-        if err0:
-            return err0
-        if not dry:
+        auth_error = auth_precheck(verification_form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
             checkout_branch()
-        err_resp, rdir, r, user = act_common(f)
-        if err_resp:
-            return err_resp
-        if r.get('videoOnly'):
+        act_error, run_dir, run, user = act_common(verification_form)
+        if act_error:
+            return act_error
+        if run.get('videoOnly'):
             return fail('this run is video-only: there is no input movie to play '
                         'back on hardware, so console verification does not apply')
-        if user.lower() in {a['user'].lower() for a in r.get('consoleVerifications', [])}:
+        if user.lower() in {a['user'].lower() for a in run.get('consoleVerifications', [])}:
             return fail('you have already console-verified this run; '
                         'one console verification per member')
-        proof = (f.get('proof') or '').strip()
+        proof = (verification_form.get('proof') or '').strip()
         if not re.match(r'https?://\S+$', proof) or len(proof) > 500:
             return fail('a link to the recording of the console playing this run '
                         'is required as proof')
 
         entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
                  'proof': proof}
-        if (f.get('hardware') or '').strip():
-            entry['hardware'] = f.get('hardware').strip()[:120]
-        if (f.get('notes') or '').strip():
-            entry['notes'] = f.get('notes').strip()[:2000]
+        if (verification_form.get('hardware') or '').strip():
+            entry['hardware'] = verification_form.get('hardware').strip()[:120]
+        if (verification_form.get('notes') or '').strip():
+            entry['notes'] = verification_form.get('notes').strip()[:2000]
 
-        shot = request.files.get('screenshot')
-        data = None
-        if shot and shot.filename:
-            ext = pathlib.Path(shot.filename).suffix.lower()
+        screenshot_upload = request.files.get('screenshot')
+        screenshot_bytes = None
+        if screenshot_upload and screenshot_upload.filename:
+            ext = pathlib.Path(screenshot_upload.filename).suffix.lower()
             if ext not in IMAGE_MAGIC:
                 return fail('screenshot must be png, jpg or webp')
-            data = shot.read()
-            if len(data) > SHOT_MAX_EACH:
+            screenshot_bytes = screenshot_upload.read()
+            if len(screenshot_bytes) > SHOT_MAX_EACH:
                 return fail('screenshot exceeds 512 KB')
-            if not any(data.startswith(m) for m in IMAGE_MAGIC[ext]):
+            if not any(screenshot_bytes.startswith(magic) for magic in IMAGE_MAGIC[ext]):
                 return fail(f'screenshot is not a real {ext} image')
-            existing = sum(sp.stat().st_size for sp in (rdir / 'console').glob('*')
-                           if sp.is_file()) if (rdir / 'console').exists() else 0
-            if existing + len(data) > SHOT_MAX_TOTAL:
+            stored_bytes = sum(sp.stat().st_size for sp in (run_dir / 'console').glob('*')
+                           if sp.is_file()) if (run_dir / 'console').exists() else 0
+            if stored_bytes + len(screenshot_bytes) > SHOT_MAX_TOTAL:
                 return fail('this run has reached its screenshot storage cap')
-            n = len(r.get('consoleVerifications', [])) + 1
-            entry['screenshot'] = f'console/{n}-{user}{ext}'
+            ordinal = len(run.get('consoleVerifications', [])) + 1
+            entry['screenshot'] = f'console/{ordinal}-{user}{ext}'
 
-        r.setdefault('consoleVerifications', []).append(entry)
-        sync_status(r)
-        if dry:
+        run.setdefault('consoleVerifications', []).append(entry)
+        sync_status(run)
+        if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_record': entry})
 
-        if data is not None:
-            (rdir / 'console').mkdir(exist_ok=True)
-            (rdir / entry['screenshot']).write_bytes(data)
-        (rdir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in r.items() if not k.startswith('_')}, indent=1))
+        if screenshot_bytes is not None:
+            (run_dir / 'console').mkdir(exist_ok=True)
+            (run_dir / entry['screenshot']).write_bytes(screenshot_bytes)
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
-        commit_push(f'Console-verify {r["id"]}: by {user}\n\nProof: {proof}\nVia: archivist')
-        notify_discord(f'\U0001f579\ufe0f **{member_md(user)}** played ' + movie_md(r)
+        commit_push(f'Console-verify {run["id"]}: by {user}\n\nProof: {proof}\nVia: archivist')
+        notify_discord(f'\U0001f579\ufe0f **{member_md(user)}** played ' + movie_md(run)
                        + ' back on original hardware',
-                       wait_for=f'{SITE_URL}/runs/{r["id"]}/')
-    return jsonify({'ok': True, 'run': r['id'], 'proof': proof,
-                    'consoleVerifications': len([a for a in r['consoleVerifications']
+                       wait_for=f'{SITE_URL}/runs/{run["id"]}/')
+    return jsonify({'ok': True, 'run': run['id'], 'proof': proof,
+                    'consoleVerifications': len([a for a in run['consoleVerifications']
                                                  if not a.get('invalidated')])})
 
 DISCUSSION_CACHE = {}      # topic id -> (fetched_at, payload)
@@ -3205,30 +3459,39 @@ def encode_check():
     Bilibili have to be asked, and a browser cannot ask them (no CORS). So the
     check moved here, which also means the page and the server agree on what
     counts as a valid encode, by construction.
+
+    Who: anybody
+    Reads: query arg url
+    Answers: {ok, kind, name, id, thumb}, or {ok: false, kind, name, error}
     """
     url = (request.args.get('url') or '').strip()
-    enc = providers.resolve(url)
-    if not enc:
+    encode_provider = providers.resolve(url)
+    if not encode_provider:
         return jsonify({'ok': False,
                         'error': 'not a link from ' + ', '.join(providers.names())})
-    hit = ENCODE_CACHE.get(url)
-    if hit and time.time() - hit[0] < 300:
-        return jsonify(hit[1])
-    thumb = providers.thumbnail_url(enc['kind'], enc['id'])
-    if not thumb and providers.BY_KIND[enc['kind']].get('thumbs'):
+    cached = ENCODE_CACHE.get(url)
+    if cached and time.time() - cached[0] < 300:
+        return jsonify(cached[1])
+    thumb = providers.thumbnail_url(encode_provider['kind'], encode_provider['id'])
+    if not thumb and providers.BY_KIND[encode_provider['kind']].get('thumbs'):
         # a direct template needs fetching to know whether the video is real;
         # the page then loads the candidate that actually answered (#29)
-        thumb = providers.thumbnail_source(enc['kind'], enc['id'], THUMB_MAX)
-    payload = ({'ok': True, 'kind': enc['kind'], 'name': enc['name'],
-                'id': enc['id'], 'thumb': thumb} if thumb else
-               {'ok': False, 'kind': enc['kind'], 'name': enc['name'],
-                'error': f'that {enc["name"]} video does not exist, or is private'})
+        thumb = providers.thumbnail_source(encode_provider['kind'], encode_provider['id'], THUMB_MAX)
+    payload = ({'ok': True, 'kind': encode_provider['kind'], 'name': encode_provider['name'],
+                'id': encode_provider['id'], 'thumb': thumb} if thumb else
+               {'ok': False, 'kind': encode_provider['kind'], 'name': encode_provider['name'],
+                'error': f'that {encode_provider["name"]} video does not exist, or is private'})
     ENCODE_CACHE[url] = (time.time(), payload)
     return jsonify(payload)
 
 @app.get('/api/discussion')
 def discussion():
-    """The forum topic for a run, as the site renders it in place."""
+    """The forum topic for a run, as the site renders it in place.
+
+    Who: anybody
+    Reads: query arg topic (forum topic id)
+    Answers: {ok, topic, title, url, posts, replyCount}
+    """
     try:
         topic_id = int(request.args.get('topic') or 0)
     except ValueError:
@@ -3237,26 +3500,26 @@ def discussion():
         return fail('topic is required')
     if not DISCOURSE_KEY:
         return fail('the forum is not configured on this server', 503)
-    hit = DISCUSSION_CACHE.get(topic_id)
-    if hit and time.time() - hit[0] < 60:
-        return jsonify(hit[1])
+    cached = DISCUSSION_CACHE.get(topic_id)
+    if cached and time.time() - cached[0] < 60:
+        return jsonify(cached[1])
     try:
-        tj = _forum_get(f'/t/{topic_id}.json')
-    except Exception as e:                                    # noqa: BLE001
-        return fail(f'could not reach the forum: {e}', 502)
+        topic_json = _forum_get(f'/t/{topic_id}.json')
+    except Exception as exc:                                    # noqa: BLE001
+        return fail(f'could not reach the forum: {exc}', 502)
     posts = []
-    for p_ in tj.get('post_stream', {}).get('posts', []):
+    for post in topic_json.get('post_stream', {}).get('posts', []):
         posts.append({
-            'id': p_.get('id'), 'number': p_.get('post_number'),
-            'user': p_.get('username'), 'name': p_.get('display_username'),
-            'avatar': (DISCOURSE_URL + p_['avatar_template'].replace('{size}', '48')
-                       if (p_.get('avatar_template') or '').startswith('/')
-                       else (p_.get('avatar_template') or '').replace('{size}', '48')),
-            'html': p_.get('cooked') or '',
-            'date': (p_.get('created_at') or '')[:19],
-            'staff': bool(p_.get('staff')),
+            'id': post.get('id'), 'number': post.get('post_number'),
+            'user': post.get('username'), 'name': post.get('display_username'),
+            'avatar': (DISCOURSE_URL + post['avatar_template'].replace('{size}', '48')
+                       if (post.get('avatar_template') or '').startswith('/')
+                       else (post.get('avatar_template') or '').replace('{size}', '48')),
+            'html': post.get('cooked') or '',
+            'date': (post.get('created_at') or '')[:19],
+            'staff': bool(post.get('staff')),
         })
-    payload = {'ok': True, 'topic': topic_id, 'title': tj.get('title'),
+    payload = {'ok': True, 'topic': topic_id, 'title': topic_json.get('title'),
                'url': f'{DISCOURSE_URL}/t/{topic_id}',
                'posts': posts, 'replyCount': max(0, len(posts) - 1)}
     DISCUSSION_CACHE[topic_id] = (time.time(), payload)
@@ -3268,8 +3531,13 @@ def discussion_reply():
 
     Session only: the shared key must never be able to speak as somebody
     else, and Discourse applies that member's own trust level and rate
-    limits because the post is made under their name."""
-    f = request.form
+    limits because the post is made under their name.
+
+    Who: a logged-in member (session only)
+    Reads: form fields topic, body
+    Answers: {ok, topic, post, user}
+    """
+    reply_form = request.form
     user = session_user()
     if not user:
         return fail('log in via the forum to reply', 403)
@@ -3280,27 +3548,27 @@ def discussion_reply():
     if not DISCOURSE_KEY:
         return fail('the forum is not configured on this server', 503)
     try:
-        topic_id = int(f.get('topic') or 0)
+        topic_id = int(reply_form.get('topic') or 0)
     except ValueError:
         return fail('topic must be a number')
-    body = (f.get('body') or '').strip()
+    body = (reply_form.get('body') or '').strip()
     if topic_id <= 0:
         return fail('topic is required')
     if len(body) < 5:
         return fail('a reply needs at least a few words')
     if len(body.encode()) > 32 * 1024:
         return fail('reply exceeds 32 KB')
-    data = urllib.parse.urlencode({'topic_id': topic_id, 'raw': body}).encode()
-    req = urllib.request.Request(f'{DISCOURSE_URL}/posts.json', data=data, method='POST',
+    post_body = urllib.parse.urlencode({'topic_id': topic_id, 'raw': body}).encode()
+    forum_request = urllib.request.Request(f'{DISCOURSE_URL}/posts.json', data=post_body, method='POST',
                                  headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': user})
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            posted = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        detail = e.read()[:300].decode(errors='replace')
+        with urllib.request.urlopen(forum_request, timeout=20) as forum_response:
+            posted = json.loads(forum_response.read())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read()[:300].decode(errors='replace')
         return fail(f'the forum refused the reply: {detail}', 502)
-    except Exception as e:                                    # noqa: BLE001
-        return fail(f'could not reach the forum: {e}', 502)
+    except Exception as exc:                                    # noqa: BLE001
+        return fail(f'could not reach the forum: {exc}', 502)
     DISCUSSION_CACHE.pop(topic_id, None)
     return jsonify({'ok': True, 'topic': topic_id, 'post': posted.get('post_number'),
                     'user': user})
@@ -3327,8 +3595,8 @@ def reconcile_loop():
                 moved = entry.get('add', []) + entry.get('remove', [])
                 if moved or entry.get('error'):
                     LOG.warning('reconcile %s: %s', role, entry)
-        except Exception as e:                                 # noqa: BLE001
-            LOG.warning('reconcile failed: %s', e)
+        except Exception as exc:                                 # noqa: BLE001
+            LOG.warning('reconcile failed: %s', exc)
 
 if __name__ == '__main__':
     if RECONCILE_SECONDS > 0:

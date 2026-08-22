@@ -1,0 +1,2 @@
+{# Breadcrumb of a game page (edit=false) or its editor (edit=true). #}
+{% if edit %}<a href="{{ rel }}games/">Games</a> / <a href="../">{{ g['title'] }}</a> / Edit{% else %}<a href="{{ rel }}games/">Games</a> / {{ g['title'] }}{% endif %}

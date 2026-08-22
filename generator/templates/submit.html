@@ -1,0 +1,108 @@
+{# The submit page body: session-authenticated form, posts to the archivist. #}
+{# key -> "System · Title" only: categories are fetched from the archive when
+   a game is picked, so the page carries no payload that grows with the corpus #}
+<header class="ghead"><div><h1>Submit a run</h1>
+<p class="authline">Your run is archived instantly and appears immediately, as pending.
+Honest attribution of every author is the one hard rule. Never upload ROMs.</p></div></header>
+<script type="application/json" id="gamedata">{{ json_blob({'raw': ARCHIVE_RAW, 'games': gamedata}) }}</script>
+<script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
+<p id="s-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to submit a run.</p>
+<form id="submitform" class="actform bigform" hidden>
+  <label>Game</label>
+  <div class="pickrow">
+  <div class="gamepick" id="s-gamepick">
+    <input class="gamesearch" id="s-gamesearch" placeholder="Type to find the game…" autocomplete="off">
+    <div class="gamelist" hidden></div>
+    <input type="hidden" name="game" id="s-game">
+  </div>
+  <span class="createq">Game not there? <a class="btn quiet" href="../create-game/" target="_blank">Create it</a></span>
+  </div>
+  <p class="statline" id="s-gamelocked" hidden>Submitting to <b id="s-gamelockname"></b> ·
+  <a href="#" id="s-gameunlock">a different game?</a></p>
+  <label>Category</label>
+  <div class="pickrow">
+  <select id="s-goal" name="goal"></select>
+  <span class="createq">Category not there? <a class="btn quiet" id="s-createcat" target="_blank" aria-disabled="true">Create it</a></span>
+  </div>
+  <div id="s-uncldesc" hidden>
+    <p class="rules">Unclassified: entertainment, experiments, playarounds; no defined goal,
+    never verified, ranked purely by ★ likes. Describe what your run does.</p>
+    <label>What does this run do? (shown in the ranking)</label>
+    <input name="goal_description" maxlength="200" placeholder="e.g. beats the game using only the credits sequence">
+  </div>
+  <label>Authors (credit every human who worked on it. Type to search, click to add;
+  a coauthor who is not a member here is credited by name, as text)</label>
+  <div class="authpick">
+    <div class="authchips"></div>
+    <input class="authsearch" placeholder="Type a username…" autocomplete="off">
+    <div class="authlist" hidden></div>
+    <input type="hidden" name="authors">
+  </div>
+  <label>Encode link (required; verification and the run's thumbnail derive from it).
+  Accepted: {{ provider_names }}.</label>
+  <input id="s-encode" name="encode" type="url" required placeholder="https://youtu.be/…">
+  <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
+  <span id="enc-status"></span></div>
+  <label>Emulator / core (optional)</label><input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES)">
+  <label>ROM used (optional. Pick the file and the name and SHA1 are derived from it,
+  hashed locally: the ROM <b>never leaves your machine</b>; or type them below if you
+  already know them)</label>
+  <input type="file" id="s-romfile">
+  <p id="s-romnote" class="rules fullw" hidden></p>
+  <label>ROM name</label><input name="rom_name" id="s-romname" maxlength="200"
+  placeholder="e.g. Prince of Persia (USA).nes">
+  <label>ROM sha1 (40 hexadecimal characters)</label><input name="rom_sha1" id="s-romsha1"
+  pattern="[0-9a-fA-F]{40}" maxlength="40" spellcheck="false" autocomplete="off"
+  placeholder="40 hex characters, or leave empty">
+  <p id="s-romsha1-st" class="rules fullw" hidden></p>
+  <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
+    name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
+    It can never be reproduced, in emulator or on console, and the page will say so;
+    one verification still ranks it like any other run.</label>
+  <div id="s-moviewrap">
+  <label>Movie file</label><input name="movie" type="file" required>
+  </div>
+  <div id="s-metrics" class="metricsbox" hidden>
+  <p class="rules fullw">This category states its results; every value here appears in the rankings.</p>
+  <div id="s-mfields"></div>
+  <div id="s-timewrap" hidden>
+  <label>Run time, stated by you (required for video-only)</label>
+  <div class="timepick" id="s-timepick">
+    <span class="tseg"><input id="t-h" type="number" inputmode="numeric" min="0" max="999" placeholder="0"><label for="t-h">h</label></span>
+    <span class="tseg"><input id="t-m" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-m">m</label></span>
+    <span class="tseg"><input id="t-s" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-s">s</label></span>
+    <span class="tseg"><input id="t-ms" type="number" inputmode="numeric" min="0" max="999" placeholder="000"><label for="t-ms">ms</label></span>
+  </div>
+  <input type="hidden" name="time" id="s-time">
+  </div>
+  </div>
+  <label>Voluntary content disclosures, to warn viewers about:</label>
+  <div class="cwrow">
+    <label class="cwlab"><input type="checkbox" name="content_warnings" value="mature-violence"> Mature / violent</label>
+    <label class="cwlab"><input type="checkbox" name="content_warnings" value="sexual"> Sexual content (18+ gate)</label>
+    <label class="cwlab"><input type="checkbox" name="content_warnings" value="photosensitivity"> Photosensitivity (flashing lights)</label>
+    <label class="cwlab"><input type="checkbox" name="content_warnings" value="strong-language"> Strong language</label>
+  </div>
+  <label>Attachments (optional: text configs, or additional movie files)</label>
+  <input name="attachments" type="file" multiple>
+  <label>When was the run completed? (optional; a run finished long before it was
+  submitted may say so, and the page shows both dates)</label>
+  <input name="completed" type="date" max="{{ today }}">
+  <label>Notes (your write-up; see the <a href="../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="10"></textarea>
+  <button type="button" class="btn quiet" id="s-preview-btn">Preview</button>
+  <div id="s-preview" hidden><h2>Preview</h2>
+  <p class="rules fullw">Approximate; the live page is rendered by the site generator.</p>
+  <div class="ghead previewhead"><div><div class="chips" id="pv-chips"></div>
+  <h1 id="pv-title"></h1><p class="authline" id="pv-authors"></p></div></div>
+  <div class="poster" id="pv-poster" hidden><img id="pv-thumb" alt=""></div>
+  <div class="notes" id="pv-notes"></div></div>
+  <label class="cwlab consent"><input type="checkbox" name="consent" value="yes" required>
+  <span>I license this submission under <b>CC BY 4.0</b>, I have read and agree with the
+  <a href="https://github.com/ToolAssisted-run#1-community-principles" target="_blank">Community Principles</a>,
+  <a href="https://github.com/ToolAssisted-run#3-terms-of-use" target="_blank">Terms of Use</a>,
+  <a href="https://github.com/ToolAssisted-run#4-code-of-conduct" target="_blank">Code of Conduct</a> and
+  <a href="https://github.com/ToolAssisted-run#5-privacy-policy" target="_blank">Privacy Policy</a>,
+  and I confirm everything here is complete and truthful, especially the authorship.</span></label>
+  <button class="btn" id="s-submit">Submit</button>
+</form></details></div>
+<p id="s-msg" class="actmsg" hidden></p>

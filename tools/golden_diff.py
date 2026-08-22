@@ -18,6 +18,11 @@ def norm(text):
     # whitespace between tags and runs of whitespace inside text both collapse;
     # attribute order and everything else must match exactly
     text = re.sub(r'>\s+<', '><', text).replace('&#x27;', '&#39;').replace('&quot;', '&#34;')  # same quotes, two escapers
+    # the builds come from different website commits: the asset version and
+    # the footer's build link carry the hash, nothing else does
+    text = re.sub(r'\?v=[0-9a-f]{7,}', '?v=X', text)
+    text = re.sub(r"v: '[0-9a-f]{7,}'", "v: 'X'", text)
+    text = re.sub(r'(website/commit/)[0-9a-f]{7,}">[0-9a-f]{7,}', r'\1X">X', text)
     return _WS.sub(' ', text).strip()
 
 def main():

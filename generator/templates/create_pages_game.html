@@ -1,0 +1,17 @@
+{# The create-game page body: anyone may create a game; experts curate afterwards. #}
+<header class="ghead"><div><h1>Create a game</h1>
+<p class="authline">Anyone can create a game; it is real the moment you press the button.
+Experts curate afterwards, and a mistaken creation is deleted on the record.</p></div></header>
+<p id="cg-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to create a game.</p>
+<form id="creategameform" class="actform bigform" hidden>
+  <label>Game title</label><input name="title" required placeholder="e.g. Solomon's Key">
+  <label>System</label><select name="system">{% for k, v in sys_list %}<option value="{{ k }}">{{ v.name }}</option>{% endfor %}</select>
+  <h2>Its first category</h2>
+  <p class="rules">Every game is born with one category. Leave the defaults for the classic
+  fastest-completion board, or define your own.</p>
+  <label>Category label</label><input name="cat_label" placeholder="fastest completion">
+  <label>Rules</label><input name="cat_rule" placeholder="Complete the game as fast as possible.">
+  {{ METRICS_ED }}
+  <button class="btn" id="cg-submit">Create the game</button>
+</form>
+<p id="cg-msg" class="actmsg" hidden></p>

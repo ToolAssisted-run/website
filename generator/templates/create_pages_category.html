@@ -1,0 +1,17 @@
+{# The create-category page body: a category always belongs to a game picked beforehand. #}
+<header class="ghead"><div><h1>Create a category</h1>
+<p class="authline">Anyone can create a category; it is real the moment you press the button.
+Experts refine the wording and manage the metrics afterwards.</p></div></header>
+<script type="application/json" id="ccgamedata">{{ json_blob(gamedata) }}</script>
+<p id="cc-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to create a category.</p>
+<p class="statline" id="cc-nogame" hidden>No game picked. Come here from a game page or the
+submit form; a category always belongs to a game.</p>
+<form id="createcatform" class="actform bigform" hidden>
+  <p class="statline">A new category in <b id="cc-gamename"></b></p>
+  <input type="hidden" name="game" id="cc-game">
+  <label>Category label</label><input name="label" required placeholder="e.g. 100k points">
+  <label>Rules</label><input name="rule" required placeholder="What must a run do to belong here?">
+  {{ METRICS_ED }}
+  <button class="btn" id="cc-submit">Create the category</button>
+</form>
+<p id="cc-msg" class="actmsg" hidden></p>
