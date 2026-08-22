@@ -452,11 +452,10 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <div class="hbtns">
     <button id="likebtn" class="likestar" title="Like this run">
       <span class="starglyph">★</span> Like<span class="likecount" id="likecount">{nlikes(r)}</span></button>
-    {'<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>' if r.get('videoOnly') else
-     f'<a class="btn" href="{ARCHIVE_RAW}/games/{g["key"]}/runs/{r["id"]}/{esc(r["movie"]["file"])}">Download movie file</a>'}
+    {'<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>' if r.get('videoOnly') else ''}
     <a class="srclink" href="https://github.com/ToolAssisted-run/archive/tree/{ARCHIVE_REF}/games/{g['key']}/runs/{r['id']}">view run folder in the archive →</a>
     <a class="srclink" href="https://github.com/ToolAssisted-run/archive/commits/{ARCHIVE_REF}/games/{g['key']}/runs/{r['id']}"
-       title="every change to this run, in git, reversible">change history{f" · {len(edits_of[('run', r['id'])])} revision" + ("s" if len(edits_of[('run', r['id'])]) != 1 else "") if ('run', r['id']) in edits_of else ''} →</a>
+       title="every change to this run, in git, reversible">view history{f" · {len(edits_of[('run', r['id'])])} revision" + ("s" if len(edits_of[('run', r['id'])]) != 1 else "") if ('run', r['id']) in edits_of else ''} →</a>
   </div>
 </header>
 {vid}
@@ -483,7 +482,8 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
      f'<dt>Format</dt><dd>{esc(r["movie"]["format"])}</dd>'}
     {f"<dt>Completed</dt><dd>{esc(r['completed'])}</dd>" if r.get('completed') else ''}
     <dt>{'Published' if is_leg else 'Submitted'}</dt><dd>{esc((r.get('submitted') or '')[:10])}</dd>
-    {f"<dt>Archived here</dt><dd>{esc(archived_at(r)[:10])}</dd>" if is_leg else ''}</dl></div>
+    {f"<dt>Archived here</dt><dd>{esc(archived_at(r)[:10])}</dd>" if is_leg else ''}</dl>
+    {'' if r.get('videoOnly') else f'<p class="factfoot"><a class="btn" href="{ARCHIVE_RAW}/games/{g["key"]}/runs/{r["id"]}/{esc(r["movie"]["file"])}">Download movie file</a></p>'}</div>
   {'' if r.get('videoOnly') else f'''<div class="factbox"><h4>Reproduction info</h4><dl>
     <dt>Emulator</dt><dd>{esc(r.get('contract', {}).get('emulator') or '—')}</dd>
     {f"<dt>ROM</dt><dd>{esc(rom.get('name'))}</dd>" if rom.get('name') else ''}
