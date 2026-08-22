@@ -2,13 +2,11 @@
 """Preview parity: the submit page's live preview must render notes the way
 the published run page will.
 
-Two hand-maintained implementations of one markup dialect (wiki_html in
-generator/build.py, renderNotes in the emitted app.js) drift the moment
-someone edits one of them. The submit form promises authors an approximate
-preview; approximate covers cross-references, not a different block
-structure. This feeds the same snippets through both and compares.
-
-Needs node for the JavaScript side; skips cleanly without it (CI has it).
+One implementation of the markup dialect (archivist/wikitext.py) serves both
+the generator (render.wiki_html wraps it with the archive's cross-references)
+and the archivist's /api/preview, which the submit page calls. This feeds the
+corpus through both entry points and compares, and checks the client carries
+no renderer of its own, so the two can never drift again (issue #30).
 
 Usage: tests/test_preview_parity.py
 """
@@ -114,34 +112,23 @@ console.log(JSON.stringify(snippets.map(renderNotes)));
 
 
 def main():
-    node = shutil.which('node')
     with tempfile.TemporaryDirectory() as td:
         td = pathlib.Path(td)
         server, out = server_render(td, CORPUS)
         ck('server rendered every snippet', all(s.strip() for s in server),
            str([n for (n, _), s in zip(CORPUS, server) if not s.strip()]))
 
-        if not node:
-            print('SKIP client parity (node not installed)')
-            print('---', len(failures), 'failures')
-            sys.exit(1 if failures else 0)
-
+        # One renderer, not two (issue #30): the archivist previews with the
+        # shared wikitext module, the client only asks for it.
+        sys.path.insert(0, str(REPO / 'archivist'))
+        import wikitext
+        for (name, text), s in zip(CORPUS, server):
+            ns, nw = normalize(s), normalize(wikitext.wiki_html(text))
+            ck(f'parity: {name}', ns == nw, f'site={ns[:110]!r} shared={nw[:110]!r}')
         app_js = (out / 'assets' / 'app.js').read_text()
-        client, err = client_render(node, app_js, td, CORPUS)
-        ck('client renderer runs under node', client is not None, err)
-        if client is None:
-            print('---', len(failures), 'failures')
-            sys.exit(1)
-
-        for (name, _), s, c in zip(CORPUS, server, client):
-            ns, nc = normalize(s), normalize(c)
-            ck(f'parity: {name}', ns == nc, f'server={ns[:110]!r} client={nc[:110]!r}')
-
-        # whatever else differs, neither side may emit unbalanced blocks
-        for (name, _), c in zip(CORPUS, client):
-            unbalanced = [tag for tag in ('ul', 'ol', 'blockquote', 'pre', 'table')
-                          if len(re.findall(rf'<{tag}[ >]', c)) != c.count(f'</{tag}>')]
-            ck(f'client emits balanced blocks: {name}', not unbalanced, str(unbalanced))
+        ck('the client carries no renderer of its own',
+           'function renderNotes' not in app_js and 'function inlineMd' not in app_js)
+        ck('the preview asks the archivist', "'/api/preview'" in app_js)
 
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)
