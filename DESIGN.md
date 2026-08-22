@@ -771,6 +771,14 @@ archivist, module responsibilities). What matters designwise:
   edge's default cacheable set, so `buildstamp.json` stays live. certbot
   renews through the proxy (HTTP-01 passes). The Pages standby is
   unaffected: swapping the proxied A records to GitHub's still works.
+- **Hardening headers** on both surfaces: nginx serves the site with
+  nosniff, `X-Frame-Options: DENY`, a referrer policy, a frame-ancestors /
+  object-src / base-uri CSP (a full CSP is impractical with inline scripts
+  and third-party embeds) and HSTS (`infra/nginx/hardening.conf`, a snippet
+  both server blocks include); the archivist adds the same on every answer
+  (`default-src 'none'` on the JSON API). Found and fixed by an OWASP ZAP
+  pass against a throwaway archivist (`tools/zap/`); never scan the live
+  service, an active scan submits junk for good.
 - **Everything works on the archive's `main`**. The beta's `staging` branch
   was merged in (a two-parent commit whose tree is staging's; nothing left
   behind) and stays **frozen** so old forum links into it keep resolving.

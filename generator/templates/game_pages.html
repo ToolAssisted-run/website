@@ -53,7 +53,7 @@
 <p class="emptynote">No ranked runs yet in this category.</p>
 {% endif %}
 {% if c.pend %}
-<h3 class="pendh">Pending: awaiting reproduction and verification</h3><table><tbody>
+<h3 class="pendh">Pending: awaiting verification</h3><table><tbody>
 {% for r in c.pend %}
 <tr {{ row.onclick(r, rel) }}><td class="rank">·</td><td>{{ row.authors(r, rel) }}</td>
 {{ row.frames_cell(r, rel) }}

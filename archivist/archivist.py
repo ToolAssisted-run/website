@@ -206,6 +206,15 @@ def stamp_serial(resp):
                 and 'serial' not in body:
             body['serial'] = current_serial()
             resp.set_data(json.dumps(body))
+    # the hardening headers (OWASP ZAP pass, 2026-08-22): the API answers
+    # JSON and is never framed; the fallback form page is the one HTML
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'DENY')
+    resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    resp.headers.setdefault('Content-Security-Policy',
+                            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+                            if request.path.startswith('/api/') else
+                            "default-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'")
     return resp
 
 @app.get('/login')
@@ -310,13 +319,13 @@ def request_identity(form, field='user'):
     if session_name:
         if not origin_ok():
             return None, fail('cross-origin request refused', 403)
-        if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', session_name):
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{2,29}', session_name):
             return None, fail('session username is not archive-safe', 400)
         return session_name, None
     if form.get('key') != SUBMIT_KEY:
         return None, fail('log in via the forum, or provide the submitter key', 403)
     user = (form.get(field) or '').strip()
-    if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', user):
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{2,29}', user):
         return None, fail(f'{field} must be a valid username')
     return user, None
 

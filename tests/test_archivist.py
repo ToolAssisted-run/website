@@ -460,6 +460,23 @@ def main():
                 print((td / 'log').read_text()[-2000:])
                 sys.exit('archivist did not start')
 
+            # --- hardening headers on every answer (ZAP pass) ---
+            req = urllib.request.Request(U + '/api/me')
+            with urllib.request.urlopen(req) as resp:
+                hdr = {k.lower(): v for k, v in resp.headers.items()}
+            ck('API answers carry the hardening headers',
+               hdr.get('x-content-type-options') == 'nosniff'
+               and hdr.get('x-frame-options') == 'DENY'
+               and "default-src 'none'" in hdr.get('content-security-policy', '')
+               and 'referrer-policy' in hdr, str(hdr))
+            with urllib.request.urlopen(urllib.request.Request(U + '/')) as resp:
+                hdr = {k.lower(): v for k, v in resp.headers.items()}
+            ck('the fallback form page keeps its inline styles but cannot be framed',
+               "style-src 'unsafe-inline'" in hdr.get('content-security-policy', '')
+               and "frame-ancestors 'none'" in hdr.get('content-security-policy', ''), str(hdr))
+            c, r, _ = call(U + '/api/like', {'key': KEY, 'user': '...', 'run': 'M900010', 'dry_run': '1'})
+            ck('a username starts with a letter or digit', c == 400, str(r))
+
             # --- submit: encode is mandatory; the thumbnail derives from it ---
             sub = {'key': KEY, 'submitter': 'TestAuthor', 'game': 'nes/pinball',
                    'goal': '100k-glitched', 'authors': 'TestAuthor', 'dry_run': '1',
