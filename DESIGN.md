@@ -389,11 +389,12 @@ or "3 March 1989"), **unofficial** (a ROM hack, mod, fangame or other
 unofficial release; absent means official), **discord** (a permanent invite
 to the game's community server; only `discord.gg/…` and
 `discord.com/invite/…` are accepted) and **website** (the community hub,
-wiki or leaderboard). They are set at creation by whoever creates the game,
+wiki or leaderboard) and **rta** (where the real-time records live, e.g.
+speedrun.com). They are set at creation by whoever creates the game,
 and afterwards by a covering expert or an editor through the game editor,
 one logged edit per field; an empty value clears the field. The game page
 shows the release date and the unofficial mark as chips beside the system,
-and the two links as buttons in the header, opened apart and referrer-free.
+and the links as buttons in the header, opened apart and referrer-free.
 Group and system pages sort their cards by stars, views, title or release
 date (oldest first, undated last) and can hide unofficial games. The slug
 stays derived from the title and is not customisable: it is the archive

@@ -1040,7 +1040,7 @@ def _deletion_gate(form, need='expert'):
 # the plain game properties (#44): release date, unofficial flag, community
 # links. One parser for the editor and for creation; an empty value means
 # "not stated" and the field is absent from the record
-GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website')
+GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website', 'rta')
 
 def parse_game_property(field, raw):
     """(value, error) for one game property from form text; None clears."""
@@ -1071,9 +1071,9 @@ def parse_game_property(field, raw):
         if not re.fullmatch(r'https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+', text):
             return None, 'a Discord invite looks like https://discord.gg/xxxx'
         return text, None
-    if field == 'website':
+    if field in ('website', 'rta'):
         if len(text) > 300 or not re.fullmatch(r'https?://[^\s<>"\']+', text):
-            return None, 'the community website is an http(s) URL'
+            return None, f'the {"RTA leaderboards" if field == "rta" else "community website"} link is an http(s) URL'
         return text, None
     return None, f'unknown property {field}'
 
@@ -1672,7 +1672,7 @@ def game_create():
     Who: any member; placing the game into a group needs scope over the
         group, or the editor role
     Reads: form fields system, title, group (optional key), released,
-        unofficial, discord, website (optional properties, #44), cat_label,
+        unofficial, discord, website, rta (optional properties, #44), cat_label,
         cat_rule, cat_key, metrics (JSON array), dry_run
     Answers: {ok, game, category, group, note}; 409 when the game exists
     """

@@ -268,7 +268,8 @@ def main():
         ], nonmembers=['Nyx'],
             game_props={'nes/testgame': {'released': '1989-03', 'unofficial': True,
                                          'discord': 'https://discord.gg/tg1',
-                                         'website': 'https://example.org/tg'}},
+                                         'website': 'https://example.org/tg',
+                                         'rta': 'https://www.speedrun.com/tg'}},
             experts=[{'user': 'Root', 'scope': 'site'},
                      {'user': 'Grp', 'scope': 'group:test-family'}],
             groups=[{'key': 'test-family', 'title': 'Test <b>Family</b>',
@@ -528,10 +529,13 @@ def main():
         ck('community website link is external and referrer-free',
            'href="https://example.org/tg"' in gpage_
            and 'rel="noopener noreferrer">Community website' in gpage_)
+        ck('RTA leaderboards link is external and referrer-free',
+           'href="https://www.speedrun.com/tg"' in gpage_
+           and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
-           all(f'id="f-ge-{f}"' in gedit_ for f in ('released', 'unofficial', 'discord', 'website')))
+           all(f'id="f-ge-{f}"' in gedit_ for f in ('released', 'unofficial', 'discord', 'website', 'rta')))
         ck('the editor shows the current values', 'value="1989-03"' in gedit_
            and 'value="https://discord.gg/tg1"' in gedit_)
         ck('a game without properties shows none',
@@ -589,6 +593,8 @@ def main():
         ck('library pages sort by release date and can hide unofficial games',
            'data-mode="released"' in syspage_ and 'id="hide-unofficial"' in syspage_
            and 'data-released="1989-03"' in syspage_ and 'data-unofficial="1"' in syspage_)
+        ck('library controls wait for the grid before wiring (#44 follow-up)',
+           "DOMContentLoaded" in syspage_.split('id="hide-unofficial"')[1][:1500])
         vlist = gindex[gindex.index('id="v-list"'):]
         # four games now: the three with runs, and the runless one an expert
         # created while filling out a group

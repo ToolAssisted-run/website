@@ -822,7 +822,8 @@ def main():
             for field, good, stored in (('released', '1989-03', '1989-03'),
                                         ('unofficial', 'yes', True),
                                         ('discord', 'https://discord.gg/abc123', 'https://discord.gg/abc123'),
-                                        ('website', 'https://popruns.github.io/', 'https://popruns.github.io/')):
+                                        ('website', 'https://popruns.github.io/', 'https://popruns.github.io/'),
+                                        ('rta', 'https://www.speedrun.com/pinball', 'https://www.speedrun.com/pinball')):
                 c, r, _ = call(U + '/api/expert/edit',
                                {'key': KEY, 'expert': 'groupexpert', 'kind': 'game',
                                 'target': 'nes/pinball', 'field': field, 'value': good,

@@ -1241,7 +1241,7 @@
       wire('f-ge-thumb', '/api/expert/edit', null,
            function(){ return 'Thumbnail set.'; });
       // the game properties (#44): one logged edit per field
-      ['released', 'unofficial', 'discord', 'website'].forEach(function(field){
+      ['released', 'unofficial', 'discord', 'website', 'rta'].forEach(function(field){
         wire('f-ge-' + field, '/api/expert/edit', null,
              function(j){ return j.to === '' ? 'Cleared ' + field + '.' : 'Saved ' + field + ': ' + j.to + '.'; });
       });
