@@ -541,6 +541,14 @@ def main():
            'href="https://www.speedrun.com/tg"' in gpage_
            and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
+        # the page-level 18+ gate on a sexual-content flag: declaration, yes,
+        # and a no that leads home; absent elsewhere
+        sexual_ = all_html[out / 'runs' / 'M900102' / 'index.html']
+        ck('a sexual-content run carries the page gate',
+           'id="agegate"' in sexual_ and 'I declare I am 18 years old, or older' in sexual_
+           and 'id="agegate-yes"' in sexual_ and 'id="agegate-no" class="btn leave" href="../../"' in sexual_)
+        ck('other runs carry no page gate',
+           'id="agegate"' not in all_html[out / 'runs' / 'M900101' / 'index.html'])
         # the run editor offers the content disclosures, current ones ticked (#49)
         rpage_ = all_html[out / 'runs' / 'M900102' / 'index.html']
         ck('the edit form carries the content warning boxes',

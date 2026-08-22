@@ -1512,13 +1512,22 @@
     var realContent = document.getElementById('nsfwreal');
     if (nsfwGate && realContent) nsfwGate.replaceWith(realContent.content.cloneNode(true));
   }
-  if (adultOk()) { unblurAll(); revealGate(); }
-  // the 18+ yes button: remembered for the tab
-  var adultOkBtn = document.getElementById('nsfwok');
-  if (adultOkBtn) adultOkBtn.addEventListener('click', function(){
+  // the page-level gate: the page is blurred and inert behind the
+  // declaration until the reader says yes; no JS, it simply stays shut
+  var ageGate = document.getElementById('agegate');
+  function liftAgeGate(){
+    if (ageGate) ageGate.remove();   // the blur is keyed on its presence (CSS :has)
+  }
+  if (adultOk()) { unblurAll(); revealGate(); liftAgeGate(); }
+  // the 18+ yes buttons: remembered for the tab
+  function adultYes(){
     try { sessionStorage.setItem('tar-adult', '1'); } catch (e) {}
-    unblurAll(); revealGate();
-  });
+    unblurAll(); revealGate(); liftAgeGate();
+  }
+  var adultOkBtn = document.getElementById('nsfwok');
+  if (adultOkBtn) adultOkBtn.addEventListener('click', adultYes);
+  var ageGateYes = document.getElementById('agegate-yes');
+  if (ageGateYes) ageGateYes.addEventListener('click', adultYes);
 
   // ---- submit page ----
   var submitForm = document.getElementById('submitform');

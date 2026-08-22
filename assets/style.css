@@ -645,3 +645,16 @@ th .eyeic{width:12px;height:12px;vertical-align:-1px}
 .notes .footnote{font-size:.84rem;color:var(--muted)}.notes .fnref{font-size:.8em;vertical-align:super}
 .noteimg.left{float:left;margin:4px 14px 8px 0}.noteimg.right{float:right;margin:4px 0 8px 14px}
 .notes h2{margin:16px 0 8px;font-size:1.25rem}
+/* the page-level 18+ gate: everything behind it blurred and untouchable */
+.agegate{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(7,13,23,.55)}
+.agegate-box{background:var(--bg);border:2.5px solid var(--hairs);border-radius:14px;padding:26px 30px;max-width:34rem;box-shadow:var(--shadow)}
+.agegate-box h2{margin:0 0 10px}
+.agegate-box p{margin:8px 0;color:var(--muted)}
+.agegate-decl{font-weight:700;color:var(--ink)}
+.agegate-box .btnrow{justify-content:flex-start;margin-top:16px;flex-wrap:nowrap}
+.agegate-box .btn.leave{background:transparent;color:var(--ink);border:2.5px solid var(--hairs)}
+/* the gate lives inside .wrap, so the blur goes on the wrap's other
+   children, never on .wrap itself: a filtered ancestor would become the
+   fixed overlay's containing block and push the dialog off screen */
+html:has(.agegate) .wrap>:not(.agegate),html:has(.agegate) footer,html:has(.agegate) .nav,html:has(.agegate) .betabar{filter:blur(14px);pointer-events:none;user-select:none}
+html:has(.agegate){overflow:hidden}

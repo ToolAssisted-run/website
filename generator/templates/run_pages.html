@@ -27,6 +27,18 @@
 <p class="srcnote">Thumbnail derived from the encode</p>
 {% endif %}
 {% endset %}
+{% if 'sexual' in warns %}
+{# the page-level 18+ gate: the whole page stays blurred behind the
+   declaration; declining goes home. app.js remembers a yes for the tab #}
+<div class="agegate" id="agegate" role="dialog" aria-modal="true" aria-labelledby="agegate-h">
+<div class="agegate-box">
+<h2 id="agegate-h">Adult content</h2>
+<p>This run is flagged for sexual content. To view it, you must declare:</p>
+<p class="agegate-decl">I declare I am 18 years old, or older, according to the applicable jurisdiction regarding adult materials.</p>
+<div class="btnrow"><button id="agegate-yes" class="btn">I declare so</button>
+<a id="agegate-no" class="btn leave" href="../../">No, take me home</a></div>
+</div></div>
+{% endif %}
 {% if 'sexual' in warns and vid|trim %}
 <template id="nsfwreal">{{ vid }}</template>
 <div class="nsfw-gate" id="nsfwgate">{% if thumb_url(r) %}<img class="nsfwblur" src="{{ thumb_url(r) }}" alt="">{% endif %}
