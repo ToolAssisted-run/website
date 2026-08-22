@@ -75,12 +75,17 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
   <span id="enc-status"></span></div>
   <label>Emulator / core (optional)</label><input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES)">
-  <label>ROM used (optional. Pick the file; name and SHA1 are derived from it,
-  hashed locally: the ROM <b>never leaves your machine</b>)</label>
+  <label>ROM used (optional. Pick the file and the name and SHA1 are derived from it,
+  hashed locally: the ROM <b>never leaves your machine</b>; or type them below if you
+  already know them)</label>
   <input type="file" id="s-romfile">
   <p id="s-romnote" class="rules fullw" hidden></p>
-  <label>ROM name (derived)</label><input name="rom_name" id="s-romname" readonly tabindex="-1">
-  <label>ROM sha1 (derived)</label><input name="rom_sha1" id="s-romsha1" readonly tabindex="-1">
+  <label>ROM name</label><input name="rom_name" id="s-romname" maxlength="200"
+  placeholder="e.g. Prince of Persia (USA).nes">
+  <label>ROM sha1 (40 hexadecimal characters)</label><input name="rom_sha1" id="s-romsha1"
+  pattern="[0-9a-fA-F]{{40}}" maxlength="40" spellcheck="false" autocomplete="off"
+  placeholder="40 hex characters, or leave empty">
+  <p id="s-romsha1-st" class="rules fullw" hidden></p>
   <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
     name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
     It can never be reproduced, in emulator or on console, and the page will say so;

@@ -471,6 +471,12 @@ def main():
             ck('submit without encode rejected', c == 400 and 'encode' in r.get('error', ''))
             c, r, _ = call(U + '/api/submit', dict(sub, encode='https://example.com/video'), files)
             ck('an encode from no known platform is rejected', c == 400)
+            c, r, _ = call(U + '/api/submit', dict(sub, rom_sha1='deadbeef'), files)
+            ck('a typed ROM sha1 must be 40 hex characters (#41)',
+               c == 400 and 'rom_sha1' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, rom_sha1='A' * 40, rom_name='Game.nes'), files)
+            ck('a typed ROM name and sha1 ride the dry run',
+               c == 200 and r['run']['contract']['rom'] == {'name': 'Game.nes', 'sha1': 'a' * 40}, str(r)[:200])
             c, r, _ = call(U + '/api/submit', files=files, data=dict(
                 sub, encode='https://evil.example/?u=youtube.com/watch?v=goodvid12345'))
             ck('a hostile url that merely contains a platform url is rejected', c == 400, str(r)[:120])

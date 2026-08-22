@@ -1834,8 +1834,26 @@
       });
 
       var submitting = false;
+      // the ROM fields may be typed (#41): a sha1 is 40 hex characters or
+      // nothing; anything else is caught here, before the archivist would
+      // silently drop it
+      var romSha = document.getElementById('s-romsha1');
+      var romShaSt = document.getElementById('s-romsha1-st');
+      function romShaOk(){
+        var v = (romSha.value || '').trim();
+        var ok = v === '' || /^[0-9a-fA-F]{40}$/.test(v);
+        if (romShaSt) {
+          romShaSt.hidden = ok;
+          romShaSt.textContent = ok ? '' :
+            '✗ a SHA1 is exactly 40 hexadecimal characters (' + v.length + ' so far)';
+        }
+        romSha.classList.toggle('bad', !ok);
+        return ok;
+      }
+      if (romSha) romSha.addEventListener('input', romShaOk);
       sform.addEventListener('submit', function(ev){
         ev.preventDefault();
+        if (romSha && !romShaOk()) { romSha.focus(); return; }
         // one archive per press: the button used to be picked by class, which
         // matched Preview, so a double click submitted the run twice
         if (submitting) return;

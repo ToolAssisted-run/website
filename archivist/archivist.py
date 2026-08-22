@@ -564,9 +564,15 @@ def submit():
         return fail('unknown content warning flag')
 
     rom = {}
-    if f.get('rom_name'): rom['name'] = f.get('rom_name').strip()
-    if re.fullmatch(r'[0-9a-fA-F]{40}', (f.get('rom_sha1') or '').strip()):
-        rom['sha1'] = f.get('rom_sha1').strip().lower()
+    if f.get('rom_name'): rom['name'] = f.get('rom_name').strip()[:200]
+    rom_sha = (f.get('rom_sha1') or '').strip()
+    if rom_sha:
+        # typed by hand now (#41): refuse what is not a sha1 rather than
+        # dropping it silently and archiving a run that claims a ROM it
+        # cannot name
+        if not re.fullmatch(r'[0-9a-fA-F]{40}', rom_sha):
+            return fail('rom_sha1 must be exactly 40 hexadecimal characters')
+        rom['sha1'] = rom_sha.lower()
 
     dry = f.get('dry_run') in ('1', 'true', 'yes')
 
