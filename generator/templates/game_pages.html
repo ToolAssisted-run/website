@@ -5,12 +5,21 @@
 <div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
 <span class="chip">{{ g['runs']|length }} run{% if g['runs']|length != 1 %}s{% endif %}</span>
 <span class="chip starchip"><span class="starglyph">★</span> {{ total_likes }}</span>
+{# the game properties (#44): release date and the unofficial mark sit with
+   the system, as top-level facts about the game #}
+{% if g.get('released') %}<span class="chip relchip" title="first public release">Released {{ release_text(g['released']) }}</span>{% endif %}
+{% if g.get('unofficial') %}<span class="chip unclchip" title="a ROM hack, mod, fangame or other unofficial release">Unofficial</span>{% endif %}
 </div>
 <h1>{{ g['title'] }}</h1>{{ group_chip(g['key'], rel) }}
 {{ expert_line(g['key'], rel) }}</div>
 <div class="hbtns">{% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="">{% endif %}<div class="btnrow"><a class="btn" href="{{ rel }}submit/?game={{ g['key'] }}">Submit a run</a>
 <a class="btn quiet" href="{{ rel }}create-category/?game={{ g['key'] }}">Create a category</a>
-<a class="btn quiet" href="{{ FORUM }}/tags/c/games/12/{{ g['system'] }}-{{ g['key'].split('/')[1] }}">Discuss on the forum</a></div></div></header>
+<a class="btn quiet" href="{{ FORUM }}/tags/c/games/12/{{ g['system'] }}-{{ g['key'].split('/')[1] }}">Discuss on the forum</a></div>
+{% if g.get('discord') or g.get('website') %}
+{# the community's own places: external, so they open apart and carry no referrer #}
+<div class="btnrow">{% if g.get('discord') %}<a class="btn quiet ext" href="{{ g['discord'] }}" target="_blank" rel="noopener noreferrer">Community Discord ↗</a>{% endif %}
+{% if g.get('website') %}<a class="btn quiet ext" href="{{ g['website'] }}" target="_blank" rel="noopener noreferrer">Community website ↗</a>{% endif %}</div>
+{% endif %}</div></header>
 {% if multi %}
 {# selector: one row of buttons per dimension; the goal dimension is called
    a Category everywhere in the UI, whatever old data named it #}

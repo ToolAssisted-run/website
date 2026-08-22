@@ -527,6 +527,19 @@ def main():
             ck('any member creates a game, first category born with it',
                c == 200 and r['game'] == 'nes/solomons-key'
                and r['category'] == 'fastest-completion', str(r))
+            c, r, _ = call(U + '/api/game/create',
+                           {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
+                            'title': "Solomon's Key Hack", 'released': '1990',
+                            'unofficial': 'yes', 'website': 'https://example.org/sk'})
+            gj = json.loads((work / 'games/nes/solomons-key-hack/game.json').read_text())
+            ck('a game is created with its properties (#44)',
+               c == 200 and gj.get('released') == '1990' and gj.get('unofficial') is True
+               and gj.get('website') == 'https://example.org/sk' and 'discord' not in gj,
+               f'{c} {r} {gj}')
+            c, r, _ = call(U + '/api/game/create',
+                           {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
+                            'title': 'Bad Date Game', 'released': '19'})
+            ck('a malformed release date refuses the creation (#44)', c == 400, str(r))
             c, r, _ = call(U + '/api/category/add',
                            {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
                             'label': 'pacifist', 'rule': 'Never destroy anything.',
@@ -797,6 +810,38 @@ def main():
                            files={'thumbnail': ('face.png', PNG)})
             ck('an expert sets the game thumbnail', c == 200 and r['to'] == 'thumb.png',
                str(r))
+            # the game properties (#44)
+            for field, bad in (('released', '1989-13'), ('released', '89'),
+                               ('released', '1989-02-30'), ('discord', 'https://example.com/x'),
+                               ('website', 'ftp://x'), ('unofficial', 'maybe')):
+                c, r, _ = call(U + '/api/expert/edit',
+                               {'key': KEY, 'expert': 'groupexpert', 'kind': 'game',
+                                'target': 'nes/pinball', 'field': field, 'value': bad,
+                                'reason': 'testing a refusal, on the record'})
+                ck(f'game {field} refuses {bad!r} (#44)', c == 400, str(r))
+            for field, good, stored in (('released', '1989-03', '1989-03'),
+                                        ('unofficial', 'yes', True),
+                                        ('discord', 'https://discord.gg/abc123', 'https://discord.gg/abc123'),
+                                        ('website', 'https://popruns.github.io/', 'https://popruns.github.io/')):
+                c, r, _ = call(U + '/api/expert/edit',
+                               {'key': KEY, 'expert': 'groupexpert', 'kind': 'game',
+                                'target': 'nes/pinball', 'field': field, 'value': good,
+                                'reason': 'filling in the game properties'})
+                gj = json.loads((work / 'games/nes/pinball/game.json').read_text())
+                ck(f'an expert sets game {field} (#44)', c == 200 and gj.get(field) == stored,
+                   f'{c} {r} {gj.get(field)!r}')
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'game',
+                            'target': 'nes/pinball', 'field': 'unofficial', 'value': 'no',
+                            'reason': 'it is the official cartridge after all'})
+            gj = json.loads((work / 'games/nes/pinball/game.json').read_text())
+            ck('clearing a game property removes it from the record (#44)',
+               c == 200 and 'unofficial' not in gj, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'game',
+                            'target': 'nes/pinball', 'field': 'released', 'value': '1989-03',
+                            'reason': 'the same value again, should be refused'})
+            ck('an unchanged game property is refused (#44)', c == 400, str(r))
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'groupexpert', 'kind': 'category',
                             'target': 'nes/pinball:100k-glitched', 'field': 'rule',

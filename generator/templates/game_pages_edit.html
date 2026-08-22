@@ -30,6 +30,28 @@ is logged in the open with your name, the old value and the new.</p></div>
   <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
   <button class="btn">Set</button>
 </form></section>
+<section><h2>Properties</h2>
+<p class="rules">Facts about the game itself (#44). Leave a field empty and save to clear it.</p>
+{% macro prop_form(field, label, control) %}
+<form id="f-ge-{{ field }}" class="actform">
+  <input type="hidden" name="kind" value="game">
+  <input type="hidden" name="target" value="{{ g['key'] }}">
+  <input type="hidden" name="field" value="{{ field }}">
+  <label>{{ label }} {{ control }}</label>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="the reason is public"></label>
+  <button class="btn">Save</button>
+</form>
+{% endmacro %}
+{% set released_in %}<input name="value" maxlength="10" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="YYYY, YYYY-MM or YYYY-MM-DD" value="{{ g.get('released', '') }}">{% endset %}
+{{ prop_form('released', 'Release date', released_in) }}
+{% set unofficial_in %}<select name="value"><option value="no"{% if not g.get('unofficial') %} selected{% endif %}>No: an official release</option><option value="yes"{% if g.get('unofficial') %} selected{% endif %}>Yes: a ROM hack, mod, fangame or other unofficial release</option></select>{% endset %}
+{{ prop_form('unofficial', 'Unofficial?', unofficial_in) }}
+{% set discord_in %}<input name="value" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)" value="{{ g.get('discord', '') }}">{% endset %}
+{{ prop_form('discord', 'Community Discord', discord_in) }}
+{% set website_in %}<input name="value" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}">{% endset %}
+{{ prop_form('website', 'Community website', website_in) }}
+</section>
 <section><h2>Categories</h2>
 <p class="rules">The label is what the rankings say; the rule is what a verifier holds a
 run to. A category with runs in it cannot be deleted: it is their home.</p>

@@ -114,6 +114,22 @@ def moment(s):
         return f'{s[:10]} {s[11:19]}'
     return s[:10]
 
+MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+          'August', 'September', 'October', 'November', 'December']
+
+def release_text(released):
+    """A release date as people say it, at the precision the record has:
+    '1989', 'March 1989' or '3 March 1989'."""
+    parts = (released or '').split('-')
+    if not parts[0]:
+        return ''
+    if len(parts) == 1:
+        return parts[0]
+    month = MONTHS[int(parts[1]) - 1] if 1 <= int(parts[1]) <= 12 else parts[1]
+    if len(parts) == 2:
+        return f'{month} {parts[0]}'
+    return f'{int(parts[2])} {month} {parts[0]}'
+
 def clock(frames, fps):
     total = frames / fps
     ms = int(round((total % 1) * 1000))
@@ -578,7 +594,7 @@ _HTML_HELPERS = (
     'tick console_chip state_chip badge_chip dl_members dl_heldnames dl_games '
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
-    'moment clock sec_clock run_clock primary_metric_text thumb_url '
+    'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
     'thumb_alt shot_url breadcrumb_ld').split()
 _HTML_CONSTANTS = 'METRICS_ED IMPORTED_TICK FULL_TICK NONE_TICK'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '

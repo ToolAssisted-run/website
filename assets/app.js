@@ -1240,6 +1240,11 @@
            function(j){ return 'Renamed to ' + j.to + '.'; });
       wire('f-ge-thumb', '/api/expert/edit', null,
            function(){ return 'Thumbnail set.'; });
+      // the game properties (#44): one logged edit per field
+      ['released', 'unofficial', 'discord', 'website'].forEach(function(field){
+        wire('f-ge-' + field, '/api/expert/edit', null,
+             function(j){ return j.to === '' ? 'Cleared ' + field + '.' : 'Saved ' + field + ': ' + j.to + '.'; });
+      });
       wire('f-ge-add', '/api/category/add', null,
            function(j){ return 'Added ' + j.key + '.'; });
       var addFormMetrics = document.querySelector('#f-ge-add .metriced');

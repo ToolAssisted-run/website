@@ -1,5 +1,5 @@
 {# A system page: the system's whole library, exactly like a group page. #}
-{% from '_game_cards.html' import game_card, records_table with context %}
+{% from '_game_cards.html' import game_card, records_table, library_controls with context %}
 <header class="ghead"><div>
 <div class="chips"><span class="chip">{{ sgames|length }} games</span>
 <span class="chip">{{ sruns|length }} run{{ 's' if sruns|length != 1 else '' }}</span>
@@ -7,6 +7,7 @@
 <h1>{{ sname }}</h1>
 <p class="authline">Every {{ sname }} game in the library, whatever
 group each belongs to.</p></div></header>
+{{ library_controls() }}
 <div class="grid">{% for g in sgames %}{{ game_card(g, '../../games/') }}{% endfor %}</div>
 
 {{ records_table(srows, 'Records across the system', 'No ranked run on this system yet.') }}
