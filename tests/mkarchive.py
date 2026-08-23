@@ -15,7 +15,7 @@ JPG = b'\xff\xd8\xff' + b'\0' * 60
 
 # Frame rates match the real systems.json values so clock() output is realistic.
 DEFAULT_SYSTEMS = {
-    'nes': {'name': 'Nintendo Entertainment System', 'fps': 60.0988138974405},
+    'nes': {'name': 'Nintendo Entertainment System', 'fps': 60.0988138974405, 'hardwareVerifiable': True},
     'dos': {'name': 'DOS', 'fps': 60.0, 'hardToReproduce': True},
 }
 

@@ -1,6 +1,7 @@
 {# A game page: header, category selector, one leaderboard section per
    category combination, the Unclassified shelf, the legend, the expert menu. #}
 {% import '_game_rows.html' as row %}
+{% set hw = hw_verifiable(g['system']) %}
 <header class="ghead"><div>
 <div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
 <span class="chip">{{ g['runs']|length }} run{% if g['runs']|length != 1 %}s{% endif %}</span>
@@ -45,7 +46,7 @@
 {% endif %}
 {% if c.allrs %}
 {% if c.table_runs %}
-<table><thead><tr><th>#</th><th>Author</th><th class="num">Frames</th>{% for m in c.mdefs %}<th class="num">{{ m['label'] }}</th>{% endfor %}<th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead><tbody>
+<table><thead><tr><th>#</th><th>Author</th><th class="num">Frames</th>{% for m in c.mdefs %}<th class="num">{{ m['label'] }}</th>{% endfor %}<th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th>{% if hw %}<th class="ctr">Console</th>{% endif %}</tr></thead><tbody>
 {% for r in c.table_runs %}
 <tr class="{% if loop.first %}lead{% endif %}" {{ row.onclick(r, rel) }}>
 <td class="rank">{{ loop.index }}</td><td>{{ row.authors(r, rel) }}</td>
@@ -95,7 +96,7 @@
 <p class="rules">Entertainment, experiments, playarounds. No defined goal; each run describes
 its own. Never verified; ranked purely by ★ likes.</p>
 <table><thead><tr><th>#</th><th>Author</th><th>Goal</th><th class="num"><span class="starglyph">★</span></th>
-<th class="num">Frames</th><th class="num">Time</th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Console</th></tr></thead>
+<th class="num">Frames</th><th class="num">Time</th><th>Date</th><th class="ctr">Repro</th>{% if hw %}<th class="ctr">Console</th>{% endif %}</tr></thead>
 <tbody>
 {% for r in uncl_runs %}
 <tr class="{% if loop.first %}lead{% endif %}" {{ row.onclick(r, rel) }}>
@@ -105,7 +106,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {{ row.frames_cell(r, rel) }}
 <td class="num">{{ run_clock(r) }}</td>
 {{ run_date_cell(r) }}
-<td class="ctr">{{ tick(eff_state(r)[0]) }}</td><td class="ctr">{{ console_tick(r) }}</td></tr>
+<td class="ctr">{{ tick(eff_state(r)[0]) }}</td>{% if hw %}<td class="ctr">{{ console_tick(r) }}</td>{% endif %}</tr>
 {% endfor %}
 </tbody></table></section>
 {% endif %}

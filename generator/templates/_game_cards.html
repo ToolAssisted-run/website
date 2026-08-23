@@ -59,9 +59,10 @@ data-last="{{ 1 if gr.get('synthetic') else 0 }}" href="../groups/{{ gr['key'] }
    sorted by game title then category. #}
 {% if rows %}
 <h2>{{ heading }}</h2>
+{% set hw_any = rows|selectattr('_game.system', 'in', HW_SYSTEMS)|list|length > 0 %}
 <table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
 <th class="num"></th><th class="num">Stars</th>
-<th class="ctr">Rep</th><th class="ctr">Ver</th><th class="ctr">Con</th></tr></thead>
+<th class="ctr">Rep</th><th class="ctr">Ver</th>{% if hw_any %}<th class="ctr">Con</th>{% endif %}</tr></thead>
 <tbody>
 {% for r in rows %}
 {% set rs_, vs_ = eff_state(r) %}
@@ -70,7 +71,7 @@ data-last="{{ 1 if gr.get('synthetic') else 0 }}" href="../groups/{{ gr['key'] }
 <td>{% for a in r['authors'] %}{{ author_chip(a['user'], '../../') }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
 <td class="num"><a href="../../runs/{{ r['id'] }}/">{{ primary_metric_html(r) }}</a></td>
 <td class="num"><span class="starglyph">★</span>{{ nlikes(r) }}</td>
-<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td><td class="ctr">{{ console_tick(r) }}</td></tr>
+<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td>{% if hw_any %}<td class="ctr">{{ console_tick(r) }}</td>{% endif %}</tr>
 {% endfor %}
 </tbody></table>
 <p class="legend">{{ FULL_TICK }} verified &nbsp;

@@ -1,9 +1,10 @@
 {# A run page: header, encode, notes, community rosters, act forms, sidebar facts, expert menu. #}
 {% from '_run_pages.html' import act_row, roster_acts, case_box, nmembers %}
 {% from '_filerows.html' import file_rows %}
+{% set hw = console_applicable(r) or cstate == 'imported' %}
 <header class="ghead"><div>
   <div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
-  <span class="chip">{{ cl }}</span>{{ state_chip(r) }}{{ console_chip(r) }}{% if open_case %}<span class="chip pendchip">Under dispute</span>{% endif %}
+  <span class="chip">{{ cl }}</span>{{ state_chip(r) }}{% if hw %}{{ console_chip(r) }}{% endif %}{% if open_case %}<span class="chip pendchip">Under dispute</span>{% endif %}
   <span class="visits" id="visitbadge" title="number of visits" hidden><svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>&nbsp;<span id="visitnum"></span></span></div>
   <h1>{{ g['title'] }}</h1>
   <p class="authline">by {% for a in r['authors'] %}{% if not loop.first %} · {% endif %}{{ author_chip(a['user'], '../../') }}{% endfor %}</p>
@@ -72,8 +73,10 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <h2>Verifications ({{ live(vers)|length }})</h2>
 <div class="roster">{% if vers %}{{ roster_acts(r, vers, 'verify') }}{% elif enc %}<p class="emptynote">No verifications yet. Watch the encode and confirm the run achieves its stated goal.</p>{% else %}<p class="emptynote">No verifications yet, and no encode is linked, so verification is not possible until one is added.</p>{% endif %}</div>
 {% endif %}
+{% if hw or cons %}
 <h2>Console verifications ({{ cons|length }})</h2>
 <div class="roster">{% if cons %}{{ roster_acts(r, cons, 'console') }}{% else %}<p class="emptynote">Not yet played back on original hardware. This is optional and never required for ranking, and it pays <b>{{ PT_CONSOLE }} contributor points</b>.</p>{% endif %}</div>
+{% endif %}
 {% if cases %}
 <h2>Cases ({{ cases|length }})</h2><div class="roster">{% for c, pending_voters in cases %}{{ case_box(c, pending_voters) }}{% endfor %}</div>
 {% endif %}
@@ -168,6 +171,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
   <button class="btn">Record</button>
 </form></details></div>
+{% if hw %}
 <div id="f-console-wrap" hidden><details class="actform"><summary>I played this run back on original hardware</summary>
 <form id="f-console">
   <p class="rules">Optional and never required for ranking, and the most expensive act
@@ -180,6 +184,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
   <button class="btn">Record</button>
 </form></details></div>
+{% endif %}
 <form id="f-vote" class="actform" hidden>
   <h3>This run is under dispute, and you are one of its verifiers</h3>
   <p class="rules">Recheck your verification. Reaffirming stands by it; withdrawing retracts it.</p>
@@ -253,7 +258,7 @@ Log in (top right) to reply from here.</p></section>
       {%- else %}{{ tick(vs) }} Not yet verified: one verification ranks this run{% endif %}</p>
     {% if cstate == 'imported' %}<p class="statline"><span class="tick console">✓</span> Console verified at <a href="{{ imported.get('source', '') }}">a trusted site</a>{% if ncons %}, and by {{ nmembers(ncons) }} here{% endif %}</p>
     {% elif ncons %}<p class="statline"><span class="tick console">✓</span> Console verified by {{ nmembers(ncons) }}</p>
-    {% elif not is_leg %}<p class="statline">{{ NONE_TICK }} Console verification: none yet (optional)</p>{% endif %}</div>
+    {% elif not is_leg and hw %}<p class="statline">{{ NONE_TICK }} Console verification: none yet (optional)</p>{% endif %}</div>
   {% if n_open_reports %}<div class="factbox"><h4>Reports</h4><p class="statline">⚑ {{ n_open_reports }} open · <a href="../../policy/site-log/#reports">site log</a></p></div>{% endif %}
   <details class="actform reportbox" id="reportbox" hidden><summary>⚑ Report this run</summary>
   <form id="f-report">

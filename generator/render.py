@@ -441,8 +441,9 @@ def console_tick(r):
         return (f'<span class="tick console" title="Played back on original hardware '
                 f'by {n} member{"s" if n != 1 else ""}">✓</span>')
     if cs == 'not-applicable':
-        return ('<span class="tick none" title="Video-only: no input movie to play '
-                'back on hardware">—</span>')
+        why = ('Video-only: no input movie to play back on hardware' if r.get('videoOnly')
+               else 'Not a system that is played back on hardware')
+        return f'<span class="tick none na" title="{why}">·</span>'
     return '<span class="tick none" title="Not played back on hardware yet (optional)">—</span>'
 
 FULL_TICK = '<span class="tick full" title="Verified: a member confirmed the goal is met">✓</span>'

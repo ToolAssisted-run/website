@@ -584,6 +584,11 @@ def main():
                [m['key'] for m in pac['metrics']] == ['score', 'time']
                and pac['metrics'][0]['better'] == 'higher', str(pac))
 
+            # --- console verification only where hardware playback exists (#53) ---
+            c, r, _ = call(U + '/api/console-verify',
+                           {'key': KEY, 'user': 'helper', 'run': 'M900010', 'proof': 'https://example.com/rec',
+                            'hardware': 'x', 'dry_run': '1'})
+            ck('an nes run may be console-verified', c == 200, str(r))
             # --- subcategories (#43): a second level inside a category ---
             c, r, _ = call(U + '/api/category/add',
                            {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',

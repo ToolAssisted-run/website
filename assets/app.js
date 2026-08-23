@@ -1209,7 +1209,7 @@
           if (runData.reproduced.indexOf(myName) < 0) arm('f-repro', '/api/reproduce');
         }
         if (runData.hasEncode && runData.verified.indexOf(myName) < 0) arm('f-verify', '/api/verify');
-        if (!runData.videoOnly && (runData.consoled || []).indexOf(myName) < 0) arm('f-console', '/api/console-verify');
+        if (!runData.videoOnly && document.getElementById('f-console') && (runData.consoled || []).indexOf(myName) < 0) arm('f-console', '/api/console-verify');
         if (runData.openCase) {
           if (runData.openCase.verifiers.indexOf(myName) >= 0 && runData.openCase.voted.indexOf(myName) < 0) {
             var voteForm = document.getElementById('f-vote');

@@ -19,5 +19,5 @@
 
 {% macro state_cells(r) %}
 {% set rs_, vs_ = eff_state(r) %}
-<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td><td class="ctr">{{ console_tick(r) }}</td>
+<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td>{% if hw_verifiable(r['_game']['system']) %}<td class="ctr">{{ console_tick(r) }}</td>{% endif %}
 {% endmacro %}

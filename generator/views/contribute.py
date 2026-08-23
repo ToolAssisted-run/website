@@ -26,7 +26,7 @@ worklist_systems = sorted({r['_game']['system'] for r in need_repro})
 # hardware verification: any run with an input movie that nobody has played
 # back on the original hardware yet (imports included: the source's own
 # console verification counts, a missing one is as open as any)
-need_console = sorted([r for r in runs if console_state(r) == 'none' and not r.get('videoOnly')],
+need_console = sorted([r for r in runs if console_state(r) == 'none'],   # 'none' means applicable and not done
                       key=lambda r: (r.get('submitted') or ''), reverse=True)
 hardware_systems = sorted({r['_game']['system'] for r in need_console})
 open_cases = [(r, c) for r in runs for c in r.get('cases', []) if c['status'] == 'open']

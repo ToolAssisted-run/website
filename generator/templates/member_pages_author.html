@@ -19,14 +19,15 @@
 <section id="news"><h2>News</h2><p class="emptynote">Nothing yet. reproductions, verifications and stars on your runs will appear here.</p></section>
 {% endif %}
 <section><details class="secfold" open><summary><h2>Runs ({{ mine|length }})</h2></summary>
-<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th><th class="ctr">Console</th></tr></thead>
+{% set hw_any = mine|selectattr('_game.system', 'in', HW_SYSTEMS)|list|length > 0 %}
+<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th>{% if hw_any %}<th class="ctr">Console</th>{% endif %}</tr></thead>
 <tbody>{% for r in mine %}{% set g = r._game %}{% set st2 = eff_state(r) %}
 <tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r.id }}/'"><td><a href="../../games/{{ g.key }}/">{{ g.title }}</a></td>
 <td>{{ cat_label(r) }}</td>
 <td class="num"><a href="../../runs/{{ r.id }}/">{{ primary_metric_html(r) }}</a></td>
 <td class="num"><span class="starglyph">★</span>{{ nlikes(r) }}</td>
 {{ run_date_cell(r) }}
-<td class="ctr">{{ tick(st2[0]) }}</td><td class="ctr">{{ tick(st2[1]) }}</td><td class="ctr">{{ console_tick(r) }}</td></tr>
+<td class="ctr">{{ tick(st2[0]) }}</td><td class="ctr">{{ tick(st2[1]) }}</td>{% if hw_any %}<td class="ctr">{{ console_tick(r) }}</td>{% endif %}</tr>
 {% endfor %}</tbody></table></details></section>
 <section><details class="secfold" open><summary><h2>Contributions · {{ cpts }} points{{ badge_chip(cpts) }}</h2></summary>
 {% if acts %}

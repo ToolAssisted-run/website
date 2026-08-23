@@ -3719,6 +3719,10 @@ def console_verify():
         if run.get('videoOnly'):
             return fail('this run is video-only: there is no input movie to play '
                         'back on hardware, so console verification does not apply')
+        systems_doc = json.loads((ARCHIVE / 'systems.json').read_text())
+        if not systems_doc.get(run_dir.parent.parent.parent.name, {}).get('hardwareVerifiable'):
+            return fail('this system is not one that is played back on original hardware '
+                        '(systems.json: hardwareVerifiable), so console verification does not apply')
         if user.lower() in {a['user'].lower() for a in run.get('consoleVerifications', [])}:
             return fail('you have already console-verified this run; '
                         'one console verification per member')

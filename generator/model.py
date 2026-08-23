@@ -368,12 +368,30 @@ def nlikes(r):
 def live(acts):
     return [a for a in acts if not a.get('invalidated')]
 
+# the systems a movie can be played back on real hardware (a replay device
+# on the console): systems.json marks them hardwareVerifiable (issue #53);
+# everywhere else the console signal does not exist, and the site says
+# nothing about it
+HW_SYSTEMS = {k for k, v in systems.items() if v.get('hardwareVerifiable')}
+
+def hw_verifiable(system):
+    return system in HW_SYSTEMS
+
+def console_applicable(r):
+    """Whether hardware verification is a thing for this run at all: a real
+    input movie, on a system that can play one back."""
+    return not r.get('videoOnly') and hw_verifiable(r['_game']['system'])
+
 def console_state(r):
     """'imported' when TASVideos had already console-verified it, 'community'
-    when somebody here played it back on hardware, else 'none'."""
+    when somebody here played it back on hardware, 'not-applicable' when the
+    run cannot be (video-only, or a system nobody plays back on hardware),
+    else 'none'."""
     if (r.get('status') or {}).get('console') == 'imported':
         return 'imported'
-    return 'community' if live(r.get('consoleVerifications', [])) else 'none'
+    if live(r.get('consoleVerifications', [])):
+        return 'community'
+    return 'none' if console_applicable(r) else 'not-applicable'
 
 def eff_state(r):
     """(reproduced, verified) derived from rosters; 'imported' passes through.

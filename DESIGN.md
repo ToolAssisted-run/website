@@ -755,6 +755,14 @@ archivist, module responsibilities). What matters designwise:
   responsibility that co-authors agree (§3.7); any author may withdraw it,
   all together may erase it. The importer never crawls the source site: it
   reads a local backup corpus, refreshed by a daily cron.
+- **Hardware verification exists only where it can happen** (issue #53):
+  `systems.json` marks the systems a movie is played back on real hardware
+  (`hardwareVerifiable`: a2600, nes, snes, genesis, gb, gbc, gba, n64). On
+  every other system the console signal is absent rather than "none": no
+  Console column on that game's boards (mixed tables show the column only
+  when some row can carry it, a dot otherwise), no roster, act form or
+  status line on the run page, no row on the hardware worklist, and the
+  archivist refuses the act. An import's source verification still shows.
 - **ROMs never touch the site.** Hashes and names are facts.
 - **Privacy commitments** (§5, and they bind the implementation): no
   analytics, no tracker, one session cookie after login; the archive holds

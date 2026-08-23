@@ -556,6 +556,24 @@ def main():
            'href="https://www.speedrun.com/tg"' in gpage_
            and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
+        # hardware verification exists only on systems played back on real
+        # hardware (#53): nes is one, dos is not
+        dosgame_ = all_html[out / 'games' / 'dos' / 'hardgame' / 'index.html']
+        ck('a game on a non-verifiable system shows no Console column',
+           '<th class="ctr">Console</th>' not in dosgame_ and 'Console</th>' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
+        dosrun_ = all_html[out / 'runs' / 'M900104' / 'index.html']
+        ck('its run page has no console roster, form or status line',
+           'Console verifications' not in dosrun_ and 'id="f-console"' not in dosrun_
+           and 'Console verification: none yet' not in dosrun_)
+        nesrun_ = all_html[out / 'runs' / 'M900101' / 'index.html']
+        ck('an nes run page keeps them',
+           'Console verifications' in nesrun_ and 'id="f-console"' in nesrun_)
+        contrib_hw = all_html[out / 'contribute' / 'index.html']
+        hw_list2 = contrib_hw.split('id="hw-scroll"')[1].split('</table>')[0] if 'id="hw-scroll"' in contrib_hw else ''
+        ck('the hardware worklist lists verifiable systems only',
+           'M900104' not in hw_list2 and 'M900101' in hw_list2)
+        ck('the hardware filter offers verifiable systems only',
+           'data-sys="dos"' not in contrib_hw.split('id="hwfilter"')[1].split('</div>')[0])
         # subcategories (#43)
         subpage_ = all_html[out / 'games' / 'dos' / 'subgame' / 'index.html']
         ck('a category with subcategories has one board per subcategory',
