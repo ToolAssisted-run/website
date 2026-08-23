@@ -672,3 +672,4 @@ html:has(.agegate){overflow:hidden}
 .prop.editing .prop-value,.prop.editing .prop-edit{display:none}
 .gecard .actmsg{margin-top:10px}
 @media (max-width:640px){.prop-head{flex-wrap:wrap}.prop-name{min-width:100%}}
+.stat b .starglyph{color:var(--accent);font-size:1.1rem;margin-right:4px;vertical-align:2px}

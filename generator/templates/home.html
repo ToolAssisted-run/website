@@ -14,7 +14,8 @@ decided in the open, by the people who care about it.</p>
 <div class="stat"><b>{{ games|length }}</b><span>games</span></div>
 <div class="stat"><b>{{ systems|length }}</b><span>systems</span></div>
 <div class="stat"><b>{{ authors|length }}</b><span>authors</span></div>
-<div class="stat"><b>{{ pending_count }}</b><span>pending</span></div>
+<div class="stat"><b><span class="starglyph">★</span>{{ '{:,}'.format(total_likes) }}</b><span>likes</span></div>
+{% if visits_known %}<div class="stat"><b>{{ EYE_ICON }}{{ '{:,}'.format(total_views) }}</b><span>views</span></div>{% endif %}
 </div>
 </div>
 <aside class="heronews" id="heronews">

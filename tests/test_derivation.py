@@ -238,13 +238,15 @@ def main():
         out = td / 'o7'
         build(arch, out)
         home = (out / 'index.html').read_text()
-        m = re.search(r'<div class="stat"><b>(\d+)</b><span>pending</span>', home)
-        ck('home pending stat is rendered', bool(m), home[:200])
+        # the strip shows likes across the archive (and views where known);
+        # the pending count stayed a derivation but left the front page
+        m = re.search(r'<div class="stat"><b><span class="starglyph">★</span>([\d,]+)</b><span>likes</span>', home)
+        ck('home likes stat is rendered', bool(m), home[:200])
+        ck('no pending stat on the front page', '<span>pending</span>' not in home)
         if m:
-            # unclassified runs rank by likes and nothing gates them, so none
-            # of the three count as pending; only the classified no-act run does
-            ck('unclassified runs are never pending',
-               int(m.group(1)) == 1, f'got {m.group(1)}, want 1')
+            want = sum(len(r.get('likes', [])) for r in pend_runs)
+            ck('the likes stat sums every run', int(m.group(1).replace(',', '')) == want,
+               f'got {m.group(1)}, want {want}')
 
         # ---------------- stars ----------------
         star_runs = [

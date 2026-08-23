@@ -1,6 +1,6 @@
 """View: the home page and the 404 page (renders on import; see views/__init__)."""
 from config import OUT
-from model import archived_at, is_pending, nlikes, nvisits, runs
+from model import archived_at, nlikes, nvisits, runs
 from render import SITE_URL, page, tpl
 
 
@@ -27,7 +27,8 @@ def viewed_selection(all_runs, slots=12):
                   reverse=True)[:slots]
 
 body = tpl('home.html',
-           pending_count=sum(1 for r in runs if is_pending(r)),
+           total_likes=sum(nlikes(r) for r in runs),
+           total_views=sum(nvisits(r) for r in runs),
            fresh=fresh_selection(runs, slots=12),
            liked=liked_selection(runs),
            viewed=viewed_selection(runs))
