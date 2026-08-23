@@ -306,11 +306,11 @@ def import_one(dumps, archive, p, sub, username, today, thumb_base,
     m = re.search(r'SHA-?1:?\s*\*?\s*([0-9a-fA-F]{40})', notes_md)
     if m:
         sha1 = m.group(1).lower()
-    rom = {}
+    # one file row, as every new record carries them (the legacy single
+    # `rom` object stays on the records that already have it)
+    files = []
     if rom_name:
-        rom['name'] = rom_name
-    if sha1:
-        rom['sha1'] = sha1
+        files.append({'name': rom_name, **({'sha1': sha1} if sha1 else {})})
     start = START_TYPES.get(sub.get('movieStartType'), 'power-on')
 
     # Only the importer gets a record: they are a member here, having claimed
@@ -340,7 +340,7 @@ def import_one(dumps, archive, p, sub, username, today, thumb_base,
                   'start': start},
         'thumbnail': thumb_name,
         'contract': {'emulator': p.get('emulatorVersion') or sub.get('emulatorVersion') or '',
-                     **({'rom': rom} if rom else {})},
+                     **({'files': files} if files else {})},
         'status': {'reproduced': 'imported', 'verified': 'imported',
                    # TASVideos' flag token "Verified" is its Console-verified flag
                    'console': 'imported' if 'Verified' in (p.get('flags') or []) else 'none'},

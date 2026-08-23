@@ -1,5 +1,6 @@
 {# A run page: header, encode, notes, community rosters, act forms, sidebar facts, expert menu. #}
 {% from '_run_pages.html' import act_row, roster_acts, case_box, nmembers %}
+{% from '_filerows.html' import file_rows %}
 <header class="ghead"><div>
   <div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
   <span class="chip">{{ cl }}</span>{{ state_chip(r) }}{{ console_chip(r) }}{% if open_case %}<span class="chip pendchip">Under dispute</span>{% endif %}
@@ -98,6 +99,9 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   </div>
   <label>Encode link</label><input name="encode" type="url" value="{{ enc_url }}" placeholder="https://youtu.be/…">
   <label>Emulator / core (optional)</label><input name="emulator">
+  <label>Files the movie was made against (ROMs, disc images, executables, sources; name and SHA1, never the files)</label>
+  <input type="hidden" name="files_set" value="1">
+  {{ file_rows(files) }}
   <label>When was the run completed? (optional; shown beside the submission date)</label>
   <input name="completed" type="date" max="{{ today }}">
   <label>Content disclosures, to warn viewers about:</label>
@@ -214,8 +218,9 @@ Log in (top right) to reply from here.</p></section>
     {% if not r.get('videoOnly') %}<p class="factfoot"><a class="btn" href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ r['movie']['file'] }}">Download movie file</a></p>{% endif %}</div>
   {% if not r.get('videoOnly') %}<div class="factbox"><h4>Reproduction info</h4><dl>
     <dt>Emulator</dt><dd>{{ r.get('contract', {}).get('emulator') or '—' }}</dd>
-    {% if rom.get('name') %}<dt>ROM</dt><dd>{{ rom.get('name') }}</dd>{% endif %}
-    {% if rom.get('sha1') %}<dt>ROM sha1</dt><dd class="trunc" title="{{ rom.get('sha1') }}">{{ rom.get('sha1')[:12] }}…</dd>{% endif %}
+    {% for f in files %}
+    <dt>{{ 'Files' if loop.first else '' }}</dt><dd class="filefact"><span class="filename">{{ f['name'] }}</span>{% if f.get('sha1') %}<code class="filesha" title="sha1 {{ f['sha1'] }}">{{ f['sha1'][:12] }}…</code>{% endif %}</dd>
+    {% endfor %}
 </dl></div>{% endif %}
   {% if atts %}<div class="factbox"><h4>Attached files</h4>{% for a in atts %}<p class="statline"><a href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ a['file'] }}">{{ a['file'].split('/')[-1] }}</a> · {{ a.get('role', '') }}</p>{% endfor %}</div>{% endif %}
   {# status lines #}

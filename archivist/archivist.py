@@ -412,7 +412,8 @@ def submit():
     Who: a logged-in member, or the shared `key` plus `submitter`
     Reads: form fields consent, game (system/slug), goal, goal_description,
         metric_<key>, authors (comma-separated), video_only, time,
-        encode, emulator, rom_name, rom_sha1, completed, notes,
+        encode, emulator, file_name / file_sha1 (repeatable rows; the old
+        rom_name / rom_sha1 pair still counts as one), completed, notes,
         content_warnings (repeatable), dry_run; files movie, attachments
     Answers: {ok, id, archive, forum}; dry_run: {ok, dry_run, would_be, run,
         game_key}; 409 when the movie or encode is already archived
@@ -566,16 +567,18 @@ def submit():
     if any(w not in CW_ALLOWED for w in content_warnings):
         return fail('unknown content warning flag')
 
-    rom = {}
-    if submission.get('rom_name'): rom['name'] = submission.get('rom_name').strip()[:200]
-    rom_sha = (submission.get('rom_sha1') or '').strip()
-    if rom_sha:
-        # typed by hand now (#41): refuse what is not a sha1 rather than
-        # dropping it silently and archiving a run that claims a ROM it
-        # cannot name
-        if not re.fullmatch(r'[0-9a-fA-F]{40}', rom_sha):
-            return fail('rom_sha1 must be exactly 40 hexadecimal characters')
-        rom['sha1'] = rom_sha.lower()
+    # the files the movie was made against (0 to n): ROMs, disc images,
+    # executables, sources. Name and SHA1 only, hashed in the browser; the
+    # old single rom_name/rom_sha1 pair is accepted as one row still
+    files, files_error = parse_file_rows(submission)
+    if files_error:
+        return fail(files_error)
+    if not files and (submission.get('rom_name') or submission.get('rom_sha1')):
+        legacy = {'file_name': [submission.get('rom_name') or ''],
+                  'file_sha1': [submission.get('rom_sha1') or '']}
+        files, files_error = parse_file_rows(type('F', (), {'getlist': lambda self, k: legacy.get(k, [])})())
+        if files_error:
+            return fail(files_error)
 
     dry_run = submission.get('dry_run') in ('1', 'true', 'yes')
 
@@ -618,7 +621,7 @@ def submit():
             'thumbnail': 'thumb' + thumb_ext,
             **({'goalDescription': goal_description} if goal_description else {}),
             **({'contentWarnings': content_warnings} if content_warnings else {}),
-            'contract': {'emulator': (submission.get('emulator') or '').strip(), **({'rom': rom} if rom else {})},
+            'contract': {'emulator': (submission.get('emulator') or '').strip(), **({'files': files} if files else {})},
             'status': ({'reproduced': 'not-applicable', 'verified': 'none',
                         'console': 'not-applicable'} if video_only else
                        {'reproduced': 'none', 'verified': 'none', 'console': 'none'}),
@@ -1049,6 +1052,31 @@ def _deletion_gate(form, need='expert'):
 # links. One parser for the editor and for creation; an empty value means
 # "not stated" and the field is absent from the record
 CW_ALLOWED = {'mature-violence', 'sexual', 'photosensitivity', 'strong-language'}
+
+def parse_file_rows(form):
+    """The files a movie was made against, from the repeated form fields
+    file_name / file_sha1 (one row each, paired by position). A row with
+    nothing in it is skipped; a name is required; a sha1, when given, is
+    exactly 40 hex digits. Returns (files, error)."""
+    names = form.getlist('file_name')
+    shas = form.getlist('file_sha1')
+    files = []
+    for i in range(max(len(names), len(shas))):
+        name = (names[i] if i < len(names) else '').strip()[:200]
+        sha = (shas[i] if i < len(shas) else '').strip().lower()
+        if not name and not sha:
+            continue
+        if not name:
+            return None, f'file {i + 1}: a name is required (the sha1 alone identifies nothing)'
+        if sha and not re.fullmatch(r'[0-9a-f]{40}', sha):
+            return None, f'file {i + 1} ({name}): a sha1 is exactly 40 hexadecimal characters'
+        entry = {'name': name}
+        if sha:
+            entry['sha1'] = sha
+        files.append(entry)
+    if len(files) > 50:
+        return None, 'at most 50 files'
+    return files, None
 
 GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website', 'rta')
 
@@ -2078,8 +2106,9 @@ def edit_run():
     Reads: form fields run, reason, authors (authors only), notes, emulator,
         metric_<key>, completed, goalDescription, encode, time (video-only
         runs), content_warnings (repeatable, with content_warnings_set as
-        the marker that the field was sent), dry_run; files attachments
-        (authors only)
+        the marker that the field was sent), file_name / file_sha1 rows
+        (with files_set as the marker), dry_run; files attachments (authors
+        only)
     Answers: {ok, run, changed}; dry_run: {ok, dry_run, would_change}
     """
     edit_form = request.form
@@ -2146,6 +2175,26 @@ def edit_run():
             if new_emulator != run.get('contract', {}).get('emulator', ''):
                 run.setdefault('contract', {})['emulator'] = new_emulator
                 changed.append('emulator')
+        if 'files_set' in edit_form:
+            # the files list, whole: the form always sends every row, so an
+            # emptied list clears it. A legacy single `rom` is replaced by
+            # the list the moment the author or an expert revises it
+            new_files, files_error = parse_file_rows(edit_form)
+            if files_error:
+                return fail(files_error)
+            old_files = run.get('contract', {}).get('files')
+            if old_files is None and run.get('contract', {}).get('rom'):
+                old_files = [run['contract']['rom']]
+            if (old_files or []) != new_files:
+                befores['files'] = '; '.join(f"{f.get('name', '')} {f.get('sha1', '')}".strip()
+                                             for f in (old_files or []))
+                contract = run.setdefault('contract', {})
+                contract.pop('rom', None)
+                if new_files:
+                    contract['files'] = new_files
+                else:
+                    contract.pop('files', None)
+                changed.append('files')
         # stated metric values: only the keys this run's category defines;
         # an empty field leaves the value untouched, an explicit 0 returns
         # it to "not yet stated" (which ranks last)
@@ -2285,6 +2334,8 @@ def edit_run():
                            'encode': (run.get('encodes') or [{}])[0].get('url', ''),
                            'duration': run.get('duration', ''),
                            'contentWarnings': ', '.join(run.get('contentWarnings', [])),
+                           'files': '; '.join(f"{f.get('name', '')} {f.get('sha1', '')}".strip()
+                                              for f in run.get('contract', {}).get('files', [])),
                            'attachments': ', '.join(name for name, _ in new_attachments),
                            }.get(field, ''))[:300]),
                      user, "The author's own revision." if is_author else reason)

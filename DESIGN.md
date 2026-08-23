@@ -180,8 +180,11 @@ pick, metric definitions included; "Category not there?" points at
 in a dashed box (§5) · authors (chips picker; may credit non-members as
 text) · **encode link,
 mandatory** (six platforms; the run's thumbnail derives from it) · emulator/
-core (optional) · ROM name+sha1 (optional, hashed locally, **the ROM never
-leaves the machine**) · movie file, parsed mechanically (25 TASVideos formats,
+core (optional) · the files the movie was made against, 0 to n rows of
+name+sha1 (`contract.files`: ROMs, disc images, executables, sources; each
+picked and hashed locally, **the file never leaves the machine**, or typed;
+revisable from Edit run; the legacy single `contract.rom` on older records
+is shown as one row and never rewritten) · movie file, parsed mechanically (25 TASVideos formats,
 `archivist/movieparse.py`, GPL-3.0 with TASVideos contributors credited; the
 rest of the repo is MIT) — or **video-only** (see below) · optional completion
 date (real date, 1980+, not future; shown beside the submission date;

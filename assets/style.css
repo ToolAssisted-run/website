@@ -679,3 +679,14 @@ html:has(.agegate){overflow:hidden}
 .gecard .actmsg{margin-top:10px}
 @media (max-width:640px){.prop-head{flex-wrap:wrap}.prop-name{min-width:100%}}
 .stat b .starglyph{color:var(--accent);font-size:1.1rem;margin-right:4px;vertical-align:2px}
+/* file rows (ROMs, disc images, sources): choose | name | sha1 | remove */
+.filerow{display:flex;gap:8px;align-items:center;margin:6px 0}
+.filerow .pickfile{padding:8px 12px;font-size:.78rem;white-space:nowrap;cursor:pointer}
+.filerow input[name=file_name]{flex:2;min-width:8rem}
+.filerow input[name=file_sha1]{flex:3;min-width:10rem;font-family:ui-monospace,monospace;font-size:.82rem}
+.filerow .rmfile{flex:none}
+.filerow-actions{justify-content:flex-start;margin:6px 0 10px}
+.filerow .hashing{font-size:.74rem;color:var(--faint)}
+.filefact{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.filefact .filesha{font-size:.76rem;color:var(--faint)}
+@media (max-width:640px){.filerow{flex-wrap:wrap}.filerow input{min-width:100%}}

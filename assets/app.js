@@ -105,6 +105,7 @@
     return true;
   }
   var lastBtn = null;   // the button whose call is being answered
+  var fileRowsOf = {};  // form id -> its file-rows widget (validity check)
   // a plain status line in a message box: for outcomes that carry more
   // than yes or no (an id, a link); everything else goes on the mark
   function noteText(box, text, good){
@@ -1127,6 +1128,7 @@
         if (prefill) prefill(form);
         form.addEventListener('submit', function(ev){
           ev.preventDefault();
+          if (fileRowsOf[form.id] && !fileRowsOf[form.id].valid()) return;
           var fd = new FormData(form);
           fd.append('run', runData.run);
           post(path, fd, actionBtn(form)).then(function(res){
@@ -1616,6 +1618,68 @@
   var ageGateYes = document.getElementById('agegate-yes');
   if (ageGateYes) ageGateYes.addEventListener('click', adultYes);
 
+  // ---- file rows: the files a movie was made against (ROMs, discs,
+  // sources), one row each with a picker that hashes locally ----
+  function sha1Hex(file){
+    return file.arrayBuffer().then(function(buf){ return crypto.subtle.digest('SHA-1', buf); })
+      .then(function(hash){
+        return Array.prototype.map.call(new Uint8Array(hash), function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+      });
+  }
+  function initFileRows(box){
+    if (!box || box.dataset.armed) return null;
+    box.dataset.armed = '1';
+    var list = box.querySelector('.filerow-list');
+    var tpl = box.querySelector('.filerow-tpl');
+    function addRow(entry){
+      var row = tpl.content.firstElementChild.cloneNode(true);
+      var nameIn = row.querySelector('input[name=file_name]');
+      var shaIn = row.querySelector('input[name=file_sha1]');
+      var picker = row.querySelector('input[type=file]');
+      if (entry) { nameIn.value = entry.name || ''; shaIn.value = entry.sha1 || ''; }
+      picker.addEventListener('change', function(){
+        var file = picker.files && picker.files[0];
+        if (!file) return;
+        nameIn.value = file.name;
+        shaIn.value = '';
+        shaIn.placeholder = 'hashing…';
+        sha1Hex(file).then(function(hex){ shaIn.value = hex; shaIn.placeholder = 'SHA1 (40 hex), optional'; checkSha(); })
+          .catch(function(){ shaIn.placeholder = 'could not hash; type the SHA1'; });
+      });
+      function checkSha(){
+        var v = shaIn.value.trim();
+        var ok = v === '' || /^[0-9a-fA-F]{40}$/.test(v);
+        shaIn.classList.toggle('bad', !ok);
+        shaIn.title = ok ? '' : 'a SHA1 is exactly 40 hexadecimal characters (' + v.length + ' so far)';
+        return ok;
+      }
+      shaIn.addEventListener('input', checkSha);
+      row.querySelector('.rmfile').addEventListener('click', function(){ row.remove(); });
+      list.appendChild(row);
+      return row;
+    }
+    var seed = [];
+    try { seed = JSON.parse(box.dataset.files || '[]'); } catch (e) {}
+    seed.forEach(addRow);
+    box.querySelector('.addfile').addEventListener('click', function(){
+      var row = addRow();
+      row.querySelector('input[name=file_name]').focus();
+    });
+    // every row's sha1 must be well-formed, or the form does not go
+    return {
+      valid: function(){
+        var bad = list.querySelector('input[name=file_sha1].bad');
+        if (bad) { bad.focus(); return false; }
+        return true;
+      }
+    };
+  }
+  document.querySelectorAll('.filerows').forEach(function(box){
+    var form = box.closest('form');
+    var widget = initFileRows(box);
+    if (form && widget) fileRowsOf[form.id] = widget;
+  });
+
   // ---- submit page ----
   var submitForm = document.getElementById('submitform');
   if (submitForm) {
@@ -1843,29 +1907,6 @@
 
       initAuthorPick(submitForm.querySelector('.authpick'), [d.user]);
 
-      // ROM picker: name + SHA1 computed locally, nothing uploaded
-      var romFile = document.getElementById('s-romfile');
-      romFile.addEventListener('change', function(){
-        var file = romFile.files && romFile.files[0];
-        if (!file) return;
-        var romNote = document.getElementById('s-romnote');
-        romNote.hidden = false;
-        romNote.textContent = 'hashing …';
-        file.arrayBuffer().then(function(buf){
-          return crypto.subtle.digest('SHA-1', buf);
-        }).then(function(hash){
-          var hex = Array.prototype.map.call(new Uint8Array(hash), function(b){
-            return b.toString(16).padStart(2, '0');
-          }).join('');
-          document.getElementById('s-romname').value = file.name;
-          document.getElementById('s-romsha1').value = hex;
-          romNote.textContent = '✓ ' + file.name + ' · sha1 ' + hex.slice(0, 12) +
-                             '… (computed locally; the ROM was not uploaded)';
-        }).catch(function(){
-          romNote.textContent = 'could not hash the file; fill the fields manually';
-        });
-      });
-
       // live encode check: the thumbnail is derived from the encode, so the
       // link is validated as it is typed — preview frame + green check
       var encodeInput = document.getElementById('s-encode');
@@ -1961,26 +2002,9 @@
       });
 
       var submitting = false;
-      // the ROM fields may be typed (#41): a sha1 is 40 hex characters or
-      // nothing; anything else is caught here, before the archivist would
-      // silently drop it
-      var romSha = document.getElementById('s-romsha1');
-      var romShaStatus = document.getElementById('s-romsha1-st');
-      function romShaOk(){
-        var v = (romSha.value || '').trim();
-        var ok = v === '' || /^[0-9a-fA-F]{40}$/.test(v);
-        if (romShaStatus) {
-          romShaStatus.hidden = ok;
-          romShaStatus.textContent = ok ? '' :
-            '✗ a SHA1 is exactly 40 hexadecimal characters (' + v.length + ' so far)';
-        }
-        romSha.classList.toggle('bad', !ok);
-        return ok;
-      }
-      if (romSha) romSha.addEventListener('input', romShaOk);
       submitForm.addEventListener('submit', function(ev){
         ev.preventDefault();
-        if (romSha && !romShaOk()) { romSha.focus(); return; }
+        if (fileRowsOf.submitform && !fileRowsOf.submitform.valid()) return;
         // one archive per press: the button used to be picked by class, which
         // matched Preview, so a double click submitted the run twice
         if (submitting) return;

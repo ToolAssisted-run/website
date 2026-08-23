@@ -1,0 +1,19 @@
+{# The files a movie was made against, one row each: pick the file (hashed
+   in the browser, never uploaded), or type name and SHA1; rows are added
+   and removed at will. app.js (initFileRows) runs it; `files` seeds the
+   rows for an edit form. #}
+{% macro file_rows(files=[], note='') %}
+<div class="filerows" data-files='{{ files|tojson }}'>
+  {% if note %}<p class="rules fullw">{{ note }}</p>{% endif %}
+  <div class="filerow-list"></div>
+  <div class="btnrow filerow-actions"><button type="button" class="btn leave addfile">+ Add a file</button></div>
+  <template class="filerow-tpl">
+    <div class="filerow">
+      <label class="btn leave pickfile" title="Pick the file: its name and SHA1 are computed here, the file never leaves your machine">Choose<input type="file" hidden></label>
+      <input name="file_name" maxlength="200" placeholder="file name, e.g. Prince of Persia (USA).nes" autocomplete="off">
+      <input name="file_sha1" maxlength="40" pattern="[0-9a-fA-F]{40}" placeholder="SHA1 (40 hex), optional" spellcheck="false" autocomplete="off">
+      <button type="button" class="authx rmfile" title="Remove this row">×</button>
+    </div>
+  </template>
+</div>
+{% endmacro %}

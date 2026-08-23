@@ -36,7 +36,7 @@ REAL_ARCHIVE = pathlib.Path(sys.argv[1] if len(sys.argv) > 1
 # site (or in style.css) or the feature is silently dead.
 CONTRACT = ['navauth', 'submitform', 'imp-scan', 'imp-run',
             'imp-list', 'imp-fill', 'imp-count', 'imp-log', 'selfimport',
-            'authchips', 'authsearch', 's-romsha1', 'nsfwgate', 'nsfwreal',
+            'authchips', 'authsearch', 'filerows', 'nsfwgate', 'nsfwreal',
             'nsfwblur', 'bellbadge', 'am-theme', 'navtoggle', 'navlinks',
             'heronews', 'bskyfeed']
 
@@ -224,6 +224,9 @@ def main():
         arch = mkarchive.make_archive(td / 'arch', [
             mkarchive.run_spec('M900101', frames=6000,
                                authors=['Ada', HOSTILE_AUTHOR, 'Nyx'],
+                               contract={'emulator': 'BizHawk 2.11',
+                                         'files': [{'name': 'Disc 1.iso', 'sha1': 'a' * 40},
+                                                   {'name': 'game.exe'}]},
                                forum={'topicId': 4242,
                                       'url': 'https://forum.toolassisted.run/t/4242'},
                                notes='See [M900102] and [M999999] and [user:Ada].\n\n' + HOSTILE_NOTES,
@@ -252,6 +255,8 @@ def main():
                                videoOnly=True, duration=1317.419,
                                submitted='2026-02-05T00:00:00Z'),
             mkarchive.run_spec('M900105', frames=5500, authors=['Eve'],
+                               contract={'emulator': 'BizHawk 2.11',
+                                         'rom': {'name': 'Old Game (USA).nes', 'sha1': 'c' * 40}},
                                consoleVerifications=[{'user': 'Metal', 'date': '2026-02-07',
                                                       'proof': 'https://example.com/rec',
                                                       'hardware': 'NES + Everdrive'}]),
@@ -541,6 +546,18 @@ def main():
            'href="https://www.speedrun.com/tg"' in gpage_
            and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
+        # the files a movie was made against: the list on new records, the
+        # legacy single rom shown the same way on old ones
+        rfiles_ = all_html[out / 'runs' / 'M900101' / 'index.html']
+        ck('the run page lists every file with its sha1',
+           'Disc 1.iso' in rfiles_ and 'game.exe' in rfiles_
+           and 'title="sha1 ' + 'a' * 40 + '"' in rfiles_ and rfiles_.count('class="filefact"') == 2, rfiles_[:100])
+        rlegacy_ = all_html[out / 'runs' / 'M900105' / 'index.html']
+        ck('a legacy single rom still shows as one file row',
+           'Old Game (USA).nes' in rlegacy_ and rlegacy_.count('class="filefact"') == 1)
+        ck('the edit form seeds its file rows from the record',
+           "data-files='[{" in rfiles_ and 'name="files_set"' in rfiles_)
+        ck('the submit form carries the file rows widget', 'class="filerows"' in all_html[out / 'submit' / 'index.html'])
         # the page-level 18+ gate on a sexual-content flag: declaration, yes,
         # and a no that leads home; absent elsewhere
         sexual_ = all_html[out / 'runs' / 'M900102' / 'index.html']

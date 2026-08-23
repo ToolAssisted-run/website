@@ -490,12 +490,21 @@ def main():
             ck('submit without encode rejected', c == 400 and 'encode' in r.get('error', ''))
             c, r, _ = call(U + '/api/submit', dict(sub, encode='https://example.com/video'), files)
             ck('an encode from no known platform is rejected', c == 400)
-            c, r, _ = call(U + '/api/submit', dict(sub, rom_sha1='deadbeef'), files)
-            ck('a typed ROM sha1 must be 40 hex characters (#41)',
-               c == 400 and 'rom_sha1' in r.get('error', ''), str(r))
+            # the files the movie was made against: rows, any number, hashed
+            # client-side; the old single pair still counts as one row
+            c, r, _ = call(U + '/api/submit', dict(sub, file_name=['Disc 1.iso', 'game.exe'],
+                                                   file_sha1=['A' * 40, '']), files)
+            ck('a submission carries its file rows',
+               c == 200 and r['run']['contract']['files'] == [{'name': 'Disc 1.iso', 'sha1': 'a' * 40},
+                                                              {'name': 'game.exe'}], str(r)[:300])
+            c, r, _ = call(U + '/api/submit', dict(sub, file_name=['', 'x.nes'], file_sha1=['deadbeef', '']), files)
+            ck('a sha1 without a name is refused', c == 400 and 'name is required' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, file_name='x.nes', file_sha1='deadbeef'), files)
+            ck('a malformed file sha1 is refused', c == 400 and '40 hexadecimal' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/submit', dict(sub, rom_sha1='A' * 40, rom_name='Game.nes'), files)
-            ck('a typed ROM name and sha1 ride the dry run',
-               c == 200 and r['run']['contract']['rom'] == {'name': 'Game.nes', 'sha1': 'a' * 40}, str(r)[:200])
+            ck('the legacy rom pair lands as one file row',
+               c == 200 and r['run']['contract']['files'] == [{'name': 'Game.nes', 'sha1': 'a' * 40}]
+               and 'rom' not in r['run']['contract'], str(r)[:200])
             c, r, _ = call(U + '/api/submit', files=files, data=dict(
                 sub, encode='https://evil.example/?u=youtube.com/watch?v=goodvid12345'))
             ck('a hostile url that merely contains a platform url is rejected', c == 400, str(r)[:120])
@@ -910,6 +919,18 @@ def main():
                             'content_warnings_set': '1'})
             rj = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
             ck('no box ticked clears the warnings', c == 200 and 'contentWarnings' not in rj, str(r))
+            # the files list, revised from the edit form, whole
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010', 'files_set': '1',
+                            'file_name': ['a.nes', 'b.nes'], 'file_sha1': ['', 'b' * 40]})
+            rj = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('an author revises the file list',
+               c == 200 and 'files' in r['changed']
+               and rj['contract']['files'] == [{'name': 'a.nes'}, {'name': 'b.nes', 'sha1': 'b' * 40}], str(r))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010', 'files_set': '1'})
+            rj = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('an empty list clears the files', c == 200 and 'files' not in rj['contract'], str(r))
             elog = json.loads((work / 'edits.json').read_text())['events']
             ck('warning edits are logged with before and after',
                any(e['field'] == 'contentWarnings' and e['from'] == 'photosensitivity, strong-language'

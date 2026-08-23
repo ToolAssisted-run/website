@@ -31,7 +31,11 @@ for r in runs:
     enc_url = (r.get('encodes') or [{}])[0].get('url', '')
     pv = providers.resolve(enc['url']) if enc else None
     warns = r.get('contentWarnings', [])
-    rom = r.get('contract', {}).get('rom', {})
+    # the files the movie was made against: the list on new records, the
+    # legacy single rom (shown as one row) on older ones
+    contract = r.get('contract', {})
+    files = contract.get('files') or ([contract['rom']] if contract.get('rom') else [])
+    files = [f for f in files if f.get('name') or f.get('sha1')]
     imported = r.get('imported', {})
     is_leg = rs == 'imported'
     reps = sorted(r.get('reproductions', []), key=lambda a: a.get('date') or '')
@@ -89,7 +93,7 @@ for r in runs:
                  'authors': [canon(a['user']) for a in r['authors']],
                  'likes': [l['user'].lower() for l in r.get('likes', [])]}
     body = tpl('run_pages.html', r=r, g=g, t=t, cl=cl, rs=rs, vs=vs, enc=enc, enc_url=enc_url,
-               pv=pv, warns=warns, rom=rom, imported=imported, is_leg=is_leg,
+               pv=pv, warns=warns, files=files, imported=imported, is_leg=is_leg,
                reps=reps, vers=vers, cons=cons, cases=cases,
                topic=forum.get('topicId'), forum_url=forum.get('url'),
                nrep=nrep, nver=nver, ncons=ncons, cstate=console_state(r),
