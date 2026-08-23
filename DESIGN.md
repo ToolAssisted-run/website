@@ -789,8 +789,10 @@ archivist, module responsibilities). What matters designwise:
   catalogue (tickable pending rows, dimmed already-archived rows), the member
   picks by hand, batches of six, one commit per batch, idempotent by
   publication id. Picking a co-authored work is that member's stated
-  responsibility that co-authors agree (§3.7); any author may withdraw it,
-  all together may erase it. The importer never crawls the source site: it
+  responsibility that co-authors agree (§3.7, spelled out by the
+  constitution's §2.10 multiple author submission policy, which the submit
+  form and the import page link to; the site carries no policy page of its
+  own); any author may withdraw it, all together may erase it. The importer never crawls the source site: it
   reads a local backup corpus, refreshed by a daily cron.
 - **Hardware verification exists only where it can happen** (issue #53):
   `systems.json` marks the systems a movie is played back on real hardware

@@ -79,7 +79,6 @@ import views.tools  # noqa: F401,E402  (renders its pages on import)
 import views.claim_import  # noqa: F401,E402  (renders its pages on import)
 import views.home  # noqa: F401,E402  (renders its pages on import)
 import views.sitelog  # noqa: F401,E402  (renders its pages on import)
-import views.policy_pages  # noqa: F401,E402  (renders its pages on import)
 
 # ---------------- shared assets ----------------
 # ---- shared client script ----

@@ -362,13 +362,14 @@ def main():
         uncl = all_html[out / 'runs' / 'M900103' / 'index.html']
         ck('unclassified goal description escaped',
            ('&quot;quotes&quot;' in uncl or '&#34;quotes&#34;' in uncl) and '&lt;angles&gt;' in uncl)
-        coauth = all_html[out / 'policy' / 'co-authors' / 'index.html']
-        ck('the multiple-authors policy page exists', 'Consent of co-authors' in coauth)
+        policy = 'https://github.com/ToolAssisted-run#210-multiple-author-submission-policy'
+        ck('the multiple-authors policy lives in the constitution, not on a site page',
+           not (out / 'policy' / 'co-authors').exists())
         ck('the submit form links the policy, hidden until a second author',
            'class="rules coauthnote" hidden' in all_html[out / 'submit' / 'index.html']
-           and 'policy/co-authors/' in all_html[out / 'submit' / 'index.html'])
+           and policy in all_html[out / 'submit' / 'index.html'])
         ck('the import page links the policy',
-           'policy/co-authors/' in all_html[out / 'import' / 'index.html'])
+           policy in all_html[out / 'import' / 'index.html'])
         modlog = all_html[out / 'policy' / 'moderation-log' / 'index.html']
         ck('report anchors match their links',
            set(re.findall(r'id="(R\d+)"', modlog)) ==
