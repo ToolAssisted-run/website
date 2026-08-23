@@ -328,6 +328,15 @@ concerns use **contact@toolassisted.run** (§10).
 
 ### Edits (the record can be corrected; the history always shows)
 
+**An edit that changes what was judged voids the judgement.** A new
+encode, a changed scoring (stated metric values or stated time) or a
+replaced movie file invalidates every live verification on the run (the
+run leaves the ranking until verified again); a replaced movie file also
+invalidates its reproductions (they synced the old file). The archivist
+does this on both edit paths, logs it, and a dry run announces it
+(`would_void`), so the Edit run form asks "are you sure" before sending.
+Notes, tool, files list, dates, disclosures and authors void nothing.
+
 - **One "Edit run" panel serves authors and covering experts** (`/api/edit`):
   notes, emulator, completion date, goal description, encode, stated time
   (video-only), metric values. Authors alone may also revise the author list

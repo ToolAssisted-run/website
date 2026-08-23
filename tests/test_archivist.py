@@ -1106,6 +1106,38 @@ def main():
             c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'xtwo', 'run': 'M7229'})
             ck('imported act rejected', c == 400 and 'Imported' in r.get('error', ''))
 
+            # --- an edit that changes what was judged voids the acts ---
+            c, r, _ = call(U + '/api/submit', dict(sub, dry_run='0', encode='https://youtu.be/goodvid12345'), uniq_files())
+            ck('a run to edit', c == 200, str(r)[:200])
+            vrun = r['id']
+            c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'watcher', 'run': vrun})
+            c, r, _ = call(U + '/api/reproduce', {'key': KEY, 'user': 'helper', 'run': vrun, 'emulator': 'x'},
+                           {'screenshot': ('end.png', PNG)})
+            ck('verified and reproduced', c == 200 and r['status']['reproduced'] == 'community', str(r)[:200])
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun, 'notes': 'fresh notes'})
+            ck('a notes edit voids nothing', c == 200 and r['voided'] == [], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
+                                             'encode': 'https://youtu.be/videoonly001', 'dry_run': '1'})
+            ck('the dry run announces what an encode change would void',
+               c == 200 and r['would_void'] == ['verifications'], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
+                                             'encode': 'https://youtu.be/videoonly001'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            vj = json.loads((work / f'games/nes/pinball/runs/{vrun}/run.json').read_text())
+            ck('an encode change invalidates the verifications and unranks the run',
+               c == 200 and r['voided'] == ['verifications'] and vj['status']['verified'] == 'none'
+               and all(v.get('invalidated') for v in vj['verifications'])
+               and vj['status']['reproduced'] == 'community', f'{r} {vj["status"]}')
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run', 'target': vrun,
+                            'field': 'movie', 'reason': 'a resynced movie file, on the record'},
+                           {'movie': ('new.bk2', make_bk2())})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            vj = json.loads((work / f'games/nes/pinball/runs/{vrun}/run.json').read_text())
+            ck('a movie replacement voids the reproductions too',
+               c == 200 and vj['status']['reproduced'] == 'none'
+               and all(x.get('invalidated') for x in vj['reproductions']), f'{c} {r} {vj["status"]}')
+
             # --- cases: upheld path ---
             c, r, _ = call(U + '/api/case/open', {'key': KEY, 'user': 'disputer',
                                                  'run': 'M900010', 'reason': 'Desyncs at 3:20.'})

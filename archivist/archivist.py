@@ -1222,6 +1222,37 @@ def place_subcategory(categories, category, raw_sub):
         category.pop('sub', None)
     return None
 
+VOIDING_FIELDS = {'encode', 'duration', 'movie'}   # plus every metric:<key>
+
+def void_acts_for(run, changed, by):
+    """What an edit does to the acts already on the run: a new encode, a new
+    movie or a changed score means the verifiers judged something else, so
+    every live verification is invalidated (the run drops out of the
+    ranking until somebody verifies it again); a new movie also voids the
+    reproductions, which synced the old file. Returns the kinds voided."""
+    voided = []
+    scoring = any(c == 'duration' or c.startswith('metric:') for c in changed)
+    if ('encode' in changed or 'movie' in changed or scoring):
+        what = 'the movie file' if 'movie' in changed else ('the encode' if 'encode' in changed else 'the scoring')
+        for v in run.get('verifications', []):
+            if not v.get('invalidated'):
+                v['invalidated'] = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
+                                    'reason': f'{what} changed after this verification'}
+                if 'verifications' not in voided: voided.append('verifications')
+    if 'movie' in changed:
+        for r_ in run.get('reproductions', []):
+            if not r_.get('invalidated'):
+                r_['invalidated'] = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
+                                     'reason': 'the movie file changed after this reproduction'}
+                if 'reproductions' not in voided: voided.append('reproductions')
+    if voided:
+        sync_status(run)
+    return voided
+
+def live_acts(run):
+    return {'verifications': sum(1 for v in run.get('verifications', []) if not v.get('invalidated')),
+            'reproductions': sum(1 for v in run.get('reproductions', []) if not v.get('invalidated'))}
+
 def parse_stated_time(raw):
     """A time typed by a person, [h:]mm:ss[.mmm], as seconds; (value, error)."""
     stated = (raw or '').strip()
@@ -1469,12 +1500,18 @@ def expert_edit():
                               'rerecords': parsed_movie['rerecords'],
                               'start': parsed_movie['start'],
                               **({'fps': parsed_movie['fps']} if parsed_movie.get('fps') else {})}
+            would_void = []
+            if field in VOIDING_FIELDS and live_acts(run)['verifications']: would_void.append('verifications')
+            if field == 'movie' and live_acts(run)['reproductions']: would_void.append('reproductions')
             if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
-                                'from': old_value, 'to': value})
+                                'from': old_value, 'to': value, 'would_void': would_void})
+            voided = void_acts_for(run, [field], actor)
             (run_dir / 'run.json').write_text(json.dumps(
                 {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
             log_edit('run', target, field, old_value, value, actor, reason)
+            if voided:
+                log_edit('run', target, 'acts voided', ', '.join(voided), 'by the change of ' + field, actor, reason)
 
         elif kind == 'game':
             target_match = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', target)
@@ -2560,8 +2597,13 @@ def edit_run():
             return fail('nothing to change: every value sent already matches the '
                         'record (send notes, emulator, completed, goalDescription, '
                         'encode, attachments, or, video-only, time)')
+        # what this revision would void (the form asks before sending)
+        would_void = []
+        if any(c in ('encode', 'duration') or c.startswith('metric:') for c in changed):
+            if live_acts(run)['verifications']: would_void.append('verifications')
         if dry_run:
-            return jsonify({'ok': True, 'dry_run': True, 'would_change': changed})
+            return jsonify({'ok': True, 'dry_run': True, 'would_change': changed, 'would_void': would_void})
+        voided = void_acts_for(run, changed, user)
         if 'notes' in changed:
             (run_dir / 'notes.md').write_text(notes)
         if new_attachments:
@@ -2592,7 +2634,7 @@ def edit_run():
                      user, "The author's own revision." if is_author else reason)
         commit_push(f'Edit {run_id}: {", ".join(changed)} by '
                     f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
-    return jsonify({'ok': True, 'run': run_id, 'changed': changed})
+    return jsonify({'ok': True, 'run': run_id, 'changed': changed, 'voided': voided})
 
 @app.post('/api/movie/inspect')
 def movie_inspect():

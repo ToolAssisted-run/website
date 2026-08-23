@@ -1136,11 +1136,34 @@
           if (fileRowsOf[form.id] && !fileRowsOf[form.id].valid()) return;
           var fd = new FormData(form);
           fd.append('run', runData.run);
-          post(path, fd, actionBtn(form)).then(function(res){
-            if (res.ok && res.j.ok) {
-              noteBuilt(msgBox, 'Recorded, thank you.', res.j.serial);
-            } else note(msgBox, res.j.error || 'something went wrong', false);
-          });
+          function send(){
+            post(path, fd, actionBtn(form)).then(function(res){
+              if (res.ok && res.j.ok) {
+                var voided = (res.j.voided || []).length
+                  ? ' Its ' + res.j.voided.join(' and ') + ' were invalidated by this change.' : '';
+                noteBuilt(msgBox, 'Recorded, thank you.' + voided, res.j.serial);
+              } else note(msgBox, res.j.error || 'something went wrong', false);
+            });
+          }
+          // an edit that would void the acts on the run (a verified run's
+          // encode, scoring or movie; a reproduced run's movie) asks first:
+          // a dry run says what would be voided before anything is sent
+          if (form.id === 'f-edit') {
+            var probe = new FormData(form);
+            probe.append('run', runData.run); probe.append('dry_run', '1');
+            post(path, probe, actionBtn(form)).then(function(res){
+              if (!(res.ok && res.j.ok)) { note(msgBox, res.j.error || 'something went wrong', false); return; }
+              var wv = res.j.would_void || [];
+              if (wv.length) {
+                var text = wv.indexOf('verifications') >= 0
+                  ? 'This run is verified. The change you are saving (encode, scoring or movie) invalidates its verifications: it leaves the ranking until somebody verifies it again.'
+                  : '';
+                if (wv.indexOf('reproductions') >= 0) text += (text ? ' ' : '') + 'Its reproductions are invalidated too: they synced the old movie.';
+                if (!window.confirm(text + ' Save anyway?')) { setMark(actionBtn(form), '', ''); return; }
+              }
+              send();
+            });
+          } else send();
         });
       }
       if (!d.loggedIn) {
