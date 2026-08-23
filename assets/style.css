@@ -744,3 +744,5 @@ input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::
 .panel.done .pnum{background:var(--accent);color:#04140A}
 .panel.broken .pnum{border-color:#DC2626;color:#DC2626;background:transparent}
 .needline{color:#DC2626;font-weight:600}
+.epanel{border-top:2.5px solid var(--hair);margin-top:14px;padding-top:10px}
+.epanel .ptitle{font-size:.95rem;margin:0 0 4px}

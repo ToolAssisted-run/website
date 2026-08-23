@@ -1205,6 +1205,31 @@
           var notesArea = form.querySelector('[name=notes]');
           fetch(runData.notesUrl).then(function(r){ return r.ok ? r.text() : ''; })
             .then(function(txt){ notesArea.value = txt; }).catch(function(){});
+          // the same rule as the submit form: Save waits until every field
+          // is valid, and a line beside it names the first that is not
+          var saveBtn = document.getElementById('fe-save'), needLine = document.getElementById('fe-need');
+          function editProblem(){
+            var enc = form.querySelector('[name=encode]').value.trim();
+            if (!enc) return 'The run: an encode link is required';
+            if (!/^https?:\/\/\S+$/.test(enc)) return 'The run: the encode link is not a URL';
+            if (isAuthor && !form.querySelector('[name=authors]').value) return 'The run: name at least one author';
+            var badSha = form.querySelector('input[name=file_sha1].bad');
+            if (badSha) return 'Reproduction information: a SHA1 is exactly 40 hexadecimal characters';
+            var badMetric = Array.prototype.filter.call(form.querySelectorAll('input[name^=metric_]'), function(i){ return i.value !== '' && (isNaN(+i.value) || +i.value < 0); })[0];
+            if (badMetric) return 'Scoring: ' + badMetric.previousElementSibling.textContent.split(' (')[0] + ' must be a number, zero or more';
+            var why = form.querySelector('[name=reason]');
+            if (!isAuthor && why.value.trim().length < 8) return 'Why: say it publicly, at least 8 characters';
+            return '';
+          }
+          function paintEdit(){
+            var problem = editProblem();
+            saveBtn.disabled = !!problem;
+            needLine.hidden = !problem;
+            needLine.textContent = problem ? problem + '.' : '';
+          }
+          form.addEventListener('input', paintEdit);
+          form.addEventListener('change', paintEdit);
+          paintEdit();
         });
       }
       if (!isAuthor && !runData.imported) {
