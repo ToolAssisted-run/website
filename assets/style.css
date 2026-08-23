@@ -746,3 +746,11 @@ input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::
 .needline{color:#DC2626;font-weight:600}
 .epanel{border-top:2.5px solid var(--hair);margin-top:14px;padding-top:10px}
 .epanel .ptitle{font-size:.95rem;margin:0 0 4px}
+.subrowed textarea{flex:2;min-width:12rem;resize:vertical}
+/* the rules dialog on game pages (#60) */
+.rulesbtn{margin:0 0 10px;padding:6px 12px;font-size:.78rem}
+.rulesdlg{border:0;padding:0;background:transparent;max-width:min(92vw,56rem);width:100%;margin:auto}
+.rulesdlg::backdrop{background:rgba(7,13,23,.6)}
+.rulesbox{background:var(--bg);border:2.5px solid var(--hairs);border-radius:14px;padding:22px 26px;box-shadow:var(--shadow);color:var(--ink);max-height:82vh;overflow:auto}
+.rulesbox h3{margin:0 0 10px}
+.rulesbox .btnrow{justify-content:flex-end;margin-top:14px}

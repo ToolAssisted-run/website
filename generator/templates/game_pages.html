@@ -40,7 +40,12 @@
 {% endif %}
 {% for c in combos %}
 <section class="combo" data-combo="{{ c.ckey }}"><h2>{{ c.label }}</h2>
-<div class="rules fullw rulesmd"><b>Rules:</b>{{ md_html(c.rules) }}</div>
+{# the rules live in a dialog (#60): markdown, any length, out of the board's way #}
+{% if c.rules %}<button type="button" class="btn shade rulesbtn" data-rules="{{ c.ckey }}">View rules</button>
+<dialog class="rulesdlg" id="rules-{{ c.ckey|replace('/', '-')|replace('|', '-') }}"><div class="rulesbox">
+<h3>Rules: {{ c.label }}</h3>
+<div class="rulesmd notes">{{ md_html(c.rules) }}</div>
+<div class="btnrow"><button type="button" class="btn rulesclose">Close</button></div></div></dialog>{% endif %}
 {% if c.custom_metrics %}
 <p class="rules"><b>Ranked by:</b> {% for m in c.mdefs %}{{ m['label'] }} ({{ 'lower' if m['better'] == 'lower' else 'higher' }} is better){% if not loop.last %}, then {% endif %}{% endfor %}</p>
 {% endif %}
@@ -110,6 +115,18 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {% endfor %}
 </tbody></table></section>
 {% endif %}
+<script>
+// rules dialogs: one per board, opened by its button, closed by Close, Escape or a click outside
+(function(){
+  document.querySelectorAll('.rulesbtn').forEach(function(b){
+    var dlg = document.getElementById('rules-' + b.dataset.rules.replace(/[\/|]/g, '-'));
+    if (!dlg) return;
+    b.addEventListener('click', function(){ dlg.showModal(); });
+    dlg.querySelector('.rulesclose').addEventListener('click', function(){ dlg.close(); });
+    dlg.addEventListener('click', function(ev){ if (ev.target === dlg) dlg.close(); });
+  });
+})();
+</script>
 {% if multi %}
 <script>
 (function(){

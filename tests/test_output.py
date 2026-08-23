@@ -594,6 +594,9 @@ def main():
            and '"selector": "dropdown"' in all_html[out / 'games' / 'dos' / 'subgame' / 'edit' / 'index.html'])
         ck('the composed rules carry the subcategory fragment',
            'Sub rule any.' in subpage_ and 'Sub rule 100.' in subpage_)
+        ck('rules live in a dialog behind a View rules button (#60)',
+           'class="btn shade rulesbtn"' in subpage_ and '<dialog class="rulesdlg"' in subpage_
+           and 'rulesmd' in subpage_)
         ck('the run page carries the move control with the categories and the current spot',
            'id="f-move"' in all_html[out / 'runs' / 'M900110' / 'index.html']
            and '"goal": "episode-1"' in all_html[out / 'runs' / 'M900110' / 'index.html']

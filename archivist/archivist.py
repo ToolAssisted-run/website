@@ -959,9 +959,9 @@ def category_add():
         rule = (category_form.get('rule') or '').strip()
         if not (1 <= len(label) <= 80):
             return fail('a label fits in 80 characters')
-        if not (1 <= len(rule) <= 500) and not (category_form.get('parent') and len(rule) <= 500):
-            return fail('a rule fits in 500 characters; it is what a verifier '
-                        'holds a run to')
+        if not (1 <= len(rule) <= 2000) and not (category_form.get('parent') and len(rule) <= 2000):
+            return fail('a rule fits in 2000 characters of markdown; it is what a '
+                        'verifier holds a run to')
         # 'key' is the submitter-key auth field; the option key travels as
         # option_key (the same collision removal/decide once had)
         option_key = slugify((category_form.get('option_key') or label).strip())
@@ -1694,7 +1694,7 @@ def expert_edit():
                 return jsonify({'ok': True, 'kind': kind, 'key': target,
                                 'field': field, 'from': old_value, 'to': new_value,
                                 'runs_seeded': touched})
-            limit = 80 if field == 'label' else 500
+            limit = 80 if field == 'label' else 2000   # rules are markdown
             if not (1 <= len(value) <= limit):
                 return fail(f'a {field} fits in {limit} characters')
             old_value = option.get(field, '')

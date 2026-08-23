@@ -1381,7 +1381,7 @@
         }
         var labelIn = field('Label'); labelIn.value = c.label; labelIn.maxLength = 80;
         labelIn.addEventListener('input', function(){ c.label = labelIn.value; refresh(); });
-        var ruleIn = field('Rule', 'textarea'); ruleIn.value = c.rule; ruleIn.rows = 2; ruleIn.maxLength = 500;
+        var ruleIn = field('Rule (markdown)', 'textarea'); ruleIn.value = c.rule; ruleIn.rows = 4; ruleIn.maxLength = 2000;
         ruleIn.addEventListener('input', function(){ c.rule = ruleIn.value; refresh(); });
         var metricsRoot = el('div');
         metricsRoot.innerHTML = byId('med-skeleton').innerHTML;
@@ -1419,7 +1419,7 @@
           } else {
             var l = el('input'); l.value = sc.label; l.maxLength = 80; l.placeholder = 'label';
             l.addEventListener('input', function(){ sc.label = l.value; refresh(); });
-            var r = el('input'); r.value = sc.rule; r.maxLength = 500; r.placeholder = 'rule fragment (optional)';
+            var r = el('textarea'); r.value = sc.rule; r.maxLength = 2000; r.rows = 2; r.placeholder = 'rule fragment, markdown (optional)';
             r.addEventListener('input', function(){ sc.rule = r.value; refresh(); });
             row.appendChild(l); row.appendChild(r);
           }

@@ -188,7 +188,7 @@ def main():
         ck('open-cases box', 'Open cases' in contrib)
         ck('moderation log page exists', (out / 'policy/moderation-log/index.html').exists())
         ck('act zone on community run', 'actzone' in r2 and 'f-repro' in r2)
-        ck('edit form exposes encode link editor', 'name="encode"' in r2 and 'Encode link' in r2)
+        ck('the run page links the edit mode of the submit form', 'submit/?edit=M900002' in r2 and 'id="f-edit-wrap"' in r2)
         ck('imported act zone: edit only, no community acts', 'actzone' in leg
            and 'f-edit' in leg and 'f-repro' not in leg and 'f-expertnote' not in leg)
         ck('vote form present with open case', 'f-vote' in r3)

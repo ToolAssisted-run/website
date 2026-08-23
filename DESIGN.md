@@ -69,8 +69,10 @@ group  (groups.json)                      a game family ACROSS systems
   never be deleted. The reserved keys `uncategorized` and `unclassified`
   cannot name a real group. Every group has a page and a card,
   however empty: a group somebody just made IS the state worth seeing.
-- **Categories** are per-game dimensions; each option carries a rule fragment,
-  rules compose per combination. New options exist the moment they are
+- **Categories** are per-game dimensions; each option carries a rule
+  (markdown, up to 2000 characters; a subcategory adds its own fragment),
+  rules compose per combination and open in a "View rules" dialog on the
+  game page rather than cluttering the board (#60). New options exist the moment they are
   created; experts refine the wording, and delete unused mistakes.
 - **Subcategories** (issue #43): a category option may define a second
   level (`subcategories`: key, label, optional rule fragment), e.g. Episode 1
