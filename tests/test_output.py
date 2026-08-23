@@ -1079,6 +1079,12 @@ def main():
            aside.find('Latest contributions') >= 0
            and aside.find('Latest contributions') < aside.find('Contributor board'),
            aside[:160])
+        board = aside[aside.find('Contributor board'):]
+        ck('the board carries no points-tier chip beside the points (#59)',
+           'role-contrib' not in board, board[:300])
+        ck('an achievement wears a tooltipped medal on the board',
+           re.search(r'<span class="medal medal-(gold|silver|bronze)" title="[^"]+: [^"]+"', board) is not None,
+           board[:400])
         feed = aside[aside.find('Latest contributions'):]
         feed = feed[:feed.find('Contributor board')]
         entries = re.findall(r'<p class="statline newsline">(.*?)</p>', feed, re.S)

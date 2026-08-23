@@ -548,6 +548,67 @@ for r in runs:
         award(act['user'], PT_CONSOLE, 'console verification', r,
               act.get('at') or act.get('date'))
 
+# ---- medals: achievements read off the acts above (issue #59) ----
+# Nothing is stored: every medal is recomputed from the recorded acts at
+# build time, so the board cannot disagree with the archive. Each is
+# (key, metal, mark, words); the words are the tooltip.
+MEDAL_RULES = [
+    ('console-1',   'bronze', 'H', 1,   'console verification', 'Hardware verifier: played a run back on original hardware'),
+    ('console-10',  'gold',   'H', 10,  'console verification', 'Hardware verifier: ten console verifications'),
+    ('repro-10',    'bronze', 'R', 10,  'reproduction',         'Reproducer: ten reproductions'),
+    ('repro-100',   'silver', 'R', 100, 'reproduction',         'Reproducer: a hundred reproductions'),
+    ('repro-500',   'gold',   'R', 500, 'reproduction',         'Reproducer: five hundred reproductions'),
+    ('verify-10',   'bronze', 'V', 10,  'verification',         'Verifier: ten verifications'),
+    ('verify-100',  'silver', 'V', 100, 'verification',         'Verifier: a hundred verifications'),
+    ('verify-500',  'gold',   'V', 500, 'verification',         'Verifier: five hundred verifications'),
+    ('first-25',    'silver', '1', 25,  'first',                'Pathfinder: the first to reproduce or verify twenty-five runs'),
+    ('first-100',   'gold',   '1', 100, 'first',                'Pathfinder: the first to reproduce or verify a hundred runs'),
+]
+
+def _act_kind(desc):
+    if desc == 'console verification':
+        return 'console verification'
+    return 'reproduction' if 'reproduction' in desc else 'verification'
+
+def _recent_leaders(days):
+    """Who earned the most points in the last `days` days (ties share it)."""
+    since = (TODAY - datetime.timedelta(days=days)).isoformat()
+    tally = {}
+    for p in points.values():
+        got = sum(pts for (d, desc, pts, r) in p['acts'] if (d or '')[:10] >= since)
+        if got > 0:
+            tally[p['user'].lower()] = got
+    if not tally:
+        return {}
+    best = max(tally.values())
+    return {u: n for u, n in tally.items() if n == best}
+
+_week_leaders = _recent_leaders(7)
+_month_leaders = _recent_leaders(30)
+
+def medals_of(user):
+    """The medals a member holds right now: [(key, metal, mark, words)]."""
+    p = points.get(canon(user))
+    if not p:
+        return []
+    out = []
+    low = p['user'].lower()
+    if low in _week_leaders:
+        out.append(('week', 'gold', 'W', f'Top contributor this week: {_week_leaders[low]} points in the last seven days'))
+    if low in _month_leaders:
+        out.append(('month', 'gold', 'M', f'Top contributor this month: {_month_leaders[low]} points in the last thirty days'))
+    counts = {}
+    for (d, desc, pts, r) in p['acts']:
+        counts[_act_kind(desc)] = counts.get(_act_kind(desc), 0) + 1
+        if desc.startswith('first '):
+            counts['first'] = counts.get('first', 0) + 1
+    best = {}   # one medal per family: the highest earned
+    for key, metal, mark, need, kind, words in MEDAL_RULES:
+        if counts.get(kind, 0) >= need:
+            best[mark] = (key, metal, mark, words)
+    out.extend(best.values())
+    return out
+
 # ---- author news: events on your runs (reproduced / verified / liked) ----
 author_news = {}
 for r in runs:

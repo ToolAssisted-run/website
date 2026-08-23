@@ -38,6 +38,7 @@ from model import (
     cat_label,
     console_state,
     contrib_tier,
+    medals_of,
     credited,
     eff_state,
     experts_reg,
@@ -473,6 +474,14 @@ def state_chip(r):
         return '<span class="chip verchip">Verified</span>'
     return '<span class="chip pendchip">Pending</span>'
 
+def medals(name):
+    """The member's medals as little discs, each naming its achievement in
+    its tooltip (issue #59); nothing when they hold none."""
+    out = [f'<span class="medal medal-{metal}" title="{esc(words)}" '
+           f'aria-label="{esc(words)}">{esc(mark)}</span>'
+           for key, metal, mark, words in medals_of(name)]
+    return (' <span class="medals">' + ''.join(out) + '</span>') if out else ''
+
 def badge_chip(pts):
     """The milestone chip, for lists where everybody is already a contributor
     and a plain 'Contributor' on every row would say nothing."""
@@ -594,7 +603,7 @@ TEMPLATES = pathlib.Path(__file__).resolve().parent / 'templates'
 _HTML_HELPERS = (
     'role_badges group_chip expert_line card_views chip_views md_html run_date_cell '
     'frames_html wiki_html inline author_chip member_chip thumb_html console_tick '
-    'tick console_chip state_chip badge_chip dl_members dl_heldnames dl_games '
+    'tick console_chip state_chip badge_chip medals dl_members dl_heldnames dl_games '
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
     'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '

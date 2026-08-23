@@ -397,6 +397,9 @@ input.bad{border-color:#DC2626!important}
  border:2px solid var(--hair);border-radius:7px;padding:3px 6px}
 /* tiers: the same green, filling up. A badge that changes hue every milestone
    turns a roster into a sweet shop; this reads as more of the same thing. */
+.medals{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
+.medal{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font:700 .62rem/1 'JetBrains Mono',ui-monospace,monospace;color:#1A1205;border:2px solid rgba(0,0,0,.25);box-shadow:0 1px 0 rgba(0,0,0,.35);cursor:help}
+.medal-gold{background:#E5B933}.medal-silver{background:#C9CED6}.medal-bronze{background:#C98A4B}
 .role-contrib.tier-1k{background:rgba(34,197,94,.20)}
 .role-contrib.tier-5k{background:rgba(34,197,94,.32)}
 .role-contrib.tier-10k{background:rgba(34,197,94,.46)}

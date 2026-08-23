@@ -28,7 +28,7 @@
 {{ run_date_cell(r) }}
 <td class="ctr">{{ tick(st2[0]) }}</td><td class="ctr">{{ tick(st2[1]) }}</td>{% if hw_any %}<td class="ctr">{{ console_tick(r) }}</td>{% endif %}</tr>
 {% endfor %}</tbody></table></details></section>
-<section><details class="secfold" open><summary><h2>Contributions · {{ cpts }} points{{ badge_chip(cpts) }}</h2></summary>
+<section><details class="secfold" open><summary><h2>Contributions · {{ cpts }} points{{ badge_chip(cpts) }}{{ medals(a.username) }}</h2></summary>
 {% if acts %}
 <table class="sortable"><thead><tr><th>Date</th><th>Act</th><th>Run</th><th class="num">Points earned</th></tr></thead>
 <tbody>{% for d, desc, pts, r_ in acts %}

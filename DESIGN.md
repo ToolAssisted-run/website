@@ -552,7 +552,15 @@ hard-to-reproduce systems (flagged in systems.json) +50 on any reproduction ·
 first verification 20 + 1/day waiting, topping out at 1,000; later
 verifications 20 · console verification a fixed 1,000 (real hardware, a
 capture setup, a recording). Both contribute worklists sort by bounty.
-Badges by thresholds alone (1k/5k/10k/25k), never act counts. **No currency
+Badges by thresholds alone (1k/5k/10k/25k), never act counts; the tier chip
+shows beside a name everywhere except on the contributor board, where the
+points column already says it (#59). There, and on the member page, **medals**
+take its place: little gold/silver/bronze discs, one letter each, the
+achievement in the tooltip. All recomputed from the recorded acts at build
+time, nothing stored: top contributor of the last 7 / 30 days (W, M; ties
+share), ten / a hundred / five hundred reproductions (R) or verifications (V),
+twenty-five / a hundred firsts (1), one / ten console verifications (H);
+one medal per family, the highest earned. **No currency
 buys anything** (anti-farming: a currency without privileges is not worth
 gaming). Imports award nothing.
 
