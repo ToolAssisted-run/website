@@ -27,6 +27,7 @@ from settings import (
     DISCOURSE_KEY,
     DISCOURSE_URL,
     GAMES_CATEGORY_ID,
+    MOVIES_CATEGORY_ID,
     ROLE_GROUP,
     SITE_URL,
 )
@@ -90,7 +91,7 @@ def ensure_topic(run, game_title, system, slug, goal_label, authors, kind='submi
             headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'archivist',
                      'Content-Type': 'application/json'},
             data=json.dumps({'title': title[:255], 'raw': body,
-                             'category': GAMES_CATEGORY_ID,
+                             'category': MOVIES_CATEGORY_ID,
                              'tags': [f'{system}-{slug}'[:60]]}).encode())
         with urllib.request.urlopen(req, timeout=20) as r:
             topic = json.loads(r.read())

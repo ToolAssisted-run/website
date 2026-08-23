@@ -42,6 +42,8 @@ DISCOURSE_KEY = os.environ.get('DISCOURSE_KEY', '')
 BOT_USER = 'archivist'          # our own account, never a role holder
 
 GAMES_CATEGORY_ID = int(os.environ.get('GAMES_CATEGORY_ID', '12'))
+# one topic per archived run lives in Movies; a game's anchor topic in Games
+MOVIES_CATEGORY_ID = int(os.environ.get('MOVIES_CATEGORY_ID', '13'))
 
 SITE_URL = 'https://toolassisted.run'
 

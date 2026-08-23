@@ -622,9 +622,11 @@ archivist, module responsibilities). What matters designwise:
   is one entry. Twitch absent (authenticated thumbnails); Dailymotion cannot
   prove existence (community catches dead links).
 - **The forum** (Discourse, self-hosted): identity provider, discussion
-  home, notifications. Every run gets a topic (created in the same commit as
-  the archival, so the pointer is never lost); every game gets an **anchor
-  topic** under its tag — the tag page IS the game's forum home
+  home, notifications. Every run gets a topic in the **Movies** category
+  (id 13, `MOVIES_CATEGORY_ID`; created in the same commit as the archival,
+  so the pointer is never lost); every game gets an **anchor topic** in
+  **Games** (id 12) under its tag, and the tag page across categories
+  (`/tag/<system>-<slug>`) IS the game's forum home, run topics included
   (`max_tag_length` raised to 60). Run pages proxy their thread through the
   archivist (`/api/discussion`, 60 s cache) and accept replies session-only,
   posting under the member's own Discourse name. Role groups on the forum
