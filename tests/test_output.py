@@ -609,10 +609,13 @@ def main():
            and 'value="strong-language" checked' not in rpage_)
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
-           all(f'id="f-ge-{f}"' in gedit_ for f in ('released', 'unofficial', 'discord', 'website', 'rta')))
-        ck('the unofficial flag is a real checkbox mirrored into the field',
-           'class="mirror"' in gedit_ and ' checked>' in gedit_
-           and 'name="value" value="yes"' in gedit_)
+           all(f'id="ge-{f}"' in gedit_ for f in ('title', 'thumb', 'released', 'unofficial', 'discord', 'website', 'rta')))
+        ck('the unofficial flag is a checkbox, ticked from the record',
+           'id="ge-unofficial" checked' in gedit_)
+        ck('the editor has exactly one Save, at the bottom, and one reason',
+           gedit_.count('id="ge-save"') == 1 and 'id="ge-why"' in gedit_
+           and gedit_.index('id="ge-cats"') < gedit_.index('id="ge-save"')
+           and '<button class="btn">Rename</button>' not in gedit_)
         ck('the editor shows the current values', 'value="1989-03"' in gedit_
            and 'value="https://discord.gg/tg1"' in gedit_)
         ck('a game without properties shows none',
@@ -974,7 +977,7 @@ def main():
             or (out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html').read_text()
         ck('every game has its editor page, gated and data-carrying',
            'id="gameeditdata"' in editp_ and 'id="ge-gate"' in editp_
-           and 'id="f-ge-add"' in editp_)
+           and 'id="ge-addcat"' in editp_)
         ck('the game page expert menu links the editor',
            'href="edit/"' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the game page carries the expert delete',

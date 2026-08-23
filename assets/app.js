@@ -1290,7 +1290,13 @@
     });
   }
 
-  // ---- the game editor (covering experts) ----
+  // ---- the game editor (covering experts): one local draft, one Save ----
+  // The page edits a copy of the game's record. Nothing is written until
+  // Save, which turns the draft's differences into the ordered sequence of
+  // logged edits the archivist knows (title, properties, thumbnail, new
+  // categories and subcategories, renames and rules, metrics, deletions,
+  // orders), all under one public reason. The first failure stops the
+  // sequence; what went through is the new baseline, the rest stays pending.
   var gameEditEl = document.getElementById('gameeditdata');
   if (gameEditEl) {
     var gameEditData = JSON.parse(gameEditEl.textContent);
@@ -1313,384 +1319,301 @@
         return;
       }
       gate.hidden = true;
-      document.getElementById('geditor').hidden = false;
+      var editor = document.getElementById('geditor');
+      editor.hidden = false;
       var msg = document.getElementById('ge-msg');
-      // messages land beside the form they answer (#50): a form's own
-      // .prop-msg or .actmsg when it has one, the page's otherwise
-      function msgFor(form){
-        return (form && form.querySelector('.prop-msg, .actmsg')) || msg;
-      }
-      function noteSaved(text, serial, where){
-        noteBuilt(where || msg, text, serial);
-      }
-      function wire(id, path, confirmText, done){
-        var form = document.getElementById(id);
-        if (!form) return;
-        form.addEventListener('submit', function(ev){
-          ev.preventDefault();
-          if (confirmText && !window.confirm(confirmText)) return;
-          post(path, new FormData(form), actionBtn(form))
-            .then(function(res){
-              if (res.ok && res.j.ok) noteSaved(done(res.j, form), res.j.serial, msgFor(form));
-              else note(msgFor(form), res.j.error || 'something went wrong', false);
-            });
-        });
-      }
-      // progressive rows (#50): Edit unfolds the row's form, Cancel folds it
-      // back, a save rewrites the static value and folds it after a moment
-      document.querySelectorAll('.prop').forEach(function(row){
-        var form = row.querySelector('.prop-form');
-        var editBtn = row.querySelector('.prop-edit');
-        function fold(){ form.hidden = true; row.classList.remove('editing'); }
-        editBtn.addEventListener('click', function(){
-          form.hidden = false; row.classList.add('editing');
-          var first = form.querySelector('input:not([type=hidden]), textarea');
-          if (first) first.focus();
-        });
-        row.querySelector('.prop-cancel').addEventListener('click', function(){
-          form.reset(); form.querySelector('.prop-msg').hidden = true; fold();
-        });
-        row.fold = fold;
-      });
-      function showValue(form, text){
-        var row = form.closest('.prop');
-        if (!row) return;
-        var v = row.querySelector('.prop-value');
-        v.textContent = '';
-        if (text) v.textContent = text;
-        else v.appendChild(el('span', 'prop-empty', 'not set'));
-        setTimeout(function(){ if (row.fold) row.fold(); }, 1800);
-      }
-      wire('f-ge-title', '/api/expert/edit', null,
-           function(j, form){ showValue(form, j.to); return 'Renamed to ' + j.to + '.'; });
-      wire('f-ge-thumb', '/api/expert/edit', null,
-           function(j, form){ showValue(form, 'set'); return 'Thumbnail set.'; });
-      // the game properties (#44): one logged edit per field
-      ['released', 'unofficial', 'discord', 'website', 'rta'].forEach(function(field){
-        wire('f-ge-' + field, '/api/expert/edit', null,
-             function(j, form){
-               showValue(form, field === 'unofficial' ? (j.to === 'True' ? 'yes' : 'no') : j.to);
-               return j.to === '' ? 'Cleared ' + field + '.' : 'Saved ' + field + ': ' + j.to + '.';
-             });
-      });
-      wire('f-ge-add', '/api/category/add', null,
-           function(j){ return 'Added ' + j.key + '.'; });
-      var addFormMetrics = document.querySelector('#f-ge-add .metriced');
-      if (addFormMetrics) initMetricsEd(addFormMetrics, null);
+      var saveBtn = document.getElementById('ge-save');
+      var whyIn = document.getElementById('ge-why');
+      var pendingEl = document.getElementById('ge-pending');
+      var byId = function(id){ return document.getElementById(id); };
 
-      // one card per category option: edit in place, delete-if-empty
-      var box = document.getElementById('ge-cats');
-      // order: the selectors list categories left to right as the file
-      // does, so the popular ones go first. Arrows move a card one step
-      // and send the whole order; the same for a category's subcategories.
-      var orderMsg = el('p', 'actmsg'); orderMsg.hidden = true;
-      function reorder(keys, optionKey, btn, done){
-        var fd = new FormData();
-        fd.append('game', gameEditData.game);
-        fd.append('order', keys.join(','));
-        if (optionKey) fd.append('option', optionKey);
-        return post('/api/category/reorder', fd, btn).then(function(res){
-          if (res.ok && res.j.ok) { done(); noteSaved('Order saved.', res.j.serial, orderMsg); }
-          else note(orderMsg, res.j.error || 'something went wrong', false);
-        });
-      }
-      function arrows(list, item, keyOf, optionKey, container, render){
-        // ◀ ▶ for one item of a list; on success the array and the DOM follow
-        var wrap = el('span', 'orderbtns');
+      // ---- the baseline (what the archive holds) and the draft ----
+      var base = {
+        title: gameEditData.title,
+        props: {released: byId('ge-released').value, unofficial: byId('ge-unofficial').checked ? 'yes' : 'no',
+                discord: byId('ge-discord').value, website: byId('ge-website').value, rta: byId('ge-rta').value},
+        cats: (gameEditData.options || []).map(function(o){
+          return {key: o.key, label: o.label, rule: o.rule || '', runs: o.runs,
+                  metrics: JSON.stringify(o.metrics || []),
+                  subs: (o.subcategories || []).map(function(x){ return {key: x.key, label: x.label, rule: x.rule || '', runs: x.runs}; })};
+        })
+      };
+      // the draft: categories as live objects the cards edit in place
+      var draft = {cats: JSON.parse(JSON.stringify(base.cats))};
+      var newSeq = 0;
+
+      // ---- the cards ----
+      var box = byId('ge-cats');
+      function card(c){
+        var el_ = el('div', 'gecard');
+        c.el = el_;
+        var head = el('div', 'gehead');
+        head.appendChild(el('b', '', c.key || '(new)'));
+        head.appendChild(el('span', 'actmeta', ' ' + (c.runs || 0) + ' run' + (c.runs === 1 ? '' : 's')));
+        var order = el('span', 'orderbtns');
         [['◀', -1, 'Move left (earlier)'], ['▶', 1, 'Move right (later)']].forEach(function(spec){
           var b = el('button', 'authx orderbtn', spec[0]); b.type = 'button'; b.title = spec[2];
           b.addEventListener('click', function(){
-            var i = list.indexOf(item), j = i + spec[1];
-            if (j < 0 || j >= list.length) return;
-            var next = list.slice(); next.splice(i, 1); next.splice(j, 0, item);
-            reorder(next.map(keyOf), optionKey, b, function(){
-              list.length = 0; next.forEach(function(x){ list.push(x); });
-              render();
-            });
+            var i = draft.cats.indexOf(c), j = i + spec[1];
+            if (j < 0 || j >= draft.cats.length) return;
+            draft.cats.splice(i, 1); draft.cats.splice(j, 0, c);
+            renderCards();
           });
-          wrap.appendChild(b);
+          order.appendChild(b);
         });
-        return wrap;
-      }
-      box.appendChild(orderMsg);
-      var options = gameEditData.options || [];
-      function renderCards(){
-        box.querySelectorAll('.gecard').forEach(function(c){ c.remove(); });
-        options.forEach(buildCard);
-      }
-      function buildCard(o){
-        var card = el('div', 'gecard');
-        var head = el('div', 'gehead');
-        head.appendChild(el('b', '', o.key));
-        head.appendChild(el('span', 'actmeta',
-          ' ' + o.runs + ' run' + (o.runs === 1 ? '' : 's')));
-        head.appendChild(arrows(options, o, function(x){ return x.key; }, null, box, renderCards));
-        card.appendChild(head);
+        head.appendChild(order);
+        if (!c.runs) {
+          var del = el('button', 'btn danger', c.deleted ? 'Keep' : 'Delete'); del.type = 'button';
+          del.addEventListener('click', function(){
+            if (c.isNew) { draft.cats.splice(draft.cats.indexOf(c), 1); renderCards(); return; }
+            c.deleted = !c.deleted; renderCards();
+          });
+          head.appendChild(del);
+        }
+        el_.appendChild(head);
+        if (c.deleted) { el_.classList.add('deleted'); el_.appendChild(el('p', 'rules', 'Marked for deletion; Save removes it.')); return el_; }
         function field(labelText, tag){
           var lab = el('label', '', labelText + ' ');
           var inp = el(tag === 'textarea' ? 'textarea' : 'input');
           lab.appendChild(inp);
-          card.appendChild(lab);
+          el_.appendChild(lab);
           return inp;
         }
-        var labelInput = field('Label');
-        labelInput.value = o.label;
-        var ruleInput = field('Rule', 'textarea');
-        ruleInput.value = o.rule;
-        ruleInput.rows = 2;
-        // the category's metrics, editable like label and rule; adding one
-        // writes an explicit 0 onto every run here, for experts to fill
+        var labelIn = field('Label'); labelIn.value = c.label; labelIn.maxLength = 80;
+        labelIn.addEventListener('input', function(){ c.label = labelIn.value; refresh(); });
+        var ruleIn = field('Rule', 'textarea'); ruleIn.value = c.rule; ruleIn.rows = 2; ruleIn.maxLength = 500;
+        ruleIn.addEventListener('input', function(){ c.rule = ruleIn.value; refresh(); });
         var metricsRoot = el('div');
-        metricsRoot.innerHTML = document.getElementById('med-skeleton').innerHTML;
+        metricsRoot.innerHTML = byId('med-skeleton').innerHTML;
         var metricsBox = metricsRoot.firstElementChild;
-        card.appendChild(metricsBox);
-        var metricsEd = initMetricsEd(metricsBox, o.metrics || null);
-        var metricsBefore = metricsEd.value();
-        // subcategories (#43): a second level inside this category, each
-        // with a label and a rule fragment; added here, renamed here,
-        // removed here while empty. Every change is its own logged edit.
+        el_.appendChild(metricsBox);
+        var metricsEd = initMetricsEd(metricsBox, JSON.parse(c.metrics || '[]'));
+        c.metricsEd = metricsEd;
+        // the baseline takes the editor's own spelling of the same metrics,
+        // so an untouched category never reads as changed
+        if (!c.isNew) base.cats.forEach(function(b){ if (b.key === c.key && !b.metricsNormalized) { b.metrics = metricsEd.value(); b.metricsNormalized = true; } });
+        c.metrics = metricsEd.value();
+        metricsBox.addEventListener('input', refresh);
+        metricsBox.addEventListener('click', function(){ setTimeout(refresh, 0); });
+        // subcategories
         var subBox = el('div', 'subcats');
         subBox.appendChild(el('h4', '', 'Subcategories'));
-        subBox.appendChild(el('p', 'rules', 'Optional. A second level inside this category ' +
-          '(Episode 1: any%, 100%). Once one exists, every run here names one; the first ' +
-          'subcategory takes the runs already in the category.'));
         var subList = el('div', 'sublist');
-        function renderSubs(){
-          subList.innerHTML = '';
-          (o.subcategories || []).forEach(subRow);
-        }
         function subRow(sc){
           var row = el('div', 'subrowed');
-          row.appendChild(arrows(o.subcategories, sc, function(x){ return x.key; }, o.key, subList, renderSubs));
-          var labelIn = el('input'); labelIn.value = sc.label; labelIn.maxLength = 80; labelIn.placeholder = 'label';
-          var ruleIn = el('input'); ruleIn.value = sc.rule || ''; ruleIn.maxLength = 500; ruleIn.placeholder = 'rule fragment (optional)';
-          var whyIn = el('input'); whyIn.placeholder = 'why (public)'; whyIn.minLength = 8; whyIn.maxLength = 500;
-          row.appendChild(el('code', 'subkey', sc.key));
-          row.appendChild(labelIn); row.appendChild(ruleIn); row.appendChild(whyIn);
-          row.appendChild(el('span', 'actmeta', sc.runs + ' run' + (sc.runs === 1 ? '' : 's')));
-          var rowMsg = el('p', 'actmsg'); rowMsg.hidden = true;
-          var saveSub = el('button', 'btn', 'Save'); saveSub.type = 'button';
-          saveSub.addEventListener('click', function(){
-            var jobs = [];
-            if (labelIn.value.trim() !== sc.label) jobs.push(['label', labelIn.value.trim()]);
-            if (ruleIn.value.trim() !== (sc.rule || '')) jobs.push(['rule', ruleIn.value.trim()]);
-            if (!jobs.length) { note(rowMsg, 'Nothing changed on ' + sc.key + '.', false); return; }
-            var serial;
-            (function step(){
-              if (!jobs.length) { sc.label = labelIn.value.trim(); sc.rule = ruleIn.value.trim(); noteSaved('Saved ' + sc.key + '.', serial, rowMsg); return; }
-              var job = jobs.shift();
-              var fd = new FormData();
-              fd.append('kind', 'category');
-              fd.append('target', gameEditData.game + ':' + o.key + '/' + sc.key);
-              fd.append('field', job[0]); fd.append('value', job[1]);
-              fd.append('reason', whyIn.value.trim());
-              post('/api/expert/edit', fd, saveSub).then(function(res){
-                if (res.ok && res.j.ok) { serial = res.j.serial; step(); }
-                else note(rowMsg, res.j.error || 'something went wrong', false);
-              });
-            })();
-          });
-          row.appendChild(saveSub);
-          // any empty subcategory may go; so may the last one, runs and all
-          // (they stay in the category, naming none)
-          if (!sc.runs || o.subcategories.length === 1) {
-            var delSub = el('button', 'btn danger', 'Delete'); delSub.type = 'button';
-            delSub.addEventListener('click', function(){
-              var ask = sc.runs ? 'Delete the last subcategory ' + sc.key + '? Its ' + sc.runs + ' run(s) stay in ' + o.key + ' without a subcategory.'
-                                : 'Delete the unused subcategory ' + sc.key + '?';
-              if (!window.confirm(ask)) return;
-              var fd = new FormData();
-              fd.append('game', gameEditData.game); fd.append('option', o.key); fd.append('sub', sc.key);
-              fd.append('reason', whyIn.value.trim() || 'Removed unused by a covering expert.');
-              post('/api/category/delete', fd, delSub).then(function(res){
-                if (res.ok && res.j.ok) { o.subcategories.splice(o.subcategories.indexOf(sc), 1); renderSubs(); noteSaved('Removed ' + sc.key + '.', res.j.serial); }
-                else note(rowMsg, res.j.error || 'something went wrong', false);
-              });
+          var order = el('span', 'orderbtns');
+          [['◀', -1], ['▶', 1]].forEach(function(spec){
+            var b = el('button', 'authx orderbtn', spec[0]); b.type = 'button';
+            b.addEventListener('click', function(){
+              var i = c.subs.indexOf(sc), j = i + spec[1];
+              if (j < 0 || j >= c.subs.length) return;
+              c.subs.splice(i, 1); c.subs.splice(j, 0, sc);
+              renderSubs();
             });
-            row.appendChild(delSub);
+            order.appendChild(b);
+          });
+          row.appendChild(order);
+          row.appendChild(el('code', 'subkey', sc.key || '(new)'));
+          if (sc.deleted) {
+            row.appendChild(el('span', 'rules', sc.label + ': marked for deletion'));
+          } else {
+            var l = el('input'); l.value = sc.label; l.maxLength = 80; l.placeholder = 'label';
+            l.addEventListener('input', function(){ sc.label = l.value; refresh(); });
+            var r = el('input'); r.value = sc.rule; r.maxLength = 500; r.placeholder = 'rule fragment (optional)';
+            r.addEventListener('input', function(){ sc.rule = r.value; refresh(); });
+            row.appendChild(l); row.appendChild(r);
           }
-          row.appendChild(rowMsg);
+          row.appendChild(el('span', 'actmeta', (sc.runs || 0) + ' run' + (sc.runs === 1 ? '' : 's')));
+          var live = c.subs.filter(function(x){ return !x.deleted; });
+          if (!sc.runs || live.length === 1) {
+            var b = el('button', 'btn danger', sc.deleted ? 'Keep' : 'Delete'); b.type = 'button';
+            b.addEventListener('click', function(){
+              if (sc.isNew) { c.subs.splice(c.subs.indexOf(sc), 1); renderSubs(); return; }
+              sc.deleted = !sc.deleted; renderSubs();
+            });
+            row.appendChild(b);
+          }
           subList.appendChild(row);
         }
-        o.subcategories = o.subcategories || [];
+        function renderSubs(){ subList.innerHTML = ''; c.subs.forEach(subRow); refresh(); }
         renderSubs();
         subBox.appendChild(subList);
         var addRow = el('div', 'subrowed subadd');
         var addLabel = el('input'); addLabel.placeholder = 'new subcategory label, e.g. any%'; addLabel.maxLength = 80;
-        var addRule = el('input'); addRule.placeholder = 'rule fragment (optional)'; addRule.maxLength = 500;
         var addBtn = el('button', 'btn leave', '+ Add a subcategory'); addBtn.type = 'button';
-        var addMsg = el('p', 'actmsg'); addMsg.hidden = true;
         addBtn.addEventListener('click', function(){
           if (!addLabel.value.trim()) { addLabel.focus(); return; }
-          var fd = new FormData();
-          fd.append('game', gameEditData.game); fd.append('parent', o.key);
-          fd.append('label', addLabel.value.trim()); fd.append('rule', addRule.value.trim());
-          post('/api/category/add', fd, addBtn).then(function(res){
-            if (res.ok && res.j.ok) {
-              o.subcategories.push({key: res.j.key, label: addLabel.value.trim(), rule: addRule.value.trim(), runs: res.j.runs_moved || 0});
-              renderSubs();
-              addLabel.value = ''; addRule.value = '';
-              noteSaved('Added ' + res.j.key + (res.j.runs_moved ? ', taking the ' + res.j.runs_moved + ' run(s) already here' : '') + '.', res.j.serial, addMsg);
-            } else note(addMsg, res.j.error || 'something went wrong', false);
-          });
+          c.subs.push({key: '', label: addLabel.value.trim(), rule: '', runs: 0, isNew: true, tmp: ++newSeq});
+          addLabel.value = '';
+          renderSubs();
         });
-        addRow.appendChild(addLabel); addRow.appendChild(addRule); addRow.appendChild(addBtn); addRow.appendChild(addMsg);
+        addRow.appendChild(addLabel); addRow.appendChild(addBtn);
         subBox.appendChild(addRow);
-        card.appendChild(subBox);
-        var reasonInput = field('Why (published with the change)');
-        reasonInput.placeholder = 'required to save a change';
-        var cardMsg = el('p', 'actmsg');
-        cardMsg.hidden = true;
-        var row = el('div', 'gebtns');
-        var saveBtn = el('button', 'btn', 'Save');
-        saveBtn.type = 'button';
-        saveBtn.addEventListener('click', function(){
-          var jobs = [];
-          if (labelInput.value.trim() !== o.label) jobs.push(['label', labelInput.value.trim()]);
-          if (ruleInput.value.trim() !== o.rule) jobs.push(['rule', ruleInput.value.trim()]);
-          if (metricsEd.value() !== metricsBefore) jobs.push(['metrics', metricsEd.value()]);
-          if (!jobs.length) { note(cardMsg, 'Nothing changed on ' + o.key + '.', false); return; }
-          var savedSerial;
-          function step(){
-            if (!jobs.length) {
-              o.label = labelInput.value.trim();
-              o.rule = ruleInput.value.trim();
-              metricsBefore = metricsEd.value();
-              noteSaved('Saved ' + o.key + '.', savedSerial, cardMsg);
-              return;
-            }
-            var job = jobs.shift();
-            var fd = new FormData();
-            fd.append('kind', 'category');
-            fd.append('target', gameEditData.game + ':' + o.key);
-            fd.append('field', job[0]);
-            fd.append('value', job[1]);
-            fd.append('reason', reasonInput.value.trim());
-            post('/api/expert/edit', fd, saveBtn).then(function(res){
-              if (res.ok && res.j.ok) { savedSerial = res.j.serial; step(); }
-              else note(cardMsg, res.j.error || 'something went wrong', false);
-            });
+        el_.appendChild(subBox);
+        return el_;
+      }
+      function renderCards(){
+        box.innerHTML = '';
+        draft.cats.forEach(function(c){ box.appendChild(card(c)); });
+        refresh();
+      }
+      byId('ge-addcat').addEventListener('click', function(){
+        var label = window.prompt('Label of the new category (e.g. 100% completion):');
+        if (!label || !label.trim()) return;
+        draft.cats.push({key: '', label: label.trim(), rule: '', runs: 0, metrics: '[]', subs: [], isNew: true, tmp: ++newSeq});
+        renderCards();
+      });
+
+      // ---- the diff: what Save would do, in order ----
+      function props(){
+        return {released: byId('ge-released').value.trim(), unofficial: byId('ge-unofficial').checked ? 'yes' : 'no',
+                discord: byId('ge-discord').value.trim(), website: byId('ge-website').value.trim(), rta: byId('ge-rta').value.trim()};
+      }
+      function plan(){
+        var ops = [];
+        var title = byId('ge-title').value.trim();
+        if (title && title !== base.title) ops.push({what: 'title', run: function(){ return edit('game', gameEditData.game, 'title', title); }, done: function(){ base.title = title; }});
+        var pv = props();
+        ['released', 'unofficial', 'discord', 'website', 'rta'].forEach(function(f){
+          if (pv[f] !== base.props[f]) ops.push({what: f, run: function(){ return edit('game', gameEditData.game, f, pv[f]); }, done: function(){ base.props[f] = pv[f]; }});
+        });
+        var thumb = byId('ge-thumb');
+        if (thumb.files && thumb.files[0]) ops.push({what: 'thumbnail', run: function(){
+          var fd = form('game', gameEditData.game, 'thumbnail', ''); fd.append('thumbnail', thumb.files[0]);
+          return post('/api/expert/edit', fd, saveBtn);
+        }, done: function(){ thumb.value = ''; }});
+        var baseByKey = {}; base.cats.forEach(function(c){ baseByKey[c.key] = c; });
+        // new categories first (the rest may refer to them)
+        draft.cats.filter(function(c){ return c.isNew && !c.deleted; }).forEach(function(c){
+          ops.push({what: 'add ' + c.label, run: function(){
+            var fd = new FormData(); fd.append('game', gameEditData.game); fd.append('label', c.label);
+            fd.append('rule', c.rule); fd.append('metrics', c.metricsEd ? c.metricsEd.value() : '[]');
+            fd.append('reason', whyIn.value.trim());
+            return post('/api/category/add', fd, saveBtn);
+          }, done: function(res){ c.key = res.j.key; c.isNew = false; c.metrics = c.metricsEd ? c.metricsEd.value() : '[]';
+                                  base.cats.push({key: c.key, label: c.label, rule: c.rule, runs: 0, metrics: c.metrics, subs: []}); }});
+        });
+        draft.cats.filter(function(c){ return !c.deleted; }).forEach(function(c){
+          var b = baseByKey[c.key];
+          if (b) {
+            if (c.label !== b.label) ops.push({what: c.key + ' label', run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'label', c.label); }, done: function(){ b.label = c.label; }});
+            if (c.rule !== b.rule) ops.push({what: c.key + ' rule', run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'rule', c.rule); }, done: function(){ b.rule = c.rule; }});
+            var mv = c.metricsEd ? c.metricsEd.value() : c.metrics;
+            if (mv !== b.metrics) ops.push({what: c.key + ' metrics', run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'metrics', mv); }, done: function(){ b.metrics = mv; }});
           }
-          step();
-        });
-        row.appendChild(saveBtn);
-        if (!o.runs) {
-          var deleteBtn = el('button', 'btn danger', 'Delete');
-          deleteBtn.type = 'button';
-          deleteBtn.addEventListener('click', function(){
-            if (!window.confirm('Delete the unused category ' + o.key + '?')) return;
-            var fd = new FormData();
-            fd.append('game', gameEditData.game);
-            fd.append('option', o.key);
-            post('/api/category/delete', fd, deleteBtn).then(function(res){
-              if (res.ok && res.j.ok) { card.remove(); noteSaved('Removed ' + o.key + '.', res.j.serial); }
-              else note(cardMsg, res.j.error || 'something went wrong', false);
-            });
+          // subcategories of this category
+          c.subs.filter(function(x){ return x.isNew && !x.deleted; }).forEach(function(x){
+            ops.push({what: c.key + '/' + x.label + ' add', run: function(){
+              var fd = new FormData(); fd.append('game', gameEditData.game); fd.append('parent', c.key);
+              fd.append('label', x.label); fd.append('rule', x.rule); fd.append('reason', whyIn.value.trim());
+              return post('/api/category/add', fd, saveBtn);
+            }, done: function(res){ x.key = res.j.key; x.isNew = false; x.runs = res.j.runs_moved || 0;
+                                    var bb = baseByKey[c.key] || base.cats.filter(function(z){ return z.key === c.key; })[0];
+                                    if (bb) bb.subs.push({key: x.key, label: x.label, rule: x.rule, runs: x.runs}); }});
           });
-          row.appendChild(deleteBtn);
+          var bsubs = {}; ((b && b.subs) || []).forEach(function(x){ bsubs[x.key] = x; });
+          c.subs.filter(function(x){ return !x.isNew && !x.deleted; }).forEach(function(x){
+            var bx = bsubs[x.key]; if (!bx) return;
+            if (x.label !== bx.label) ops.push({what: c.key + '/' + x.key + ' label', run: function(){ return edit('category', gameEditData.game + ':' + c.key + '/' + x.key, 'label', x.label); }, done: function(){ bx.label = x.label; }});
+            if (x.rule !== bx.rule && x.rule) ops.push({what: c.key + '/' + x.key + ' rule', run: function(){ return edit('category', gameEditData.game + ':' + c.key + '/' + x.key, 'rule', x.rule); }, done: function(){ bx.rule = x.rule; }});
+          });
+          c.subs.filter(function(x){ return x.deleted && !x.isNew; }).forEach(function(x){
+            ops.push({what: c.key + '/' + x.key + ' delete', run: function(){
+              var fd = new FormData(); fd.append('game', gameEditData.game); fd.append('option', c.key); fd.append('sub', x.key); fd.append('reason', whyIn.value.trim());
+              return post('/api/category/delete', fd, saveBtn);
+            }, done: function(){ c.subs.splice(c.subs.indexOf(x), 1); if (b) b.subs = b.subs.filter(function(z){ return z.key !== x.key; }); }});
+          });
+        });
+        draft.cats.filter(function(c){ return c.deleted && !c.isNew; }).forEach(function(c){
+          ops.push({what: c.key + ' delete', run: function(){
+            var fd = new FormData(); fd.append('game', gameEditData.game); fd.append('option', c.key); fd.append('reason', whyIn.value.trim());
+            return post('/api/category/delete', fd, saveBtn);
+          }, done: function(){ draft.cats.splice(draft.cats.indexOf(c), 1); base.cats = base.cats.filter(function(z){ return z.key !== c.key; }); }});
+        });
+        // orders last, once the sets agree
+        var wantOrder = draft.cats.filter(function(c){ return !c.deleted; }).map(function(c){ return c.key || ('new:' + c.tmp); });
+        var haveOrder = base.cats.map(function(c){ return c.key; });
+        if (wantOrder.join(',') !== haveOrder.join(',') && wantOrder.length === haveOrder.length) {
+          ops.push({what: 'category order', run: function(){
+            var fd = new FormData(); fd.append('game', gameEditData.game);
+            fd.append('order', draft.cats.filter(function(c){ return !c.deleted; }).map(function(c){ return c.key; }).join(','));
+            fd.append('reason', whyIn.value.trim());
+            return post('/api/category/reorder', fd, saveBtn);
+          }, done: function(){ var k = {}; base.cats.forEach(function(c){ k[c.key] = c; }); base.cats = draft.cats.filter(function(c){ return !c.deleted; }).map(function(c){ return k[c.key]; }); }});
+        } else if (wantOrder.length !== haveOrder.length) {
+          // adds or deletes pending: the order is settled on the next save
+          ops.orderLater = true;
         }
-        card.appendChild(row);
-        card.appendChild(cardMsg);
-        box.appendChild(card);
-      }
-      renderCards();
-      if (!(gameEditData.options || []).length) {
-        box.appendChild(el('p', 'emptynote',
-          'No categories yet: add the first one below.'));
-      }
-    });
-  }
-
-  // ---- file a claim: anybody logged in, one at a time ----
-  var claimForm = document.getElementById('f-claim');
-  if (claimForm) {
-    mePromise.then(function(d){
-      if (d.unreachable) return;
-      if (!d.loggedIn) {
-        document.getElementById('claim-login').hidden = false;
-        return;
-      }
-      document.getElementById('claim-form-wrap').hidden = false;
-      var msg = document.getElementById('claim-msg');
-      claimForm.addEventListener('submit', function(ev){
-        ev.preventDefault();
-        post('/api/claim/request', new FormData(claimForm),
-             actionBtn(claimForm)).then(function(res){
-          if (res.ok && res.j.ok) {
-            note(msg, 'Filed. The Steering Committee answers it, and you will hear ' +
-                      'either way, by private message on the forum.', true);
-            claimForm.hidden = true;
-          } else note(msg, res.j.error || 'something went wrong', false);
+        draft.cats.filter(function(c){ return !c.deleted && !c.isNew; }).forEach(function(c){
+          var b = baseByKey[c.key]; if (!b) return;
+          var want = c.subs.filter(function(x){ return !x.deleted; }).map(function(x){ return x.key || ('new:' + x.tmp); });
+          var have = b.subs.map(function(x){ return x.key; });
+          if (want.length === have.length && want.join(',') !== have.join(',')) {
+            ops.push({what: c.key + ' subcategory order', run: function(){
+              var fd = new FormData(); fd.append('game', gameEditData.game); fd.append('option', c.key);
+              fd.append('order', c.subs.filter(function(x){ return !x.deleted; }).map(function(x){ return x.key; }).join(','));
+              fd.append('reason', whyIn.value.trim());
+              return post('/api/category/reorder', fd, saveBtn);
+            }, done: function(){ var k = {}; b.subs.forEach(function(x){ k[x.key] = x; }); b.subs = c.subs.filter(function(x){ return !x.deleted; }).map(function(x){ return k[x.key]; }); }});
+          }
         });
+        return ops;
+      }
+      function form(kind, target, field, value){
+        var fd = new FormData();
+        fd.append('kind', kind); fd.append('target', target); fd.append('field', field);
+        fd.append('value', value); fd.append('reason', whyIn.value.trim());
+        return fd;
+      }
+      function edit(kind, target, field, value){
+        return post('/api/expert/edit', form(kind, target, field, value), saveBtn);
+      }
+      var dirty = false;
+      function refresh(){
+        var ops = plan();
+        dirty = ops.length > 0;
+        pendingEl.textContent = ops.length ? ops.length + ' change' + (ops.length === 1 ? '' : 's') + ' pending: ' +
+          ops.map(function(o){ return o.what; }).join(', ') : 'No changes yet';
+        saveBtn.disabled = !ops.length;
+      }
+      ['ge-title', 'ge-released', 'ge-unofficial', 'ge-discord', 'ge-website', 'ge-rta', 'ge-thumb'].forEach(function(id){
+        byId(id).addEventListener('input', refresh);
+        byId(id).addEventListener('change', refresh);
       });
-    });
-  }
+      window.addEventListener('beforeunload', function(ev){
+        if (!dirty) return;
+        ev.preventDefault(); ev.returnValue = '';
+      });
 
-  // ---- attest an identity (site experts) ----
-  var siteExpertsEl = document.getElementById('siteexperts');
-  if (siteExpertsEl) {
-    var siteExpertList = JSON.parse(siteExpertsEl.textContent);
-    mePromise.then(function(d){
-      if (!d.loggedIn || siteExpertList.indexOf(d.user.toLowerCase()) < 0) return;
-      var wrap = document.getElementById('attest-wrap');
-      var form = document.getElementById('f-attest');
-      var msg = document.getElementById('attest-msg');
-      wrap.hidden = false;
-      form.addEventListener('submit', function(ev){
-        ev.preventDefault();
-        post('/api/claim/attest', new FormData(form), actionBtn(form))
-          .then(function(res){
-            if (res.ok && res.j.ok) {
-              note(msg, 'Attested: ' + res.j.identity + ' is now ' + res.j.member +
-                        '. ' + (res.j.rename || ''), true);
-              form.hidden = true;
-            } else note(msg, res.j.error || 'something went wrong', false);
+      // ---- Save: the sequence, stopped by the first failure ----
+      saveBtn.addEventListener('click', function(){
+        var ops = plan();
+        if (!ops.length) return;
+        if (whyIn.value.trim().length < 8) { whyIn.focus(); note(msg, 'Say why, publicly: at least 8 characters.', false); return; }
+        msg.hidden = true;
+        var n = 0, lastSerial = null;
+        (function step(){
+          if (!ops.length) {
+            lastBtn = saveBtn;
+            renderCards();
+            noteBuilt(msg, 'Saved ' + n + ' change' + (n === 1 ? '' : 's') + '.', lastSerial);
+            return;
+          }
+          var op = ops.shift();
+          op.run().then(function(res){
+            if (res.ok && res.j.ok) { op.done(res); n++; lastSerial = res.j.serial || lastSerial; step(); }
+            else {
+              lastBtn = saveBtn;
+              note(msg, op.what + ': ' + (res.j.error || 'something went wrong') +
+                (n ? ' (' + n + ' change' + (n === 1 ? '' : 's') + ' before it went through)' : ''), false);
+              renderCards();
+            }
           });
+        })();
       });
+      renderCards();
     });
   }
-
-  // ---- sortable tables (click a column header to sort) ----
-  document.querySelectorAll('table.sortable').forEach(function(table){
-    var dirs = {};
-    function cellValue(tr, i){
-      var td = tr.children[i];
-      return td ? td.textContent.trim() : '';
-    }
-    function parseVal(s){
-      // an ISO date (with or without a clock) orders by time, not by the
-      // leading year that parseFloat would stop at
-      if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(s)) return Date.parse(s.replace(' ', 'T') + (s.length > 10 ? 'Z' : ''));
-      var m = /^([0-9]+):([0-9][0-9])(?::([0-9][0-9]))?(?:[.]([0-9]+))?$/.exec(s);
-      if (m) {
-        var sec = m[3] !== undefined
-          ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])
-          : (+m[1]) * 60 + (+m[2]);
-        return sec + (m[4] ? parseFloat('0.' + m[4]) : 0);
-      }
-      var n = parseFloat(s.replace(/[,f★\s]/g, ''));
-      return isNaN(n) ? null : n;
-    }
-    table.querySelectorAll('thead th').forEach(function(th, i){
-      th.classList.add('sorth');
-      th.addEventListener('click', function(){
-        var dir = dirs[i] = -(dirs[i] || -1);
-        var tbody = table.querySelector('tbody');
-        var rows = Array.prototype.slice.call(tbody.children);
-        rows.sort(function(a, b){
-          var va = cellValue(a, i), vb = cellValue(b, i);
-          var na = parseVal(va), nb = parseVal(vb);
-          var cmp = (na !== null && nb !== null) ? na - nb : va.localeCompare(vb);
-          return cmp * dir;
-        });
-        rows.forEach(function(r){ tbody.appendChild(r); });
-        table.querySelectorAll('thead th').forEach(function(x){
-          x.classList.remove('sort-asc', 'sort-desc');
-        });
-        th.classList.add(dir === 1 ? 'sort-asc' : 'sort-desc');
-      });
-    });
-  });
 
   // ---- likes (any run page) ----
   var likeDataEl = document.getElementById('likedata');

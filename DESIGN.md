@@ -415,6 +415,19 @@ date (oldest first, undated last) and can hide unofficial games. The slug
 stays derived from the title and is not customisable: it is the archive
 path and every link into it.
 
+### The game editor
+
+`/games/<key>/edit/` (covering experts and editors) edits one local draft
+of the whole record (title, thumbnail, properties, categories with their
+rules, metrics, subcategories, and the order of both levels) and writes
+nothing until the single **Save all changes** at the bottom. Save turns the
+draft's differences into the archivist's logged edits in a safe order (new
+categories, then new subcategories, renames and rules, metrics, deletions,
+orders last), all under one public reason; the first failure stops the
+sequence, what went through is the new baseline, the rest stays pending.
+The page shows "N changes pending: …" as you go and guards the tab against
+leaving with unsaved changes. Category cards span the page.
+
 ### Per-category metrics (shipped 2026-08-20)
 
 A category defines what it ranks by.

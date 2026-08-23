@@ -605,7 +605,7 @@ footer a{color:var(--accent-text);text-decoration:none}
 
 /* the game editor's category cards */
 .gecard{border:2.5px solid var(--hair);border-radius:12px;background:var(--panel);
-  padding:14px 18px;margin-bottom:14px;max-width:640px}
+  padding:14px 18px;margin-bottom:14px}
 .gecard .gehead{margin-bottom:8px;font-family:ui-monospace,monospace}
 .gecard label{display:block;margin:8px 0;font-size:.88rem;color:var(--muted)}
 .gecard input,.gecard textarea{width:100%;border:2.5px solid var(--hair);border-radius:9px;
@@ -706,3 +706,5 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .draftbar .btn{padding:6px 12px;font-size:.78rem}
 .orderbtns{display:inline-flex;gap:4px;margin-left:8px}
 .orderbtn{font-size:.7rem;padding:2px 7px}
+.gecard.deleted{opacity:.6;border-style:dashed}
+.savebar{position:sticky;bottom:0;background:var(--bg);border-top:2.5px solid var(--hair);padding:12px 0 16px;margin-top:16px}
