@@ -2393,7 +2393,16 @@
       document.getElementById('cc-nogame').hidden = false;
     } else {
       document.getElementById('cc-game').value = catGameKey;
-      document.getElementById('cc-gamename').textContent = catGameTitles[catGameKey];
+      // Set the visible game name and — when the element is an <a> — attach the game page URL
+      var ccGamenameEl = document.getElementById('cc-gamename');
+      if (ccGamenameEl) {
+        ccGamenameEl.textContent = catGameTitles[catGameKey];
+        try {
+          if (ccGamenameEl.tagName && ccGamenameEl.tagName.toLowerCase() === 'a') {
+            ccGamenameEl.href = rel + 'games/' + catGameKey + '/';
+          }
+        } catch (e) {}
+      }
       var createCatMsg = document.getElementById('cc-msg');
       // the game's categories, to offer "subcategory of"; a subcategory has
       // no metrics of its own and may leave the rule to its category
