@@ -11,7 +11,8 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
 <form id="submitform" class="bigform" hidden>
   {# the draft: everything typed is kept in this browser as you go (never the
      movie file, which browsers refuse to restore); Clear empties it all #}
-  <p class="draftnote" id="s-draftnote" hidden></p>
+  <div class="draftbar"><p class="draftnote" id="s-draftnote" hidden></p>
+  <button type="button" class="btn shade" id="s-clear">Clear the form</button></div>
   {# Six panels that unfold one after the other as the previous one is
      complete (app.js decides from field validity, and from a restored draft
      the same way). One form all along: the archivist takes one POST. #}
@@ -148,8 +149,7 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <a href="https://github.com/ToolAssisted-run#4-code-of-conduct" target="_blank">Code of Conduct</a> and
   <a href="https://github.com/ToolAssisted-run#5-privacy-policy" target="_blank">Privacy Policy</a>,
   and I confirm everything here is complete and truthful, especially the authorship.</span></label>
-  <div class="btnrow submitrow"><button class="btn" id="s-submit">Submit</button>
-  <button type="button" class="btn shade" id="s-clear">Clear the form</button></div>
+  <div class="btnrow submitrow"><button class="btn" id="s-submit" disabled>Submit</button></div>
   </div></section>
 </form>
 <p id="s-msg" class="actmsg" hidden></p>

@@ -2030,6 +2030,7 @@
         subSelect.disabled = !subs.length;   // a disabled field sends nothing
       }
       function paintCategory(){
+        if (typeof paintPanels === 'function') setTimeout(paintPanels, 0);   // the goals arrive later than the pick
         document.getElementById('s-uncldesc').hidden = goalSelect.value !== 'unclassified';
         var goals = goalCache[gameSelect.value] || [];
         var picked = goals.filter(function(g){ return g.key === goalSelect.value; })[0];
@@ -2134,7 +2135,7 @@
           // every value the category ranks by: stated metrics, and the time
           // when it is stated by hand (a derived time is already there)
           var ok = Array.prototype.every.call(submitForm.querySelectorAll('#s-mfields input[type=hidden]'), function(h){ return h.value !== '' && !isNaN(+h.value); });
-          if (timeStatedNeeded() && !(document.getElementById('s-time').value > 0)) ok = false;
+          if (timeStatedNeeded() && !/^(\d+:)?\d{1,2}:\d{2}/.test(document.getElementById('s-time').value)) ok = false;
           return ok;
         }
         if (step === 5) return previewed;
@@ -2151,6 +2152,11 @@
           pn.classList.toggle('done', done);
           chain = done;
         });
+        // Submit only once every step is done, the movie included (a
+        // restored draft cannot carry the file, so it is asked for here)
+        var movieOk = videoOnlyBox.checked || !!(movieInput.files && movieInput.files[0]);
+        var sb = document.getElementById('s-submit');
+        if (sb && !sb.dataset.sent) sb.disabled = !(chain && movieOk);
       }
       submitForm.addEventListener('input', paintPanels);
       submitForm.addEventListener('change', paintPanels);
@@ -2340,7 +2346,7 @@
           submitting = false;
           if (submitBtn) submitBtn.textContent = 'Submit';
           if (res.ok && res.j.ok) {
-            if (submitBtn) submitBtn.disabled = true;      // done: never offer it again
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.sent = '1'; }   // done: never offer it again
             submitFormDirty = false;                  // archived: nothing left to lose
             dropDraft();
             submitForm.hidden = true;
