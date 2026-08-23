@@ -202,6 +202,9 @@
     }
     // a restored draft sets the whole list at once
     pick.setAuthors = function(names){ selected = names.slice(); sync(); };
+    // the hidden field changes without a browser event: say so for listeners
+    var sync0 = sync;
+    sync = function(){ sync0(); field.dispatchEvent(new Event('change', {bubbles: true})); };
     function fill(){
       var q = search.value.trim().toLowerCase();
       list.innerHTML = '';
@@ -1920,6 +1923,7 @@
           paintCategory();
           if (d.sub) subSelect.value = d.sub;
           applyDraftFields(d.fields);
+          paintPanels();
           return;
         }
         paintCategory();
@@ -2039,8 +2043,15 @@
                d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', second: '2-digit'});
       }
       function saveDraft(){
+        // an untouched form is not a draft: the author picker seeds your own
+        // name, which is no reason to claim one was saved
+        var fields = draftFields();
+        var typed = gameSelect.value || Object.keys(fields).some(function(k){
+          return k !== 'authors' && k !== 'video_only' && k !== 'goal_description' && [].concat(fields[k]).some(function(v){ return v; });
+        });
+        if (!typed) return;
         var data = {t: new Date().toISOString(), game: gameSelect.value, goal: goalSelect.value,
-                    sub: subSelect.disabled ? '' : subSelect.value, fields: draftFields()};
+                    sub: subSelect.disabled ? '' : subSelect.value, fields: fields};
         try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) { return; }
         draftNote.hidden = false;
         draftNote.textContent = 'Draft saved ' + stamp(data.t);
@@ -2049,6 +2060,41 @@
         try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
         draftNote.hidden = true;
       }
+      // ---- the panels: each unfolds once the one before is complete, and
+      // stays open from then on; the same rule unfolds a restored draft ----
+      var panels = Array.prototype.slice.call(submitForm.querySelectorAll('.panel'));
+      var revealed = {1: true};
+      function panelDone(step){
+        if (step === 1) {
+          if (!gameSelect.value || !goalSelect.value) return false;
+          if (!subWrap.hidden && !subSelect.value) return false;
+          if (goalSelect.value === 'unclassified' && !submitForm.querySelector('[name=goal_description]').value.trim()) return false;
+          return true;
+        }
+        if (step === 2) {
+          // the encode decides; the movie is asked for at Submit (a restored
+          // draft cannot carry it). Video-only runs need their stated time
+          if (document.getElementById('enc-status').className !== 'enc-good') return false;
+          if (videoOnlyBox.checked && wantsTime() && !(document.getElementById('s-time').value > 0)) return false;
+          return true;
+        }
+        if (step === 3) return !!submitForm.querySelector('[name=authors]').value;
+        if (step === 4) return submitForm.querySelector('[name=consent]').checked;
+        return false;
+      }
+      function paintPanels(){
+        var chain = true;   // a step counts only with every step before it
+        panels.forEach(function(pn){
+          var step = +pn.dataset.step;
+          var done = chain && panelDone(step);
+          if (done && step < 4) revealed[step + 1] = true;
+          pn.classList.toggle('folded', !revealed[step]);
+          pn.classList.toggle('done', done);
+          chain = done;
+        });
+      }
+      submitForm.addEventListener('input', paintPanels);
+      submitForm.addEventListener('change', paintPanels);
       submitForm.addEventListener('input', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
       submitForm.addEventListener('change', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
       document.getElementById('s-clear').addEventListener('click', function(){
@@ -2069,6 +2115,7 @@
         } else {
           applyDraftFields(d.fields);
         }
+        paintPanels();
         return true;
       }
 
@@ -2121,6 +2168,7 @@
         });
       }
       if (!restored && !presetGame) fillGoals([]);
+      paintPanels();
 
       // live encode check: the thumbnail is derived from the encode, so the
       // link is validated as it is typed — preview frame + green check
@@ -2169,6 +2217,7 @@
             encodeStatus.textContent = '✓ ' + j.name +
               ' encode verified; this frame becomes the run thumbnail';
             encodeStatus.className = 'enc-good';
+            paintPanels();
             if (j.thumb) {
               encodeThumb.onerror = function(){ encodeThumb.hidden = true; };
               encodeThumb.onload = function(){ encodeThumb.hidden = false; };

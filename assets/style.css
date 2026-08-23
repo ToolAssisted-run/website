@@ -730,3 +730,13 @@ input[type=radio]{appearance:none;-webkit-appearance:none;width:20px;height:20px
 input[type=radio]::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent);transform:scale(0)}
 input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::before{transform:scale(1)}
 .importnote{margin:24px 0 0;padding-top:12px;border-top:2.5px solid var(--hair);color:var(--faint);font-size:.8rem}
+/* the submit form's panels: each unfolds once the one before is complete */
+.panel{margin:0 0 14px}
+.panel .ptitle{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:1.05rem}
+.pnum{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:2.5px solid var(--accent);color:var(--accent-text);font-family:ui-monospace,monospace;font-size:.8rem;font-weight:700}
+.panel .pwaits{display:none;margin:0;font-size:.82rem;color:var(--faint)}
+.panel.folded{opacity:.6}
+.panel.folded .pbody{display:none}
+.panel.folded .pwaits{display:block}
+.panel.folded .pnum{border-color:var(--hairs);color:var(--faint)}
+.panel.done .pnum{background:var(--accent);color:#04140A}

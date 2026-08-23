@@ -8,10 +8,16 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
 <script type="application/json" id="gamedata">{{ json_blob({'raw': ARCHIVE_RAW, 'games': gamedata}) }}</script>
 <script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
 <p id="s-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to submit a run.</p>
-<form id="submitform" class="actform bigform" hidden>
+<form id="submitform" class="bigform" hidden>
   {# the draft: everything typed is kept in this browser as you go (never the
      movie file, which browsers refuse to restore); Clear empties it all #}
   <p class="draftnote" id="s-draftnote" hidden></p>
+  {# Four panels that unfold one after the other as the previous one is
+     complete (app.js decides from field validity, and from a restored draft
+     the same way). One form all along: the archivist takes one POST. #}
+  <section class="panel actform" id="p-game" data-step="1">
+  <h2 class="ptitle"><span class="pnum">1</span> Game and category</h2>
+  <div class="pbody">
   <label>Game</label>
   <div class="pickrow">
   <div class="gamepick" id="s-gamepick">
@@ -39,28 +45,12 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     <label>What does this run do? (shown in the ranking)</label>
     <input name="goal_description" maxlength="200" placeholder="e.g. beats the game using only the credits sequence">
   </div>
-  <label>Authors (credit every human who worked on it. Type to search, click to add;
-  a coauthor who is not a member here is credited by name, as text)</label>
-  <div class="authpick">
-    <div class="authchips"></div>
-    <input class="authsearch" placeholder="Type a username…" autocomplete="off">
-    <div class="authlist" hidden></div>
-    <input type="hidden" name="authors">
-  </div>
-  {# shown once a second author is on the list (app.js): the policy, discreetly #}
-  <p class="rules coauthnote" hidden><a href="../policy/co-authors/" target="_blank" rel="noopener">Submitting a work with co-authors? Read the Multiple author submission policy first.</a></p>
-  <label>Encode link (required; verification and the run's thumbnail derive from it).
-  Accepted: {{ provider_names }}.</label>
-  <input id="s-encode" name="encode" type="url" required placeholder="https://youtu.be/…">
-  <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
-  <span id="enc-status"></span></div>
-  <label>Emulator / core (optional)</label><input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES)">
-  <hr class="formrule">
-  <label>Files the movie was made against (optional: ROMs, disc images, executables,
-  sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed
-  locally, the file <b>never leaves your machine</b>; or type them.</label>
-  {{ file_rows() }}
-  <hr class="formrule">
+  </div></section>
+
+  <section class="panel actform folded" id="p-run" data-step="2">
+  <h2 class="ptitle"><span class="pnum">2</span> The run</h2>
+  <p class="pwaits">After you pick the game and its category.</p>
+  <div class="pbody">
   <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
     name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
     It can never be reproduced, in emulator or on console, and the page will say so;
@@ -82,6 +72,36 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <input type="hidden" name="time" id="s-time">
   </div>
   </div>
+  <label>Encode link (required; verification and the run's thumbnail derive from it).
+  Accepted: {{ provider_names }}.</label>
+  <input id="s-encode" name="encode" type="url" required placeholder="https://youtu.be/…">
+  <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
+  <span id="enc-status"></span></div>
+  <label>Emulator / core (optional)</label><input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES)">
+  <label>When was the run completed? (optional; a run finished long before it was
+  submitted may say so, and the page shows both dates)</label>
+  <input name="completed" type="date" max="{{ today }}">
+  <hr class="formrule">
+  <label>Files the movie was made against (optional: ROMs, disc images, executables,
+  sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed
+  locally, the file <b>never leaves your machine</b>; or type them.</label>
+  {{ file_rows() }}
+  </div></section>
+
+  <section class="panel actform folded" id="p-authors" data-step="3">
+  <h2 class="ptitle"><span class="pnum">3</span> Authors and notes</h2>
+  <p class="pwaits">After the movie (or the stated time) and a valid encode link.</p>
+  <div class="pbody">
+  <label>Authors (credit every human who worked on it. Type to search, click to add;
+  a coauthor who is not a member here is credited by name, as text)</label>
+  <div class="authpick">
+    <div class="authchips"></div>
+    <input class="authsearch" placeholder="Type a username…" autocomplete="off">
+    <div class="authlist" hidden></div>
+    <input type="hidden" name="authors">
+  </div>
+  {# shown once a second author is on the list (app.js): the policy, discreetly #}
+  <p class="rules coauthnote" hidden><a href="../policy/co-authors/" target="_blank" rel="noopener">Submitting a work with co-authors? Read the Multiple author submission policy first.</a></p>
   <label>Voluntary content disclosures, to warn viewers about:</label>
   <div class="cwrow">
     <label class="cwlab"><input type="checkbox" name="content_warnings" value="mature-violence"> Mature / violent</label>
@@ -89,11 +109,6 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     <label class="cwlab"><input type="checkbox" name="content_warnings" value="photosensitivity"> Photosensitivity (flashing lights)</label>
     <label class="cwlab"><input type="checkbox" name="content_warnings" value="strong-language"> Strong language</label>
   </div>
-  <label>Attachments (optional: text configs, or additional movie files)</label>
-  <input name="attachments" type="file" multiple>
-  <label>When was the run completed? (optional; a run finished long before it was
-  submitted may say so, and the page shows both dates)</label>
-  <input name="completed" type="date" max="{{ today }}">
   <label>Notes (your write-up; see the <a href="../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="10"></textarea>
   <button type="button" class="btn quiet" id="s-preview-btn">Preview</button>
   <div id="s-preview" hidden><h2>Preview</h2>
@@ -102,6 +117,14 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <h1 id="pv-title"></h1><p class="authline" id="pv-authors"></p></div></div>
   <div class="poster" id="pv-poster" hidden><img id="pv-thumb" alt=""></div>
   <div class="notes" id="pv-notes"></div></div>
+  <label>Attachments (optional: text configs, or additional movie files)</label>
+  <input name="attachments" type="file" multiple>
+  </div></section>
+
+  <section class="panel actform folded" id="p-agree" data-step="4">
+  <h2 class="ptitle"><span class="pnum">4</span> Agreement</h2>
+  <p class="pwaits">After at least one author is named.</p>
+  <div class="pbody">
   <label class="cwlab consent"><input type="checkbox" name="consent" value="yes" required>
   <span>I license this submission under <b>CC BY 4.0</b>, I have read and agree with the
   <a href="https://github.com/ToolAssisted-run#1-community-principles" target="_blank">Community Principles</a>,
@@ -111,5 +134,6 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   and I confirm everything here is complete and truthful, especially the authorship.</span></label>
   <div class="btnrow submitrow"><button class="btn" id="s-submit">Submit</button>
   <button type="button" class="btn shade" id="s-clear">Clear the form</button></div>
-</form></details></div>
+  </div></section>
+</form>
 <p id="s-msg" class="actmsg" hidden></p>
