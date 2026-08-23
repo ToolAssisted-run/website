@@ -402,7 +402,7 @@ input.bad{border-color:#DC2626!important}
 .likestar .starglyph{color:var(--accent);font-size:1rem}
 .likestar.on .starglyph{text-shadow:0 0 6px rgba(34,197,94,.8)}
 .starchip{border-color:rgba(34,197,94,.5)}
-.likestar:disabled{cursor:default;opacity:.85}
+.likestar:disabled{cursor:not-allowed;opacity:.85}
 .likestar .likecount{font-family:ui-monospace,monospace;font-weight:700;padding-left:9px;border-left:2.5px solid var(--hair)}
 .starglyph{color:var(--accent)}
 .scoregreen{color:var(--accent)}
