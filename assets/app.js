@@ -2701,13 +2701,25 @@
       document.getElementById('cc-game').value = catGameKey;
       // Set the visible game name and — when the element is an <a> — attach the game page URL
       var ccGamenameEl = document.getElementById('cc-gamename');
-      if (ccGamenameEl) {
-        ccGamenameEl.textContent = catGameTitles[catGameKey];
-        try {
-          if (ccGamenameEl.tagName && ccGamenameEl.tagName.toLowerCase() === 'a') {
-            ccGamenameEl.href = rel + 'games/' + catGameKey + '/';
-          }
-        } catch (e) {}
+      var ccCrumbGameEl = document.getElementById('cc-crumb-game');
+      if (ccGamenameEl || ccCrumbGameEl) {
+        var name = catGameTitles[catGameKey];
+        if (ccGamenameEl) {
+          ccGamenameEl.textContent = name;
+          try {
+            if (ccGamenameEl.tagName && ccGamenameEl.tagName.toLowerCase() === 'a') {
+              ccGamenameEl.href = rel + 'games/' + catGameKey + '/';
+            }
+          } catch (e) {}
+        }
+        if (ccCrumbGameEl) {
+          ccCrumbGameEl.textContent = name;
+          try {
+            if (ccCrumbGameEl.tagName && ccCrumbGameEl.tagName.toLowerCase() === 'a') {
+              ccCrumbGameEl.href = rel + 'games/' + catGameKey + '/';
+            }
+          } catch (e) {}
+        }
       }
       var createCatMsg = document.getElementById('cc-msg');
       // the game's categories, to offer "subcategory of"; a subcategory has
