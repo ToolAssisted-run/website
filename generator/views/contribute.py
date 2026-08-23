@@ -1,6 +1,7 @@
 """View: contribute (renders on import; see views/__init__)."""
 from config import OUT
 from model import (
+    HW_SYSTEMS,
     PT_CONSOLE,
     console_state,
     eff_state,
@@ -30,8 +31,9 @@ worklist_systems = sorted(systems.keys())
 # console verification counts, a missing one is as open as any)
 need_console = sorted([r for r in runs if console_state(r) == 'none' and not r.get('videoOnly')],
                       key=lambda r: (r.get('submitted') or ''), reverse=True)
-# present all systems as hardware options too
-hardware_systems = sorted(systems.keys())
+# the hardware filter offers the systems a movie is played back on real
+# hardware (systems.json hardwareVerifiable, issue #53), nothing else
+hardware_systems = sorted(k for k in systems if k in HW_SYSTEMS)
 open_cases = [(r, c) for r in runs for c in r.get('cases', []) if c['status'] == 'open']
 # The board says who has done the most; this says what was done last.
 # Ten, not five: act dates are day-granular, so a busy day ties and the

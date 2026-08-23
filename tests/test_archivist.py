@@ -530,7 +530,19 @@ def main():
             ck('a Niconico video that does not exist is rejected',
                c == 400 and 'Niconico' in r.get('error', ''), str(r)[:140])
             c, r, _ = call(U + '/api/submit', sub, {'movie': ('junk.bk2', b'not a movie')})
-            ck('unparseable movie rejected', c == 400 and 'did not parse' in r.get('error', ''))
+            ck('a known format the parser cannot read wants the time stated',
+               c == 400 and 'could not be read' in r.get('error', '') and 'stated' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, time='12:34.567'), {'movie': ('junk.smv', b'not readable')})
+            ck('then it is archived, frames unknown, time as stated',
+               c == 200 and r['run']['movie']['frames'] == 0 and abs(r['run']['duration'] - 754.567) < 1e-6
+               and r['run']['movie']['format'] == 'smv', str(r)[:300])
+            c, r, _ = call(U + '/api/submit', sub, {'movie': ('junk.xyz', b'x')})
+            ck('an unknown extension is still refused', c == 400 and 'not a known TAS format' in r.get('error', ''), str(r))
+            # the form reads the movie before submitting (Scoring shows the derived time)
+            c, r, _ = call(U + '/api/movie/inspect', {'game': 'nes/pinball'}, {'movie': ('t.bk2', BK2)})
+            ck('inspect reads a parseable movie', c == 200 and r['parsed'] and r['frames'] > 0 and r['seconds'] > 0, str(r))
+            c, r, _ = call(U + '/api/movie/inspect', {}, {'movie': ('t.smv', b'x' * 10)})
+            ck('inspect says when a known format cannot be read', c == 200 and r['parsed'] is False and r['frames'] is None, str(r))
 
             # --- games and categories exist beforehand; creation is its own
             # flow, open to every member ---

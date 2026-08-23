@@ -854,6 +854,15 @@ PARSERS = {
 }
 
 
+# movie formats the archive accepts without reading them: the file is kept,
+# the frame count stays unknown and the submitter states the time
+KNOWN_UNPARSED = {'mcm', 'mmv', 'smv', 'zmv', 'fcm', 'fmv', 'vmv', 'pjm', 'pxm', 'yrm',
+                  'mc2', 'bkm', 'dof', 'irm', 'ljm', 'lmp2', 'nmv', 'pmv', 'rec', 'tm2',
+                  'usb', 'vbm2', 'xmv', 'zrm'}
+
+def known_extension(ext):
+    return ext in PARSERS or ext in KNOWN_UNPARSED
+
 def parse(filename, data):
     """Parse a movie file by extension. Never raises: returns ok=False on any
     failure."""

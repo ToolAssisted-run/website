@@ -413,7 +413,8 @@ def submit():
     Reads: form fields consent, game (system/slug), goal, goal_description,
         metric_<key>, authors (comma-separated), video_only, time,
         sub (the subcategory key, required iff the category defines
-        subcategories), encode, emulator, file_name / file_sha1 (repeatable rows; the old
+        subcategories), encode, emulator (the tool and its version), time (stated [h:]mm:ss[.mmm]: video-only runs, and movies in a known
+        format the parser cannot read), file_name / file_sha1 (repeatable rows; the old
         rom_name / rom_sha1 pair still counts as one), completed, notes,
         content_warnings (repeatable), dry_run; files movie, attachments
     Answers: {ok, id, archive, forum}; dry_run: {ok, dry_run, would_be, run,
@@ -503,16 +504,9 @@ def submit():
         if wants_time and goal != 'unclassified':
             # the category ranks by time and there are no frames to derive it
             # from, so the submitter states it
-            stated = (submission.get('time') or '').strip()
-            time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated)
-            if not time_match:
-                return fail('a video-only run in a time-ranked category needs its '
-                            'time, stated as [h:]mm:ss or [h:]mm:ss.mmm')
-            hours, minutes, seconds, fraction = time_match.groups()
-            duration = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
-                        + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))
-            if duration <= 0:
-                return fail('a run that takes no time at all is not a run')
+            duration, time_error = parse_stated_time(submission.get('time'))
+            if time_error:
+                return fail(f'a video-only run in a time-ranked category needs its time: {time_error}')
         ext = None
         movie_bytes = b''
         movie_sha1 = None
@@ -532,7 +526,15 @@ def submit():
             return fail('movie file is empty')
         parsed = movieparse.parse(movie_upload.filename, movie_bytes)
         if not parsed['ok']:
-            return fail(f'movie did not parse as .{ext}: {parsed["error"]}')
+            # a known format the parser cannot read: the file is archived as
+            # it is, frames unknown, and the submitter states the time when
+            # the category ranks by it (the same rule as video-only)
+            parsed = {'ok': False, 'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
+            if wants_time and goal != 'unclassified':
+                duration, time_error = parse_stated_time(submission.get('time'))
+                if time_error:
+                    return fail(f'the movie could not be read (.{ext}), so the time must be '
+                                f'stated: {time_error}')
         movie_sha1 = hashlib.sha1(movie_bytes).hexdigest()
 
     # --- encode (mandatory) + thumbnail derived from it ---
@@ -618,7 +620,8 @@ def submit():
             **({'metrics': stated_metrics} if stated_metrics else {}),
             **({'videoOnly': True,
                 **({'duration': duration} if duration else {})} if video_only else
-               {'movie': {'file': f'{run_id}.{ext}', 'format': ext, 'sha1': movie_sha1,
+               {**({'duration': duration} if duration else {}),
+                'movie': {'file': f'{run_id}.{ext}', 'format': ext, 'sha1': movie_sha1,
                           'frames': parsed['frames'],
                           'rerecords': parsed['rerecords'],
                           'start': parsed['start'],
@@ -1218,6 +1221,19 @@ def place_subcategory(categories, category, raw_sub):
     else:
         category.pop('sub', None)
     return None
+
+def parse_stated_time(raw):
+    """A time typed by a person, [h:]mm:ss[.mmm], as seconds; (value, error)."""
+    stated = (raw or '').strip()
+    time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated)
+    if not time_match:
+        return None, 'state it as [h:]mm:ss or [h:]mm:ss.mmm'
+    hours, minutes, seconds, fraction = time_match.groups()
+    value = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
+             + (int(fraction.ljust(3, '0')) / 1000 if fraction else 0.0))
+    if value <= 0:
+        return None, 'a run that takes no time at all is not a run'
+    return value, None
 
 def parse_file_rows(form):
     """The files a movie was made against, from the repeated form fields
@@ -2577,6 +2593,44 @@ def edit_run():
         commit_push(f'Edit {run_id}: {", ".join(changed)} by '
                     f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
     return jsonify({'ok': True, 'run': run_id, 'changed': changed})
+
+@app.post('/api/movie/inspect')
+def movie_inspect():
+    """Read a movie file the way a submission would, and say what it holds,
+    before anything is submitted: the submit form shows the derived time
+    in its Scoring panel, or asks for a stated one when the format cannot
+    be read. Nothing is stored.
+
+    Who: anybody (the file is the caller's own)
+    Reads: file movie; form field game (system/slug, for the frame rate when
+        the movie names none)
+    Answers: {ok, format, known, parsed, frames, fps, seconds, rerecords};
+        400 for a missing, empty, oversized or unknown-format file
+    """
+    movie_upload = request.files.get('movie')
+    if not movie_upload or not movie_upload.filename:
+        return fail('attach the movie file')
+    ext = movie_upload.filename.rsplit('.', 1)[-1].lower()
+    if ext not in MOVIE_EXTS:
+        return fail(f'movie extension .{ext} not a known TAS format')
+    movie_bytes = movie_upload.read()
+    if not movie_bytes:
+        return fail('movie file is empty')
+    if len(movie_bytes) > MOVIE_MAX:
+        return fail('movie exceeds 16 MB')
+    parsed = movieparse.parse(movie_upload.filename, movie_bytes)
+    fps = parsed.get('fps') if parsed.get('ok') else None
+    frames = parsed.get('frames') if parsed.get('ok') else None
+    # a movie that names no frame rate runs at its system's (form field game)
+    game_key = (request.form.get('game') or '').strip()
+    if frames and not fps and re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', game_key):
+        fps = json.loads((ARCHIVE / 'systems.json').read_text()).get(game_key.split('/')[0], {}).get('fps')
+    resp = jsonify({'ok': True, 'format': ext, 'known': True, 'parsed': bool(parsed.get('ok')),
+                    'frames': frames, 'fps': fps, 'rerecords': parsed.get('rerecords') if parsed.get('ok') else None,
+                    'seconds': (frames / fps) if (frames and fps) else None,
+                    'error': None if parsed.get('ok') else parsed.get('error')})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 @app.post('/api/preview')
 def preview_notes():

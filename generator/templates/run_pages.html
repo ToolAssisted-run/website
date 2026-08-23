@@ -226,8 +226,9 @@ Log in (top right) to reply from here.</p></section>
 <aside class="side">
   <div class="factbox"><h4>Run</h4><dl>
     {% if r.get('videoOnly') %}<dt>Kind</dt><dd>Video-only: no input movie exists</dd>
-    {% else %}<dt>Frames</dt><dd class="big">{{ '{:,}'.format(r['movie']['frames']) }}</dd>{% endif %}
-    {% if run_seconds(r) is not none %}<dt>Time</dt><dd>{{ t }}{% if r.get('videoOnly') %} (stated by the submitter){% endif %}</dd>{% endif %}
+    {% elif r['movie'].get('frames') %}<dt>Frames</dt><dd class="big">{{ '{:,}'.format(r['movie']['frames']) }}</dd>
+    {% else %}<dt>Frames</dt><dd>unknown: the .{{ r['movie']['format'] }} format is kept as it is, not read</dd>{% endif %}
+    {% if run_seconds(r) is not none %}<dt>Time</dt><dd>{{ t }}{% if r.get('videoOnly') or not r['movie'].get('frames') %} (stated by the submitter){% endif %}</dd>{% endif %}
     {% for m, mv in metric_rows %}<dt>{{ m['label'] }}</dt><dd>{{ fmt_metric(mv, m) }}{% if mv is none %} (not yet stated){% endif %}</dd>{% endfor %}
     {% if not r.get('videoOnly') %}
     <dt>Rerecords</dt><dd>{{ '{:,}'.format(r['movie'].get('rerecords') or 0) }}</dd>

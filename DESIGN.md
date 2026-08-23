@@ -698,13 +698,18 @@ archivist, module responsibilities). What matters designwise:
   path. A view-as key on a non-Committee account is ignored and cleared.
 - **Honest failure**: an unreachable archivist shows an amber "archivist
   unreachable" marker with a retry; reading never needs the archivist.
-  The submit form is one form in four panels that unfold in sequence as
-  the previous one is complete (1 game and category; 2 the run: movie or
-  stated time, encode, emulator, date, files; 3 authors, disclosures, notes,
-  attachments; 4 agreement and Submit). Unfolding follows field validity
-  (panel 3 waits for a valid encode, not for the movie, which a restored
-  draft cannot carry; the movie is asked for at Submit), an unfolded panel
-  stays open, a folded one says what it waits for.
+  The submit form is one form in six panels that unfold in sequence as
+  the previous one is complete: 1 game, category, subcategory; 2 the run:
+  encode (checked live), authors, completion date; 3 reproduction
+  information: video-only switch or movie file (read at once by
+  `/api/movie/inspect`), the tool and its version (free text), the files
+  the movie was made against, supplementary uploads; 4 scoring: the
+  category's metric values, the time derived from the movie when it could
+  be read, stated by hand for video-only runs and for known formats the
+  parser cannot read (such a movie is archived as it is with `frames` 0 and
+  a stated `duration`); 5 submission notes: disclosures, notes, Preview;
+  6 agreement and Submit, which appears once Preview was pressed. An
+  unfolded panel stays open, a folded one says what it waits for.
   The submit form arms the standard leave-page dialog once anything changes,
   and keeps a **draft** in the browser's localStorage (every field but the
   movie, which browsers refuse to restore; saved 300 ms after each change,

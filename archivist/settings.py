@@ -68,7 +68,7 @@ SITE_ORIGIN = os.environ.get('SITE_ORIGIN', 'https://toolassisted.run')
 
 SESSION_TTL = 14 * 24 * 3600
 
-MOVIE_EXTS = set(movieparse.PARSERS)
+MOVIE_EXTS = set(movieparse.PARSERS) | set(movieparse.KNOWN_UNPARSED)
 
 ATTACH_EXTS = {'.txt', '.md', '.ini', '.cfg', '.conf', '.toml', '.json', '.yaml',
                '.yml', '.xml', '.lua', '.sync', '.properties'}

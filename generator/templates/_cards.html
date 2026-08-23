@@ -9,5 +9,5 @@
 {{ thumb_html(r, dur) }}
 <span class="cbody"><b>{{ g['title'] }}</b><span class="ccat">{{ cat_label(r) }}</span>
 <span class="cauth">{{ r['authors']|map(attribute='user')|join(', ') }}</span>
-<span class="cfoot"><span>{% if r.get('videoOnly') %}{{ run_clock(r) }}{% else %}{{ '{:,}'.format(r['movie']['frames']) }}f{% endif %}</span><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
+<span class="cfoot"><span>{% if r.get('videoOnly') or not r['movie'].get('frames') %}{{ run_clock(r) }}{% else %}{{ '{:,}'.format(r['movie']['frames']) }}f{% endif %}</span><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
 {% endmacro %}

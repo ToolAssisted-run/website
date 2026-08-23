@@ -35,8 +35,8 @@ def behind_text(r, best, prim):
     metric: frames against frames when both sides have them and time rules;
     otherwise the metric's own unit."""
     pv, bv = metric_value(r, prim), metric_value(best, prim)
-    if (prim['key'] == 'time' and not r.get('videoOnly')
-            and not best.get('videoOnly')):
+    if (prim['key'] == 'time' and not r.get('videoOnly') and not best.get('videoOnly')
+            and r['movie'].get('frames') and best['movie'].get('frames')):
         return f"+{r['movie']['frames'] - best['movie']['frames']:,}f"
     if pv is None or bv is None:
         return '—'

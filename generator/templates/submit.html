@@ -12,7 +12,7 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   {# the draft: everything typed is kept in this browser as you go (never the
      movie file, which browsers refuse to restore); Clear empties it all #}
   <p class="draftnote" id="s-draftnote" hidden></p>
-  {# Four panels that unfold one after the other as the previous one is
+  {# Six panels that unfold one after the other as the previous one is
      complete (app.js decides from field validity, and from a restored draft
      the same way). One form all along: the archivist takes one POST. #}
   <section class="panel actform" id="p-game" data-step="1">
@@ -51,47 +51,11 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <h2 class="ptitle"><span class="pnum">2</span> The run</h2>
   <p class="pwaits">After you pick the game and its category.</p>
   <div class="pbody">
-  <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
-    name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
-    It can never be reproduced, in emulator or on console, and the page will say so;
-    one verification still ranks it like any other run.</label>
-  <div id="s-moviewrap">
-  <label>Movie file</label><input name="movie" type="file" required>
-  </div>
-  <div id="s-metrics" class="metricsbox" hidden>
-  <p class="rules fullw">This category states its results; every value here appears in the rankings.</p>
-  <div id="s-mfields"></div>
-  <div id="s-timewrap" hidden>
-  <label>Run time, stated by you (required for video-only)</label>
-  <div class="timepick" id="s-timepick">
-    <span class="tseg"><input id="t-h" type="number" inputmode="numeric" min="0" max="999" placeholder="0"><label for="t-h">h</label></span>
-    <span class="tseg"><input id="t-m" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-m">m</label></span>
-    <span class="tseg"><input id="t-s" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-s">s</label></span>
-    <span class="tseg"><input id="t-ms" type="number" inputmode="numeric" min="0" max="999" placeholder="000"><label for="t-ms">ms</label></span>
-  </div>
-  <input type="hidden" name="time" id="s-time">
-  </div>
-  </div>
   <label>Encode link (required; verification and the run's thumbnail derive from it).
   Accepted: {{ provider_names }}.</label>
   <input id="s-encode" name="encode" type="url" required placeholder="https://youtu.be/…">
   <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
   <span id="enc-status"></span></div>
-  <label>Emulator / core (optional)</label><input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES)">
-  <label>When was the run completed? (optional; a run finished long before it was
-  submitted may say so, and the page shows both dates)</label>
-  <input name="completed" type="date" max="{{ today }}">
-  <hr class="formrule">
-  <label>Files the movie was made against (optional: ROMs, disc images, executables,
-  sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed
-  locally, the file <b>never leaves your machine</b>; or type them.</label>
-  {{ file_rows() }}
-  </div></section>
-
-  <section class="panel actform folded" id="p-authors" data-step="3">
-  <h2 class="ptitle"><span class="pnum">3</span> Authors and notes</h2>
-  <p class="pwaits">After the movie (or the stated time) and a valid encode link.</p>
-  <div class="pbody">
   <label>Authors (credit every human who worked on it. Type to search, click to add;
   a coauthor who is not a member here is credited by name, as text)</label>
   <div class="authpick">
@@ -102,6 +66,60 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   </div>
   {# shown once a second author is on the list (app.js): the policy, discreetly #}
   <p class="rules coauthnote" hidden><a href="../policy/co-authors/" target="_blank" rel="noopener">Submitting a work with co-authors? Read the Multiple author submission policy first.</a></p>
+  <label>When was the run completed? (optional; a run finished long before it was
+  submitted may say so, and the page shows both dates)</label>
+  <input name="completed" type="date" max="{{ today }}">
+  </div></section>
+
+  <section class="panel actform folded" id="p-repro" data-step="3">
+  <h2 class="ptitle"><span class="pnum">3</span> Reproduction information</h2>
+  <p class="pwaits">After a valid encode link and at least one author.</p>
+  <div class="pbody">
+  <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
+    name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
+    It can never be reproduced, in emulator or on console, and the page will say so;
+    one verification still ranks it like any other run.</label>
+  <div id="s-moviewrap">
+  <label>Movie file</label><input name="movie" type="file" required>
+  <p class="rules fullw" id="s-movienote" hidden></p>
+  </div>
+  <label>Tool used to produce the movie: name it precisely (emulator, emulator + core, game-specific tool, or other) with its version</label>
+  <input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES core), libTAS 1.4.6, jaffarPlus 3.2">
+  <hr class="formrule">
+  <label>Files the movie was made against (optional: ROMs, disc images, executables,
+  sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed
+  locally, the file <b>never leaves your machine</b>; or type them.</label>
+  {{ file_rows() }}
+  <hr class="formrule">
+  <label>Supplementary files to upload (optional: text configs, or additional movie files)</label>
+  <input name="attachments" type="file" multiple>
+  </div></section>
+
+  <section class="panel actform folded" id="p-score" data-step="4">
+  <h2 class="ptitle"><span class="pnum">4</span> Scoring</h2>
+  <p class="pwaits">After the movie file, or the video-only switch.</p>
+  <div class="pbody">
+  <p class="rules fullw" id="s-scorenote">What this category ranks by.</p>
+  <div id="s-metrics" class="metricsbox">
+  <div id="s-mfields"></div>
+  <div id="s-timederived" hidden><label>Time</label><p class="statline" id="s-timederived-text"></p></div>
+  <div id="s-timewrap" hidden>
+  <label>Run time, stated by you</label>
+  <div class="timepick" id="s-timepick">
+    <span class="tseg"><input id="t-h" type="number" inputmode="numeric" min="0" max="999" placeholder="0"><label for="t-h">h</label></span>
+    <span class="tseg"><input id="t-m" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-m">m</label></span>
+    <span class="tseg"><input id="t-s" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-s">s</label></span>
+    <span class="tseg"><input id="t-ms" type="number" inputmode="numeric" min="0" max="999" placeholder="000"><label for="t-ms">ms</label></span>
+  </div>
+  <input type="hidden" name="time" id="s-time">
+  </div>
+  </div>
+  </div></section>
+
+  <section class="panel actform folded" id="p-notes" data-step="5">
+  <h2 class="ptitle"><span class="pnum">5</span> Submission notes</h2>
+  <p class="pwaits">After every value the category ranks by is in.</p>
+  <div class="pbody">
   <label>Voluntary content disclosures, to warn viewers about:</label>
   <div class="cwrow">
     <label class="cwlab"><input type="checkbox" name="content_warnings" value="mature-violence"> Mature / violent</label>
@@ -117,13 +135,11 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <h1 id="pv-title"></h1><p class="authline" id="pv-authors"></p></div></div>
   <div class="poster" id="pv-poster" hidden><img id="pv-thumb" alt=""></div>
   <div class="notes" id="pv-notes"></div></div>
-  <label>Attachments (optional: text configs, or additional movie files)</label>
-  <input name="attachments" type="file" multiple>
   </div></section>
 
-  <section class="panel actform folded" id="p-agree" data-step="4">
-  <h2 class="ptitle"><span class="pnum">4</span> Agreement</h2>
-  <p class="pwaits">After at least one author is named.</p>
+  <section class="panel actform folded" id="p-agree" data-step="6">
+  <h2 class="ptitle"><span class="pnum">6</span> Agreement</h2>
+  <p class="pwaits">After you have previewed your notes.</p>
   <div class="pbody">
   <label class="cwlab consent"><input type="checkbox" name="consent" value="yes" required>
   <span>I license this submission under <b>CC BY 4.0</b>, I have read and agree with the

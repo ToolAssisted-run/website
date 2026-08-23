@@ -271,6 +271,8 @@ def frames_html(r):
     which has no frames because it has no input."""
     if r.get('videoOnly'):
         return '<span class="u" title="video-only: no input movie">video</span>'
+    if not r['movie'].get('frames'):
+        return '<span class="u" title="the movie format could not be read; time as stated">—</span>'
     return f'<b>{r["movie"]["frames"]:,}</b><span class="u">f</span>'
 
 import wikitext  # noqa: E402  (config put archivist/ on the path)

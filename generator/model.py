@@ -280,7 +280,9 @@ def run_seconds(r):
     movie, the stated duration for a video-only run, None when unknowable."""
     if r.get('videoOnly'):
         return r.get('duration')
-    return (r['movie']['frames'] / run_fps(r)) if r['movie'].get('frames') else None
+    if r['movie'].get('frames'):
+        return r['movie']['frames'] / run_fps(r)
+    return r.get('duration')   # a movie the parser could not read: stated
 
 def parse_date(s):
     m = re.match(r'(\d{4})-(\d{2})-(\d{2})', s or '')

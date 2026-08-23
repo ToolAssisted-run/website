@@ -1892,15 +1892,65 @@
           metricFields.appendChild(hiddenField);
         });
       }
+      // what the archivist read from the picked movie (see /api/movie/inspect):
+      // null until a file is picked; parsed=false for a known format it
+      // cannot read, in which case the time is stated by hand
+      var movieInfo = null;
+      var movieInput = movieWrap.querySelector('input');
+      var movieNote = document.getElementById('s-movienote');
+      movieInput.addEventListener('change', function(){
+        var file = movieInput.files && movieInput.files[0];
+        movieInfo = null;
+        if (!file) { movieNote.hidden = true; paintKind(); paintPanels(); return; }
+        movieNote.hidden = false; movieNote.textContent = 'reading ' + file.name + '…';
+        var fd = new FormData(); fd.append('movie', file); fd.append('game', gameSelect.value);
+        fetch(api + '/api/movie/inspect', {method: 'POST', body: fd, credentials: 'include'})
+          .then(function(r){ return r.json(); })
+          .then(function(j){
+            if (!j.ok) { movieInfo = {error: j.error || 'not a movie file'}; movieNote.textContent = '✗ ' + movieInfo.error; movieNote.className = 'rules fullw enc-bad'; }
+            else {
+              movieInfo = j;
+              movieNote.className = 'rules fullw';
+              movieNote.textContent = j.parsed
+                ? '✓ .' + j.format + ': ' + (j.frames || 0).toLocaleString() + ' frames' + (j.seconds ? ', ' + secClock(j.seconds) : '') + (j.rerecords ? ', ' + j.rerecords.toLocaleString() + ' rerecords' : '')
+                : '✓ .' + j.format + ' is a known format the archive keeps as it is but cannot read; state the time in Scoring';
+            }
+            paintKind(); paintPanels();
+          })
+          .catch(function(){ movieInfo = {error: 'could not reach the archivist to read the movie'}; movieNote.textContent = '✗ ' + movieInfo.error; paintKind(); paintPanels(); });
+      });
+      function secClock(sec){
+        var h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s2 = Math.floor(sec) % 60, ms = Math.round((sec % 1) * 1000);
+        var body = String(m).padStart(2, '0') + ':' + String(s2).padStart(2, '0') + '.' + String(ms).padStart(3, '0');
+        return h ? h + ':' + body : body;
+      }
+      var timeDerived = document.getElementById('s-timederived');
+      var timeDerivedText = document.getElementById('s-timederived-text');
+      var scoreNote = document.getElementById('s-scorenote');
+      function timeStatedNeeded(){
+        // the time comes from the movie when it could be read; by hand for
+        // video-only runs and for movies the parser cannot read
+        if (!wantsTime() || goalSelect.value === 'unclassified') return false;
+        if (videoOnlyBox.checked) return true;
+        return !!(movieInfo && !movieInfo.error && !movieInfo.parsed);
+      }
       function paintKind(){
         var v = videoOnlyBox.checked;
         movieWrap.hidden = v;
-        var needsTime = wantsTime();
-        timeWrap.hidden = !(v && needsTime);
-        metricsBox.hidden = statedDefs().length === 0 && timeWrap.hidden;
         movieWrap.querySelector('input').required = !v;
+        var needsTime = wantsTime() && goalSelect.value !== 'unclassified';
+        var stated = timeStatedNeeded();
+        timeWrap.hidden = !stated;
+        var derived = needsTime && !v && movieInfo && movieInfo.parsed && movieInfo.seconds;
+        timeDerived.hidden = !derived;
+        if (derived) timeDerivedText.textContent = secClock(movieInfo.seconds) + ' · derived from the movie (' + movieInfo.frames.toLocaleString() + ' frames)';
         var secs = document.getElementById('t-s');
-        if (secs) secs.required = v && needsTime;
+        if (secs) secs.required = stated;
+        var n = statedDefs().length;
+        scoreNote.textContent = goalSelect.value === 'unclassified'
+          ? 'Unclassified runs rank by likes alone: nothing to score.'
+          : (needsTime ? (n ? 'This category ranks by time and by the values below.' : 'This category ranks by time' + (derived ? ', read from the movie.' : (stated ? ', which you state.' : '.')))
+                       : 'This category ranks by the values below.');
         composeTime();
       }
       videoOnlyBox.addEventListener('change', paintKind);
@@ -2064,6 +2114,7 @@
       // stays open from then on; the same rule unfolds a restored draft ----
       var panels = Array.prototype.slice.call(submitForm.querySelectorAll('.panel'));
       var revealed = {1: true};
+      var previewed = false;
       function panelDone(step){
         if (step === 1) {
           if (!gameSelect.value || !goalSelect.value) return false;
@@ -2072,14 +2123,22 @@
           return true;
         }
         if (step === 2) {
-          // the encode decides; the movie is asked for at Submit (a restored
-          // draft cannot carry it). Video-only runs need their stated time
-          if (document.getElementById('enc-status').className !== 'enc-good') return false;
-          if (videoOnlyBox.checked && wantsTime() && !(document.getElementById('s-time').value > 0)) return false;
-          return true;
+          return document.getElementById('enc-status').className === 'enc-good'
+            && !!submitForm.querySelector('[name=authors]').value;
         }
-        if (step === 3) return !!submitForm.querySelector('[name=authors]').value;
-        if (step === 4) return submitForm.querySelector('[name=consent]').checked;
+        if (step === 3) {
+          // the video-only switch, or a movie the archivist accepted
+          return videoOnlyBox.checked || !!(movieInfo && !movieInfo.error);
+        }
+        if (step === 4) {
+          // every value the category ranks by: stated metrics, and the time
+          // when it is stated by hand (a derived time is already there)
+          var ok = Array.prototype.every.call(submitForm.querySelectorAll('#s-mfields input[type=hidden]'), function(h){ return h.value !== '' && !isNaN(+h.value); });
+          if (timeStatedNeeded() && !(document.getElementById('s-time').value > 0)) ok = false;
+          return ok;
+        }
+        if (step === 5) return previewed;
+        if (step === 6) return submitForm.querySelector('[name=consent]').checked;
         return false;
       }
       function paintPanels(){
@@ -2087,7 +2146,7 @@
         panels.forEach(function(pn){
           var step = +pn.dataset.step;
           var done = chain && panelDone(step);
-          if (done && step < 4) revealed[step + 1] = true;
+          if (done && step < 6) revealed[step + 1] = true;
           pn.classList.toggle('folded', !revealed[step]);
           pn.classList.toggle('done', done);
           chain = done;
@@ -2236,6 +2295,7 @@
       checkEncode();
 
       document.getElementById('s-preview-btn').addEventListener('click', function(){
+        previewed = true; paintPanels();
         var preview = document.getElementById('s-preview');
         preview.hidden = false;
         var gameLabel = gameTitles[gameSelect.value] || '';
