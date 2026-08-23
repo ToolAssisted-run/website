@@ -2566,11 +2566,16 @@ def edit_run():
                     befores['encode'] = (run.get('encodes') or [{}])[0].get('url', '')
                     run['encodes'] = [{'kind': encode_provider['kind'], 'url': encode_url}]
                     changed.append('encode')
-        if 'time' in edit_form and run.get('videoOnly'):
-            time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
-                               (edit_form.get('time') or '').strip())
+        # a stated time belongs to a video-only run in a category that ranks
+        # by time (or one without defined metrics); a score category has no
+        # time to state, so one left empty there is no error (issue #62)
+        option_metrics = (option or {}).get('metrics')
+        option_wants_time = option_metrics is None or any(mm['key'] == 'time' for mm in option_metrics)
+        stated_time = (edit_form.get('time') or '').strip()
+        if 'time' in edit_form and run.get('videoOnly') and (stated_time or option_wants_time):
+            time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated_time)
             if not time_match:
-                return fail('time must be [h:]mm:ss or [h:]mm:ss.mmm')
+                return fail('a video-only run in a time-ranked category states its time as [h:]mm:ss or [h:]mm:ss.mmm')
             hours, minutes, seconds, fraction = time_match.groups()
             duration = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
                    + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))

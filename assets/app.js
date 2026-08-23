@@ -135,10 +135,11 @@
   // one; in the box otherwise
   function note(box, text, good){
     if (lastBtn && setMark(lastBtn, good ? 'ok' : 'bad', text)) {
-      if (box) box.hidden = true;
-      return;
+      // success is the green check alone; a refusal also says why, in
+      // words a reader sees without hovering (issue #62)
+      if (good) { if (box) box.hidden = true; return; }
     }
-    noteText(box, text, good);
+    if (box) noteText(box, text, good);
   }
   // A write is only done, for the reader, once the site serves it. Every
   // successful write answers with the archive revision it produced
@@ -2542,7 +2543,7 @@
           submitForm.querySelectorAll('[name=file_name]').forEach(function(i){ fd.append('file_name', i.value); });
           submitForm.querySelectorAll('[name=file_sha1]').forEach(function(i){ fd.append('file_sha1', i.value); });
           submitForm.querySelectorAll('input[name^=metric_]').forEach(function(h){ fd.append(h.name, h.value); });
-          if (run.videoOnly || !(run.movie && run.movie.frames)) fd.append('time', byIdS('s-time').value);
+          if (timeStatedNeeded()) fd.append('time', byIdS('s-time').value);
           var att = submitForm.querySelector('[name=attachments]');
           if (editMay.author && att.files) Array.prototype.forEach.call(att.files, function(f){ fd.append('attachments', f); });
           var why = submitForm.querySelector('[name=reason]').value.trim();

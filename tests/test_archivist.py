@@ -205,6 +205,9 @@ def main():
         (pages / 'thumbs' / 'videoonly001').mkdir(parents=True)
         (pages / 'thumbs' / 'videoonly001' / 'maxresdefault.jpg').write_bytes(
             b'\xff\xd8\xff' + b'\0' * 80)
+        (pages / 'thumbs' / 'videoonly002').mkdir(parents=True)
+        (pages / 'thumbs' / 'videoonly002' / 'maxresdefault.jpg').write_bytes(
+            b'\xff\xd8\xff' + b'\0' * 80)
         (pages / 'thumbs' / 'goodvid12345').mkdir(parents=True)
         (pages / 'thumbs' / 'goodvid12345' / 'maxresdefault.jpg').write_bytes(
             b'\xff\xd8\xff' + b'\0' * 60)
@@ -930,6 +933,28 @@ def main():
                                                    authors='newuser'), files={})
             ck('the same encode twice is the same run twice', c == 409
                and 'same encode' in r.get('error', ''), str(r))
+
+            # a video-only run in a category without a time metric (issue #62):
+            # the form sends no time, and an empty one is not an error either
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'label': 'score attack', 'rule': 'Highest score.',
+                            'metrics': '[{"label": "Score", "type": "number", '
+                                       '"better": "higher", "unit": "pts"}]'})
+            ck('a score-only category exists', c == 200, str(r)[:200])
+            c, r, _ = call(U + '/api/submit', dict(vsub, goal='score-attack',
+                                                   encode='https://youtu.be/videoonly002',
+                                                   metric_score='12345'), files={})
+            ck('a video-only run in a score category needs no time', c == 200, str(r)[:200])
+            vs_id = r.get('id') or r.get('run')
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vs_id,
+                                             'notes': 'Revised write-up.', 'time': ''})
+            ck('editing its notes with an empty time is accepted (#62)',
+               c == 200 and r.get('changed') == ['notes'], str(r)[:200])
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vo_id,
+                                             'notes': 'Revised write-up.', 'time': ''})
+            ck('in a time-ranked category the time is still demanded',
+               c == 400 and 'time' in r.get('error', ''), str(r)[:200])
 
             # --- expert edits: anything in the jurisdiction, all of it logged ---
             c, r, _ = call(U + '/api/expert/edit',
