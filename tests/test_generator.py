@@ -158,8 +158,8 @@ def main():
         ck('nav auth probe', 'navauth' in home)
         browse = rd('browse/index.html')
         ck('browse states', all(f'"state": "{s}"' in browse
-                                for s in ('imported', 'pending', 'verified'))
-           and '"state": "provisional"' not in browse)
+                                for s in ('pending', 'verified'))
+           and '"state": "provisional"' not in browse and '"state": "imported"' not in browse)
         r1 = rd('runs/M900001/index.html')
         ck('pending run bounty CTA', 'contributor points' in r1)
         ck('home cards use thumbnails the site serves itself', 'src="/thumbs/' in home)

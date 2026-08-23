@@ -6,7 +6,7 @@
 <select id="bsys"><option value="">All systems</option>{% for k, v in sys_opts %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
 <select id="bst"><option value="">All statuses</option><option value="ranked">Ranked</option>
 <option value="verified">Verified</option>
-<option value="pending">Pending</option><option value="imported">Imported</option>
+<option value="pending">Pending</option>
 <option value="unclassified">Unclassified</option></select>
 <select id="bsort"><option value="date">Newest first</option>
 <option value="stars">Most stars</option>
@@ -23,8 +23,7 @@ var q = document.getElementById('bq'), sysf = document.getElementById('bsys'),
 var params = new URLSearchParams(location.search);
 if (params.get('q')) q.value = params.get('q');
 function chip(state){
-  return {imported:'<span class="chip importedchip">Imported</span>',
-          verified:'<span class="chip verchip">Verified</span>',
+  return {verified:'<span class="chip verchip">Verified</span>',
           unclassified:'<span class="chip unclchip">Unclassified</span>',
           pending:'<span class="chip pendchip">Pending</span>'}[state];
 }

@@ -28,7 +28,8 @@ for r in sorted(runs, key=archived_at, reverse=True):
         'metric': run_metric_defs(r)[0]['label'],
         'result': primary_metric_html(r),
         'stars': nlikes(r),
-        'date': archived_at(r)[:10], 'state': state,
+        # an import is simply verified here (the run page says where)
+        'date': archived_at(r)[:10], 'state': 'verified' if state == 'imported' else state,
     })
 sys_opts = [(k, v['name']) for k, v in sorted(systems.items())]
 body = tpl('browse.html', index=index, sys_opts=sys_opts)

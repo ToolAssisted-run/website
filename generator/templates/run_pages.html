@@ -53,17 +53,6 @@
   <div class="warnbox"><b>Content notes (disclosed by the author)</b>
   <div class="chips">{% for w in warns %}<span class="chip warnchip">{{ CW_LABELS.get(w, w) }}</span>{% endfor %}</div></div>
   {% endif %}
-  {% if is_leg %}
-  <div class="importedbox"><b>Imported</b>
-  This run was originally published at <a href="{{ imported.get('source', '') }}">{{ imported.get('source', '') }}</a>
-  and entered this archive as a voluntary import by one of its authors, who takes the
-  responsibility for importing a collaborative work. The notes below are the author's own;
-  text not written by the authors has been removed. The original publication was verified and reproduced
-  at its source, a trusted site, so it is marked fully verified here without passing
-  through this site's standard procedure. The movie file and notes were obtained freely from
-  the source and are redistributed in observance of the Creative Commons Attribution 2.0
-  license under which they were published there.</div>
-  {% endif %}
   {% if open_case %}
   <div class="disputebox"><b>This run is under dispute (case {{ open_case['id'] }})</b>
 Opened by {{ open_case['openedBy'] }} on {{ open_case['date'] }}: {{ inline(open_case['reason']) }}
@@ -231,11 +220,13 @@ Log in (top right) to reply from here.</p></section>
   {% if atts %}<div class="factbox"><h4>Attached files</h4>{% for a in atts %}<p class="statline"><a href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ a['file'] }}">{{ a['file'].split('/')[-1] }}</a> · {{ a.get('role', '') }}</p>{% endfor %}</div>{% endif %}
   {# status lines #}
   <div class="factbox"><h4>Status</h4>
-    <p class="statline">{% if is_leg %}{{ tick(rs) }} Reproduced at the trusted site it was imported from
+    {# the one place an import says so: where it was verified, linked, with
+       the attribution its CC BY license asks for #}
+    <p class="statline">{% if is_leg %}{{ tick(rs) }} Reproduced at <a href="{{ imported.get('source', '') }}">the trusted site it was imported from</a>
       {%- elif r.get('videoOnly') %}{{ NONE_TICK }} Reproduction not applicable: video-only, no input movie exists
       {%- elif nrep %}{{ tick(rs) }} Reproduced by {{ nmembers(nrep) }}
       {%- else %}{{ tick(rs) }} Not reproduced yet, an optional assurance that the movie really plays{% endif %}</p>
-    <p class="statline">{% if is_leg %}{{ tick(vs) }} Verified at the trusted site it was imported from
+    <p class="statline">{% if is_leg %}{{ tick(vs) }} Verified at the trusted site it was imported from. A voluntary import by one of its authors{% if imported.get('importedBy') %} ({{ member_chip(imported['importedBy'], '../../') }}){% endif %}, who takes the responsibility for importing a collaborative work; movie and notes redistributed under their Creative Commons Attribution 2.0 license, text not written by the authors removed
       {%- elif is_unclassified(r) %}{{ NONE_TICK }} Verification not applicable: Unclassified runs rank by likes
       {%- elif nver %}{{ tick(vs) }} Verified: ranked
       {%- else %}{{ tick(vs) }} Not yet verified: one verification ranks this run{% endif %}</p>

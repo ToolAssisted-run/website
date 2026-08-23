@@ -447,15 +447,14 @@ def console_tick(r):
                 'back on hardware">—</span>')
     return '<span class="tick none" title="Not played back on hardware yet (optional)">—</span>'
 
-IMPORTED_TICK = '<span class="tick imported" title="Imported: verified and reproduced at the trusted site it came from, before joining this archive">✓</span>'
-
 FULL_TICK = '<span class="tick full" title="Verified: a member confirmed the goal is met">✓</span>'
 
 NONE_TICK = '<span class="tick none" title="Not yet: this run is pending">—</span>'
 
 def tick(state):
-    if state == 'imported': return IMPORTED_TICK
-    if state in ('community', 'verified'): return FULL_TICK
+    # an import is verified, full stop: where it was verified is the run
+    # page's Status box to tell, not a badge (stored enum stays 'imported')
+    if state in ('imported', 'community', 'verified'): return FULL_TICK
     return NONE_TICK
 
 def console_chip(r):
@@ -467,8 +466,6 @@ def console_chip(r):
 
 def state_chip(r):
     rs, vs = eff_state(r)
-    if rs == 'imported':
-        return '<span class="chip importedchip">Imported</span>'
     if is_unclassified(r):
         return '<span class="chip unclchip">Unclassified</span>'
     if is_ranked(r):
@@ -601,7 +598,7 @@ _HTML_HELPERS = (
 _TEXT_HELPERS = (
     'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
     'thumb_alt shot_url breadcrumb_ld').split()
-_HTML_CONSTANTS = 'METRICS_ED IMPORTED_TICK FULL_TICK NONE_TICK EYE_ICON'.split()
+_HTML_CONSTANTS = 'METRICS_ED FULL_TICK NONE_TICK EYE_ICON'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
                    'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS BETA ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
                    'FORUM SITE_COMMIT').split()

@@ -130,8 +130,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 </script>
 {% endif %}
 
-<p class="legend">{{ IMPORTED_TICK }} Imported: verified at the trusted site it came from &nbsp;
-{{ FULL_TICK }} verified &nbsp; {{ NONE_TICK }} pending</p>
+<p class="legend">{{ FULL_TICK }} verified &nbsp; {{ NONE_TICK }} pending</p>
 {# deletion (public reason, runs deleted with the game) is the one
    removal mechanism; the old ask-then-decide request flow is retired #}
 <script type="application/json" id="gameactdata">{{ json_blob(gameact_data) }}</script><div id="f-gameremove-wrap" class="actzone expertmenu" hidden><h2>Expert menu</h2><p class="rules">Only experts whose scope covers this game, and editors, see this box; every action here is logged in the open.</p><p class="statline"><a class="btn" href="edit/">Edit this game</a> Title, thumbnail and categories are edited on their own page.</p><details class="actform"><summary>Delete this game</summary><form id="f-gamedelete"><p class="rules">Outright: the game goes, and every run in it is deleted with it; each deletion lands in the public log. For a genuine work in the wrong game, move the run instead of deleting the game. Your reason is public and permanent.</p><input type="hidden" name="game" value="{{ g['key'] }}"><label>Why <input name="reason" required minlength="8" maxlength="500" placeholder="a test, spam, a duplicate record, …"></label><button class="btn danger">Delete</button></form></details><p id="gameact-msg" class="actmsg" hidden></p></div>

@@ -219,7 +219,7 @@ recorded, paid act of assurance); console verification gates nothing.
 | `none` | Pending | awaiting its first verification |
 | `provisional` | **Verified** | one verification, from anybody; ranked |
 | `confirmed` | **Verified** | same: a verification that happened to be an expert's. No tier, no permanence; shown identically |
-| `imported` | Imported | verified+reproduced at the trusted source site, irrevocable |
+| `imported` | **Verified** | verified+reproduced at the trusted source site, irrevocable. No badge of its own anywhere: the run page's Status box alone says where it was verified, names the importer and the CC BY attribution |
 | `not-applicable` | (explained in place) | video-only runs, repro/console gates |
 
 **There are no verification tiers**: zero verifications is not verified,
