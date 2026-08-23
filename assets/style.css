@@ -244,7 +244,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .collage[data-n="3"] .tile:first-child{grid-row:span 2}
 .poster{aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:2.5px solid var(--hair);box-shadow:var(--shadow);margin-bottom:6px;background:#000;display:flex;align-items:center;justify-content:center}
 .poster img{max-width:100%;max-height:100%}
-.cbody{padding:11px 13px;display:flex;flex-direction:column;gap:4px}
+.cbody{padding:11px 13px;display:flex;flex-direction:column;gap:4px;flex:1}
 .cbody b{font-size:.94rem}
 .ccat{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--accent-text)}
 .csys{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--faint)}
@@ -255,7 +255,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .syssect h2{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .faintcell{color:var(--faint)}
 .cauth{font-size:.8rem;color:var(--muted)}
-.cfoot{display:flex;justify-content:space-between;margin-top:5px;font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint)}
+.cfoot{display:flex;justify-content:space-between;margin-top:auto;padding-top:5px;font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint)}
 .importedsm{color:var(--imported);font-weight:700}
 .versm{color:var(--accent-text);font-weight:700}
 .provsm{color:var(--accent-text)}
