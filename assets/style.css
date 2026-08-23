@@ -703,9 +703,11 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .subrowed .actmsg{flex-basis:100%;margin-top:4px}
 .subrow .dimname{color:var(--faint)}
 /* the submit draft line: saved-at stamp on the left, Clear on the right */
-.draftbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}
-.draftnote{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint)}
-.draftbar .btn{padding:6px 12px;font-size:.78rem}
+.draftnote{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint);margin:0 0 10px}
+.submitrow{justify-content:flex-start;align-items:center}
+/* the quiet sibling of a primary button: shaded, same shape and line */
+.btn.shade{background:var(--panel);color:var(--muted);border:2.5px solid var(--hairs)}
+.btn.shade:hover{color:var(--ink);border-color:var(--accent)}
 /* the order arrows: chevrons in the site's line, green on hover, frame-quantized */
 .orderbtns{display:inline-flex;gap:6px;margin-left:10px;vertical-align:middle}
 .orderbtn{width:30px;height:30px;padding:0;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--accent);font-size:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:none}
