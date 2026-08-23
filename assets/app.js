@@ -1344,24 +1344,31 @@
 
       // ---- the cards ----
       var box = byId('ge-cats');
+      // up/down arrows for one item of a list: only the moves that exist
+      // are offered (nothing up for the first, nothing down for the last)
+      function orderArrows(list, item, render){
+        var wrap = el('span', 'orderbtns');
+        var i = list.indexOf(item);
+        [['up', -1, 'Move up (earlier)'], ['down', 1, 'Move down (later)']].forEach(function(spec){
+          var j = i + spec[1];
+          if (j < 0 || j >= list.length) return;
+          var b = el('button', 'orderbtn ' + spec[0]); b.type = 'button'; b.title = spec[2];
+          b.setAttribute('aria-label', spec[2]);
+          b.addEventListener('click', function(){
+            list.splice(i, 1); list.splice(j, 0, item);
+            render();
+          });
+          wrap.appendChild(b);
+        });
+        return wrap;
+      }
       function card(c){
         var el_ = el('div', 'gecard');
         c.el = el_;
         var head = el('div', 'gehead');
         head.appendChild(el('b', '', c.key || '(new)'));
         head.appendChild(el('span', 'actmeta', ' ' + (c.runs || 0) + ' run' + (c.runs === 1 ? '' : 's')));
-        var order = el('span', 'orderbtns');
-        [['◀', -1, 'Move left (earlier)'], ['▶', 1, 'Move right (later)']].forEach(function(spec){
-          var b = el('button', 'authx orderbtn', spec[0]); b.type = 'button'; b.title = spec[2];
-          b.addEventListener('click', function(){
-            var i = draft.cats.indexOf(c), j = i + spec[1];
-            if (j < 0 || j >= draft.cats.length) return;
-            draft.cats.splice(i, 1); draft.cats.splice(j, 0, c);
-            renderCards();
-          });
-          order.appendChild(b);
-        });
-        head.appendChild(order);
+        head.appendChild(orderArrows(draft.cats, c, renderCards));
         if (!c.runs) {
           var del = el('button', 'btn danger', c.deleted ? 'Keep' : 'Delete'); del.type = 'button';
           del.addEventListener('click', function(){
@@ -1401,18 +1408,7 @@
         var subList = el('div', 'sublist');
         function subRow(sc){
           var row = el('div', 'subrowed');
-          var order = el('span', 'orderbtns');
-          [['◀', -1], ['▶', 1]].forEach(function(spec){
-            var b = el('button', 'authx orderbtn', spec[0]); b.type = 'button';
-            b.addEventListener('click', function(){
-              var i = c.subs.indexOf(sc), j = i + spec[1];
-              if (j < 0 || j >= c.subs.length) return;
-              c.subs.splice(i, 1); c.subs.splice(j, 0, sc);
-              renderSubs();
-            });
-            order.appendChild(b);
-          });
-          row.appendChild(order);
+          row.appendChild(orderArrows(c.subs, sc, renderSubs));
           row.appendChild(el('code', 'subkey', sc.key || '(new)'));
           if (sc.deleted) {
             row.appendChild(el('span', 'rules', sc.label + ': marked for deletion'));

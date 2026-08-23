@@ -143,9 +143,8 @@ def clock(frames, fps):
 # the metrics editor skeleton the creation pages and the game editor share;
 # app.js (initMetricsEd) builds the rows and keeps the hidden input as JSON
 METRICS_ED = '''<div class="metricsbox metriced">
-  <p class="rules fullw">What does this category rank by? Up to 4 metrics; their order is the
-  tie-break hierarchy and the first one is shown everywhere a time shows today. Skip this
-  entirely for a classic category: real time, lower is better.</p>
+  <h4 class="medtitle">Metrics</h4>
+  <p class="rules fullw medhint">Ranks by up to 4 metrics, in tie-break order, the first shown where a time shows; leave empty for classic: real time, lower wins.</p>
   <div class="mrows"></div>
   <div class="medbtns">
     <button type="button" class="btn quiet med-add">+ Add a metric</button>
