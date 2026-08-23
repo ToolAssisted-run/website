@@ -725,3 +725,4 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 input[type=radio]{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;flex:none;border:2.5px solid var(--hairs);border-radius:50%;background:var(--bg);cursor:pointer;display:inline-grid;place-content:center}
 input[type=radio]::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent);transform:scale(0)}
 input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::before{transform:scale(1)}
+.importnote{margin:24px 0 0;padding-top:12px;border-top:2.5px solid var(--hair);color:var(--faint);font-size:.8rem}

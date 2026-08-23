@@ -171,14 +171,15 @@ def main():
         r3 = rd('runs/M900003/index.html')
         ck('dispute banner', 'under dispute' in r3)
         leg = rd('runs/M7229/index.html')
-        ck('imported panel provenance', 'Creative Commons Attribution 2.0' in leg)
-        ck('imported panel credits the author who brought it over',
-           'voluntary import by one of its authors' in leg)
-        ck('imported panel puts the responsibility on whoever picked it',
-           'responsibility for importing a collaborative work' in leg)
-        ck('imported panel names the source only by its link',
-           'Imported from TASVideos' not in leg and 'TASVideos staff' not in leg
-           and 'trusted site' in leg)
+        ck('import notice at the bottom: provenance and license',
+           'class="rules fullw importnote"' in leg and 'Creative Commons Attribution 2.0' in leg
+           and 'voluntary import</a> by one of its authors' in leg
+           and 'responsibility for importing a collaborative work' in leg)
+        ck('the status lines say only "at a trusted site", linked',
+           leg.count('>a trusted site</a>') >= 2 and 'Imported from TASVideos' not in leg
+           and 'it was imported from' not in leg)
+        ck('the notice comes after the status box',
+           leg.index('importnote') > leg.index('<h4>Status</h4>'))
         game = rd('games/nes/pinball/index.html')
         ck('category selector', 'dimsel' in game)
         ck('pending table', 'Pending' in game)

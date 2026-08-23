@@ -243,15 +243,15 @@ Log in (top right) to reply from here.</p></section>
   <div class="factbox"><h4>Status</h4>
     {# the one place an import says so: where it was verified, linked, with
        the attribution its CC BY license asks for #}
-    <p class="statline">{% if is_leg %}{{ tick(rs) }} Reproduced at <a href="{{ imported.get('source', '') }}">the trusted site it was imported from</a>
+    <p class="statline">{% if is_leg %}{{ tick(rs) }} Reproduced at <a href="{{ imported.get('source', '') }}">a trusted site</a>
       {%- elif r.get('videoOnly') %}{{ NONE_TICK }} Reproduction not applicable: video-only, no input movie exists
       {%- elif nrep %}{{ tick(rs) }} Reproduced by {{ nmembers(nrep) }}
       {%- else %}{{ tick(rs) }} Not reproduced yet, an optional assurance that the movie really plays{% endif %}</p>
-    <p class="statline">{% if is_leg %}{{ tick(vs) }} Verified at the trusted site it was imported from. A voluntary import by one of its authors{% if imported.get('importedBy') %} ({{ member_chip(imported['importedBy'], '../../') }}){% endif %}, who takes the responsibility for importing a collaborative work; movie and notes redistributed under their Creative Commons Attribution 2.0 license, text not written by the authors removed
+    <p class="statline">{% if is_leg %}{{ tick(vs) }} Verified at <a href="{{ imported.get('source', '') }}">a trusted site</a>
       {%- elif is_unclassified(r) %}{{ NONE_TICK }} Verification not applicable: Unclassified runs rank by likes
       {%- elif nver %}{{ tick(vs) }} Verified: ranked
       {%- else %}{{ tick(vs) }} Not yet verified: one verification ranks this run{% endif %}</p>
-    {% if cstate == 'imported' %}<p class="statline"><span class="tick console">✓</span> Console verified at the trusted site it was imported from{% if ncons %}, and by {{ nmembers(ncons) }} here{% endif %}</p>
+    {% if cstate == 'imported' %}<p class="statline"><span class="tick console">✓</span> Console verified at <a href="{{ imported.get('source', '') }}">a trusted site</a>{% if ncons %}, and by {{ nmembers(ncons) }} here{% endif %}</p>
     {% elif ncons %}<p class="statline"><span class="tick console">✓</span> Console verified by {{ nmembers(ncons) }}</p>
     {% elif not is_leg %}<p class="statline">{{ NONE_TICK }} Console verification: none yet (optional)</p>{% endif %}</div>
   {% if n_open_reports %}<div class="factbox"><h4>Reports</h4><p class="statline">⚑ {{ n_open_reports }} open · <a href="../../policy/site-log/#reports">site log</a></p></div>{% endif %}
@@ -272,6 +272,11 @@ Log in (top right) to reply from here.</p></section>
   <script type="application/json" id="likedata">{{ json_blob(like_data) }}</script>
   {% if not is_leg and not is_ranked(r) %}<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>{% endif %}
 </aside></div>
+{% if is_leg %}
+{# the import notice, at the very bottom: where it came from, who brought
+   it, and the license it travels under #}
+<p class="rules fullw importnote">This movie was a <a href="{{ imported.get('source', '') }}">voluntary import</a> by one of its authors{% if imported.get('importedBy') %} ({{ member_chip(imported['importedBy'], '../../') }}){% endif %}, who takes the responsibility for importing a collaborative work; movie and notes redistributed under their Creative Commons Attribution 2.0 license, text not written by the authors removed.</p>
+{% endif %}
 {# every expert-only action, gathered in one clearly-marked box at the
    very bottom of the page (the orange dashed Expert menu); the forms,
    their ids and their behavior are unchanged, only the housing moved #}
