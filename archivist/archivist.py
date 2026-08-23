@@ -1237,13 +1237,13 @@ def void_acts_for(run, changed, by):
         for v in run.get('verifications', []):
             if not v.get('invalidated'):
                 v['invalidated'] = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                                    'reason': f'{what} changed after this verification'}
+                                    'reason': f'{what} changed after this verification', 'cause': 'edit'}
                 if 'verifications' not in voided: voided.append('verifications')
     if 'movie' in changed:
         for r_ in run.get('reproductions', []):
             if not r_.get('invalidated'):
                 r_['invalidated'] = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                                     'reason': 'the movie file changed after this reproduction'}
+                                     'reason': 'the movie file changed after this reproduction', 'cause': 'edit'}
                 if 'reproductions' not in voided: voided.append('reproductions')
     if voided:
         sync_status(run)
@@ -2635,6 +2635,43 @@ def edit_run():
         commit_push(f'Edit {run_id}: {", ".join(changed)} by '
                     f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
     return jsonify({'ok': True, 'run': run_id, 'changed': changed, 'voided': voided})
+
+@app.get('/api/run/record')
+def run_record():
+    """The run's record as the archivist holds it right now, for the edit
+    form: run.json, the notes text, the game's categories, and what the
+    caller may do with it (author, covering expert, editor).
+
+    Who: anybody may read; the permissions reflect the session
+    Reads: query run (M-id)
+    Answers: {ok, run, notes, game: {key, title, system}, categories,
+        may: {author, expert, editor}}, Cache-Control: no-store; 404 unknown
+    """
+    run_id = (request.args.get('run') or '').strip()
+    if not re.fullmatch(r'M[0-9]+', run_id):
+        return fail('run must be a run id like M100001')
+    refresh_archive()
+    run_dir = find_run(run_id)
+    if not run_dir:
+        return fail(f'unknown run {run_id}', 404)
+    run = json.loads((run_dir / 'run.json').read_text())
+    notes_path = run_dir / 'notes.md'
+    notes = notes_path.read_text() if notes_path.exists() else ''
+    # the archive's own header lines are not the author's notes
+    notes = '\n'.join(l for l in notes.splitlines() if not l.startswith('>')).strip() + '\n' if notes else ''
+    game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
+    game = json.loads((run_dir.parent.parent / 'game.json').read_text())
+    categories = json.loads((run_dir.parent.parent / 'categories.json').read_text())
+    who = session_user()
+    low = (who or '').lower()
+    may = {'author': bool(who) and low in {a['user'].lower() for a in run.get('authors', [])},
+           'expert': bool(who) and expert_covers(who, game_key),
+           'editor': bool(who) and is_editor(who)}
+    resp = jsonify({'ok': True, 'run': {k: v for k, v in run.items() if not k.startswith('_')},
+                    'notes': notes, 'game': {'key': game_key, 'title': game.get('title'), 'system': game_key.split('/')[0]},
+                    'categories': categories, 'may': may, 'user': who})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 @app.post('/api/movie/inspect')
 def movie_inspect():

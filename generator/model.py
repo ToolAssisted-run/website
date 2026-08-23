@@ -370,6 +370,12 @@ def nlikes(r):
 def live(acts):
     return [a for a in acts if not a.get('invalidated')]
 
+def earning(acts):
+    """The acts that earned their points: the live ones, and those an edit
+    of the run voided afterwards (the act was honest work on what the run
+    was then; only an expert finding it faulty forfeits the points)."""
+    return [a for a in acts if not a.get('invalidated') or a['invalidated'].get('cause') == 'edit']
+
 # the systems a movie can be played back on real hardware (a replay device
 # on the console): systems.json marks them hardwareVerifiable (issue #53);
 # everywhere else the console signal does not exist, and the site says
@@ -517,7 +523,7 @@ def award(user, pts, desc, r, date):
 for r in runs:
     if r.get('status', {}).get('reproduced') == 'imported':
         continue
-    reps = sorted(live(r.get('reproductions', [])), key=lambda a: a.get('date') or '')
+    reps = sorted(earning(r.get('reproductions', [])), key=lambda a: a.get('date') or '')
     sub = parse_date(r.get('submitted'))
     for i, act in enumerate(reps):
         if i == 0:
@@ -528,7 +534,7 @@ for r in runs:
         else:
             award(act['user'], PT_REPRO_LATER + hard_bonus(r), 'reproduction', r,
               act.get('at') or act.get('date'))
-    vers = sorted(live(r.get('verifications', [])), key=lambda a: a.get('date') or '')
+    vers = sorted(earning(r.get('verifications', [])), key=lambda a: a.get('date') or '')
     for i, act in enumerate(vers):
         if i == 0:
             ad = parse_date(act.get('date'))
@@ -538,7 +544,7 @@ for r in runs:
         else:
             award(act['user'], PT_VERIFY, 'verification', r,
                   act.get('at') or act.get('date'))
-    for act in live(r.get('consoleVerifications', [])):
+    for act in earning(r.get('consoleVerifications', [])):
         award(act['user'], PT_CONSOLE, 'console verification', r,
               act.get('at') or act.get('date'))
 

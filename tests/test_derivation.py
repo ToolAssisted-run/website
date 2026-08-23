@@ -433,6 +433,19 @@ def main():
         ck('the most liked shelf holds the starred run',
            'Most liked' in home6 and 'M900342' in home6.split('Most liked')[1],
            home6[:100])
+        # an act voided by an edit of the run (cause: edit) keeps its points;
+        # one an expert invalidated for fault does not
+        arch6d = mkarchive.make_archive(td / 'a6d', [
+            mkarchive.run_spec('M900345', frames=5000, authors=['Ada'],
+                               status={'reproduced': 'none', 'verified': 'none'},
+                               verifications=[
+                                   {'user': 'Kept', 'date': d(2), 'invalidated': {'by': 'Ada', 'date': d(3), 'reason': 'the encode changed', 'cause': 'edit'}},
+                                   {'user': 'Lost', 'date': d(2), 'invalidated': {'by': 'Root', 'date': d(3), 'reason': 'wrong goal'}}])])
+        out6d = td / 'o6d'
+        build(arch6d, out6d)
+        stats6d = json.loads((out6d / 'assets' / 'authorstats.json').read_text())
+        ck('an act voided by an edit keeps its points', stats6d.get('kept', {}).get('contrib', 0) > 0, str(stats6d.get('kept')))
+        ck('an act an expert invalidated forfeits them', stats6d.get('lost', {}).get('contrib', 0) == 0, str(stats6d.get('lost')))
         # visit counts are host state beside the checkout: with a file the
         # shelf renders, without one (CI, the Pages standby) it stays away
         vfile = td / 'visits-a6b.json'
@@ -521,14 +534,11 @@ def main():
             browse = (out / 'browse' / 'index.html').read_text()
             ck('browse leads with the primary metric',
                '9,000' in browse and 'pts' in browse, '')
+            # editing moved to the submit page's edit mode, which builds the
+            # metric fields from the category and prefills them from the
+            # record (app.js); the run page carries the link
             p351 = (out / 'runs/M900351/index.html').read_text()
-            ck('the edit panel offers the category metric, prefilled',
-               'name="metric_score"' in p351 and 'value="5000"' in p351,
-               p351[p351.find('metric_score') - 60:][:160])
-            p353 = (out / 'runs/M900353/index.html').read_text()
-            i353 = p353[p353.find('name="metric_score"'):][:60]
-            ck('an unstated metric offers an empty field, not a zero',
-               'name="metric_score"' in p353 and 'value=' not in i353, i353)
+            ck('the run page links the edit mode', 'submit/?edit=M900351' in p351)
             solo = (out / 'games/nes/scoreonly/index.html').read_text()
             ck('a time-less video-only run ranks by its score alone',
                'M900356' in rows_of(solo.split('Pending:')[0])

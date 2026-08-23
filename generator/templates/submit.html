@@ -2,9 +2,12 @@
 {# The submit page body: session-authenticated form, posts to the archivist. #}
 {# key -> "System · Title" only: categories are fetched from the archive when
    a game is picked, so the page carries no payload that grows with the corpus #}
-<header class="ghead"><div><h1>Submit a run</h1>
-<p class="authline">Your run is archived instantly and appears immediately, as pending.
-Honest attribution of every author is the one hard rule. Never upload ROMs.</p></div></header>
+{# the same page edits a run: /submit/?edit=M1234 (app.js turns it into
+   edit mode: title, subtitle, record prefilled, Save instead of Submit) #}
+<header class="ghead"><div><h1 id="s-title">Submit a run</h1>
+<p class="authline" id="s-subtitle">Your run is archived instantly and appears immediately, as pending.
+Honest attribution of every author is the one hard rule. Never upload ROMs.</p></div>
+<div class="hbtns" id="s-editback" hidden><a class="btn quiet" id="s-editback-link" href="../">Back to the run</a></div></header>
 <script type="application/json" id="gamedata">{{ json_blob({'raw': ARCHIVE_RAW, 'games': gamedata}) }}</script>
 <script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
 <p id="s-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to submit a run.</p>
@@ -81,7 +84,7 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
     It can never be reproduced, in emulator or on console, and the page will say so;
     one verification still ranks it like any other run.</label>
   <div id="s-moviewrap">
-  <label>Movie file</label><input name="movie" type="file" required>
+  <label id="s-movielabel">Movie file</label><input name="movie" type="file" required>
   <p class="rules fullw" id="s-movienote" hidden></p>
   </div>
   <label>Tool used to produce the movie: name it precisely (emulator, emulator + core, game-specific tool, or other) with its version</label>
@@ -149,6 +152,8 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <a href="https://github.com/ToolAssisted-run#4-code-of-conduct" target="_blank">Code of Conduct</a> and
   <a href="https://github.com/ToolAssisted-run#5-privacy-policy" target="_blank">Privacy Policy</a>,
   and I confirm everything here is complete and truthful, especially the authorship.</span></label>
+  <label id="s-why" hidden>Why (public, shown in the edit log)
+  <input name="reason" minlength="8" maxlength="500" placeholder="published in the site log beside your name"></label>
   <p class="rules fullw needline" id="s-need" hidden></p>
   <div class="btnrow submitrow"><button class="btn" id="s-submit" disabled>Submit</button></div>
   </div></section>

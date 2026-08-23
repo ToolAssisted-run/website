@@ -707,6 +707,18 @@ archivist, module responsibilities). What matters designwise:
   path. A view-as key on a non-Committee account is ignored and cleared.
 - **Honest failure**: an unreachable archivist shows an amber "archivist
   unreachable" marker with a retry; reading never needs the archivist.
+  **Editing a run is the submit form in edit mode** (`/submit/?edit=M1234`,
+  reached from the run page's "Edit run ↗"): one form, one set of rules, no
+  second copy to drift. The record comes from the archivist's checkout
+  (`/api/run/record`, with who may do what); every panel is open and
+  prefilled; the game is fixed; category and subcategory are changeable by
+  a covering expert or an editor only (their logged move edit); authors
+  alone change the author list and add supplementary files; the movie file
+  stays, a covering expert may replace it; experts state their public
+  reason; an editor touches nothing but category and subcategory. "Save
+  changes" asks the archivist first (dry run) and warns before an edit that
+  voids the run's acts. No draft is kept in edit mode; "Reset to the record"
+  reloads.
   The submit form is one form in six panels that unfold in sequence as
   the previous one is complete: 1 game, category, subcategory; 2 the run:
   encode (checked live), authors, completion date; 3 reproduction

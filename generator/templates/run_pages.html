@@ -86,66 +86,9 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <div id="actzone" class="actzone" hidden>
 <h2>Contribute to this run</h2>
 <div class="actforms">
-<div id="f-edit-wrap" hidden><details class="actform"><summary>Edit run</summary>
-<form id="f-edit">
-  <p class="rules">Revise the run's details. Every edit is a public commit;
-  history is never erased. Authors revise their own work freely; a covering
-  expert's change carries a public reason.</p>
-  {# the same sections as the submit form, in the same order, all open:
-     everything is prefilled; Save waits until every field is valid and a
-     line beside it names what is not #}
-  <section class="epanel"><h3 class="ptitle"><span class="pnum">1</span> The run</h3>
-  <label>Encode link</label><input name="encode" type="url" value="{{ enc_url }}" placeholder="https://youtu.be/…">
-  <div id="fe-authors">
-  <label>Authors (every human, honestly; type to search, click to add)</label>
-  <div class="authpick">
-    <div class="authchips"></div>
-    <input class="authsearch" placeholder="Type a username…" autocomplete="off">
-    <div class="authlist" hidden></div>
-    <input type="hidden" name="authors">
-  </div>
-  </div>
-  <label>When was the run completed? (optional; shown beside the submission date)</label>
-  <input name="completed" type="date" max="{{ today }}">
-  </section>
-  <section class="epanel"><h3 class="ptitle"><span class="pnum">2</span> Reproduction information</h3>
-  <label>Tool used to produce the movie: name it precisely (emulator, emulator + core, game-specific tool, or other) with its version</label>
-  <input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES core), libTAS 1.4.6, jaffarPlus 3.2">
-  <label>Files the movie was made against (ROMs, disc images, executables, sources; name and SHA1, never the files)</label>
-  <input type="hidden" name="files_set" value="1">
-  {{ file_rows(files) }}
-  <div id="fe-attach">
-  <label>Add supplementary files (optional: text configs, or additional movie
-  files; they join the run's attached files)</label>
-  <input name="attachments" type="file" multiple>
-  </div>
-  </section>
-  <section class="epanel"><h3 class="ptitle"><span class="pnum">3</span> Scoring</h3>
-  {% if metric_rows %}
-  {% for m, mv in metric_rows %}
-  <label>{{ m['label'] }} ({{ m.get('unit') or ('seconds' if m['type'] == 'time' else 'number') }}; this category ranks by it. Leave empty to keep, 0 for not yet stated)</label>
-  <input name="metric_{{ m['key'] }}" type="number" step="any" min="0" {% if mv %}value="{{ '{:g}'.format(mv) }}"{% endif %}>
-  {% endfor %}
-  {% else %}
-  <p class="rules fullw">{% if is_unclassified(r) %}Unclassified runs rank by likes alone.{% elif r.get('videoOnly') or not r['movie'].get('frames') %}Ranked by the stated time ({{ t }}); a covering expert corrects it from the Expert menu.{% else %}Ranked by time, read from the movie: {{ t }}.{% endif %}</p>
-  {% endif %}
-  </section>
-  <section class="epanel"><h3 class="ptitle"><span class="pnum">4</span> Submission notes</h3>
-  <label>Content disclosures, to warn viewers about:</label>
-  <input type="hidden" name="content_warnings_set" value="1">
-  <div class="cwrow">
-  {% for key, label in CW_LABELS.items() %}
-    <label class="cwlab"><input type="checkbox" name="content_warnings" value="{{ key }}"{% if key in warns %} checked{% endif %}> {{ label }}</label>
-  {% endfor %}
-  </div>
-  <label>Notes (<a href="../../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="12"></textarea>
-  </section>
-  <label id="fe-why" hidden>Why (public, shown in the edit log)
-  <input name="reason" minlength="8" maxlength="500"
-   placeholder="published in the site log beside your name"></label>
-  <p class="rules fullw needline" id="fe-need" hidden></p>
-  <button class="btn" id="fe-save">Save</button>
-</form></details></div>
+{# editing happens on the submit page, in edit mode: one form, one set of
+   rules (app.js reveals the button to authors, covering experts, editors) #}
+<div id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></div>
 {# an expert or editor moves the run to another category, or subcategory
    (#43); its own logged edit, shown to them alone (app.js) #}
 <div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category (expert mode)</summary>

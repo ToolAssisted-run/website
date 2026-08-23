@@ -1145,25 +1145,7 @@
               } else note(msgBox, res.j.error || 'something went wrong', false);
             });
           }
-          // an edit that would void the acts on the run (a verified run's
-          // encode, scoring or movie; a reproduced run's movie) asks first:
-          // a dry run says what would be voided before anything is sent
-          if (form.id === 'f-edit') {
-            var probe = new FormData(form);
-            probe.append('run', runData.run); probe.append('dry_run', '1');
-            post(path, probe, actionBtn(form)).then(function(res){
-              if (!(res.ok && res.j.ok)) { note(msgBox, res.j.error || 'something went wrong', false); return; }
-              var wv = res.j.would_void || [];
-              if (wv.length) {
-                var text = wv.indexOf('verifications') >= 0
-                  ? 'This run is verified. The change you are saving (encode, scoring or movie) invalidates its verifications: it leaves the ranking until somebody verifies it again.'
-                  : '';
-                if (wv.indexOf('reproductions') >= 0) text += (text ? ' ' : '') + 'Its reproductions are invalidated too: they synced the old movie.';
-                if (!window.confirm(text + ' Save anyway?')) { setMark(actionBtn(form), '', ''); return; }
-              }
-              send();
-            });
-          } else send();
+          send();
         });
       }
       if (!d.loggedIn) {
@@ -1203,57 +1185,10 @@
           paintMove();
         });
       }
-      if (isAuthor || isExpert) {
-        arm('f-edit', '/api/edit', function(form){
-          if (isAuthor) {
-            initAuthorPick(form.querySelector('.authpick'), runData.authorsDisplay);
-          } else {
-            // the author list and their supplementary files are never an
-            // expert's to touch; an expert edit states its public reason
-            var editDetails = form.closest('details');
-            var editSummary = editDetails && editDetails.querySelector('summary');
-            if (editSummary) editSummary.textContent = 'Edit run (expert mode)';
-            var authorsField = document.getElementById('fe-authors');
-            authorsField.hidden = true;
-            authorsField.querySelector('[name=authors]').disabled = true;
-            var attachField = document.getElementById('fe-attach');
-            attachField.hidden = true;
-            attachField.querySelector('[name=attachments]').disabled = true;
-            var reasonField = document.getElementById('fe-why');
-            reasonField.hidden = false;
-            reasonField.querySelector('[name=reason]').required = true;
-          }
-          form.querySelector('[name=emulator]').value = runData.emulator;
-          form.querySelector('[name=completed]').value = runData.completed;
-          var notesArea = form.querySelector('[name=notes]');
-          fetch(runData.notesUrl).then(function(r){ return r.ok ? r.text() : ''; })
-            .then(function(txt){ notesArea.value = txt; }).catch(function(){});
-          // the same rule as the submit form: Save waits until every field
-          // is valid, and a line beside it names the first that is not
-          var saveBtn = document.getElementById('fe-save'), needLine = document.getElementById('fe-need');
-          function editProblem(){
-            var enc = form.querySelector('[name=encode]').value.trim();
-            if (!enc) return 'The run: an encode link is required';
-            if (!/^https?:\/\/\S+$/.test(enc)) return 'The run: the encode link is not a URL';
-            if (isAuthor && !form.querySelector('[name=authors]').value) return 'The run: name at least one author';
-            var badSha = form.querySelector('input[name=file_sha1].bad');
-            if (badSha) return 'Reproduction information: a SHA1 is exactly 40 hexadecimal characters';
-            var badMetric = Array.prototype.filter.call(form.querySelectorAll('input[name^=metric_]'), function(i){ return i.value !== '' && (isNaN(+i.value) || +i.value < 0); })[0];
-            if (badMetric) return 'Scoring: ' + badMetric.previousElementSibling.textContent.split(' (')[0] + ' must be a number, zero or more';
-            var why = form.querySelector('[name=reason]');
-            if (!isAuthor && why.value.trim().length < 8) return 'Why: say it publicly, at least 8 characters';
-            return '';
-          }
-          function paintEdit(){
-            var problem = editProblem();
-            saveBtn.disabled = !!problem;
-            needLine.hidden = !problem;
-            needLine.textContent = problem ? problem + '.' : '';
-          }
-          form.addEventListener('input', paintEdit);
-          form.addEventListener('change', paintEdit);
-          paintEdit();
-        });
+      if (isAuthor || isExpert || isEditor) {
+        // editing lives on the submit page, in edit mode: reveal the link
+        var editWrap = document.getElementById('f-edit-wrap');
+        if (editWrap) { editWrap.hidden = false; zone.hidden = false; anything = true; }
       }
       if (!isAuthor && !runData.imported) {
         if (!runData.videoOnly) {
@@ -1838,6 +1773,9 @@
 
   // ---- submit page ----
   var submitForm = document.getElementById('submitform');
+  // the same page edits a run: /submit/?edit=M1234
+  var editRunId = null;
+  try { var _e = new URLSearchParams(location.search).get('edit'); if (_e && /^M\d+$/.test(_e)) editRunId = _e; } catch (e) {}
   if (submitForm) {
     var gameData = JSON.parse(document.getElementById('gamedata').textContent);
     var gameTitles = gameData.games;
@@ -1984,8 +1922,9 @@
       }
       function paintKind(){
         var v = videoOnlyBox.checked;
-        movieWrap.hidden = v;
-        movieWrap.querySelector('input').required = !v;
+        // in edit mode the movie stays as it is: only experts see the picker, to replace it
+        movieWrap.hidden = v || (editRunId && !(editMay && (editMay.expert || editMay.editor)));
+        movieWrap.querySelector('input').required = !v && !editRunId;
         var needsTime = wantsTime() && goalSelect.value !== 'unclassified';
         var stated = timeStatedNeeded();
         timeWrap.hidden = !stated;
@@ -2079,6 +2018,18 @@
       }
       function paintCategory(){
         if (typeof paintPanels === 'function') setTimeout(paintPanels, 0);   // the goals arrive later than the pick
+        if (editRecord) setTimeout(function(){
+          // the record's stated values into the fields the category defines
+          var mv = editRecord.run.metrics || {};
+          Object.keys(mv).forEach(function(k){
+            var h = submitForm.querySelector('input[name="metric_' + k + '"]');
+            if (!h) return;
+            var vis = h.previousElementSibling;
+            if (vis && vis.tagName === 'INPUT') { vis.value = mv[k]; vis.dispatchEvent(new Event('input')); }
+            h.value = mv[k];
+          });
+          paintPanels();
+        }, 0);
         document.getElementById('s-uncldesc').hidden = goalSelect.value !== 'unclassified';
         var goals = goalCache[gameSelect.value] || [];
         var picked = goals.filter(function(g){ return g.key === goalSelect.value; })[0];
@@ -2142,6 +2093,7 @@
                d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', second: '2-digit'});
       }
       function saveDraft(){
+        if (editRunId) return;   // an edit is not a draft of a new run
         // an untouched form is not a draft: the author picker seeds your own
         // name, which is no reason to claim one was saved
         var fields = draftFields();
@@ -2159,6 +2111,89 @@
         try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
         draftNote.hidden = true;
       }
+      // ---- edit mode: the record prefilled, every panel open, the game
+      // fixed, category and subcategory the expert's alone, Save instead of
+      // Submit, the voiding rules asked before sending ----
+      var editRecord = null, editMay = null;
+      function enterEditMode(d){
+        byIdS('s-title').textContent = 'Edit run';
+        byIdS('s-subtitle').textContent = 'Loading ' + editRunId + '…';
+        byIdS('s-editback').hidden = false;
+        byIdS('s-editback-link').href = '../runs/' + editRunId + '/';
+        byIdS('s-clear').textContent = 'Reset to the record';
+        byIdS('s-submit').textContent = 'Save changes';
+        byIdS('s-draftnote').hidden = true;
+        fetch(api + '/api/run/record?run=' + encodeURIComponent(editRunId), {credentials: 'include'})
+          .then(function(r){ return r.json(); })
+          .then(function(j){
+            if (!j.ok) { byIdS('s-subtitle').textContent = j.error || 'could not load the run'; submitForm.hidden = true; return; }
+            editRecord = j; editMay = j.may;
+            var run = j.run;
+            var mayEdit = editMay.author || editMay.expert || editMay.editor;
+            if (!mayEdit) { byIdS('s-subtitle').textContent = 'Only the authors of ' + editRunId + ', the experts covering ' + j.game.title + ' and editors may edit it.'; submitForm.hidden = true; return; }
+            byIdS('s-subtitle').textContent = editRunId + ' · ' + j.game.title + ' · by ' + run.authors.map(function(a){ return a.user; }).join(', ') + (editMay.author ? '' : ' · expert mode');
+            // panel 1: the game is fixed; category and subcategory only for experts and editors
+            var expertish = editMay.expert || editMay.editor;
+            gameTitles[j.game.key] = gameTitles[j.game.key] || j.game.title;
+            pendingDraft = {game: j.game.key, goal: run.category.goal, sub: run.category.sub || '', fields: {}};
+            pickGame(j.game.key);
+            gamePick.hidden = true; gameLocked.hidden = false;
+            byIdS('s-gamelockname').textContent = j.game.title;
+            gameLocked.innerHTML = 'Game: <b>' + j.game.title + '</b> (a run never changes game)';
+            document.querySelectorAll('#p-game .createq').forEach(function(e){ e.hidden = true; });
+            if (!expertish) { goalSelect.disabled = true; subSelect.disabled = true; }
+            // panel 2 and on: the record
+            submitForm.querySelector('[name=encode]').value = ((run.encodes || [])[0] || {}).url || '';
+            submitForm.querySelector('[name=encode]').dispatchEvent(new Event('input'));
+            var pick = submitForm.querySelector('.authpick');
+            if (pick && pick.setAuthors) pick.setAuthors(run.authors.map(function(a){ return a.user; }));
+            if (!editMay.author) { pick.querySelector('.authsearch').disabled = true; pick.querySelectorAll('.authx').forEach(function(x){ x.disabled = true; }); }
+            submitForm.querySelector('[name=completed]').value = run.completed || '';
+            videoOnlyBox.checked = !!run.videoOnly; videoOnlyBox.disabled = true;
+            // the movie file stays; an expert may replace it
+            movieInput.required = false;
+            if (run.videoOnly) { movieWrap.hidden = true; }
+            else if (expertish) { byIdS('s-movielabel').textContent = 'Replace the movie file (optional; the current one stays unless you pick another)'; }
+            else { movieWrap.hidden = true; }
+            movieInfo = run.videoOnly ? null : {parsed: !!(run.movie && run.movie.frames), frames: (run.movie || {}).frames, seconds: null, format: (run.movie || {}).format, kept: true};
+            submitForm.querySelector('[name=emulator]').value = (run.contract || {}).emulator || '';
+            var files = (run.contract || {}).files || ((run.contract || {}).rom ? [run.contract.rom] : []);
+            var rowsBox = submitForm.querySelector('.filerows');
+            files.forEach(function(f){ rowsBox.querySelector('.addfile').click(); var rows = rowsBox.querySelectorAll('.filerow'); var row = rows[rows.length - 1]; row.querySelector('[name=file_name]').value = f.name || ''; row.querySelector('[name=file_sha1]').value = f.sha1 || ''; });
+            if (!editMay.author) submitForm.querySelector('[name=attachments]').disabled = true;
+            (run.contentWarnings || []).forEach(function(w){ var b = submitForm.querySelector('[name=content_warnings][value="' + w + '"]'); if (b) b.checked = true; });
+            submitForm.querySelector('[name=notes]').value = j.notes || '';
+            if (run.goalDescription) submitForm.querySelector('[name=goal_description]').value = run.goalDescription;
+            if (!editMay.author) { byIdS('s-why').hidden = false; submitForm.querySelector('[name=reason]').required = true; }
+            if (!editMay.author && !editMay.expert) {
+              // an editor's reach is the library's shape: the category and
+              // subcategory, nothing of the run itself
+              submitForm.querySelectorAll('input, textarea, select').forEach(function(e){
+                if (['goal', 'sub', 'reason'].indexOf(e.name) < 0 && e.id !== 's-goal' && e.id !== 's-sub') e.disabled = true;
+              });
+              byIdS('s-subtitle').textContent += ' · editor: category and subcategory only';
+            }
+            submitForm.querySelector('[name=consent]').closest('label').hidden = true;
+            submitForm.querySelector('[name=consent]').checked = true;
+            // every panel open: the record is complete by definition
+            for (var i = 1; i <= 6; i++) revealed[i] = true;
+            previewed = true;
+            editStatedTime(run);
+            paintKind(); paintPanels();
+          }).catch(function(){ byIdS('s-subtitle').textContent = 'could not reach the archivist'; });
+      }
+      function editStatedTime(run){
+        // the stated time of a video-only or unread movie, back into h m s ms
+        var sec = run.duration;
+        if (!sec) return;
+        byIdS('t-h').value = Math.floor(sec / 3600) || '';
+        byIdS('t-m').value = Math.floor(sec / 60) % 60;
+        byIdS('t-s').value = Math.floor(sec) % 60;
+        byIdS('t-ms').value = Math.round((sec % 1) * 1000);
+        composeTime();
+      }
+      function byIdS(id){ return document.getElementById(id); }
+
       // ---- the panels: each unfolds once the one before is complete, and
       // stays open from then on; the same rule unfolds a restored draft ----
       var panels = Array.prototype.slice.call(submitForm.querySelectorAll('.panel'));
@@ -2177,7 +2212,7 @@
         if (step === 3) return 'pick the movie file, or mark the run video-only';
         if (step === 4) return timeStatedNeeded() && !/^(\d+:)?\d{1,2}:\d{2}/.test(document.getElementById('s-time').value) ? 'state the time' : 'every value the category ranks by is needed';
         if (step === 5) return 'preview your notes';
-        if (step === 6) return 'tick the agreement';
+        if (step === 6) return editRunId ? 'say why, publicly (at least 8 characters)' : 'tick the agreement';
         return '';
       }
       var panelNames = {1: 'Game and category', 2: 'The run', 3: 'Reproduction information', 4: 'Scoring', 5: 'Submission notes', 6: 'Agreement'};
@@ -2204,7 +2239,7 @@
           return ok;
         }
         if (step === 5) return previewed;
-        if (step === 6) return submitForm.querySelector('[name=consent]').checked;
+        if (step === 6) return editRunId ? (editMay && editMay.author ? true : submitForm.querySelector('[name=reason]').value.trim().length >= 8) : submitForm.querySelector('[name=consent]').checked;
         return false;
       }
       function paintPanels(){
@@ -2227,7 +2262,7 @@
         });
         // Submit only once every step is done, the movie included (a
         // restored draft cannot carry the file, so it is asked for here)
-        var movieOk = videoOnlyBox.checked || !!(movieInput.files && movieInput.files[0]);
+        var movieOk = videoOnlyBox.checked || !!(movieInput.files && movieInput.files[0]) || !!(movieInfo && movieInfo.kept);
         var sb = document.getElementById('s-submit');
         if (sb && !sb.dataset.sent) sb.disabled = !(chain && movieOk);
         var need = document.getElementById('s-need');
@@ -2298,8 +2333,8 @@
       try { presetGame = new URLSearchParams(location.search).get('game'); } catch (e) {}
       initAuthorPick(submitForm.querySelector('.authpick'), [d.user]);
       // a draft restores first; a game named in the URL then overrides its game
-      var restored = restoreDraft();
-      if (presetGame && gameTitles[presetGame]) {
+      var restored = editRunId ? false : restoreDraft();
+      if (!editRunId && presetGame && gameTitles[presetGame]) {
         if (restored && pendingDraft) pendingDraft.game = presetGame;
         pickGame(presetGame);
         gamePick.hidden = true;
@@ -2312,8 +2347,9 @@
           gameSearch.focus();
         });
       }
-      if (!restored && !presetGame) fillGoals([]);
+      if (!restored && !presetGame && !editRunId) fillGoals([]);
       paintPanels();
+      if (editRunId) setTimeout(function(){ enterEditMode(d); }, 0);   // once every handler below is wired
 
       // live encode check: the thumbnail is derived from the encode, so the
       // link is validated as it is typed — preview frame + green check
@@ -2416,12 +2452,83 @@
       });
 
       var submitting = false;
+      // ---- saving an edit: the revision through /api/edit; an expert's
+      // movie replacement and category move are their own logged edits ----
+      function saveEdit(){
+        var submitBtn = document.getElementById('s-submit');
+        var run = editRecord.run, expertish = editMay.expert || editMay.editor;
+        function revision(dry){
+          var fd = new FormData();
+          fd.append('run', editRunId);
+          if (dry) fd.append('dry_run', '1');
+          ['encode', 'emulator', 'completed', 'notes', 'goal_description'].forEach(function(n){
+            var e = submitForm.querySelector('[name=' + n + ']'); if (e) fd.append(n === 'goal_description' ? 'goalDescription' : n, e.value);
+          });
+          if (editMay.author) fd.append('authors', submitForm.querySelector('[name=authors]').value);
+          fd.append('content_warnings_set', '1');
+          submitForm.querySelectorAll('[name=content_warnings]:checked').forEach(function(c){ fd.append('content_warnings', c.value); });
+          fd.append('files_set', '1');
+          submitForm.querySelectorAll('[name=file_name]').forEach(function(i){ fd.append('file_name', i.value); });
+          submitForm.querySelectorAll('[name=file_sha1]').forEach(function(i){ fd.append('file_sha1', i.value); });
+          submitForm.querySelectorAll('input[name^=metric_]').forEach(function(h){ fd.append(h.name, h.value); });
+          if (run.videoOnly || !(run.movie && run.movie.frames)) fd.append('time', byIdS('s-time').value);
+          var att = submitForm.querySelector('[name=attachments]');
+          if (editMay.author && att.files) Array.prototype.forEach.call(att.files, function(f){ fd.append('attachments', f); });
+          var why = submitForm.querySelector('[name=reason]').value.trim();
+          if (why) fd.append('reason', why);
+          return fd;
+        }
+        var newMovie = expertish && movieInput.files && movieInput.files[0];
+        var newGoal = expertish ? goalSelect.value + (subWrap.hidden ? '' : '/' + subSelect.value) : null;
+        var oldGoal = run.category.goal + (run.category.sub ? '/' + run.category.sub : '');
+        var moveGoal = newGoal && newGoal !== oldGoal ? newGoal : null;
+        post('/api/edit', revision(true), submitBtn).then(function(res){
+          var wv = (res.ok && res.j.ok) ? (res.j.would_void || []) : [];
+          var nothing = !res.ok && /nothing to change/.test(res.j.error || '');
+          if (!(res.ok && res.j.ok) && !nothing) { note(msg, res.j.error || 'something went wrong', false); return; }
+          if (newMovie) wv = wv.concat(['verifications', 'reproductions']);
+          var text = '';
+          if (wv.indexOf('verifications') >= 0) text = 'This run is verified. The change you are saving (encode, scoring or movie) invalidates its verifications: it leaves the ranking until somebody verifies it again.';
+          if (wv.indexOf('reproductions') >= 0) text += (text ? ' ' : '') + 'Its reproductions are invalidated too: they synced the old movie.';
+          if (text && !window.confirm(text + ' Save anyway?')) { setMark(submitBtn, '', ''); return; }
+          submitting = true;
+          var steps = [];
+          if (!nothing) steps.push(function(){ return post('/api/edit', revision(false), submitBtn); });
+          if (newMovie) steps.push(function(){
+            var fd = new FormData(); fd.append('kind', 'run'); fd.append('target', editRunId); fd.append('field', 'movie');
+            fd.append('movie', newMovie); fd.append('reason', submitForm.querySelector('[name=reason]').value.trim() || 'Replaced the movie file.');
+            return post('/api/expert/edit', fd, submitBtn);
+          });
+          if (moveGoal) steps.push(function(){
+            var fd = new FormData(); fd.append('kind', 'run'); fd.append('target', editRunId); fd.append('field', 'goal');
+            fd.append('value', moveGoal); fd.append('reason', submitForm.querySelector('[name=reason]').value.trim() || 'Moved to the right category.');
+            return post('/api/expert/edit', fd, submitBtn);
+          });
+          if (!steps.length) { submitting = false; note(msg, 'Nothing changed.', false); return; }
+          var serial = null, voided = [];
+          (function step(){
+            if (!steps.length) {
+              submitting = false;
+              submitFormDirty = false;
+              lastBtn = submitBtn;
+              noteBuilt(msg, 'Saved.' + (voided.length ? ' Invalidated: ' + voided.join(', ') + '.' : ''), serial,
+                        'The run page shows it now: ../runs/' + editRunId + '/.', true);
+              return;
+            }
+            steps.shift()().then(function(r2){
+              if (r2.ok && r2.j.ok) { serial = r2.j.serial || serial; (r2.j.voided || []).forEach(function(v){ if (voided.indexOf(v) < 0) voided.push(v); }); step(); }
+              else { submitting = false; note(msg, r2.j.error || 'something went wrong', false); }
+            });
+          })();
+        });
+      }
       submitForm.addEventListener('submit', function(ev){
         ev.preventDefault();
         if (fileRowsOf.submitform && !fileRowsOf.submitform.valid()) return;
         // one archive per press: the button used to be picked by class, which
         // matched Preview, so a double click submitted the run twice
         if (submitting) return;
+        if (editRunId) { saveEdit(); return; }
         submitting = true;
         var submitBtn = document.getElementById('s-submit');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Archiving…'; }

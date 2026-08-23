@@ -615,8 +615,8 @@ def main():
         rlegacy_ = all_html[out / 'runs' / 'M900105' / 'index.html']
         ck('a legacy single rom still shows as one file row',
            'Old Game (USA).nes' in rlegacy_ and rlegacy_.count('class="filefact"') == 1)
-        ck('the edit form seeds its file rows from the record',
-           "data-files='[{" in rfiles_ and 'name="files_set"' in rfiles_)
+        ck('the run page links the edit mode of the submit form',
+           'href="../../submit/?edit=M900101"' in rfiles_ and 'id="f-edit"' not in rfiles_)
         ck('the submit form carries the file rows widget', 'class="filerows"' in all_html[out / 'submit' / 'index.html'])
         # the page-level 18+ gate on a sexual-content flag: declaration, yes,
         # and a no that leads home; absent elsewhere
@@ -627,13 +627,9 @@ def main():
         ck('other runs carry no page gate',
            'id="agegate"' not in all_html[out / 'runs' / 'M900101' / 'index.html'])
         # the run editor offers the content disclosures, current ones ticked (#49)
-        rpage_ = all_html[out / 'runs' / 'M900102' / 'index.html']
-        ck('the edit form carries the content warning boxes',
-           'name="content_warnings_set"' in rpage_
-           and rpage_.count('name="content_warnings"') == 4)
-        ck('the run\'s own warnings come pre-ticked',
-           'value="photosensitivity" checked' in rpage_ and 'value="sexual" checked' in rpage_
-           and 'value="strong-language" checked' not in rpage_)
+        submit_ = all_html[out / 'submit' / 'index.html']
+        ck('the submit page carries edit mode (title, back link, why field)',
+           'id="s-title"' in submit_ and 'id="s-editback"' in submit_ and 'id="s-why"' in submit_)
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
            all(f'id="ge-{f}"' in gedit_ for f in ('title', 'thumb', 'released', 'unofficial', 'discord', 'website', 'rta')))
