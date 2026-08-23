@@ -89,5 +89,6 @@ cpanel_data = {
     'editors': users_with('editor'),
     'committeeNames': users_with('committee'),
     'siteExperts': sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'}),
+    'founders': founder_now,
 }
 write_panel('committee', 'Steering Committee', tpl('panels_committee.html', cpanel_data=cpanel_data))

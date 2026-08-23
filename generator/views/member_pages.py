@@ -3,14 +3,11 @@ import json
 from config import ARCHIVE_TREE, OUT
 from model import (
     board_date,
-    ROLES_NOW,
     ROLE_LABEL,
     author_news,
     author_stats,
     authors,
     canon,
-    committee_now,
-    founder_now,
     points,
     profile_slug,
     role_events_of,
@@ -53,15 +50,9 @@ for uname, a in authors.items():
         by = ev['by']
         role_rows.append(dict(ev, what=what,
                               by_name=authors.get(by.lower(), {}).get('username', by)))
-    target_roles_now = sorted({role for (u, role, sc) in ROLES_NOW if u == uname})
-    memberact = {'target': a['username'],
-                 'committee': committee_now,
-                 'founders': founder_now,
-                 'targetSeated': 'committee' in target_roles_now or
-                                 'founder' in target_roles_now}
     body = tpl('member_pages_author.html', a=a, st=author_stats[uname], mine=mine,
                my_news=author_news.get(uname, [])[:50], NEWS_ICON=NEWS_ICON,
-               cpts=cpts, acts=acts, role_rows=role_rows, memberact=memberact)
+               cpts=cpts, acts=acts, role_rows=role_rows)
     (OUT / 'authors' / profile_slug(uname)).mkdir(parents=True, exist_ok=True)
     (OUT / 'authors' / profile_slug(uname) / 'index.html').write_text(
         page(f'{a["username"]} · TAS runs and contributions', body, '../../',

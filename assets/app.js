@@ -614,35 +614,6 @@
               'This cannot be undone.',
      done: function(j){ return 'Deleted; ' + j.released.length +
        ' game(s) are ungrouped.'; }}]);
-  // the member page: the Committee's delete, gated tighter when the target
-  // sits on the Committee (the Founder's alone) and never for the Founder
-  (function(){
-    var memberDataEl = document.getElementById('memberactdata');
-    if (!memberDataEl) return;
-    var memberData = JSON.parse(memberDataEl.textContent);
-    mePromise.then(function(d){
-      if (d.unreachable || !d.loggedIn) return;
-      var who = d.user.toLowerCase();
-      if (memberData.committee.indexOf(who) < 0) return;
-      if (memberData.targetSeated && memberData.founders.indexOf(who) < 0) return;
-      var zone = document.getElementById('memberacts');
-      var msg = document.getElementById('memberact-msg');
-      zone.hidden = false;
-      var form = document.getElementById('f-memberdelete');
-      form.addEventListener('submit', function(ev){
-        ev.preventDefault();
-        if (!window.confirm('Delete the member ' + memberData.target + ' outright? ' +
-                            'This cannot be undone.')) return;
-        post('/api/member/delete', new FormData(form), actionBtn(form))
-          .then(function(res){
-            if (res.ok && res.j.ok) {
-              noteBuilt(msg, 'Deleted.', res.j.serial,
-                        'The page is gone from the site now.');
-            } else note(msg, res.j.error || 'something went wrong', false);
-          });
-      });
-    });
-  })();
   armZone('gamesactdata', 'gamesacts', 'gamesact-msg', [
     {id: 'f-newgroup', path: '/api/group/create',
      done: function(j){ return 'The ' + j.group + ' group exists.'; }}]);
@@ -816,6 +787,34 @@
                         ' voted for it.', res.j.serial);
               roleForm.reset();
             } else note(roleMsg, res.j.error || 'something went wrong', false);
+          });
+      });
+      // the Committee's delete (#61): spam and test accounts, picked here
+      // rather than on the member's own page. Seated members are the
+      // Founder's alone, and the Founder is nobody's
+      var deleteForm = document.getElementById('f-memberdelete');
+      var deleteMsg = document.getElementById('memberdelete-msg');
+      var deleteList = document.getElementById('dl-delete-candidates');
+      var me = d.user.toLowerCase(), founders = (committeeData.founders || []).map(function(x){ return x.toLowerCase(); });
+      committeeData.members.forEach(function(m){
+        var low = m.toLowerCase();
+        if (founders.indexOf(low) >= 0) return;
+        if (committeeData.committeeNames.map(function(x){ return x.toLowerCase(); }).indexOf(low) >= 0
+            && founders.indexOf(me) < 0) return;
+        var o = document.createElement('option');
+        o.value = m;
+        deleteList.appendChild(o);
+      });
+      deleteForm.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        var target = deleteForm.querySelector('[name=target]').value.trim();
+        if (!window.confirm('Delete the member ' + target + ' outright? This cannot be undone.')) return;
+        post('/api/member/delete', new FormData(deleteForm), actionBtn(deleteForm))
+          .then(function(res){
+            if (res.ok && res.j.ok) {
+              noteBuilt(deleteMsg, 'Deleted.', res.j.serial, 'Their page is gone from the site now.');
+              deleteForm.reset();
+            } else note(deleteMsg, res.j.error || 'something went wrong', false);
           });
       });
       // the whole-site appointment: everyone who does not already hold it

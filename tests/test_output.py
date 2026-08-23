@@ -1011,9 +1011,11 @@ def main():
            'f-gamedelete' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the group page carries the expert delete',
            'f-groupdelete' in all_html[out / 'groups' / 'test-family' / 'index.html'])
-        ck('the member page carries the committee delete, hidden until armed',
-           'id="memberacts" class="actzone" hidden' in all_html[
-               out / 'authors' / 'ada' / 'index.html'])
+        ck('the member page carries no delete box (#61)',
+           'f-memberdelete' not in all_html[out / 'authors' / 'ada' / 'index.html'])
+        ck('the Committee panel carries the member delete',
+           'id="f-memberdelete"' in all_html[out / 'committee' / 'index.html']
+           and '"founders"' in all_html[out / 'committee' / 'index.html'])
         log_page0 = all_html[out / 'policy' / 'site-log' / 'index.html']
         ck('the site log has a Deletions section even when nothing was deleted',
            '<h2>Deletions' in log_page0 and 'Nothing has been deleted outright' in log_page0)

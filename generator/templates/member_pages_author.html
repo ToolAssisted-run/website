@@ -4,7 +4,6 @@
 {% endmacro %}
 <header class="ghead"><div>
 <h1>{{ a.username }} {{ '🇨🇭' if a.get('country') == 'CH' else '' }}</h1>{{ role_badges(a.username) }}</div><div class="hbtns"><a class="btn" id="selfimport" hidden data-author="{{ a.username }}" href="../../import/">Import runs</a></div></header>
-<script type="application/json" id="memberactdata">{{ json_blob(memberact) }}</script><div id="memberacts" class="actzone" hidden><details class="actform"><summary>Delete this member (Steering Committee)</summary><form id="f-memberdelete"><p class="rules">For spam and test accounts. Refused while they hold any role or authored any run: those have their own procedures. A sitting Committee member is the Founder's alone to delete, and the Founder is nobody's. Your reason is public and permanent.</p><input type="hidden" name="target" value="{{ a.username }}"><label>Why <input name="reason" required minlength="8" maxlength="500" placeholder="a spam account, a test, …"></label><button class="btn danger">Delete</button></form></details><p id="memberact-msg" class="actmsg" hidden></p></div>
 <div class="statstrip">
 <div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
 <div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>

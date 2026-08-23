@@ -320,8 +320,10 @@ concerns use **contact@toolassisted.run** (§10).
 - **Deletion**: things that were never works — spam, tests, non-TAS,
   mistakes (§4.1.1). Experts delete runs/games/groups outright from the
   page (confirmation dialog + mandatory public reason); the Committee deletes
-  member records (refused while they authored runs; a seated member is the
-  Founder's alone; the Founder is nobody's). Every deletion lands in
+  member records from its own panel (`/committee/`, never from the member's
+  page: a delete button on a profile reads as a threat; refused while they
+  authored runs; a seated member is the Founder's alone; the Founder is
+  nobody's). Every deletion lands in
   `deletions.json` and the site log; deleting a game deletes every run in
   it, one logged entry per run beside the game's own, because the use case
   is content that should never have been archived (rule violations, spam).

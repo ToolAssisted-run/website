@@ -47,6 +47,20 @@ much.</p>
     placeholder="what makes them the right curator for the library"></label>
   <button class="btn">Appoint</button>
 </form></details></section>
+<section><details class="secfold menufold"><summary><h2>Delete a member</h2></summary>
+<form id="f-memberdelete" class="actform">
+  <p class="rules">For spam and test accounts (issue #61: this lives here, not on the member's
+  page). Refused while they hold any role or authored any run: those have their own
+  procedures. A sitting Committee member is the Founder's alone to delete, and the Founder
+  is nobody's; neither is offered below. Your reason is public and permanent.</p>
+  <label>Member <input name="target" list="dl-delete-candidates" required
+    placeholder="type to find a member"></label>
+  <datalist id="dl-delete-candidates"></datalist>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="a spam account, a test, …"></label>
+  <button class="btn danger">Delete</button>
+</form>
+<p class="msg" id="memberdelete-msg" hidden></p></details></section>
 <section><details class="secfold menufold"><summary><h2>Record a Committee decision</h2></summary>
 <p class="rules">The Committee votes on the forum; this writes the result into the
 archive, which is the only place a role is recorded. Point it at the post carrying the
