@@ -702,11 +702,11 @@ def main():
            and 'class="herotext"' in home and 'class="heronews"' in home)
         base = 'github.com/ToolAssisted-run#'
         for frag, label in (('1-community-principles', 'Community Principles'),
-                            ('2-governance', 'Governance'),
                             ('3-terms-of-use', 'Terms of Use'),
                             ('4-code-of-conduct', 'Code of Conduct')):
             ck(f'footer links {label} to its section',
                f'{base}{frag}">{label}</a>' in joined, frag)
+        ck('the footer no longer links Governance', 'Governance</a>' not in all_html[out / 'index.html'])
         ck('nothing still calls it the manifesto',
            'anifesto' not in joined)
         ck('no stale policy pages are generated',
