@@ -29,7 +29,7 @@ Working rules:
   What remains forbidden, absolutely: edits by us or our tooling on our own
   initiative, bulk sweeps over member content (style passes, renames), any
   unlogged alteration, and any change to an author list (honest attribution is
-  Terms 3.3; who made a thing is moderation's question, never an edit). Forum
+  Terms 4.3; who made a thing is moderation's question, never an edit). Forum
   posts are never touched by anybody through us.
 - The generated site IS toolassisted.run (live at the root since 2026-08-15, out of beta since 2026-08-23;
   the old hand-written landing page and /stage indirection are retired to

@@ -362,7 +362,7 @@ def main():
         uncl = all_html[out / 'runs' / 'M900103' / 'index.html']
         ck('unclassified goal description escaped',
            ('&quot;quotes&quot;' in uncl or '&#34;quotes&#34;' in uncl) and '&lt;angles&gt;' in uncl)
-        policy = 'https://github.com/ToolAssisted-run#210-multiple-author-submission-policy'
+        policy = 'https://github.com/ToolAssisted-run#32-multiple-author-submission-policy'
         ck('the multiple-authors policy lives in the constitution, not on a site page',
            not (out / 'policy' / 'co-authors').exists())
         ck('the submit form links the policy, hidden until a second author',
@@ -720,8 +720,8 @@ def main():
            and 'class="herotext"' in home and 'class="heronews"' in home)
         base = 'github.com/ToolAssisted-run#'
         for frag, label in (('1-community-principles', 'Community Principles'),
-                            ('3-terms-of-use', 'Terms of Use'),
-                            ('4-code-of-conduct', 'Code of Conduct')):
+                            ('4-terms-of-use', 'Terms of Use'),
+                            ('5-code-of-conduct', 'Code of Conduct')):
             ck(f'footer links {label} to its section',
                f'{base}{frag}">{label}</a>' in joined, frag)
         ck('the footer no longer links Governance', 'Governance</a>' not in all_html[out / 'index.html'])

@@ -103,7 +103,7 @@ A person can relate to the site in these ways, from lightest to heaviest:
 - **A credited name**: anyone may be credited on a run's author list,
   including people who have never heard of the site. A credit is text; it gets
   no profile, no record, no page. Honest attribution of every human author is
-  the one hard rule (§3.3); tool disclosure is voluntary and encouraged.
+  the one hard rule (§4.3); tool disclosure is voluntary and encouraged.
 - **A member**: somebody with a forum account who has logged into the site at
   least once. First login writes their record in `authors/` (exactly two
   facts: the username, and that they are here; written in a background thread
@@ -120,7 +120,7 @@ what is the fold of it, never stored twice):
 | Role | Granted by | Powers |
 |---|---|---|
 | **Founder** | Recorded role, irrevocable (§2.2.2); succession under §2.3.12 is a new grant, never a rewrite | Public reasoned veto (once per decision, never on moderation, overridable by hard majority); seats/unseats Steering Committee from `/founder/` (every use a public role event + a PM to the person); the only one who may delete a sitting Committee member's record |
-| **Steering Committee** | The Founder (directly), or the Committee's own poll | Decides name claims and identity (it ALONE assesses identity — §2.5.8, §3.8); appoints experts at any scope (§2.5.3); records role decisions from Committee polls; deletes member records (never a seated member: the Committee does not eat itself); decides appeals |
+| **Steering Committee** | The Founder (directly), or the Committee's own poll | Decides name claims and identity (it ALONE assesses identity — §2.5.8, §4.8); appoints experts at any scope (§2.5.3); records role decisions from Committee polls; deletes member records (never a seated member: the Committee does not eat itself); decides appeals |
 | **Expert** (scoped) | Any Committee seat at any scope, or a strictly wider expert scope (downward, never sideways: equal scope cannot clone itself); annulled by Committee poll (simple majority, §2.5.4); resignation needs nobody | See "what experts do" below |
 | **Moderator** | Committee poll | Forum moderation; enforce on everyone; may admonish but never remove Founder/Committee |
 | **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the contributor tiers. |
@@ -313,12 +313,12 @@ concerns use **contact@toolassisted.run** (§10).
   stamp). The run leaves every listing; the page becomes a tombstone;
   movie file, record and history remain. The form is shown only to the
   run's authors.
-- **Erasure**: only when **every** credited author asks (§3.1); movie, notes,
+- **Erasure**: only when **every** credited author asks (§4.1); movie, notes,
   thumbnail and record all go, permanently. Tombstoned withdrawals with
   `contentRemoved: true` mark works whose files were taken down while the id
   and record stay (ids are never reused).
 - **Deletion**: things that were never works — spam, tests, non-TAS,
-  mistakes (§3.1.1). Experts delete runs/games/groups outright from the
+  mistakes (§4.1.1). Experts delete runs/games/groups outright from the
   page (confirmation dialog + mandatory public reason); the Committee deletes
   member records (refused while they authored runs; a seated member is the
   Founder's alone; the Founder is nobody's). Every deletion lands in
@@ -524,7 +524,7 @@ A category defines what it ranks by.
   denial requires a reason and PMs it. Committee members may also **attest**
   an identity directly, publicly naming how they verified it (the one place
   the archive accepts judgement instead of proof — token-based proof was
-  abandoned because it depended on another site's permissions, §3.8). A ban
+  abandoned because it depended on another site's permissions, §4.8). A ban
   or inactivity elsewhere never blocks a claim.
 - **A claim supersedes the registration name**: approving deletes the member
   record the old name wrote at first login (validator refuses a name that is
@@ -777,7 +777,7 @@ archivist, module responsibilities). What matters designwise:
 ## 10. Licensing, legal, privacy
 
 - **The licensing chain**: native submissions are granted **CC BY 4.0** by an
-  explicit consent checkbox (§3.2); works imported from TASVideos remain
+  explicit consent checkbox (§4.2); works imported from TASVideos remain
   under their original **CC BY 2.0**. The archive's `LICENSE.md` states both,
   the attribution rules, and the contact. Imported notes contain **only the
   authors' own text** (judge/staff text stripped at the `----`/`[user:]`
@@ -789,8 +789,8 @@ archivist, module responsibilities). What matters designwise:
   catalogue (tickable pending rows, dimmed already-archived rows), the member
   picks by hand, batches of six, one commit per batch, idempotent by
   publication id. Picking a co-authored work is that member's stated
-  responsibility that co-authors agree (§3.7, spelled out by the
-  constitution's §2.10 multiple author submission policy, which the submit
+  responsibility that co-authors agree (§4.7, spelled out by the
+  constitution's §3.2 multiple author submission policy, which the submit
   form and the import page link to; the site carries no policy page of its
   own); any author may withdraw it, all together may erase it. The importer never crawls the source site: it
   reads a local backup corpus, refreshed by a daily cron.
@@ -806,12 +806,12 @@ archivist, module responsibilities). What matters designwise:
 - **Privacy commitments** (§5, and they bind the implementation): no
   analytics, no tracker, one session cookie after login; the archive holds
   no personal data beyond usernames; emails never shown (masked, transient,
-  Committee-only during claims — §5.4.1) and never stored in the archive;
+  Committee-only during claims — §6.4.1) and never stored in the archive;
   account deletion removes account, email and personal data while public
-  contributions persist like git history (§5.8); third parties a page talks
-  to are listed honestly (§5.9 — the reason Gravatar was switched off).
-- **The public legal contact is contact@toolassisted.run** (§5.11: operator
-  identity; §3.10: infringement claims from anyone, member or not; §5.12:
+  contributions persist like git history (§6.8); third parties a page talks
+  to are listed honestly (§6.9 — the reason Gravatar was switched off).
+- **The public legal contact is contact@toolassisted.run** (§6.11: operator
+  identity; §4.10: infringement claims from anyone, member or not; §6.12:
   data rights). The address appears in the constitution and the archive's
   LICENSE.md.
 - **Accepted risks, on record**: thumbnails/screenshots are stills of
@@ -900,7 +900,7 @@ archivist, module responsibilities). What matters designwise:
   a force push is always a human hand, never tooling (the auto-mode
   classifier blocks it by design). After any rewrite: GitHub keeps old
   commits fetchable by SHA until Support gc's the repo, and clones elsewhere
-  persist — §5.8 says so rather than promising what git cannot deliver.
+  persist — §6.8 says so rather than promising what git cannot deliver.
 - **Code quality**: `bash tools/sonar.sh` runs a local SonarQube (docker)
   over the repo per `sonar-project.properties`.
 

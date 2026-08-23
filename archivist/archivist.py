@@ -1739,7 +1739,7 @@ def run_delete():
     """An expert deletes a movie outright: tests, spam, non-TAS, mistakes.
 
     This is the fast lane beside withdrawal (which keeps a tombstone) and
-    all-author erasure (Terms 3.1). It exists for things that were never
+    all-author erasure (Terms 4.1). It exists for things that were never
     really works; the reason is public and permanent even though the run is
     neither.
 
