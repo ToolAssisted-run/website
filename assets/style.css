@@ -704,7 +704,12 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .draftbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}
 .draftnote{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint)}
 .draftbar .btn{padding:6px 12px;font-size:.78rem}
-.orderbtns{display:inline-flex;gap:4px;margin-left:8px}
-.orderbtn{font-size:.7rem;padding:2px 7px}
+/* the order arrows: chevrons in the site's line, green on hover, frame-quantized */
+.orderbtns{display:inline-flex;gap:6px;margin-left:10px;vertical-align:middle}
+.orderbtn{width:30px;height:30px;padding:0;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--accent);font-size:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:none}
+.orderbtn::before{content:"";width:10px;height:10px;border:2.5px solid currentColor;border-top:0;border-right:0;transform:rotate(45deg);margin-left:4px}
+.orderbtn:last-child::before{transform:rotate(-135deg);margin-left:-4px}
+.orderbtn:hover{border-color:var(--accent);background:rgba(34,197,94,.10)}
+.orderbtn:active{background:var(--accent);color:#04140A}
 .gecard.deleted{opacity:.6;border-style:dashed}
 .savebar{position:sticky;bottom:0;background:var(--bg);border-top:2.5px solid var(--hair);padding:12px 0 16px;margin-top:16px}
