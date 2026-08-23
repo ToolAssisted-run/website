@@ -2749,6 +2749,15 @@
           a.textContent = 'Submit a run';
           createCatMsg.appendChild(document.createElement('br'));
           createCatMsg.appendChild(a);
+          // re-show the form instead of reloading: reset fields and restore the parent/metrics UI
+          setTimeout(function(){
+            try { createCatForm.hidden = false; } catch (e) {}
+            try { createCatForm.reset(); } catch (e) {}
+            try { paintParent(); } catch (e) {}
+            try { var lab = createCatForm.querySelector('[name=label]'); if (lab && lab.focus) lab.focus(); } catch (e) {}
+          }, 1200);
+          // Alternative: refresh the page so the form and the new categories render correctly
+          //setTimeout(function(){ try { location.reload(); } catch (e) {} }, 2000);
         });
       });
     }
