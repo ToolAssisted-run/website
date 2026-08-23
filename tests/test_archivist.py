@@ -583,6 +583,71 @@ def main():
             ck('the metric hierarchy is stored as defined',
                [m['key'] for m in pac['metrics']] == ['score', 'time']
                and pac['metrics'][0]['better'] == 'higher', str(pac))
+
+            # --- subcategories (#43): a second level inside a category ---
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'label': 'Episode 1', 'rule': 'Finish episode 1.'})
+            ck('a category to hold subcategories', c == 200 and r['key'] == 'episode-1', str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'parent': 'episode-1', 'label': 'any%', 'rule': '',
+                            'metrics': '[{"label": "Score", "type": "number", "better": "higher"}]'})
+            ck('a subcategory defines no metrics of its own', c == 400 and 'metrics' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'parent': 'episode-1', 'label': 'any%', 'rule': ''})
+            ck('a subcategory is added under its category, rule optional',
+               c == 200 and r['key'] == 'any' and r['parent'] == 'episode-1', str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'parent': 'episode-1', 'label': '100%', 'rule': 'Collect everything.'})
+            ck('a second subcategory', c == 200 and r['key'] == '100', str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'parent': 'episode-1', 'label': 'any%'})
+            ck('a duplicate subcategory is refused', c == 409, str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball', goal='episode-1'), uniq_files())
+            ck('a run in a category with subcategories must pick one',
+               c == 400 and 'pick one' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball', goal='episode-1', sub='100'), uniq_files())
+            ck('the subcategory lands on the run',
+               c == 200 and r['run']['category'] == {'goal': 'episode-1', 'sub': '100'}, str(r)[:200])
+            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball', goal='100k-glitched', sub='any'), uniq_files())
+            ck('a subcategory where the category has none is refused',
+               c == 400 and 'no subcategories' in r.get('error', ''), str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball', goal='episode-1', sub='100',
+                                                   dry_run='0'), uniq_files())
+            ck('a real run in a subcategory', c == 200, str(r)[:200])
+            sub_run = r['id']
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': 'episode-1', 'sub': '100', 'reason': 'testing the refusal, on the record'})
+            ck('a subcategory with runs in it cannot be deleted', c == 409, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run', 'target': sub_run,
+                            'field': 'goal', 'value': 'episode-1/any', 'reason': 'moved to the right subcategory'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rj_ = json.loads((work / f'games/nes/pinball/runs/{sub_run}/run.json').read_text())
+            ck('an expert moves a run between subcategories',
+               c == 200 and rj_['category'] == {'goal': 'episode-1', 'sub': 'any'}, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'category',
+                            'target': 'nes/pinball:episode-1/100', 'field': 'label', 'value': '100% completion',
+                            'reason': 'spelling out the label'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
+            ck('a subcategory label is edited on the inner record',
+               c == 200 and next(x['label'] for x in ep1['subcategories'] if x['key'] == '100') == '100% completion', str(r))
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': 'episode-1', 'sub': '100', 'reason': 'now empty, testing removal'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
+            ck('an empty subcategory is deleted', c == 200 and [x['key'] for x in ep1['subcategories']] == ['any'], str(r))
             c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball',
                                                    goal='pacifist'), uniq_files())
             ck('a metric-bearing category demands its values',

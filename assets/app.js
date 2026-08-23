@@ -1374,6 +1374,86 @@
         card.appendChild(metricsBox);
         var metricsEd = initMetricsEd(metricsBox, o.metrics || null);
         var metricsBefore = metricsEd.value();
+        // subcategories (#43): a second level inside this category, each
+        // with a label and a rule fragment; added here, renamed here,
+        // removed here while empty. Every change is its own logged edit.
+        var subBox = el('div', 'subcats');
+        subBox.appendChild(el('h4', '', 'Subcategories'));
+        subBox.appendChild(el('p', 'rules', 'Optional. A second level inside this category ' +
+          '(Episode 1: any%, 100%). Once one exists, every run here names one; the first ' +
+          'subcategory takes the runs already in the category.'));
+        var subList = el('div', 'sublist');
+        function subRow(sc){
+          var row = el('div', 'subrowed');
+          var labelIn = el('input'); labelIn.value = sc.label; labelIn.maxLength = 80; labelIn.placeholder = 'label';
+          var ruleIn = el('input'); ruleIn.value = sc.rule || ''; ruleIn.maxLength = 500; ruleIn.placeholder = 'rule fragment (optional)';
+          var whyIn = el('input'); whyIn.placeholder = 'why (public)'; whyIn.minLength = 8; whyIn.maxLength = 500;
+          row.appendChild(el('code', 'subkey', sc.key));
+          row.appendChild(labelIn); row.appendChild(ruleIn); row.appendChild(whyIn);
+          row.appendChild(el('span', 'actmeta', sc.runs + ' run' + (sc.runs === 1 ? '' : 's')));
+          var rowMsg = el('p', 'actmsg'); rowMsg.hidden = true;
+          var saveSub = el('button', 'btn', 'Save'); saveSub.type = 'button';
+          saveSub.addEventListener('click', function(){
+            var jobs = [];
+            if (labelIn.value.trim() !== sc.label) jobs.push(['label', labelIn.value.trim()]);
+            if (ruleIn.value.trim() !== (sc.rule || '')) jobs.push(['rule', ruleIn.value.trim()]);
+            if (!jobs.length) { note(rowMsg, 'Nothing changed on ' + sc.key + '.', false); return; }
+            var serial;
+            (function step(){
+              if (!jobs.length) { sc.label = labelIn.value.trim(); sc.rule = ruleIn.value.trim(); noteSaved('Saved ' + sc.key + '.', serial, rowMsg); return; }
+              var job = jobs.shift();
+              var fd = new FormData();
+              fd.append('kind', 'category');
+              fd.append('target', gameEditData.game + ':' + o.key + '/' + sc.key);
+              fd.append('field', job[0]); fd.append('value', job[1]);
+              fd.append('reason', whyIn.value.trim());
+              post('/api/expert/edit', fd, saveSub).then(function(res){
+                if (res.ok && res.j.ok) { serial = res.j.serial; step(); }
+                else note(rowMsg, res.j.error || 'something went wrong', false);
+              });
+            })();
+          });
+          row.appendChild(saveSub);
+          if (!sc.runs) {
+            var delSub = el('button', 'btn danger', 'Delete'); delSub.type = 'button';
+            delSub.addEventListener('click', function(){
+              if (!window.confirm('Delete the unused subcategory ' + sc.key + '?')) return;
+              var fd = new FormData();
+              fd.append('game', gameEditData.game); fd.append('option', o.key); fd.append('sub', sc.key);
+              fd.append('reason', whyIn.value.trim() || 'Removed unused by a covering expert.');
+              post('/api/category/delete', fd, delSub).then(function(res){
+                if (res.ok && res.j.ok) { row.remove(); noteSaved('Removed ' + sc.key + '.', res.j.serial); }
+                else note(rowMsg, res.j.error || 'something went wrong', false);
+              });
+            });
+            row.appendChild(delSub);
+          }
+          row.appendChild(rowMsg);
+          subList.appendChild(row);
+        }
+        (o.subcategories || []).forEach(subRow);
+        subBox.appendChild(subList);
+        var addRow = el('div', 'subrowed subadd');
+        var addLabel = el('input'); addLabel.placeholder = 'new subcategory label, e.g. any%'; addLabel.maxLength = 80;
+        var addRule = el('input'); addRule.placeholder = 'rule fragment (optional)'; addRule.maxLength = 500;
+        var addBtn = el('button', 'btn leave', '+ Add a subcategory'); addBtn.type = 'button';
+        var addMsg = el('p', 'actmsg'); addMsg.hidden = true;
+        addBtn.addEventListener('click', function(){
+          if (!addLabel.value.trim()) { addLabel.focus(); return; }
+          var fd = new FormData();
+          fd.append('game', gameEditData.game); fd.append('parent', o.key);
+          fd.append('label', addLabel.value.trim()); fd.append('rule', addRule.value.trim());
+          post('/api/category/add', fd, addBtn).then(function(res){
+            if (res.ok && res.j.ok) {
+              subRow({key: res.j.key, label: addLabel.value.trim(), rule: addRule.value.trim(), runs: res.j.runs_moved || 0});
+              addLabel.value = ''; addRule.value = '';
+              noteSaved('Added ' + res.j.key + (res.j.runs_moved ? ', taking the ' + res.j.runs_moved + ' run(s) already here' : '') + '.', res.j.serial, addMsg);
+            } else note(addMsg, res.j.error || 'something went wrong', false);
+          });
+        });
+        addRow.appendChild(addLabel); addRow.appendChild(addRule); addRow.appendChild(addBtn); addRow.appendChild(addMsg);
+        subBox.appendChild(addRow);
+        card.appendChild(subBox);
         var reasonInput = field('Why (published with the change)');
         reasonInput.placeholder = 'required to save a change';
         var cardMsg = el('p', 'actmsg');
@@ -1840,17 +1920,32 @@
             var goals = [];
             (cats.dimensions || []).forEach(function(dim){
               (dim.options || []).forEach(function(o){
-                goals.push({key: o.key, label: o.label, metrics: o.metrics || null});
+                goals.push({key: o.key, label: o.label, metrics: o.metrics || null,
+                            subcategories: o.subcategories || []});
               });
             });
             goalCache[key] = goals;
             fillGoals(goals);
           }).catch(function(){});
       }
+      // the subcategory select: only when the chosen category has some
+      var subWrap = document.getElementById('s-subwrap'), subSelect = document.getElementById('s-sub');
+      function paintSub(picked){
+        var subs = (picked && picked.subcategories) || [];
+        subSelect.innerHTML = '';
+        subs.forEach(function(sc){
+          var o = document.createElement('option');
+          o.value = sc.key; o.textContent = sc.label;
+          subSelect.appendChild(o);
+        });
+        subWrap.hidden = !subs.length;
+        subSelect.disabled = !subs.length;   // a disabled field sends nothing
+      }
       function paintCategory(){
         document.getElementById('s-uncldesc').hidden = goalSelect.value !== 'unclassified';
         var goals = goalCache[gameSelect.value] || [];
         var picked = goals.filter(function(g){ return g.key === goalSelect.value; })[0];
+        paintSub(picked);
         curMetrics = (picked && picked.metrics) || null;
         buildMetricFields();
         paintKind();
@@ -2179,6 +2274,34 @@
       document.getElementById('cc-game').value = catGameKey;
       document.getElementById('cc-gamename').textContent = catGameTitles[catGameKey];
       var createCatMsg = document.getElementById('cc-msg');
+      // the game's categories, to offer "subcategory of"; a subcategory has
+      // no metrics of its own and may leave the rule to its category
+      var parentSelect = document.getElementById('cc-parent');
+      fetch(api + '/api/categories?game=' + encodeURIComponent(catGameKey))
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(cats){
+          if (!cats) return;
+          (cats.dimensions || []).forEach(function(dim){
+            (dim.options || []).forEach(function(o){
+              var opt = document.createElement('option');
+              opt.value = o.key; opt.textContent = o.label;
+              parentSelect.appendChild(opt);
+            });
+          });
+        }).catch(function(){});
+      function paintParent(){
+        var isSub = !!parentSelect.value;
+        document.getElementById('cc-parenthint').hidden = !isSub;
+        var metricsBox = document.getElementById('cc-metrics');
+        metricsBox.hidden = isSub;
+        metricsBox.querySelectorAll('input, select, button').forEach(function(e){ e.disabled = isSub; });
+        var ruleIn = createCatForm.querySelector('[name=rule]');
+        ruleIn.required = !isSub;
+        ruleIn.placeholder = isSub ? 'What this subcategory adds to the category rule (optional)'
+                                   : 'What must a run do to belong here?';
+        createCatForm.querySelector('[name=label]').placeholder = isSub ? 'e.g. any%' : 'e.g. 100k points';
+      }
+      parentSelect.addEventListener('change', paintParent);
       wireCreateForm(createCatForm, document.getElementById('cc-login'), createCatMsg,
                      '/api/category/add', function(j){
         note(createCatMsg, 'Created. Publishing to the site…', true);

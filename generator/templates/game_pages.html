@@ -27,6 +27,10 @@
 <div class="dimsel">
 {% for d in dims %}
 <div class="dimrow"><span class="dimname">{{ 'Category' if d['key'] == 'goal' else d['name'] }}</span>{% for o in d['options'] %}<button class="dimopt" data-dim="{{ d['key'] }}" data-opt="{{ o['key'] }}">{{ o['label'] }}</button>{% endfor %}</div>
+{# a category with subcategories gets a second row, shown only while it is the one selected #}
+{% for o in d['options'] if o.get('subcategories') %}
+<div class="dimrow subrow" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}" hidden><span class="dimname">Subcategory</span>{% for s in o['subcategories'] %}<button class="dimopt subopt" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}" data-sub="{{ s['key'] }}">{{ s['label'] }}</button>{% endfor %}</div>
+{% endfor %}
 {% endfor %}
 </div>
 {% endif %}
@@ -105,25 +109,45 @@ its own. Never verified; ranked purely by ★ likes.</p>
 {% if multi %}
 <script>
 (function(){
-  var sel = {};
-  var rows = document.querySelectorAll('.dimrow');
+  // the selection: per dimension its option, and per option with
+  // subcategories the one chosen (remembered while switching around)
+  var sel = {}, subSel = {};
+  var rows = document.querySelectorAll('.dimrow:not(.subrow)');
+  function leaf(dim){
+    var opt = sel[dim];
+    var subRow = document.querySelector('.subrow[data-dim="' + dim + '"][data-for="' + opt + '"]');
+    if (!subRow) return opt;
+    if (!subSel[opt]) subSel[opt] = subRow.querySelector('.subopt').dataset.sub;
+    return opt + '/' + subSel[opt];
+  }
   function apply(){
     var key = Array.prototype.map.call(rows, function(row){
-      return sel[row.querySelector('.dimopt').dataset.dim];
+      return leaf(row.querySelector('.dimopt').dataset.dim);
     }).join('|');
     document.querySelectorAll('.combo').forEach(function(s){
       s.style.display = (s.dataset.combo === key) ? '' : 'none';
     });
-    document.querySelectorAll('.dimopt').forEach(function(b){
+    document.querySelectorAll('.dimopt:not(.subopt)').forEach(function(b){
       b.classList.toggle('on', sel[b.dataset.dim] === b.dataset.opt);
+    });
+    document.querySelectorAll('.subrow').forEach(function(row){
+      row.hidden = sel[row.dataset.dim] !== row.dataset.for;
+    });
+    document.querySelectorAll('.subopt').forEach(function(b){
+      b.classList.toggle('on', subSel[b.dataset.for] === b.dataset.sub);
     });
   }
   var def = '{{ default_combo }}'.split('|');
   rows.forEach(function(row, i){
-    sel[row.querySelector('.dimopt').dataset.dim] = def[i];
+    var piece = (def[i] || '').split('/');
+    sel[row.querySelector('.dimopt').dataset.dim] = piece[0];
+    if (piece[1]) subSel[piece[0]] = piece[1];
     row.querySelectorAll('.dimopt').forEach(function(b){
       b.addEventListener('click', function(){ sel[b.dataset.dim] = b.dataset.opt; apply(); });
     });
+  });
+  document.querySelectorAll('.subopt').forEach(function(b){
+    b.addEventListener('click', function(){ subSel[b.dataset.for] = b.dataset.sub; apply(); });
   });
   apply();
 })();

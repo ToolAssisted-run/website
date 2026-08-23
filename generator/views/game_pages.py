@@ -15,11 +15,17 @@ from render import SHIPPED_GAME_THUMBS, SITE_URL, breadcrumb_ld, page, thumb_url
 
 # ---- game pages (leaderboards with category selector) ----
 def combo_iter(dims):
-    """All cartesian combinations of dimension options, as lists of (dim, option)."""
+    """Every leaderboard the game has, as lists of (dim, option, sub): the
+    cartesian combinations of dimension options, an option with
+    subcategories standing once per subcategory (sub is None otherwise)."""
     combos = [[]]
     for d in dims:
-        combos = [c + [(d, o)] for c in combos for o in d['options']]
+        leaves = [(o, s) for o in d['options'] for s in (o.get('subcategories') or [None])]
+        combos = [c + [(d, o, s)] for c in combos for o, s in leaves]
     return combos
+
+def leaf_key(o, s):
+    return o['key'] + ('/' + s['key'] if s else '')
 
 def author_set(r):
     return frozenset(a['user'].lower() for a in r['authors'])
@@ -40,9 +46,13 @@ def behind_text(r, best, prim):
     return f'{behind:+g}' + (f' {prim["unit"]}' if prim.get('unit') else '')
 
 def combo_section(g, combo):
-    """The data of one category combination's leaderboard section."""
-    allrs = [r for r in g['runs'] if all(r['category'][d['key']] == o['key'] for d, o in combo)]
-    mdefs = next((o.get('metrics') for _, o in combo if o.get('metrics')),
+    """The data of one leaderboard section (a category, or one of its
+    subcategories)."""
+    allrs = [r for r in g['runs']
+             if all(r['category'].get(d['key']) == o['key']
+                    and (s is None or r['category'].get('sub') == s['key'])
+                    for d, o, s in combo)]
+    mdefs = next((o.get('metrics') for _, o, _s in combo if o.get('metrics')),
                  None) or CLASSIC_METRICS
     ranked_all = sorted([r for r in allrs if is_ranked(r)], key=rank_key)
     # one run per author (set) per category: fastest counts, rest is history
@@ -60,9 +70,10 @@ def combo_section(g, combo):
     for r in history:
         best = next(t for t in table_runs if author_set(t) == author_set(r))
         hist.append((r, behind_text(r, best, mdefs[0])))
-    return {'ckey': '|'.join(o['key'] for _, o in combo),
-            'label': ' × '.join(o['label'] for _, o in combo),
-            'rules': '\n\n'.join(o['rule'] for _, o in combo if o.get('rule')),
+    return {'ckey': '|'.join(leaf_key(o, s) for _, o, s in combo),
+            'label': ' × '.join(o['label'] + (' · ' + s['label'] if s else '') for _, o, s in combo),
+            'rules': '\n\n'.join(t for _, o, s in combo
+                                  for t in (o.get('rule'), (s or {}).get('rule')) if t),
             'allrs': allrs, 'mdefs': mdefs,
             'custom_metrics': mdefs is not CLASSIC_METRICS,
             'table_runs': table_runs, 'pend': pend, 'history': hist}
@@ -72,7 +83,8 @@ for key, g in games.items():
     gd.mkdir(parents=True)
     rel = '../../../'
     dims = g['categories']['dimensions']
-    multi = sum(len(d['options']) for d in dims) > len(dims)
+    multi = (sum(len(d['options']) for d in dims) > len(dims)
+             or any(o.get('subcategories') for d in dims for o in d['options']))
     combos = [combo_section(g, combo) for combo in combo_iter(dims)]
     # the Unclassified shelf is ordered purely by likes
     uncl_runs = sorted([r for r in g['runs'] if is_unclassified(r)],
@@ -81,7 +93,7 @@ for key, g in games.items():
     # creates one with an empty goal list), and a dimension with no options
     # has no default to offer
     default_combo = (next((c['ckey'] for c in combos if c['allrs']), None)
-                     or '|'.join(d['options'][0]['key'] for d in dims if d['options']))
+                     or (combos[0]['ckey'] if combos else ''))
     gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
                     'editorZone': True}
     face = SHIPPED_GAME_THUMBS.get(g['key'])
@@ -108,11 +120,14 @@ for key, g in games.items():
     opt_data = []
     for d_ in dims:
         for o in d_['options']:
+            in_opt = [r_ for r_ in g['runs'] if (r_.get('category') or {}).get('goal') == o['key']]
             opt_data.append({
                 'key': o['key'], 'label': o['label'], 'rule': o.get('rule', ''),
                 'metrics': o.get('metrics'),
-                'runs': sum(1 for r_ in g['runs']
-                            if (r_.get('category') or {}).get('goal') == o['key'])})
+                'runs': len(in_opt),
+                'subcategories': [{'key': s['key'], 'label': s['label'], 'rule': s.get('rule', ''),
+                                   'runs': sum(1 for r_ in in_opt if r_['category'].get('sub') == s['key'])}
+                                  for s in o.get('subcategories', [])]})
     edit_data = {'game': g['key'], 'title': g['title'],
                  'experts': covering_experts(g['key']),
                  'options': opt_data}

@@ -269,6 +269,16 @@ def main():
                                          'status': 'open'}]),
             mkarchive.run_spec('M900107', game='nes/orphan', frames=4200,
                                authors=['Ada']),
+            # subcategories (#43): Episode 1 has any% and 100%; the boards,
+            # labels and selector split accordingly, and only here
+            mkarchive.run_spec('M900110', game='dos/subgame', goal='episode-1', sub='any',
+                               frames=3000, authors=['Ada'],
+                               status={'reproduced': 'none', 'verified': 'provisional'},
+                               verifications=[{'user': 'Rep', 'date': '2026-02-09'}]),
+            mkarchive.run_spec('M900111', game='dos/subgame', goal='episode-1', sub='100',
+                               frames=9000, authors=['Bo'],
+                               status={'reproduced': 'none', 'verified': 'provisional'},
+                               verifications=[{'user': 'Rep', 'date': '2026-02-09'}]),
         ], nonmembers=['Nyx'],
             game_props={'nes/testgame': {'released': '1989-03', 'unofficial': True,
                                          'discord': 'https://discord.gg/tg1',
@@ -545,6 +555,26 @@ def main():
            'href="https://www.speedrun.com/tg"' in gpage_
            and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
+        # subcategories (#43)
+        subpage_ = all_html[out / 'games' / 'dos' / 'subgame' / 'index.html']
+        ck('a category with subcategories has one board per subcategory',
+           'data-combo="episode-1/any"' in subpage_ and 'data-combo="episode-1/100"' in subpage_
+           and 'data-combo="episode-1"' not in subpage_)
+        ck('the board heading names category and subcategory',
+           '<h2>episode 1 · any</h2>' in subpage_ and '<h2>episode 1 · 100</h2>' in subpage_, subpage_[:100])
+        ck('the selector shows a Subcategory row for that category only',
+           'class="dimrow subrow" data-dim="goal" data-for="episode-1"' in subpage_
+           and subpage_.count('class="dimrow subrow"') == 1)
+        ck('the composed rules carry the subcategory fragment',
+           'Sub rule any.' in subpage_ and 'Sub rule 100.' in subpage_)
+        ck('a run page names the subcategory in its category',
+           'episode 1 · any' in all_html[out / 'runs' / 'M900110' / 'index.html'])
+        ck('games without subcategories show no subcategory row',
+           'subrow' not in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
+        ck('the submit form carries the subcategory select, hidden until needed',
+           'id="s-subwrap" hidden' in all_html[out / 'submit' / 'index.html'])
+        ck('the create-category page offers "subcategory of"',
+           'id="cc-parent"' in all_html[out / 'create-category' / 'index.html'])
         # the files a movie was made against: the list on new records, the
         # legacy single rom shown the same way on old ones
         rfiles_ = all_html[out / 'runs' / 'M900101' / 'index.html']
@@ -639,9 +669,9 @@ def main():
         ck('library controls wait for the grid before wiring (#44 follow-up)',
            "DOMContentLoaded" in syspage_.split('id="hide-unofficial"')[1][:1500])
         vlist = gindex[gindex.index('id="v-list"'):]
-        # four games now: the three with runs, and the runless one an expert
-        # created while filling out a group
-        ck('the list view has one row per game', vlist.count('<tr onclick') == 4,
+        # five games now: the four with runs (the subcategory game included),
+        # and the runless one an expert created while filling out a group
+        ck('the list view has one row per game', vlist.count('<tr onclick') == 5,
            str(vlist.count('<tr onclick')))
         ck('the list view names each game system', vlist.count('Nintendo Entertainment System') == 3)
         gamepage = all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']

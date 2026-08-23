@@ -9,9 +9,12 @@ submit form; a category always belongs to a game.</p>
 <form id="createcatform" class="actform bigform" hidden>
   <p class="statline">A new category in <b id="cc-gamename"></b></p>
   <input type="hidden" name="game" id="cc-game">
+  <label>Subcategory of (optional)</label>
+  <select name="parent" id="cc-parent"><option value="">None: a category of its own</option></select>
+  <p class="rules" id="cc-parenthint" hidden>A subcategory is a second level inside a category (Episode 1: any%, 100%). It has its own label and rule fragment; it ranks by its category's metrics.</p>
   <label>Category label</label><input name="label" required placeholder="e.g. 100k points">
   <label>Rules</label><input name="rule" required placeholder="What must a run do to belong here?">
-  {{ METRICS_ED }}
+  <div id="cc-metrics">{{ METRICS_ED }}</div>
   <button class="btn" id="cc-submit">Create the category</button>
 </form>
 <p id="cc-msg" class="actmsg" hidden></p>

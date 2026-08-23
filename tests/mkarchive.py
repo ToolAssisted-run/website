@@ -214,6 +214,13 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
                                         'rule': 'Test rule.',
                                         **({'metrics': spec['goal_metrics']}
                                            if spec.get('goal_metrics') else {})})
+        # a subcategory (#43): the run names it, the option defines it
+        if spec.get('sub'):
+            opt = next(o for o in goal_dim['options'] if o['key'] == spec['goal'])
+            subs = opt.setdefault('subcategories', [])
+            if spec['sub'] not in {x['key'] for x in subs}:
+                subs.append({'key': spec['sub'], 'label': spec['sub'].replace('-', ' '),
+                             'rule': f"Sub rule {spec['sub']}."})
 
         rid = spec['id']
         rdir = gdir / 'runs' / rid
@@ -223,7 +230,8 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             (rdir / f'{rid}.bk2').write_bytes(b'PK\x03\x04 test movie')
         (rdir / 'thumb.png').write_bytes(PNG)
         run = {
-            'id': rid, 'game': spec['game'], 'category': {'goal': spec['goal']},
+            'id': rid, 'game': spec['game'],
+            'category': {'goal': spec['goal'], **({'sub': spec['sub']} if spec.get('sub') else {})},
             'authors': [{'user': a} for a in spec['authors']],
             **({} if video_only else
                {'movie': {'file': f'{rid}.bk2', 'format': 'bk2',
@@ -240,7 +248,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             'submittedBy': spec['authors'][0],
         }
         for k, v in spec.items():
-            if k in ('id', 'game', 'goal', 'authors', 'frames', 'notes', 'goal_metrics'):
+            if k in ('id', 'game', 'goal', 'sub', 'authors', 'frames', 'notes', 'goal_metrics'):
                 continue
             run[k] = v
         # the third signal is part of the checked status cache

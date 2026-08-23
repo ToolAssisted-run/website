@@ -412,7 +412,8 @@ def submit():
     Who: a logged-in member, or the shared `key` plus `submitter`
     Reads: form fields consent, game (system/slug), goal, goal_description,
         metric_<key>, authors (comma-separated), video_only, time,
-        encode, emulator, file_name / file_sha1 (repeatable rows; the old
+        sub (the subcategory key, required iff the category defines
+        subcategories), encode, emulator, file_name / file_sha1 (repeatable rows; the old
         rom_name / rom_sha1 pair still counts as one), completed, notes,
         content_warnings (repeatable), dry_run; files movie, attachments
     Answers: {ok, id, archive, forum}; dry_run: {ok, dry_run, would_be, run,
@@ -456,6 +457,10 @@ def submit():
     if not dim_keys:
         return fail(f'unknown category {goal!r} for {system}/{slug}; create it '
                     f'first from the game page')
+    # a category with subcategories (Episode 1: any%, 100%) wants one named
+    sub_error = place_subcategory(categories, dim_keys, submission.get('sub'))
+    if sub_error:
+        return fail(sub_error)
 
     # --- the category's metrics decide what the submitter must state ---
     goal_opt = next((option for dimension in categories['dimensions'] for option in dimension['options']
@@ -926,7 +931,8 @@ def category_add():
     the act.
 
     Who: any member (session, or `key` plus `user`)
-    Reads: form fields game, label, rule, option_key, metrics (JSON array),
+    Reads: form fields parent (optional: the category this one becomes a
+        subcategory of; then metrics are refused and the rule may be empty), game, label, rule, option_key, metrics (JSON array),
         reason, dry_run
     Answers: {ok, game, key, label}; dry_run: {ok, dry_run, key}; 409 when the
         key exists
@@ -950,7 +956,7 @@ def category_add():
         rule = (category_form.get('rule') or '').strip()
         if not (1 <= len(label) <= 80):
             return fail('a label fits in 80 characters')
-        if not (1 <= len(rule) <= 500):
+        if not (1 <= len(rule) <= 500) and not (category_form.get('parent') and len(rule) <= 500):
             return fail('a rule fits in 500 characters; it is what a verifier '
                         'holds a run to')
         # 'key' is the submitter-key auth field; the option key travels as
@@ -960,6 +966,43 @@ def category_add():
             return fail('the label yields an empty key')
         if option_key == 'unclassified':
             return fail('unclassified is reserved: every game already has it')
+        parent_key = (category_form.get('parent') or '').strip()
+        if parent_key:
+            # a subcategory: a second level inside an existing category. It
+            # has a label and a rule fragment; metrics stay the category's
+            parent = option_in(categories, parent_key)
+            if not parent:
+                return fail(f'{game_key} defines no category {parent_key!r}', 404)
+            if metric_defs:
+                return fail('a subcategory ranks by its category\'s metrics; define those on the category')
+            subs = parent.setdefault('subcategories', [])
+            if any(s['key'] == option_key for s in subs):
+                return fail(f'{option_key!r} already exists in {parent["label"]}', 409)
+            # the first subcategory changes what the category's runs need: a
+            # run already there would then name none, so the category must
+            # be empty, or the new subcategory must take them all
+            holders = [rp for rp in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
+                       if (json.loads(rp.read_text()).get('category') or {}).get('goal') == parent_key
+                       and not (json.loads(rp.read_text()).get('category') or {}).get('sub')]
+            if dry_run:
+                return jsonify({'ok': True, 'dry_run': True, 'key': option_key, 'parent': parent_key,
+                                'runs_moved': len(holders) if not subs else 0})
+            moved = 0
+            if not subs and holders:
+                for rp in holders:
+                    run_doc = json.loads(rp.read_text())
+                    run_doc['category']['sub'] = option_key
+                    rp.write_text(json.dumps(run_doc, indent=1) + '\n')
+                    moved += 1
+            subs.append({'key': option_key, 'label': label, **({'rule': rule} if rule else {})})
+            categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+            log_edit('category', f'{game_key}:{parent_key}/{option_key}', 'added', '', label, expert,
+                     (category_form.get('reason') or 'Created it.').strip()[:500])
+            ensure_member(expert)
+            commit_push(f'Subcategory add {game_key}:{parent_key}/{option_key}: by {expert}\n\n'
+                        f'Label: {label}\nRuns moved into it: {moved}\nVia: archivist')
+            return jsonify({'ok': True, 'game': game_key, 'key': option_key, 'parent': parent_key,
+                            'label': label, 'runs_moved': moved})
         goal_dimension = next((d for d in categories['dimensions'] if d['key'] == 'goal'),
                    categories['dimensions'][0] if categories['dimensions'] else None)
         if goal_dimension is None:
@@ -995,7 +1038,8 @@ def category_delete():
     category with runs in it is the runs' home, not clutter.
 
     Who: an expert covering the game, or an editor (`key` plus `expert`)
-    Reads: form fields game, option, reason, dry_run
+    Reads: form fields game, option, sub (optional: remove that subcategory
+        alone), reason, dry_run
     Answers: {ok, game, removed}; 409 while any run sits in the category
     """
     category_form = request.form
@@ -1015,6 +1059,31 @@ def category_delete():
                     if option['key'] == option_key), None)
         if not option:
             return fail(f'{game_key} defines no category {option_key!r}', 404)
+        sub_key = (category_form.get('sub') or '').strip()
+        if sub_key:
+            # one subcategory, when no run sits in it
+            subs = option.get('subcategories') or []
+            sub = next((s for s in subs if s['key'] == sub_key), None)
+            if not sub:
+                return fail(f'{option["label"]} has no subcategory {sub_key!r}', 404)
+            runs_in_sub = [json.loads(rp.read_text())['id']
+                           for rp in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
+                           if (json.loads(rp.read_text()).get('category') or {}).get('goal') == option_key
+                           and (json.loads(rp.read_text()).get('category') or {}).get('sub') == sub_key]
+            if runs_in_sub:
+                return fail(f'{sub_key!r} holds {len(runs_in_sub)} run(s); a subcategory with runs '
+                            f'in it is their home, not clutter', 409)
+            if dry_run:
+                return jsonify({'ok': True, 'dry_run': True})
+            option['subcategories'] = [s for s in subs if s['key'] != sub_key]
+            if not option['subcategories']:
+                option.pop('subcategories')
+            categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+            log_edit('category', f'{game_key}:{option_key}/{sub_key}', 'removed', sub.get('label', sub_key),
+                     '', expert, (category_form.get('reason') or 'Removed unused by a covering expert.').strip()[:500])
+            ensure_member(expert)
+            commit_push(f'Subcategory remove {game_key}:{option_key}/{sub_key}: by expert {expert}\n\nVia: archivist')
+            return jsonify({'ok': True, 'game': game_key, 'removed': f'{option_key}/{sub_key}'})
         runs_in_category = [json.loads(run_json_path.read_text())['id']
                  for run_json_path in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
                  if (json.loads(run_json_path.read_text()).get('category') or {}).get('goal') == option_key]
@@ -1052,6 +1121,29 @@ def _deletion_gate(form, need='expert'):
 # links. One parser for the editor and for creation; an empty value means
 # "not stated" and the field is absent from the record
 CW_ALLOWED = {'mature-violence', 'sexual', 'photosensitivity', 'strong-language'}
+
+def option_in(categories, option_key):
+    """The category option dict for a key, or None."""
+    return next((o for d in categories['dimensions'] for o in d['options']
+                 if o['key'] == option_key), None)
+
+def place_subcategory(categories, category, raw_sub):
+    """Settle `category['sub']` for the option in `category['goal']`: required
+    and checked when the option defines subcategories, refused when it does
+    not. Returns an error string or None."""
+    option = option_in(categories, category.get('goal'))
+    subs = (option or {}).get('subcategories') or []
+    sub = (raw_sub or '').strip()
+    if subs:
+        if sub not in {s['key'] for s in subs}:
+            return (f'{option["label"]} has subcategories ({", ".join(s["label"] for s in subs)}); '
+                    f'pick one')
+        category['sub'] = sub
+    elif sub:
+        return f'{(option or {}).get("label", category.get("goal"))} has no subcategories'
+    else:
+        category.pop('sub', None)
+    return None
 
 def parse_file_rows(form):
     """The files a movie was made against, from the repeated form fields
@@ -1129,7 +1221,9 @@ def expert_edit():
     Who: an expert covering the target; an editor for library shape only
         (game title and thumbnail, category fields, group titles, and
         moving a run between goals)
-    Reads: form fields kind (run|game|category|group), target, field, value,
+    Reads: form fields kind (run|game|category|group), target (a category
+        target may name a subcategory: system/slug:option/sub; a run's goal
+        value may too: option/sub), field, value,
         reason (8 to 500 chars), dry_run; files movie (run.movie) and
         thumbnail (game.thumbnail)
     Answers: {ok, kind, key, field, from, to}, plus runs_seeded for category
@@ -1204,20 +1298,29 @@ def expert_edit():
                 old_value = run.get('duration')
                 run['duration'] = new_value
             elif field == 'goal':
+                # the value names the category, and the subcategory after a
+                # slash when the category has them: "episode-1/any"
                 categories = json.loads((run_dir.parent.parent / 'categories.json').read_text())
+                goal_value, _, sub_value = value.partition('/')
                 valid_goals = {o['key'] for d in categories['dimensions'] for o in d['options']}
                 valid_goals.add('unclassified')
-                if value not in valid_goals:
-                    return fail(f'{value!r} is not a goal this game defines')
-                if value == 'unclassified' and any(
+                if goal_value not in valid_goals:
+                    return fail(f'{goal_value!r} is not a goal this game defines')
+                if goal_value == 'unclassified' and any(
                         not v.get('invalidated') for v in run.get('verifications', [])):
                     return fail('this run holds live verifications, which are bound '
                                 'to its goal; unclassifying it would void them, and '
                                 'that is not an edit')
-                old_value = (run.get('category') or {}).get('goal')
+                old_category = dict(run.get('category') or {})
+                old_value = old_category.get('goal', '') + ('/' + old_category['sub'] if old_category.get('sub') else '')
+                new_category = {'goal': goal_value}
+                if goal_value != 'unclassified':
+                    sub_error = place_subcategory(categories, new_category, sub_value)
+                    if sub_error:
+                        return fail(sub_error)
                 if old_value == value:
                     return fail('that is already its goal')
-                run.setdefault('category', {})['goal'] = value
+                run['category'] = new_category
             elif field == 'encode':
                 encode_provider = providers.resolve(value)
                 if not encode_provider:
@@ -1348,10 +1451,10 @@ def expert_edit():
             log_edit('game', target, field, old_value, value, actor, reason)
 
         elif kind == 'category':
-            target_match = re.fullmatch(r'([a-z0-9-]+/[a-z0-9-]+):([a-z0-9-]+)', target)
+            target_match = re.fullmatch(r'([a-z0-9-]+/[a-z0-9-]+):([a-z0-9-]+)(?:/([a-z0-9-]+))?', target)
             if not target_match:
-                return fail('target must be system/slug:option')
-            game_key, option_key = target_match.group(1), target_match.group(2)
+                return fail('target must be system/slug:option, or system/slug:option/subcategory')
+            game_key, option_key, sub_key = target_match.group(1), target_match.group(2), target_match.group(3)
             categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
             if not categories_file.exists():
                 return fail(f'unknown game {game_key}', 404)
@@ -1363,6 +1466,14 @@ def expert_edit():
                         if o['key'] == option_key), None)
             if not option:
                 return fail(f'{game_key} defines no category {option_key!r}', 404)
+            if sub_key:
+                # a subcategory's label or rule: the same edit, on the inner record
+                sub = next((s for s in option.get('subcategories', []) if s['key'] == sub_key), None)
+                if not sub:
+                    return fail(f'{option["label"]} has no subcategory {sub_key!r}', 404)
+                if field not in ('label', 'rule'):
+                    return fail('a subcategory has a label and a rule; metrics are the category\'s')
+                option = sub
             if field == 'metrics':
                 metric_defs, metric_error = parse_metric_defs(value)
                 if metric_error:

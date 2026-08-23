@@ -332,12 +332,32 @@ RUN_BY_ID = {r['id']: r for r in runs}
 def is_unclassified(r):
     return (r.get('category') or {}).get('goal') == 'unclassified'
 
+def option_of(r):
+    """The run's goal option dict (None for Unclassified)."""
+    if is_unclassified(r):
+        return None
+    goal = r['category'].get('goal')
+    return next((o for d in r['_game']['categories']['dimensions'] for o in d['options']
+                 if o['key'] == goal), None)
+
+def sub_of(r):
+    """The run's subcategory dict, when its category has them."""
+    o = option_of(r)
+    sub = (r.get('category') or {}).get('sub')
+    if not o or not sub:
+        return None
+    return next((s for s in o.get('subcategories', []) if s['key'] == sub), None)
+
 def cat_label(r):
+    """What the ranking calls the run's category: the option label, and the
+    subcategory after a middle dot when the category has them."""
     if is_unclassified(r):
         return 'Unclassified'
     g = r['_game']
-    return ' × '.join(next(o['label'] for o in d['options'] if o['key'] == r['category'][d['key']])
-                      for d in g['categories']['dimensions'])
+    label = ' × '.join(next(o['label'] for o in d['options'] if o['key'] == r['category'][d['key']])
+                       for d in g['categories']['dimensions'])
+    sub = sub_of(r)
+    return f'{label} · {sub["label"]}' if sub else label
 
 def hard_bonus(r):
     return PT_REPRO_HARD if systems[r['_game']['system']].get('hardToReproduce') else 0

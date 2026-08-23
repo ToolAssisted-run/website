@@ -108,6 +108,21 @@ def m_id_mismatch(root):
 def m_unknown_category(root):
     edit(root, 'M900201', lambda d: d.update(category={'goal': 'no-such-goal'}))
 
+def m_sub_required(root):
+    # the option grows subcategories; the run names none
+    cp = root / 'games/nes/testgame/categories.json'
+    d = json.loads(cp.read_text())
+    opt = next(o for o in d['dimensions'][0]['options'] if o['key'] == 'fastest')
+    opt['subcategories'] = [{'key': 'any', 'label': 'any%'}]
+    cp.write_text(json.dumps(d, indent=1) + '\n')
+
+def m_sub_unknown(root):
+    m_sub_required(root)
+    edit(root, 'M900201', lambda d: d['category'].update(sub='nope'))
+
+def m_sub_without_subs(root):
+    edit(root, 'M900201', lambda d: d['category'].update(sub='any'))
+
 def m_uncl_no_description(root):
     edit(root, 'M900203', lambda d: d.pop('goalDescription'))
 
@@ -393,6 +408,9 @@ def m_former_name_selfact(root):
 
 CASES = [
     ('stray file in runs/', m_stray_file, 'stray file'),
+    ('a run in a category with subcategories must name one', m_sub_required, 'has subcategories'),
+    ('a subcategory the category does not define', m_sub_unknown, 'not one of them'),
+    ('a subcategory where the category has none', m_sub_without_subs, 'has none'),
     ('a superseded name cannot keep its member record', m_ghost_record, 'superseded by'),
     ('self-acts resolve through renames', m_former_name_selfact, 'their own run'),
     ('missing run.json', m_missing_runjson, 'missing run.json'),

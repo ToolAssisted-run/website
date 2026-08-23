@@ -25,6 +25,11 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <select id="s-goal" name="goal"></select>
   <span class="createq">Category not there? <a class="btn quiet" id="s-createcat" target="_blank" aria-disabled="true">Create it</a></span>
   </div>
+  {# shown only when the chosen category has subcategories #}
+  <div id="s-subwrap" hidden>
+  <label>Subcategory</label>
+  <select id="s-sub" name="sub"></select>
+  </div>
   <div id="s-uncldesc" hidden>
     <p class="rules">Unclassified: entertainment, experiments, playarounds; no defined goal,
     never verified, ranked purely by ★ likes. Describe what your run does.</p>

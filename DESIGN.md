@@ -72,6 +72,18 @@ group  (groups.json)                      a game family ACROSS systems
 - **Categories** are per-game dimensions; each option carries a rule fragment,
   rules compose per combination. New options exist the moment they are
   created; experts refine the wording, and delete unused mistakes.
+- **Subcategories** (issue #43): a category option may define a second
+  level (`subcategories`: key, label, optional rule fragment), e.g. Episode 1
+  → any%, 100%. A run in such a category names one (`category.sub`,
+  validator-enforced, required exactly when the category defines some);
+  each subcategory is its own leaderboard, labelled "Category · Sub", its
+  rule composed from both fragments, ranked by the category's metrics (a
+  subcategory has none of its own). Where no subcategories exist nothing
+  mentions them: no selector row, no label suffix, no form field. Created
+  from the create-category page ("subcategory of") or the game editor; the
+  first subcategory added to a category takes the runs already in it;
+  removable while empty; experts move runs with goal `option/sub`. The
+  issue's full cross-product of dimensions was judged wider than needed.
 - **The Unclassified category** exists on every game: entertainment,
   experiments, playarounds. No defined goal; the run carries its own mandatory
   `goalDescription` (≤200 chars, shown in the ranking row). These runs cannot
