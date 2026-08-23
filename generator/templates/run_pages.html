@@ -63,6 +63,9 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   {% endif %}
   <h2>Author's notes</h2>
   <div class="notes">{{ wiki_html(notes_src) }}</div>
+  {# editing happens on the submit page, in edit mode: one form, one set of
+     rules (app.js reveals the button to authors, covering experts, editors) #}
+  <div class="editrow" id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></div>
   {% if not is_leg %}
   {# community rosters #}
   <h2>Reproductions ({{ live(reps)|length }})</h2>
@@ -86,9 +89,6 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <div id="actzone" class="actzone" hidden>
 <h2>Contribute to this run</h2>
 <div class="actforms">
-{# editing happens on the submit page, in edit mode: one form, one set of
-   rules (app.js reveals the button to authors, covering experts, editors) #}
-<div id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></div>
 {# an expert or editor moves the run to another category, or subcategory
    (#43); its own logged edit, shown to them alone (app.js) #}
 <div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category (expert mode)</summary>

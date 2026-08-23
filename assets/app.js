@@ -1188,7 +1188,7 @@
       if (isAuthor || isExpert || isEditor) {
         // editing lives on the submit page, in edit mode: reveal the link
         var editWrap = document.getElementById('f-edit-wrap');
-        if (editWrap) { editWrap.hidden = false; zone.hidden = false; anything = true; }
+        if (editWrap) editWrap.hidden = false;  // sits under the notes, not in the zone
       }
       if (!isAuthor && !runData.imported) {
         if (!runData.videoOnly) {
