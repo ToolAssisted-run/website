@@ -1918,59 +1918,6 @@
       if (d.unreachable) { note(msg, 'The archivist is not reachable right now; try again later.', false); return; }
       if (!d.loggedIn) { document.getElementById('s-login').hidden = false; return; }
       submitForm.hidden = false;
-      var romInput = document.getElementById('s-romfile');
-      var romNameInput = document.getElementById('s-romname');
-      var romShaInput = document.getElementById('s-romsha1');
-      var romNote = document.getElementById('s-romnote');
-      var romStat = document.getElementById('s-romsha1-st');
-      function paintRomSha(){
-        if (!romShaInput) return;
-        var v = (romShaInput.value || '').trim();
-        var ok = v === '' || /^[0-9a-fA-F]{40}$/.test(v);
-        romShaInput.classList.toggle('bad', !ok);
-        romShaInput.title = ok ? '' : 'a SHA1 is exactly 40 hexadecimal characters';
-      }
-      if (romInput && romNameInput && romShaInput) {
-        romInput.addEventListener('change', function(){
-          var file = romInput.files && romInput.files[0];
-          if (!file) {
-            romNameInput.value = '';
-            romShaInput.value = '';
-            romShaInput.placeholder = '40 hex characters, or leave empty';
-            if (romNote) { romNote.hidden = true; romNote.textContent = ''; }
-            if (romStat) { romStat.hidden = true; romStat.textContent = ''; }
-            paintRomSha();
-            return;
-          }
-          romNameInput.value = file.name;
-          romShaInput.value = '';
-          romShaInput.placeholder = 'hashing…';
-          if (romNote) { romNote.hidden = false; romNote.textContent = 'reading ' + file.name + '…'; }
-          if (romStat) { romStat.hidden = false; romStat.textContent = 'hashing…'; romStat.className = 'rules fullw'; }
-          sha1Hex(file).then(function(hex){
-            romShaInput.value = hex;
-            romShaInput.placeholder = '40 hex characters, or leave empty';
-            if (romNote) { romNote.hidden = true; romNote.textContent = ''; }
-            if (romStat) {
-              romStat.hidden = false;
-              romStat.textContent = '✓ ROM SHA1 computed locally: ' + hex;
-              romStat.className = 'rules fullw';
-            }
-            paintRomSha();
-          }).catch(function(){
-            romShaInput.value = '';
-            romShaInput.placeholder = 'could not hash; type the SHA1';
-            if (romNote) { romNote.hidden = false; romNote.textContent = '✗ could not hash the ROM file; type the SHA1 manually'; }
-            if (romStat) {
-              romStat.hidden = false;
-              romStat.textContent = '✗ could not hash the ROM file; type the SHA1 manually';
-              romStat.className = 'rules fullw enc-bad';
-            }
-            paintRomSha();
-          });
-        });
-        romShaInput.addEventListener('input', paintRomSha);
-      }
       // half-written submissions are easy to lose to a stray click: once
       // anything in the form changes, leaving asks the standard are-you-sure
       var submitFormDirty = false;
