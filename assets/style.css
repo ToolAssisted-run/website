@@ -49,9 +49,6 @@ a{color:inherit}
 .navtoggle:hover{border-color:var(--accent-text)}
 .navsearch input{padding:6px 12px;border:2.5px solid var(--hair);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:.84rem;width:170px}
 .navsearch input:focus{outline:none;border-color:var(--accent-text)}
-.betabar{font-size:.82rem;line-height:1.5;padding:8px 20px;background:rgba(217,119,6,.1);color:var(--ink);border-bottom:2.5px solid rgba(217,119,6,.45);text-align:center}
-.betabar a{color:#D97706;font-weight:600;text-decoration:underline}
-.betatag{font-family:ui-monospace,monospace;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:5px;background:rgba(217,119,6,.13);color:#D97706;border:2.5px solid rgba(217,119,6,.4);margin-right:8px;vertical-align:1px}
 .navuser{font-weight:700;color:var(--accent-text)}
 .wrap{flex:1;width:100%;max-width:1160px;margin:0 auto;padding:0 24px 60px}
 .crumb{font-size:.82rem;color:var(--faint);margin:20px 0 6px}
@@ -662,7 +659,7 @@ th .eyeic{width:12px;height:12px;vertical-align:-1px}
 /* the gate lives inside .wrap, so the blur goes on the wrap's other
    children, never on .wrap itself: a filtered ancestor would become the
    fixed overlay's containing block and push the dialog off screen */
-html:has(.agegate) .wrap>:not(.agegate),html:has(.agegate) footer,html:has(.agegate) .nav,html:has(.agegate) .betabar{filter:blur(14px);pointer-events:none;user-select:none}
+html:has(.agegate) .wrap>:not(.agegate),html:has(.agegate) footer,html:has(.agegate) .nav{filter:blur(14px);pointer-events:none;user-select:none}
 html:has(.agegate){overflow:hidden}
 /* the game editor's progressive rows (#50): name, value, Edit; the form
    unfolds beneath the row it belongs to, with its own message */

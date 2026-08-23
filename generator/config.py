@@ -23,10 +23,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 ARCHIVE_REF = os.environ.get('ARCHIVE_REF', 'main')
 
-# The open-beta notice on every page. It used to ride on ARCHIVE_REF being a
-# beta branch; the archive works on main now, so the beta is its own switch.
-# Flip to False when the beta ends.
-BETA = os.environ.get('SITE_BETA', '1') != '0'
 
 ARCHIVE_RAW = f'https://raw.githubusercontent.com/ToolAssisted-run/archive/{ARCHIVE_REF}'
 

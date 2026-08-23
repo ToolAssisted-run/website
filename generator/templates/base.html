@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="{{ rel }}assets/avatar-512-dark.png">
 {{ seo_block|safe }}
 {{ head_extra|safe }}</head><body>
-{% if BETA %}<div class="betabar"><span class="betatag">beta</span> This site is in open beta and under heavy development. Expect rough edges, and please report anything broken or missing at <a href="https://github.com/ToolAssisted-run/website/issues" target="_blank" rel="noopener noreferrer">website issues</a>.</div>{% endif %}<nav class="nav"><a class="brand" href="{{ rel if rel else './' }}" aria-label="toolAssisted.run home"><img class="brandlogo logo-light" src="{{ rel }}assets/logo-light.svg" alt="toolAssisted.run"><img class="brandlogo logo-dark" src="{{ rel }}assets/logo-dark.svg" alt="toolAssisted.run"></a>
+<nav class="nav"><a class="brand" href="{{ rel if rel else './' }}" aria-label="toolAssisted.run home"><img class="brandlogo logo-light" src="{{ rel }}assets/logo-light.svg" alt="toolAssisted.run"><img class="brandlogo logo-dark" src="{{ rel }}assets/logo-dark.svg" alt="toolAssisted.run"></a>
 <button class="navtoggle" id="navtoggle" aria-label="Open menu" aria-expanded="false"
  aria-controls="navlinks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 <div class="navlinks" id="navlinks">{% for href, label in NAV_LINKS %}{% if href == '|' %}<span class="navsep"></span>{% else %}<a class="nl{{ ' on' if label == active else '' }}" href="{{ href if href.startswith('http') else rel + href }}">{{ label }}</a>{% endif %}{% endfor %}</div>
@@ -21,7 +21,7 @@
 <script src="{{ rel }}assets/app.js?v={{ SITE_COMMIT or 'dev' }}" defer></script>
 <div class="wrap{{ ' wrapfull' if wide else '' }}">{% if crumb %}<div class="crumb">{{ crumb|safe }}</div>{% endif %}
 {{ body|safe }}</div>
-<footer><div class="fmain">toolAssisted.run{{ ' · beta' if BETA else '' }} · generated from
+<footer><div class="fmain">toolAssisted.run · generated from
 <a href="https://github.com/ToolAssisted-run/archive">the archive</a>{% if SITE_COMMIT %} · build <a href="https://github.com/ToolAssisted-run/website/commit/{{ SITE_COMMIT }}">{{ SITE_COMMIT }}</a>{% endif %}</div>
 <div class="fsoc">
 <a class="soc soc-bluesky" href="https://bsky.app/profile/toolassisted.run" title="Bluesky" aria-label="Bluesky"></a>

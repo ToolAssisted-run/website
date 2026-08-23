@@ -1,7 +1,7 @@
 name: Build and deploy
 
 # Website-side deploy: every push to main rebuilds the LIVE SITE at
-# toolassisted.run (the beta went live at the root on 2026-08-15; the old
+# toolassisted.run (live at the root since 2026-08-15; the old
 # /stage indirection is gone). The archive repo has the twin workflow that
 # fires on content changes.
 
@@ -284,5 +284,5 @@ jobs:
                  -w "%{http_code}" https://toolassisted.run/)
           echo "https://toolassisted.run/ -> $code"
           test "$code" = "200"
-          curl -s -m 20 --retry 3 --retry-all-errors https://toolassisted.run/ | grep -q betabar
-          echo "beta banner present"
+          curl -s -m 20 --retry 3 --retry-all-errors https://toolassisted.run/ | grep -q 'class="nav"'
+          echo "site chrome present"

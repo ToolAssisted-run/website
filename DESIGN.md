@@ -565,7 +565,7 @@ archivist, module responsibilities). What matters designwise:
   design: no dedup, lost on VPS loss, never committed.
 - **The generator** builds the whole site from the archive checkout
   (`generator/build.py <archive> <out>`; `ARCHIVE_REF` names the branch in
-  links, `SITE_BETA` gates the beta bar). Frontend is real files
+  links). Frontend is real files
   (`assets/app.js`, `assets/style.css`) shipped verbatim; pages embed JSON
   blobs the script reads (always `.replace('<', '\\u003c')`-armoured). Run
   arrival dates come from git history (`fetch-depth: 0` in CI), falling back
@@ -673,8 +673,7 @@ archivist, module responsibilities). What matters designwise:
   unreachable" marker with a retry; reading never needs the archivist.
   The submit form arms the standard leave-page dialog once anything changes.
 - Every page ends in the shared footer (constitution links, site log, social
-  icons as CSS masks); the beta bar rides `SITE_BETA` (flip to `0` when the
-  beta ends).
+  icons as CSS masks).
 - **Freshness**: the live origin serves every response `Cache-Control:
   no-cache` with an ETag, so each load revalidates (a 304 nearly always)
   and a build swap is visible on the very next request. For a page left
@@ -782,7 +781,7 @@ archivist, module responsibilities). What matters designwise:
   (`default-src 'none'` on the JSON API). Found and fixed by an OWASP ZAP
   pass against a throwaway archivist (`tools/zap/`); never scan the live
   service, an active scan submits junk for good.
-- **Everything works on the archive's `main`**. The beta's `staging` branch
+- **Everything works on the archive's `main`**. The old `staging` branch
   was merged in (a two-parent commit whose tree is staging's; nothing left
   behind) and stays **frozen** so old forum links into it keep resolving.
 - **Deploying anything** = push to main. The `sync-vps` job in `deploy.yml`
@@ -856,8 +855,7 @@ archivist, module responsibilities). What matters designwise:
 
 - Contributor point weights are provisional; the community settles them.
 - miniHawk's own movie format joins `movieparse.py` when it lands.
-- Full-launch checklist: re-review policy drafts and point weights; flip
-  `SITE_BETA=0`.
+- Full-launch checklist: re-review policy drafts and point weights.
 - **v2, deferred by explicit decision**: automated client-side reproduction
   (browser/desktop miniHawk replays locally, ROMs never leave the machine,
   signed receipts with state-hash samples corroborate independently). Revive
@@ -871,5 +869,6 @@ snapshot (now the `roles.json` log), the TASVideos-token claim flow (now
 Committee judgement), the two-verification "full" tier (now the expert
 stamp), the reproduction ranking gate (now verification), the "tools used"
 field (notes carry tooling), the per-page giant game `<select>` (now the
-combobox), FTP hosting (now Pages), and the beta `staging` branch (merged,
+combobox), FTP hosting (now Pages), the `SITE_BETA` beta bar (removed
+2026-08-23, the site is out of beta), and the `staging` branch (merged,
 frozen). Git history holds them all.

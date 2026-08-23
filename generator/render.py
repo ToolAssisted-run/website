@@ -18,7 +18,6 @@ import jinja2
 from markupsafe import Markup
 import model
 from config import (
-    BETA,
     ARCHIVE,
     ARCHIVE_RAW,
     ARCHIVE_REF,
@@ -600,7 +599,7 @@ _TEXT_HELPERS = (
     'thumb_alt shot_url breadcrumb_ld').split()
 _HTML_CONSTANTS = 'METRICS_ED FULL_TICK NONE_TICK EYE_ICON'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
-                   'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS BETA ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
+                   'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
                    'FORUM SITE_COMMIT').split()
 
 def _safe(fn):

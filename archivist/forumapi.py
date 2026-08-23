@@ -350,7 +350,7 @@ def send_pm(username, title, body):
 
 def topics_for_imported(archive, run_ids):
     """Imported runs are real published works, so they get a discussion topic
-    even during the beta, when native test submissions deliberately do not."""
+    even while native test submissions deliberately do not."""
     made = 0
     for rid in run_ids:
         for rj in archive.glob(f'games/*/*/runs/{rid}/run.json'):

@@ -31,7 +31,7 @@ Working rules:
   unlogged alteration, and any change to an author list (honest attribution is
   Terms 3.3; who made a thing is moderation's question, never an edit). Forum
   posts are never touched by anybody through us.
-- The generated site IS toolassisted.run (beta live at the root since 2026-08-15;
+- The generated site IS toolassisted.run (live at the root since 2026-08-15, out of beta since 2026-08-23;
   the old hand-written landing page and /stage indirection are retired to
   git history). `generator/build.py <archive> <outdir>` builds it from a
   checkout of `ToolAssisted-run/archive` (default `~/ToolAssisted-archive`);

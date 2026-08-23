@@ -5,12 +5,11 @@ archive contains.
 Phase A builds a fully-controlled archive (tests/mkarchive.py) carrying hostile
 fixtures — an author name and notes full of markup, malformed wiki blocks,
 cross-references to a missing run — and asserts escaping, link integrity, page
-shape, cache busting, beta gating and house style. Because every byte of that
+shape, cache busting and house style. Because every byte of that
 archive is ours, "no em dash anywhere" and "no raw <script>" are meaningful
 assertions rather than a lottery on member content.
 
 Phase B rebuilds the same archive as production (ARCHIVE_REF=main) and asserts
-the beta banner disappears.
 
 Phase C runs the structural checks against the REAL archive, where the
 114-dead-links regression actually happened.
@@ -67,9 +66,9 @@ def ck(name, cond, detail=''):
         failures.append(name)
 
 
-def build(archive, out, ref='main', beta='1'):
+def build(archive, out, ref='main'):
     import os
-    env = dict(os.environ, ARCHIVE_REF=ref, SITE_BETA=beta)
+    env = dict(os.environ, ARCHIVE_REF=ref)
     r = subprocess.run([sys.executable, str(REPO / 'generator/build.py'),
                         str(archive), str(out)],
                        capture_output=True, text=True, env=env)
@@ -757,10 +756,7 @@ def main():
         ck('a run without a topic shows no discussion',
            'id="discussion"' not in plain_page)
 
-        # ---------- beta gating (staging) ----------
-        no_banner = [p.name for p, h in all_html.items() if 'betabar' not in h]
-        ck('staging: beta banner on every page', not no_banner, str(no_banner[:3]))
-        ck('staging: footer marks beta', '· beta' in joined)
+        ck('no beta notice anywhere', 'betabar' not in joined and '· beta' not in joined and 'open beta' not in joined)
 
         # ---------- house style, on a canvas that is entirely our copy ----------
         prose = re.sub(r'>—<', '><', joined)          # empty-value placeholders
@@ -1118,16 +1114,6 @@ def main():
         missing_contract = [i for i in CONTRACT if i not in joined and i not in css]
         ck('server/client element contract intact', not missing_contract,
            str(missing_contract))
-
-        # ---------- phase B: the beta ends (SITE_BETA=0) ----------
-        out_main = td / 'out-main'
-        r = build(arch, out_main, beta='0')
-        ck('production build succeeds', r.returncode == 0, r.stderr[-400:])
-        if r.returncode == 0:
-            main_html = '\n'.join(p.read_text() for p in pages(out_main))
-            ck('production: no beta banner', 'betabar' not in main_html)
-            ck('production: no beta in footer', '· beta' not in main_html)
-            ck('production: still cache-busted', 'app.js?v=' in main_html)
 
         # ---------- phase C: the real archive ----------
         if REAL_ARCHIVE.exists():
