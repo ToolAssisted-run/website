@@ -28,11 +28,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Gate: nothing deploys unless the full test suite passes. Skipped when no
-  # code changed, i.e. on the scheduled rebuild and on the archive's own
-  # content dispatch: the same commit already passed it, the archive repo ran
-  # its content tests before dispatching, and the build-completeness check
-  # below still guards the output.
+  # What this push touched. The archivist suite is five minutes of real git
+  # commits; a push that changes neither the archivist nor that suite's own
+  # harness does not wait for it. Anything unclear (no base, a force push)
+  # counts as touched: the slow path is the safe one.
+  scope:
+    if: github.event_name != 'schedule' && github.event.inputs.reason != 'archive-content'
+    runs-on: ubuntu-latest
+    outputs:
+      archivist: ${{ steps.diff.outputs.archivist }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || [ -z "$BEFORE" ] \
+             || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "archivist=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "$BEFORE" "${{ github.sha }}")
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(archivist/|tests/test_archivist\.py|tests/mkarchive\.py|\.github/workflows/)'; then
+            echo "archivist=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "archivist=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Gate: nothing deploys unless the test suites pass. Skipped when no code
+  # changed, i.e. on the scheduled rebuild and on the archive's own content
+  # dispatch: the same commit already passed it, the archive repo ran its
+  # content tests before dispatching, and the build-completeness check below
+  # still guards the output. The fast suites run here; the archivist suite
+  # has a job of its own, in parallel, so the two never queue behind each other.
   test:
     if: github.event_name != 'schedule' && github.event.inputs.reason != 'archive-content'
     runs-on: ubuntu-latest
@@ -103,6 +133,31 @@ jobs:
       - name: Robustness tests
         run: PYTHONPATH=$(python3 -m site --user-site) python3 website/tests/test_robustness.py archive
 
+  # The archivist suite: the write side, end to end, against a sandboxed
+  # archive. Runs in parallel with the fast suites, and only when the push
+  # could have changed what it tests (see scope).
+  test-archivist:
+    needs: scope
+    if: needs.scope.outputs.archivist == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+        with:
+          path: website
+          ref: main
+
+      - name: Checkout archive
+        uses: actions/checkout@v4
+        with:
+          repository: ToolAssisted-run/archive
+          path: archive
+          ref: main
+          fetch-depth: 0
+
+      - name: Install test dependencies
+        run: pip install --quiet flask jsonschema
+
       - name: Archivist tests
         # The suite launches the archivist with a stripped env (fresh HOME), so
         # user-site packages vanish; hand them over via PYTHONPATH, which the
@@ -117,8 +172,9 @@ jobs:
   # VPS only ever runs /usr/local/bin/tar-site-sync (pull, install, restart;
   # the restart's startup build republishes the site).
   sync-vps:
-    needs: test
-    if: github.event_name == 'push'
+    needs: [test, test-archivist]
+    if: always() && github.event_name == 'push' && needs.test.result == 'success'
+        && (needs.test-archivist.result == 'success' || needs.test-archivist.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Pull, install and restart on the live origin
@@ -138,8 +194,9 @@ jobs:
   # dispatch: it is the hot standby — one DNS change brings the site back
   # if the live origin dies.
   deploy:
-    needs: test
+    needs: [test, test-archivist]
     if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+        && (needs.test-archivist.result == 'success' || needs.test-archivist.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
