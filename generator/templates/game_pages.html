@@ -26,10 +26,13 @@
    a Category everywhere in the UI, whatever old data named it #}
 <div class="dimsel">
 {% for d in dims %}
-<div class="dimrow"><span class="dimname">{{ 'Category' if d['key'] == 'goal' else d['name'] }}</span>{% for o in d['options'] %}<button class="dimopt" data-dim="{{ d['key'] }}" data-opt="{{ o['key'] }}">{{ o['label'] }}</button>{% endfor %}</div>
+{# each level is offered as one button per option (the default) or, when
+   the experts chose so for a long list, as a dropdown; the script below
+   reads either #}
+<div class="dimrow"><span class="dimname">{{ 'Category' if d['key'] == 'goal' else d['name'] }}</span>{% if d.get('selector') == 'dropdown' %}<select class="dimdd" data-dim="{{ d['key'] }}">{% for o in d['options'] %}<option value="{{ o['key'] }}">{{ o['label'] }}</option>{% endfor %}</select>{% else %}{% for o in d['options'] %}<button class="dimopt" data-dim="{{ d['key'] }}" data-opt="{{ o['key'] }}">{{ o['label'] }}</button>{% endfor %}{% endif %}</div>
 {# a category with subcategories gets a second row, shown only while it is the one selected #}
 {% for o in d['options'] if o.get('subcategories') %}
-<div class="dimrow subrow" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}" hidden><span class="dimname">Subcategory</span>{% for s in o['subcategories'] %}<button class="dimopt subopt" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}" data-sub="{{ s['key'] }}">{{ s['label'] }}</button>{% endfor %}</div>
+<div class="dimrow subrow" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}" hidden><span class="dimname">Subcategory</span>{% if o.get('subSelector') == 'dropdown' %}<select class="subdd" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}">{% for s in o['subcategories'] %}<option value="{{ s['key'] }}">{{ s['label'] }}</option>{% endfor %}</select>{% else %}{% for s in o['subcategories'] %}<button class="dimopt subopt" data-dim="{{ d['key'] }}" data-for="{{ o['key'] }}" data-sub="{{ s['key'] }}">{{ s['label'] }}</button>{% endfor %}{% endif %}</div>
 {% endfor %}
 {% endfor %}
 </div>
@@ -117,12 +120,15 @@ its own. Never verified; ranked purely by ★ likes.</p>
     var opt = sel[dim];
     var subRow = document.querySelector('.subrow[data-dim="' + dim + '"][data-for="' + opt + '"]');
     if (!subRow) return opt;
-    if (!subSel[opt]) subSel[opt] = subRow.querySelector('.subopt').dataset.sub;
+    if (!subSel[opt]) {
+      var firstBtn = subRow.querySelector('.subopt'), dd = subRow.querySelector('.subdd');
+      subSel[opt] = firstBtn ? firstBtn.dataset.sub : dd.options[0].value;
+    }
     return opt + '/' + subSel[opt];
   }
   function apply(){
     var key = Array.prototype.map.call(rows, function(row){
-      return leaf(row.querySelector('.dimopt').dataset.dim);
+      return leaf((row.querySelector('.dimopt') || row.querySelector('.dimdd')).dataset.dim);
     }).join('|');
     document.querySelectorAll('.combo').forEach(function(s){
       s.style.display = (s.dataset.combo === key) ? '' : 'none';
@@ -136,18 +142,27 @@ its own. Never verified; ranked purely by ★ likes.</p>
     document.querySelectorAll('.subopt').forEach(function(b){
       b.classList.toggle('on', subSel[b.dataset.for] === b.dataset.sub);
     });
+    document.querySelectorAll('.dimdd').forEach(function(dd){ dd.value = sel[dd.dataset.dim]; });
+    document.querySelectorAll('.subdd').forEach(function(dd){ if (subSel[dd.dataset.for]) dd.value = subSel[dd.dataset.for]; });
   }
   var def = '{{ default_combo }}'.split('|');
   rows.forEach(function(row, i){
     var piece = (def[i] || '').split('/');
-    sel[row.querySelector('.dimopt').dataset.dim] = piece[0];
+    var dim = (row.querySelector('.dimopt') || row.querySelector('.dimdd')).dataset.dim;
+    sel[dim] = piece[0];
     if (piece[1]) subSel[piece[0]] = piece[1];
     row.querySelectorAll('.dimopt').forEach(function(b){
       b.addEventListener('click', function(){ sel[b.dataset.dim] = b.dataset.opt; apply(); });
     });
+    row.querySelectorAll('.dimdd').forEach(function(dd){
+      dd.addEventListener('change', function(){ sel[dd.dataset.dim] = dd.value; apply(); });
+    });
   });
   document.querySelectorAll('.subopt').forEach(function(b){
     b.addEventListener('click', function(){ subSel[b.dataset.for] = b.dataset.sub; apply(); });
+  });
+  document.querySelectorAll('.subdd').forEach(function(dd){
+    dd.addEventListener('change', function(){ subSel[dd.dataset.for] = dd.value; apply(); });
   });
   apply();
 })();

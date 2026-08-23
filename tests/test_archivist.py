@@ -671,6 +671,24 @@ def main():
             ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
             ck('subcategories are reordered inside their category',
                c == 200 and [x['key'] for x in ep1['subcategories']] == ['nomonsters', 'any'], str(r))
+            # how the selectors are offered: a category edit on the dimension (*) or the option
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'category', 'target': 'nes/pinball:*',
+                            'field': 'selector', 'value': 'dropdown', 'reason': 'too many categories for buttons'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ck('categories can be shown as a dropdown', c == 200 and cj_['dimensions'][0].get('selector') == 'dropdown', str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'category', 'target': 'nes/pinball:episode-1',
+                            'field': 'subSelector', 'value': 'dropdown', 'reason': 'many subcategories coming'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
+            ck('subcategories can be shown as a dropdown', c == 200 and ep1.get('subSelector') == 'dropdown', str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'category', 'target': 'nes/pinball:*',
+                            'field': 'selector', 'value': 'sideways', 'reason': 'testing a refusal'})
+            ck('a selector is buttons or dropdown', c == 400, str(r))
             c, r, _ = call(U + '/api/category/delete',
                            {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
                             'option': 'episode-1', 'sub': 'nomonsters', 'reason': 'emptying the level, on the record'})

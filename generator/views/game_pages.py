@@ -125,10 +125,13 @@ for key, g in games.items():
                 'key': o['key'], 'label': o['label'], 'rule': o.get('rule', ''),
                 'metrics': o.get('metrics'),
                 'runs': len(in_opt),
+                'subSelector': o.get('subSelector', 'buttons'),
                 'subcategories': [{'key': s['key'], 'label': s['label'], 'rule': s.get('rule', ''),
                                    'runs': sum(1 for r_ in in_opt if r_['category'].get('sub') == s['key'])}
                                   for s in o.get('subcategories', [])]})
+    goal_dim = next((d_ for d_ in dims if d_['key'] == 'goal'), dims[0] if dims else {})
     edit_data = {'game': g['key'], 'title': g['title'],
+                 'selector': goal_dim.get('selector', 'buttons'),
                  'experts': covering_experts(g['key']),
                  'options': opt_data}
     erel = rel + '../'

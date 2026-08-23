@@ -214,6 +214,11 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
                                         'rule': 'Test rule.',
                                         **({'metrics': spec['goal_metrics']}
                                            if spec.get('goal_metrics') else {})})
+        # how the selectors are offered (buttons by default, or a dropdown)
+        if spec.get('selector'):
+            goal_dim['selector'] = spec['selector']
+        if spec.get('sub_selector'):
+            next(o for o in goal_dim['options'] if o['key'] == spec['goal'])['subSelector'] = spec['sub_selector']
         # a subcategory (#43): the run names it, the option defines it
         if spec.get('sub'):
             opt = next(o for o in goal_dim['options'] if o['key'] == spec['goal'])
@@ -248,7 +253,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             'submittedBy': spec['authors'][0],
         }
         for k, v in spec.items():
-            if k in ('id', 'game', 'goal', 'sub', 'authors', 'frames', 'notes', 'goal_metrics'):
+            if k in ('id', 'game', 'goal', 'sub', 'selector', 'sub_selector', 'authors', 'frames', 'notes', 'goal_metrics'):
                 continue
             run[k] = v
         # the third signal is part of the checked status cache

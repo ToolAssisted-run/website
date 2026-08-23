@@ -276,6 +276,7 @@ def main():
                                status={'reproduced': 'none', 'verified': 'provisional'},
                                verifications=[{'user': 'Rep', 'date': '2026-02-09'}]),
             mkarchive.run_spec('M900111', game='dos/subgame', goal='episode-1', sub='100',
+                               selector='dropdown', sub_selector='dropdown',
                                frames=9000, authors=['Bo'],
                                status={'reproduced': 'none', 'verified': 'provisional'},
                                verifications=[{'user': 'Rep', 'date': '2026-02-09'}]),
@@ -565,6 +566,14 @@ def main():
         ck('the selector shows a Subcategory row for that category only',
            'class="dimrow subrow" data-dim="goal" data-for="episode-1"' in subpage_
            and subpage_.count('class="dimrow subrow"') == 1)
+        ck('a dropdown choice renders both levels as selects',
+           '<select class="dimdd" data-dim="goal">' in subpage_ and '<select class="subdd"' in subpage_
+           and 'class="dimopt"' not in subpage_)
+        ck('the default stays one button each',
+           'dimdd' not in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
+           and any('class="dimopt"' in h for pth, h in all_html.items() if pth.parent.parent.name == 'nes'))
+        ck('the editor offers the choice for categories', 'name="ge-selector"' in all_html[out / 'games' / 'dos' / 'subgame' / 'edit' / 'index.html']
+           and '"selector": "dropdown"' in all_html[out / 'games' / 'dos' / 'subgame' / 'edit' / 'index.html'])
         ck('the composed rules carry the subcategory fragment',
            'Sub rule any.' in subpage_ and 'Sub rule 100.' in subpage_)
         ck('the run page carries the move control with the categories and the current spot',

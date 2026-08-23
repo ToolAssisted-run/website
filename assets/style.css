@@ -718,3 +718,10 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .medhint{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:760px){.medhint{white-space:normal}}
 .medtitle{margin:0 0 4px;font-size:.9rem}
+.dimrow select.dimdd,.dimrow select.subdd{padding:8px 12px;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
+.selchoice{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 12px}
+.selchoice .dimname{font-family:ui-monospace,monospace;font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.selchoice label.check{margin:0}
+input[type=radio]{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;flex:none;border:2.5px solid var(--hairs);border-radius:50%;background:var(--bg);cursor:pointer;display:inline-grid;place-content:center}
+input[type=radio]::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent);transform:scale(0)}
+input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::before{transform:scale(1)}

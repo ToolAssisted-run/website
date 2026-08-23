@@ -1284,7 +1284,7 @@ def parse_game_property(field, raw):
 EXPERT_EDITABLE = {'run': ('duration', 'goal', 'encode', 'goalDescription',
                            'notes', 'movie'),
                    'game': ('title', 'thumbnail') + GAME_PROPERTY_FIELDS,
-                   'category': ('label', 'rule', 'metrics'),
+                   'category': ('label', 'rule', 'metrics', 'selector', 'subSelector'),
                    'group': ('title',)}
 
 @app.post('/api/expert/edit')
@@ -1525,10 +1525,40 @@ def expert_edit():
             log_edit('game', target, field, old_value, value, actor, reason)
 
         elif kind == 'category':
-            target_match = re.fullmatch(r'([a-z0-9-]+/[a-z0-9-]+):([a-z0-9-]+)(?:/([a-z0-9-]+))?', target)
+            target_match = re.fullmatch(r'([a-z0-9-]+/[a-z0-9-]+):([a-z0-9-]+|\*)(?:/([a-z0-9-]+))?', target)
             if not target_match:
                 return fail('target must be system/slug:option, or system/slug:option/subcategory')
             game_key, option_key, sub_key = target_match.group(1), target_match.group(2), target_match.group(3)
+            if option_key == '*' and field == 'selector':
+                # the dimension itself: how the game page offers its categories
+                categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
+                if not categories_file.exists():
+                    return fail(f'unknown game {game_key}', 404)
+                if not expert_covers(actor, game_key) and not is_editor(actor):
+                    return fail(f'{actor!r} is not an expert covering {game_key}, nor an editor', 403)
+                if value not in ('buttons', 'dropdown'):
+                    return fail('selector is buttons or dropdown')
+                categories = json.loads(categories_file.read_text())
+                dimension = next((d for d in categories['dimensions'] if d['key'] == 'goal'),
+                                 categories['dimensions'][0] if categories['dimensions'] else None)
+                if dimension is None:
+                    return fail('this game has no categories yet')
+                old_value = dimension.get('selector', 'buttons')
+                if old_value == value:
+                    return fail('that is already how they are shown')
+                if value == 'buttons':
+                    dimension.pop('selector', None)
+                else:
+                    dimension['selector'] = value
+                if dry_run:
+                    return jsonify({'ok': True, 'dry_run': True, 'field': field, 'from': old_value, 'to': value})
+                categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+                log_edit('category', target, field, old_value, value, actor, reason)
+                ensure_member(actor)
+                commit_push(f'Expert edit category {target}: selector\n\nFrom: {old_value}\nTo: {value}\n'
+                            f'By: {actor}\nReason: {reason}\nVia: archivist')
+                return jsonify({'ok': True, 'kind': kind, 'key': target, 'field': field,
+                                'from': old_value, 'to': value})
             categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
             if not categories_file.exists():
                 return fail(f'unknown game {game_key}', 404)
@@ -1540,6 +1570,26 @@ def expert_edit():
                         if o['key'] == option_key), None)
             if not option:
                 return fail(f'{game_key} defines no category {option_key!r}', 404)
+            if field == 'subSelector' and not sub_key:
+                # how this category's subcategories are offered
+                if value not in ('buttons', 'dropdown'):
+                    return fail('subSelector is buttons or dropdown')
+                old_value = option.get('subSelector', 'buttons')
+                if old_value == value:
+                    return fail('that is already how they are shown')
+                if value == 'buttons':
+                    option.pop('subSelector', None)
+                else:
+                    option['subSelector'] = value
+                if dry_run:
+                    return jsonify({'ok': True, 'dry_run': True, 'field': field, 'from': old_value, 'to': value})
+                categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+                log_edit('category', target, field, old_value, value, actor, reason)
+                ensure_member(actor)
+                commit_push(f'Expert edit category {target}: subSelector\n\nFrom: {old_value}\nTo: {value}\n'
+                            f'By: {actor}\nReason: {reason}\nVia: archivist')
+                return jsonify({'ok': True, 'kind': kind, 'key': target, 'field': field,
+                                'from': old_value, 'to': value})
             if sub_key:
                 # a subcategory's label or rule: the same edit, on the inner record
                 sub = next((s for s in option.get('subcategories', []) if s['key'] == sub_key), None)

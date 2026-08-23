@@ -1332,14 +1332,21 @@
         title: gameEditData.title,
         props: {released: byId('ge-released').value, unofficial: byId('ge-unofficial').checked ? 'yes' : 'no',
                 discord: byId('ge-discord').value, website: byId('ge-website').value, rta: byId('ge-rta').value},
+        selector: gameEditData.selector || 'buttons',
         cats: (gameEditData.options || []).map(function(o){
           return {key: o.key, label: o.label, rule: o.rule || '', runs: o.runs,
-                  metrics: JSON.stringify(o.metrics || []),
+                  metrics: JSON.stringify(o.metrics || []), subSelector: o.subSelector || 'buttons',
                   subs: (o.subcategories || []).map(function(x){ return {key: x.key, label: x.label, rule: x.rule || '', runs: x.runs}; })};
         })
       };
       // the draft: categories as live objects the cards edit in place
       var draft = {cats: JSON.parse(JSON.stringify(base.cats))};
+      var selectorRadios = document.querySelectorAll('input[name=ge-selector]');
+      selectorRadios.forEach(function(r){ r.checked = r.value === base.selector; r.addEventListener('change', refresh); });
+      function selectorChoice(){
+        var on = Array.prototype.filter.call(selectorRadios, function(r){ return r.checked; })[0];
+        return on ? on.value : 'buttons';
+      }
       var newSeq = 0;
 
       // ---- the cards ----
@@ -1405,6 +1412,17 @@
         // subcategories
         var subBox = el('div', 'subcats');
         subBox.appendChild(el('h4', '', 'Subcategories'));
+        var choice = el('div', 'selchoice');
+        choice.appendChild(el('span', 'dimname', 'Show them as'));
+        ['buttons', 'dropdown'].forEach(function(v){
+          var lab = el('label', 'check');
+          var r = el('input'); r.type = 'radio'; r.name = 'subsel-' + (c.key || 'new' + c.tmp); r.value = v;
+          r.checked = (c.subSelector || 'buttons') === v;
+          r.addEventListener('change', function(){ c.subSelector = v; refresh(); });
+          lab.appendChild(r); lab.appendChild(el('span', '', v === 'buttons' ? 'one button each (default)' : 'a dropdown (for long lists)'));
+          choice.appendChild(lab);
+        });
+        subBox.appendChild(choice);
         var subList = el('div', 'sublist');
         function subRow(sc){
           var row = el('div', 'subrowed');
@@ -1478,6 +1496,8 @@
           var fd = form('game', gameEditData.game, 'thumbnail', ''); fd.append('thumbnail', thumb.files[0]);
           return post('/api/expert/edit', fd, saveBtn);
         }, done: function(){ thumb.value = ''; }});
+        var selv = selectorChoice();
+        if (selv !== base.selector) ops.push({what: 'category selector', run: function(){ return edit('category', gameEditData.game + ':*', 'selector', selv); }, done: function(){ base.selector = selv; }});
         var baseByKey = {}; base.cats.forEach(function(c){ baseByKey[c.key] = c; });
         // new categories first (the rest may refer to them)
         draft.cats.filter(function(c){ return c.isNew && !c.deleted; }).forEach(function(c){
@@ -1487,7 +1507,7 @@
             fd.append('reason', whyIn.value.trim());
             return post('/api/category/add', fd, saveBtn);
           }, done: function(res){ c.key = res.j.key; c.isNew = false; c.metrics = c.metricsEd ? c.metricsEd.value() : '[]';
-                                  base.cats.push({key: c.key, label: c.label, rule: c.rule, runs: 0, metrics: c.metrics, subs: []}); }});
+                                  base.cats.push({key: c.key, label: c.label, rule: c.rule, runs: 0, metrics: c.metrics, subs: [], subSelector: 'buttons'}); }});
         });
         draft.cats.filter(function(c){ return !c.deleted; }).forEach(function(c){
           var b = baseByKey[c.key];
@@ -1496,6 +1516,8 @@
             if (c.rule !== b.rule) ops.push({what: c.key + ' rule', run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'rule', c.rule); }, done: function(){ b.rule = c.rule; }});
             var mv = c.metricsEd ? c.metricsEd.value() : c.metrics;
             if (mv !== b.metrics) ops.push({what: c.key + ' metrics', run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'metrics', mv); }, done: function(){ b.metrics = mv; }});
+            var ssv = c.subSelector || 'buttons';
+            if (ssv !== (b.subSelector || 'buttons')) ops.push({what: c.key + ' subcategory selector', run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'subSelector', ssv); }, done: function(){ b.subSelector = ssv; }});
           }
           // subcategories of this category
           c.subs.filter(function(x){ return x.isNew && !x.deleted; }).forEach(function(x){
