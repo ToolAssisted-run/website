@@ -648,6 +648,29 @@ def main():
             cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
             ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
             ck('an empty subcategory is deleted', c == 200 and [x['key'] for x in ep1['subcategories']] == ['any'], str(r))
+            # order: the selectors follow the file; the popular category goes first
+            before = [o['key'] for d in cj_['dimensions'] for o in d['options']]
+            c, r, _ = call(U + '/api/category/reorder',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball', 'order': 'episode-1'})
+            ck('a partial order is refused', c == 400 and 'exactly' in r.get('error', ''), str(r))
+            wanted = [before[-1]] + before[:-1]
+            c, r, _ = call(U + '/api/category/reorder',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball', 'order': ','.join(wanted)})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ck('categories are reordered as asked',
+               c == 200 and [o['key'] for d in cj_['dimensions'] for o in d['options']] == wanted, str(r))
+            c, r, _ = call(U + '/api/category/add',
+                           {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
+                            'parent': 'episode-1', 'label': 'nomonsters'})
+            c, r, _ = call(U + '/api/category/reorder',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': 'episode-1', 'order': 'nomonsters,any'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
+            ck('subcategories are reordered inside their category',
+               c == 200 and [x['key'] for x in ep1['subcategories']] == ['nomonsters', 'any'], str(r))
             c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball',
                                                    goal='pacifist'), uniq_files())
             ck('a metric-bearing category demands its values',

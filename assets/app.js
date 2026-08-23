@@ -1380,12 +1380,51 @@
 
       // one card per category option: edit in place, delete-if-empty
       var box = document.getElementById('ge-cats');
-      (gameEditData.options || []).forEach(function(o){
+      // order: the selectors list categories left to right as the file
+      // does, so the popular ones go first. Arrows move a card one step
+      // and send the whole order; the same for a category's subcategories.
+      var orderMsg = el('p', 'actmsg'); orderMsg.hidden = true;
+      function reorder(keys, optionKey, btn, done){
+        var fd = new FormData();
+        fd.append('game', gameEditData.game);
+        fd.append('order', keys.join(','));
+        if (optionKey) fd.append('option', optionKey);
+        return post('/api/category/reorder', fd, btn).then(function(res){
+          if (res.ok && res.j.ok) { done(); noteSaved('Order saved.', res.j.serial, orderMsg); }
+          else note(orderMsg, res.j.error || 'something went wrong', false);
+        });
+      }
+      function arrows(list, item, keyOf, optionKey, container, render){
+        // ◀ ▶ for one item of a list; on success the array and the DOM follow
+        var wrap = el('span', 'orderbtns');
+        [['◀', -1, 'Move left (earlier)'], ['▶', 1, 'Move right (later)']].forEach(function(spec){
+          var b = el('button', 'authx orderbtn', spec[0]); b.type = 'button'; b.title = spec[2];
+          b.addEventListener('click', function(){
+            var i = list.indexOf(item), j = i + spec[1];
+            if (j < 0 || j >= list.length) return;
+            var next = list.slice(); next.splice(i, 1); next.splice(j, 0, item);
+            reorder(next.map(keyOf), optionKey, b, function(){
+              list.length = 0; next.forEach(function(x){ list.push(x); });
+              render();
+            });
+          });
+          wrap.appendChild(b);
+        });
+        return wrap;
+      }
+      box.appendChild(orderMsg);
+      var options = gameEditData.options || [];
+      function renderCards(){
+        box.querySelectorAll('.gecard').forEach(function(c){ c.remove(); });
+        options.forEach(buildCard);
+      }
+      function buildCard(o){
         var card = el('div', 'gecard');
         var head = el('div', 'gehead');
         head.appendChild(el('b', '', o.key));
         head.appendChild(el('span', 'actmeta',
           ' ' + o.runs + ' run' + (o.runs === 1 ? '' : 's')));
+        head.appendChild(arrows(options, o, function(x){ return x.key; }, null, box, renderCards));
         card.appendChild(head);
         function field(labelText, tag){
           var lab = el('label', '', labelText + ' ');
@@ -1416,8 +1455,13 @@
           '(Episode 1: any%, 100%). Once one exists, every run here names one; the first ' +
           'subcategory takes the runs already in the category.'));
         var subList = el('div', 'sublist');
+        function renderSubs(){
+          subList.innerHTML = '';
+          (o.subcategories || []).forEach(subRow);
+        }
         function subRow(sc){
           var row = el('div', 'subrowed');
+          row.appendChild(arrows(o.subcategories, sc, function(x){ return x.key; }, o.key, subList, renderSubs));
           var labelIn = el('input'); labelIn.value = sc.label; labelIn.maxLength = 80; labelIn.placeholder = 'label';
           var ruleIn = el('input'); ruleIn.value = sc.rule || ''; ruleIn.maxLength = 500; ruleIn.placeholder = 'rule fragment (optional)';
           var whyIn = el('input'); whyIn.placeholder = 'why (public)'; whyIn.minLength = 8; whyIn.maxLength = 500;
@@ -1455,7 +1499,7 @@
               fd.append('game', gameEditData.game); fd.append('option', o.key); fd.append('sub', sc.key);
               fd.append('reason', whyIn.value.trim() || 'Removed unused by a covering expert.');
               post('/api/category/delete', fd, delSub).then(function(res){
-                if (res.ok && res.j.ok) { row.remove(); noteSaved('Removed ' + sc.key + '.', res.j.serial); }
+                if (res.ok && res.j.ok) { o.subcategories.splice(o.subcategories.indexOf(sc), 1); renderSubs(); noteSaved('Removed ' + sc.key + '.', res.j.serial); }
                 else note(rowMsg, res.j.error || 'something went wrong', false);
               });
             });
@@ -1464,7 +1508,8 @@
           row.appendChild(rowMsg);
           subList.appendChild(row);
         }
-        (o.subcategories || []).forEach(subRow);
+        o.subcategories = o.subcategories || [];
+        renderSubs();
         subBox.appendChild(subList);
         var addRow = el('div', 'subrowed subadd');
         var addLabel = el('input'); addLabel.placeholder = 'new subcategory label, e.g. any%'; addLabel.maxLength = 80;
@@ -1478,7 +1523,8 @@
           fd.append('label', addLabel.value.trim()); fd.append('rule', addRule.value.trim());
           post('/api/category/add', fd, addBtn).then(function(res){
             if (res.ok && res.j.ok) {
-              subRow({key: res.j.key, label: addLabel.value.trim(), rule: addRule.value.trim(), runs: res.j.runs_moved || 0});
+              o.subcategories.push({key: res.j.key, label: addLabel.value.trim(), rule: addRule.value.trim(), runs: res.j.runs_moved || 0});
+              renderSubs();
               addLabel.value = ''; addRule.value = '';
               noteSaved('Added ' + res.j.key + (res.j.runs_moved ? ', taking the ' + res.j.runs_moved + ' run(s) already here' : '') + '.', res.j.serial, addMsg);
             } else note(addMsg, res.j.error || 'something went wrong', false);
@@ -1542,7 +1588,8 @@
         card.appendChild(row);
         card.appendChild(cardMsg);
         box.appendChild(card);
-      });
+      }
+      renderCards();
       if (!(gameEditData.options || []).length) {
         box.appendChild(el('p', 'emptynote',
           'No categories yet: add the first one below.'));

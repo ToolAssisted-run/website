@@ -1032,6 +1032,67 @@ def category_add():
 
 
 
+@app.post('/api/category/reorder')
+def category_reorder():
+    """Put a game's categories, or one category's subcategories, in the order
+    given: the popular ones first, at the left of every selector. Pure
+    order; nothing else about them changes.
+
+    Who: an expert covering the game, or an editor (`key` plus `expert`)
+    Reads: form fields game, order (comma-separated keys, the whole set),
+        option (optional: reorder that category's subcategories instead),
+        reason (optional), dry_run
+    Answers: {ok, game, order}; 400 when the keys are not exactly the set
+    """
+    form = request.form
+    dry_run = form.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        auth_error = auth_precheck(form)
+        if auth_error:
+            return auth_error
+        if not dry_run:
+            checkout_branch()
+        expert, game_key, categories_file, categories, error = _category_gate(form)
+        if error:
+            return error
+        wanted = [k.strip() for k in (form.get('order') or '').split(',') if k.strip()]
+        option_key = (form.get('option') or '').strip()
+        if option_key:
+            option = option_in(categories, option_key)
+            if not option:
+                return fail(f'{game_key} defines no category {option_key!r}', 404)
+            items = option.get('subcategories') or []
+            what = f'{option_key} subcategories'
+        else:
+            dimension = next((d for d in categories['dimensions'] if d['key'] == 'goal'),
+                             categories['dimensions'][0] if categories['dimensions'] else None)
+            if dimension is None:
+                return fail('this game has no categories yet')
+            items = dimension['options']
+            what = 'categories'
+        have = [x['key'] for x in items]
+        if sorted(wanted) != sorted(have):
+            return fail(f'order must list exactly the {what}: {", ".join(have)}')
+        if wanted == have:
+            return fail('that is already the order')
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'order': wanted})
+        by_key = {x['key']: x for x in items}
+        reordered = [by_key[k] for k in wanted]
+        if option_key:
+            option['subcategories'] = reordered
+        else:
+            dimension['options'] = reordered
+        categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+        log_edit('category', f'{game_key}:{option_key or "*"}', 'order', ', '.join(have), ', '.join(wanted),
+                 expert, (form.get('reason') or 'Reordered.').strip()[:500])
+        ensure_member(expert)
+        commit_push(f'Category order {game_key}{":" + option_key if option_key else ""}: by {expert}\n\n'
+                    f'Order: {", ".join(wanted)}\nVia: archivist')
+    return jsonify({'ok': True, 'game': game_key, 'order': wanted})
+
+
 @app.post('/api/category/delete')
 def category_delete():
     """Remove an option no run has ever used. Anything referenced stays: a
