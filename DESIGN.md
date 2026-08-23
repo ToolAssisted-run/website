@@ -146,7 +146,7 @@ judge merit: reproduction and verification stay open to all; experts police
 the trust layer's quality and curate taxonomy.
 
 **Badges**: the site shows four chips beside a name: **Steering Committee**
-(green), **Expert** (unqualified; which scopes is on the member's page),
+(red), **Expert** (unqualified; which scopes is on the member's page),
 **Editor** (blue), and **Contributor** with its milestone (Contributor, then
 1k/5k/10k/25k: the leaderboard thresholds themselves, one green chip filling
 up). Founder and Moderator are recorded and shown in each member's role log,
