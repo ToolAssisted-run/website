@@ -200,6 +200,8 @@
       list.hidden = true;
       sync();
     }
+    // a restored draft sets the whole list at once
+    pick.setAuthors = function(names){ selected = names.slice(); sync(); };
     function fill(){
       var q = search.value.trim().toLowerCase();
       list.innerHTML = '';
@@ -1878,6 +1880,7 @@
       videoOnlyBox.addEventListener('change', paintKind);
       paintKind();
       var goalCache = {};
+      var pendingDraft = null;   // a restored draft waiting for its game's categories
       function fillGoals(goals){
         goalSelect.innerHTML = '';
         (goals || []).forEach(function(g){
@@ -1888,6 +1891,14 @@
         var u = document.createElement('option');
         u.value = 'unclassified'; u.textContent = 'Unclassified (no goal; ranked by likes)';
         goalSelect.appendChild(u);
+        if (pendingDraft && (goals || []).length && pendingDraft.game === gameSelect.value) {
+          var d = pendingDraft; pendingDraft = null;
+          if (d.goal) goalSelect.value = d.goal;
+          paintCategory();
+          if (d.sub) subSelect.value = d.sub;
+          applyDraftFields(d.fields);
+          return;
+        }
         paintCategory();
       }
       function loadGoals(){
@@ -1954,6 +1965,90 @@
 
       // the game picker: type to find, nothing rendered until you type, and
       // the way out is always offered ("Add a new game")
+      // ---- the draft: what was typed survives a closed window. Saved to
+      // this browser's localStorage on every change (never the movie file,
+      // which browsers refuse to restore), restored on the next visit,
+      // dropped on a successful submit or on Clear. ----
+      var DRAFT_KEY = 'tar-submit-draft';
+      var draftNote = document.getElementById('s-draftnote');
+      var draftTimer = null;
+      function draftFields(){
+        // every named control except files, hidden plumbing and the consent
+        // box (that one is signed each time); repeated names become arrays
+        var out = {};
+        Array.prototype.forEach.call(submitForm.elements, function(e){
+          if (!e.name || e.type === 'file' || e.type === 'button' || e.type === 'submit') return;
+          if (e.name === 'consent' || e.name === 'game' || e.name === 'goal' || e.name === 'sub') return;
+          var v = (e.type === 'checkbox') ? (e.checked ? e.value : '') : e.value;
+          if (e.name in out) { if (!Array.isArray(out[e.name])) out[e.name] = [out[e.name]]; out[e.name].push(v); }
+          else out[e.name] = v;
+        });
+        return out;
+      }
+      function applyDraftFields(fields){
+        // file rows first, so their inputs exist to be filled
+        var rowsBox = submitForm.querySelector('.filerows');
+        var names = [].concat(fields.file_name || []), shas = [].concat(fields.file_sha1 || []);
+        if (rowsBox && names.length) {
+          rowsBox.querySelectorAll('.filerow').forEach(function(r){ r.remove(); });
+          names.forEach(function(){ rowsBox.querySelector('.addfile').click(); });
+        }
+        var seen = {};
+        Array.prototype.forEach.call(submitForm.elements, function(e){
+          if (!e.name || !(e.name in fields) || e.type === 'file') return;
+          var val = fields[e.name];
+          if (Array.isArray(val)) { var i = seen[e.name] || 0; seen[e.name] = i + 1; val = val[i]; if (val === undefined) return; }
+          if (e.type === 'checkbox') e.checked = (val === e.value);
+          else e.value = val;
+          e.dispatchEvent(new Event('input', {bubbles: false}));
+        });
+        if (rowsBox && names.length) {
+          var shaIns = rowsBox.querySelectorAll('input[name=file_sha1]');
+          shas.forEach(function(v, i){ if (shaIns[i]) { shaIns[i].value = v; shaIns[i].dispatchEvent(new Event('input')); } });
+        }
+        paintKind();
+        var pick = submitForm.querySelector('.authpick');
+        if (fields.authors && pick && pick.setAuthors) pick.setAuthors(fields.authors.split(',').filter(Boolean));
+      }
+      function stamp(t){
+        var d = new Date(t);
+        return d.toLocaleDateString(undefined, {day: 'numeric', month: 'short'}) + ' ' +
+               d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      }
+      function saveDraft(){
+        var data = {t: new Date().toISOString(), game: gameSelect.value, goal: goalSelect.value,
+                    sub: subSelect.disabled ? '' : subSelect.value, fields: draftFields()};
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) { return; }
+        draftNote.hidden = false;
+        draftNote.textContent = 'Draft saved ' + stamp(data.t);
+      }
+      function dropDraft(){
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        draftNote.hidden = true;
+      }
+      submitForm.addEventListener('input', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
+      submitForm.addEventListener('change', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
+      document.getElementById('s-clear').addEventListener('click', function(){
+        if (!window.confirm('Clear every field and discard the saved draft?')) return;
+        dropDraft();
+        submitFormDirty = false;
+        location.reload();
+      });
+      function restoreDraft(){
+        var d = null;
+        try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) {}
+        if (!d || !d.t || Date.now() - Date.parse(d.t) > 30 * 86400000) return false;
+        draftNote.hidden = false;
+        draftNote.textContent = 'Draft saved ' + stamp(d.t) + ' (restored)';
+        if (d.game && gameTitles[d.game]) {
+          pendingDraft = d;          // the category list arrives later
+          pickGame(d.game);
+        } else {
+          applyDraftFields(d.fields);
+        }
+        return true;
+      }
+
       var gamePick = document.getElementById('s-gamepick');
       var gameSearch = document.getElementById('s-gamesearch');
       var gameList = gamePick.querySelector('.gamelist');
@@ -1986,7 +2081,11 @@
       // arriving from a game page: the context comes along, locked
       var presetGame = null;
       try { presetGame = new URLSearchParams(location.search).get('game'); } catch (e) {}
+      initAuthorPick(submitForm.querySelector('.authpick'), [d.user]);
+      // a draft restores first; a game named in the URL then overrides its game
+      var restored = restoreDraft();
       if (presetGame && gameTitles[presetGame]) {
+        if (restored && pendingDraft) pendingDraft.game = presetGame;
         pickGame(presetGame);
         gamePick.hidden = true;
         gameLocked.hidden = false;
@@ -1998,9 +2097,7 @@
           gameSearch.focus();
         });
       }
-      fillGoals([]);
-
-      initAuthorPick(submitForm.querySelector('.authpick'), [d.user]);
+      if (!restored && !presetGame) fillGoals([]);
 
       // live encode check: the thumbnail is derived from the encode, so the
       // link is validated as it is typed — preview frame + green check
@@ -2113,6 +2210,7 @@
           if (res.ok && res.j.ok) {
             if (submitBtn) submitBtn.disabled = true;      // done: never offer it again
             submitFormDirty = false;                  // archived: nothing left to lose
+            dropDraft();
             submitForm.hidden = true;
             noteBuilt(msg, 'Archived as ' + res.j.id + '.' +
                       (res.j.forum ? ' Announced on the forum: ' + res.j.forum : ''),

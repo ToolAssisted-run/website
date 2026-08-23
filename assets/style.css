@@ -700,3 +700,7 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .subrowed .subkey{font-size:.78rem;color:var(--faint)}
 .subrowed .actmsg{flex-basis:100%;margin-top:4px}
 .subrow .dimname{color:var(--faint)}
+/* the submit draft line: saved-at stamp on the left, Clear on the right */
+.draftbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}
+.draftnote{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint)}
+.draftbar .btn{padding:6px 12px;font-size:.78rem}

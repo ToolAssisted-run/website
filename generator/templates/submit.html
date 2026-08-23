@@ -9,6 +9,10 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
 <script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
 <p id="s-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to submit a run.</p>
 <form id="submitform" class="actform bigform" hidden>
+  {# the draft: everything typed is kept in this browser as you go (never the
+     movie file, which browsers refuse to restore); Clear empties it all #}
+  <div class="draftbar"><span class="draftnote" id="s-draftnote" hidden></span>
+  <button type="button" class="btn leave" id="s-clear">Clear the form</button></div>
   <label>Game</label>
   <div class="pickrow">
   <div class="gamepick" id="s-gamepick">

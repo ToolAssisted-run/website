@@ -683,7 +683,12 @@ archivist, module responsibilities). What matters designwise:
   path. A view-as key on a non-Committee account is ignored and cleared.
 - **Honest failure**: an unreachable archivist shows an amber "archivist
   unreachable" marker with a retry; reading never needs the archivist.
-  The submit form arms the standard leave-page dialog once anything changes.
+  The submit form arms the standard leave-page dialog once anything changes,
+  and keeps a **draft** in the browser's localStorage (every field but the
+  movie, which browsers refuse to restore; saved 300 ms after each change,
+  "Draft saved <time>" shown; restored on the next visit, the URL's game
+  winning over the draft's; dropped on a successful submit or by "Clear the
+  form", which asks first). Drafts older than 30 days are ignored.
 - Every page ends in the shared footer (constitution links, site log, social
   icons as CSS masks).
 - **Freshness**: the live origin serves every response `Cache-Control:
