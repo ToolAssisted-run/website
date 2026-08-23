@@ -253,7 +253,7 @@ def main():
             mkarchive.run_spec('M900109', frames=0, authors=['Vid'],
                                videoOnly=True, duration=1317.419,
                                submitted='2026-02-05T00:00:00Z'),
-            mkarchive.run_spec('M900105', frames=5500, authors=['Eve'],
+            mkarchive.run_spec('M900105', frames=5500, authors=['Eve'], goal='100-percent',
                                contract={'emulator': 'BizHawk 2.11',
                                          'rom': {'name': 'Old Game (USA).nes', 'sha1': 'c' * 40}},
                                consoleVerifications=[{'user': 'Metal', 'date': '2026-02-07',
@@ -570,8 +570,8 @@ def main():
            '<select class="dimdd" data-dim="goal">' in subpage_ and '<select class="subdd"' in subpage_
            and 'class="dimopt"' not in subpage_)
         ck('the default stays one button each',
-           'dimdd' not in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
-           and any('class="dimopt"' in h for pth, h in all_html.items() if pth.parent.parent.name == 'nes'))
+           '<select class="dimdd"' not in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
+           and 'data-opt="100-percent"' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the editor offers the choice for categories', 'name="ge-selector"' in all_html[out / 'games' / 'dos' / 'subgame' / 'edit' / 'index.html']
            and '"selector": "dropdown"' in all_html[out / 'games' / 'dos' / 'subgame' / 'edit' / 'index.html'])
         ck('the composed rules carry the subcategory fragment',
@@ -583,7 +583,7 @@ def main():
         ck('a run page names the subcategory in its category',
            'episode 1 · any' in all_html[out / 'runs' / 'M900110' / 'index.html'])
         ck('games without subcategories show no subcategory row',
-           'subrow' not in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
+           'class="dimrow subrow"' not in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
         ck('the submit form carries the subcategory select, hidden until needed',
            'id="s-subwrap" hidden' in all_html[out / 'submit' / 'index.html'])
         ck('the create-category page offers "subcategory of"',
