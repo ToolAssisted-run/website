@@ -9,6 +9,7 @@ from model import (
     repro_bounty,
     runs,
     verify_bounty,
+    systems,
 )
 from render import page, tpl
 
@@ -22,13 +23,15 @@ need_verify = sorted([r for r in runs
 # the system filters serve the lists that need a machine: reproduction (an
 # emulator you can run) and hardware verification (a console you own).
 # Verifying only takes watching a video, so no filter there.
-worklist_systems = sorted({r['_game']['system'] for r in need_repro})
+# Show every known system as a clickable option so users can choose any system
+worklist_systems = sorted(systems.keys())
 # hardware verification: any run with an input movie that nobody has played
 # back on the original hardware yet (imports included: the source's own
 # console verification counts, a missing one is as open as any)
-need_console = sorted([r for r in runs if console_state(r) == 'none'],   # 'none' means applicable and not done
+need_console = sorted([r for r in runs if console_state(r) == 'none' and not r.get('videoOnly')],
                       key=lambda r: (r.get('submitted') or ''), reverse=True)
-hardware_systems = sorted({r['_game']['system'] for r in need_console})
+# present all systems as hardware options too
+hardware_systems = sorted(systems.keys())
 open_cases = [(r, c) for r in runs for c in r.get('cases', []) if c['status'] == 'open']
 # The board says who has done the most; this says what was done last.
 # Ten, not five: act dates are day-granular, so a busy day ties and the
