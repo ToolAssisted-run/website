@@ -88,7 +88,7 @@ a{color:inherit}
 .au{font-weight:600;text-decoration:none}.au:hover{color:var(--accent-text)}
 .au.unclaimed .udot{color:var(--imported);font-size:.7em;vertical-align:super;margin-left:2px}
 .udot{color:var(--imported)}
-.btn{display:inline-block;padding:10px 16px;border-radius:9px;background:var(--accent);color:#04140A;text-decoration:none;font-family:ui-monospace,monospace;font-size:.84rem;font-weight:700}
+.btn{display:inline-block;text-align:center;padding:10px 16px;border-radius:9px;background:var(--accent);color:#04140A;text-decoration:none;font-family:ui-monospace,monospace;font-size:.84rem;font-weight:700}
 .btn.danger{background:#DC2626;color:#FEF2F2}
 /* every action button is the same black-over-green; only danger (red) and
    warn (amber) differ, because they mean something. The old page-colored
@@ -97,7 +97,13 @@ a{color:inherit}
 .btn:hover{filter:brightness(1.06)}
 .gface{max-height:84px;border-radius:10px;border:2.5px solid var(--hair);display:block}
 .btn:disabled,.btn.busy{filter:grayscale(1);opacity:.55;box-shadow:none;cursor:not-allowed;pointer-events:none}
-.btn.busy::after{content:"";display:inline-block;width:.8em;height:.8em;margin-left:8px;vertical-align:-.08em;border:2.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:busyspin .8s steps(8) infinite}
+/* the mark beside a button: spinner, then a green check or a red cross
+   whose tooltip carries the error. Frame-quantized, like everything */
+.bmark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;vertical-align:middle;border-radius:50%;flex:none;align-self:center}
+.bmark:empty{display:none}.bmark.spin,.bmark.ok,.bmark.bad{display:inline-flex}
+.bmark.spin{border:2.5px solid var(--hairs);border-top-color:var(--accent);animation:busyspin .8s steps(8) infinite}
+.bmark.ok{background:var(--accent)}.bmark.ok::before{content:"";width:12px;height:12px;background:#fff;clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0,43% 62%)}
+.bmark.bad{background:#DC2626;cursor:help}.bmark.bad::before{content:"";width:11px;height:11px;background:#fff;clip-path:polygon(20% 0,0 20%,30% 50%,0 80%,20% 100%,50% 70%,80% 100%,100% 80%,70% 50%,100% 20%,80% 0,50% 30%)}
 @keyframes busyspin{to{transform:rotate(360deg)}}
 .side{display:flex;flex-direction:column;gap:22px;position:sticky;top:16px}
 .side .btn{width:100%}

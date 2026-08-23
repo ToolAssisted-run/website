@@ -82,11 +82,44 @@
     if (text) e.textContent = text;
     return e;
   }
-  // show a good/bad status line in a message box
-  function note(box, text, good){
+  // ---- the mark beside a button: spinner while the archivist works, a
+  // green check when it is done, a red cross (with the error as tooltip)
+  // when it is not. Outcomes live next to the button that was pressed,
+  // never in a box somewhere else on the page. ----
+  function markOf(btn){
+    if (!btn) return null;
+    var m = btn.nextElementSibling;
+    if (!m || !m.classList.contains('bmark')) {
+      m = el('span', 'bmark');
+      m.setAttribute('role', 'status');
+      btn.insertAdjacentElement('afterend', m);
+    }
+    return m;
+  }
+  function setMark(btn, state, title){
+    var m = markOf(btn);
+    if (!m) return false;
+    m.className = 'bmark ' + state;
+    m.title = title || '';
+    m.setAttribute('aria-label', title || state);
+    return true;
+  }
+  var lastBtn = null;   // the button whose call is being answered
+  // a plain status line in a message box: for outcomes that carry more
+  // than yes or no (an id, a link); everything else goes on the mark
+  function noteText(box, text, good){
     box.hidden = false;
     box.textContent = text;
     box.className = 'actmsg ' + (good ? 'good' : 'bad');
+  }
+  // an outcome: on the mark beside the button that asked, when there is
+  // one; in the box otherwise
+  function note(box, text, good){
+    if (lastBtn && setMark(lastBtn, good ? 'ok' : 'bad', text)) {
+      if (box) box.hidden = true;
+      return;
+    }
+    noteText(box, text, good);
   }
   // A write is only done, for the reader, once the site serves it. Every
   // successful write answers with the archive revision it produced
@@ -110,12 +143,18 @@
         });
     })();
   }
-  // say a write is done, then say when the rebuilt site is serving it
-  function noteBuilt(box, doneText, serial, liveText){
-    note(box, doneText + ' Publishing to the site…', true);
+  // say a write is done, then say when the rebuilt site is serving it:
+  // the mark keeps spinning until the site serves the change, then checks;
+  // keepText also writes the sentence (for outcomes that carry a link)
+  function noteBuilt(box, doneText, serial, liveText, keepText){
+    var btn = lastBtn;
+    var onMark = btn && setMark(btn, 'spin', doneText + ' Publishing to the site…');
+    if (!onMark || keepText) noteText(box, doneText + ' Publishing to the site…', true);
+    else if (box) box.hidden = true;
     waitBuilt(serial, function(live){
-      note(box, doneText + ' ' + (live ? (liveText || 'It is live on the site now.')
-                                       : 'It will appear on the site shortly.'), true);
+      var tail = live ? (liveText || 'It is live on the site now.') : 'It will appear on the site shortly.';
+      if (onMark) setMark(btn, 'ok', doneText + ' ' + tail);
+      if (!onMark || keepText) noteText(box, doneText + ' ' + tail, true);
     });
   }
   var authorNamesPromise = null;
@@ -188,10 +227,12 @@
   // the busy state of the button that started an archivist call
   function busy(btn, on){
     // archivist work takes time (git pushes, mail): the button that started
-    // it spins, goes flat and grey, and cannot be pressed again
+    // it goes flat and grey and cannot be pressed again, and the mark
+    // beside it spins until the answer comes
     if (!btn) return;
     btn.disabled = on;
     btn.classList.toggle('busy', on);
+    if (on) setMark(btn, 'spin', 'Working…');
   }
   // the form's real submit button (for the busy spinner)
   // a checkbox that mirrors into a hidden field: forms whose answer must be
@@ -215,7 +256,15 @@
     return fetch(api + path, {method: 'POST', body: fd, credentials: 'include'})
       .then(function(r){ return r.json().then(function(j){ return {ok: r.ok, j: j}; }); })
       .catch(function(){ return {ok: false, j: {error: 'network error; the archivist may be unreachable'}}; })
-      .then(function(res){ busy(btn, false); return res; });
+      .then(function(res){
+        busy(btn, false);
+        lastBtn = btn;
+        // the answer itself, on the mark; the caller's note() refines the
+        // wording, and noteBuilt() keeps it spinning until the site serves it
+        if (btn) setMark(btn, res.ok && res.j && res.j.ok ? 'ok' : 'bad',
+                         res.ok && res.j && res.j.ok ? 'Done' : (res.j && res.j.error) || 'something went wrong');
+        return res;
+      });
   }
 
   // ---- freshness: Pages caches every page for 10 minutes ----
@@ -1949,7 +1998,7 @@
             noteBuilt(msg, 'Archived as ' + res.j.id + '.' +
                       (res.j.forum ? ' Announced on the forum: ' + res.j.forum : ''),
                       res.j.serial,
-                      'Your run page is live at ../runs/' + res.j.id + '/.');
+                      'Your run page is live at ../runs/' + res.j.id + '/.', true);
           } else note(msg, res.j.error || 'something went wrong', false);
         });
       });
