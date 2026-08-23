@@ -15,21 +15,25 @@ with your name, the old value, the new, and your reason.</p></div>
 <p class="msg" id="ge-gate">Checking who you are…</p>
 <div id="geditor" hidden>
 <section><h2>Identity</h2>
+<div class="actform">
 <label>Title <input id="ge-title" maxlength="120" value="{{ g['title'] }}"></label>
 {% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="current thumbnail">{% else %}<p class="rules">No thumbnail set; the card falls back to the newest run frame.</p>{% endif %}
 <label>Thumbnail (png/jpg/webp, under 256 KB; pick one to replace it)
   <input id="ge-thumb" type="file" accept=".png,.jpg,.jpeg,.webp"></label>
+</div>
 </section>
 <section><h2>Properties</h2>
-<p class="rules">Facts about the game itself (#44). Empty means not stated.</p>
+<p class="rules fullw">Facts about the game itself (#44). Empty means not stated.</p>
+<div class="actform">
 <label>Release date <input id="ge-released" maxlength="10" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="YYYY, YYYY-MM or YYYY-MM-DD" value="{{ g.get('released', '') }}"></label>
 <label class="check"><input type="checkbox" id="ge-unofficial"{% if g.get('unofficial') %} checked{% endif %}> <span><b>Unofficial</b> <span class="checkhint">· a ROM hack, mod, fangame or other unofficial release</span></span></label>
 <label>Community Discord <input id="ge-discord" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)" value="{{ g.get('discord', '') }}"></label>
 <label>Community website <input id="ge-website" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}"></label>
 <label>RTA leaderboards <input id="ge-rta" type="url" maxlength="300" placeholder="https://… (where the real-time records live)" value="{{ g.get('rta', '') }}"></label>
+</div>
 </section>
 <section><h2>Categories</h2>
-<p class="rules">The label is what the rankings say; the rule is what a verifier holds a run to.
+<p class="rules fullw">The label is what the rankings say; the rule is what a verifier holds a run to.
 Order them as the selectors should show them, the popular ones first. A category with runs in
 it cannot be deleted: it is their home. Subcategories are a second level inside a category
 (Episode 1: any%, 100%); the first one added takes the runs already there, and deleting the
@@ -38,11 +42,11 @@ last one leaves its runs in the category.</p>
 <div id="ge-cats"></div>
 <div class="btnrow" style="justify-content:flex-start"><button type="button" class="btn leave" id="ge-addcat">+ Add a category</button></div>
 </section>
-<section class="savebar" id="ge-savebar">
+<section class="savebar" id="ge-savebar"><div class="actform">
 <p class="statline"><b id="ge-pending">No changes yet</b></p>
 <label>Why (public, one reason for every change in this save)
 <input id="ge-why" minlength="8" maxlength="500" placeholder="published in the site log beside your name"></label>
 <div class="btnrow" style="justify-content:flex-start"><button type="button" class="btn" id="ge-save" disabled>Save all changes</button></div>
 <p class="actmsg" id="ge-msg" hidden></p>
-</section>
+</div></section>
 </div>
