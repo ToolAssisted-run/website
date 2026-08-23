@@ -113,6 +113,24 @@
     box.textContent = text;
     box.className = 'actmsg ' + (good ? 'good' : 'bad');
   }
+  function noteHtml(box, good, lines){
+    if (!box) return;
+    box.hidden = false;
+    box.innerHTML = (lines || []).filter(Boolean).join('<br>');
+    box.className = 'actmsg ' + (good ? 'good' : 'bad');
+  }
+  function siteBaseUrl(){
+    const defaultBaseUrl = 'https://toolassisted.run/';
+    var href = (window.location && window.location.href) || (document.baseURI || defaultBaseUrl);
+    try {
+      return new URL(T.rel || '.', href).href;
+    } catch (e) {
+      return defaultBaseUrl;
+    }
+  }
+  function runPageUrl(runId){
+    return new URL('runs/' + String(runId) + '/', siteBaseUrl()).href;
+  }
   // an outcome: on the mark beside the button that asked, when there is
   // one; in the box otherwise
   function note(box, text, good){
@@ -1784,6 +1802,59 @@
       if (d.unreachable) { note(msg, 'The archivist is not reachable right now; try again later.', false); return; }
       if (!d.loggedIn) { document.getElementById('s-login').hidden = false; return; }
       submitForm.hidden = false;
+      var romInput = document.getElementById('s-romfile');
+      var romNameInput = document.getElementById('s-romname');
+      var romShaInput = document.getElementById('s-romsha1');
+      var romNote = document.getElementById('s-romnote');
+      var romStat = document.getElementById('s-romsha1-st');
+      function paintRomSha(){
+        if (!romShaInput) return;
+        var v = (romShaInput.value || '').trim();
+        var ok = v === '' || /^[0-9a-fA-F]{40}$/.test(v);
+        romShaInput.classList.toggle('bad', !ok);
+        romShaInput.title = ok ? '' : 'a SHA1 is exactly 40 hexadecimal characters';
+      }
+      if (romInput && romNameInput && romShaInput) {
+        romInput.addEventListener('change', function(){
+          var file = romInput.files && romInput.files[0];
+          if (!file) {
+            romNameInput.value = '';
+            romShaInput.value = '';
+            romShaInput.placeholder = '40 hex characters, or leave empty';
+            if (romNote) { romNote.hidden = true; romNote.textContent = ''; }
+            if (romStat) { romStat.hidden = true; romStat.textContent = ''; }
+            paintRomSha();
+            return;
+          }
+          romNameInput.value = file.name;
+          romShaInput.value = '';
+          romShaInput.placeholder = 'hashing…';
+          if (romNote) { romNote.hidden = false; romNote.textContent = 'reading ' + file.name + '…'; }
+          if (romStat) { romStat.hidden = false; romStat.textContent = 'hashing…'; romStat.className = 'rules fullw'; }
+          sha1Hex(file).then(function(hex){
+            romShaInput.value = hex;
+            romShaInput.placeholder = '40 hex characters, or leave empty';
+            if (romNote) { romNote.hidden = true; romNote.textContent = ''; }
+            if (romStat) {
+              romStat.hidden = false;
+              romStat.textContent = '✓ ROM SHA1 computed locally: ' + hex;
+              romStat.className = 'rules fullw';
+            }
+            paintRomSha();
+          }).catch(function(){
+            romShaInput.value = '';
+            romShaInput.placeholder = 'could not hash; type the SHA1';
+            if (romNote) { romNote.hidden = false; romNote.textContent = '✗ could not hash the ROM file; type the SHA1 manually'; }
+            if (romStat) {
+              romStat.hidden = false;
+              romStat.textContent = '✗ could not hash the ROM file; type the SHA1 manually';
+              romStat.className = 'rules fullw enc-bad';
+            }
+            paintRomSha();
+          });
+        });
+        romShaInput.addEventListener('input', paintRomSha);
+      }
       // half-written submissions are easy to lose to a stray click: once
       // anything in the form changes, leaving asks the standard are-you-sure
       var submitFormDirty = false;
@@ -2511,8 +2582,12 @@
               submitting = false;
               submitFormDirty = false;
               lastBtn = submitBtn;
-              noteBuilt(msg, 'Saved.' + (voided.length ? ' Invalidated: ' + voided.join(', ') + '.' : ''), serial,
-                        'The run page shows it now: ../runs/' + editRunId + '/.', true);
+              var editRunUrl = runPageUrl(editRunId);
+              var editRunLines = [
+                'Saved.' + (voided.length ? ' Invalidated: ' + voided.join(', ') + '.' : ''),
+                'The run page shows it now: <a href="' + escapeHtml(editRunUrl) + '">' + escapeHtml(editRunUrl) + '</a>.'
+              ];
+              noteHtml(msg, true, editRunLines);
               return;
             }
             steps.shift()().then(function(r2){
@@ -2541,10 +2616,14 @@
             submitFormDirty = false;                  // archived: nothing left to lose
             dropDraft();
             submitForm.hidden = true;
-            noteBuilt(msg, 'Archived as ' + res.j.id + '.' +
-                      (res.j.forum ? ' Announced on the forum: ' + res.j.forum : ''),
-                      res.j.serial,
-                      'Your run page is live at ../runs/' + res.j.id + '/.', true);
+            var forumUrl = res.j.forum ? String(res.j.forum) : '';
+            var runUrl = runPageUrl(res.j.id);
+            var lines = [
+              'Archived as ' + escapeHtml(String(res.j.id)) + '.',
+              forumUrl ? 'Announced on the forum: <a href="' + escapeHtml(forumUrl) + '">' + escapeHtml(forumUrl) + '</a>' : '',
+              'Your run page is live at <a href="' + escapeHtml(runUrl) + '">' + escapeHtml(runUrl) + '</a>.'
+            ];
+            noteHtml(msg, true, lines);
           } else note(msg, res.j.error || 'something went wrong', false);
         });
       });
