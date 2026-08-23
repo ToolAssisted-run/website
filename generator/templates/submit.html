@@ -47,10 +47,12 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</p><
   <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
   <span id="enc-status"></span></div>
   <label>Emulator / core (optional)</label><input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES)">
+  <hr class="formrule">
   <label>Files the movie was made against (optional: ROMs, disc images, executables,
-  sources; as many as it takes). Pick each file and its name and SHA1 are computed
+  sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed
   locally, the file <b>never leaves your machine</b>; or type them.</label>
   {{ file_rows() }}
+  <hr class="formrule">
   <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
     name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
     It can never be reproduced, in emulator or on console, and the page will say so;
