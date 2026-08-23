@@ -332,7 +332,6 @@
       }).catch(function(){ statsRow.remove(); });
     menu.appendChild(item('My profile', rel + 'authors/' + encodeURIComponent(d.user.toLowerCase()) + '/'));
     menu.appendChild(item('Submit a run', rel + 'submit/'));
-    menu.appendChild(item('My contributions', rel + 'contribute/'));
     menu.appendChild(item('Account settings', 'https://forum.toolassisted.run/my/preferences'));
     var theme = el('div', 'am-theme');
     theme.appendChild(el('span', 'am-label', 'Color scheme'));
