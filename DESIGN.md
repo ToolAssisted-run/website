@@ -678,10 +678,18 @@ archivist, module responsibilities). What matters designwise:
   lacks): "movie file", "movie format", "input movie". Member content and
   stored field names (`movie` in run.json) are untouched, as always.
 - **Pick, never type**: anything registered (game, member, group) is chosen
-  through a type-to-find selector (datalist or chips picker), never a bare
-  text box. **A picker never offers what would be refused**: grant lists
-  offer who lacks, remove lists who holds, group pickers only ungrouped
-  games. Free text only for things that do not exist yet, and author lists.
+  through a type-to-find selector, never a bare text box or a static
+  `<select>` of everything. On the panels (expert, Committee, Founder) the
+  member and game pickers are one shared widget (`armPicker` in app.js): it
+  asks the archivist as you type, debounced (`GET /api/search?kind=members|
+  games&q=`, a page of matches from a 20 s in-memory index), so no page
+  carries the whole member or game list (#56); the group chips pickers fill
+  their list the same way. Small registered sets (groups, systems, the
+  roster) stay embedded. **A picker never offers what would be refused**:
+  the page keeps the eligibility rule (who already speaks for the scope, who
+  is seated, which games are ungrouped) and filters the matches by it; grant
+  lists offer who lacks, remove lists who holds. Free text only for things
+  that do not exist yet, and author lists.
 - **Buttons: one green, one verb.** Every action button is black-over-green
   (`.btn`; the "quiet" variant is the same green); only danger (red) and
   warn (amber) differ, because they mean something. Labels are a single verb

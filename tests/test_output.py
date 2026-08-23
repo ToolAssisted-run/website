@@ -921,18 +921,16 @@ def main():
         ck('a held name in the list is one nobody claimed',
            'value="Nyx"' in claimp_, 'Nyx is credited on a run and not a member')
         fpanel_ = all_html[out / 'founder' / 'index.html']
-        ck('the founder seat form picks a member',
-           'list="dl-members"' in fpanel_ and 'id="dl-members"' in fpanel_)
-        # a picker never offers what would be refused: Ada already sits on the
-        # Committee, so the seat form's list leaves her out and keeps the rest
-        fdl = fpanel_[fpanel_.find('id="dl-members"'):]
-        fdl = fdl[:fdl.find('</datalist>')]
-        ck('the seat picker leaves out who is already seated',
-           'value="Ada"' not in fdl and 'value="Rep"' in fdl, fdl[:200])
+        # the pickers search the archivist as you type (#56): no page carries
+        # the member list, and the page knows who is seated so the seat
+        # picker can leave them out
+        ck('the founder seat form picks a member, with no list embedded',
+           'id="dl-members"' not in fpanel_ and 'name="target" required' in fpanel_
+           and '"committee": ["Ada"' in fpanel_, fpanel_[-400:])
         cpanel_ = all_html[out / 'committee' / 'index.html']
-        ck('the committee-decision form follows role and direction',
-           'list="dl-role-candidates"' in cpanel_
-           and '"moderators":' in cpanel_ and '"members":' in cpanel_)
+        ck('the committee-decision form follows role and direction, members searched live',
+           'dl-role-candidates' not in cpanel_ and '"members":' not in cpanel_
+           and '"moderators":' in cpanel_ and '"committeeNames":' in cpanel_)
         ck('and it left the members page for the committee panel',
            'dl-role-candidates' not in all_html[out / 'authors' / 'index.html'])
         gamesp_ = all_html[out / 'games' / 'index.html']
@@ -1130,11 +1128,10 @@ def main():
         ck('every action in the panel is folded', len(acts) >= 6, str(acts))
         ck('nothing waits on anybody: the removal-request flow is retired',
            'pending-list' not in panel and 'f-decide' not in panel, panel[:200])
-        ck('the panel knows who is a member, so it can offer names',
-           isinstance(pd.get('members'), list) and pd['members'], str(pd)[:200])
+        ck('the panel embeds neither the members nor the games (#56): they are searched',
+           'members' not in pd and 'games' not in pd, str(list(pd))[:200])
         ck('ratification is gone from the panel data',
-           all('established' not in g for g in pd['games'])
-           and all('established' not in gr for gr in pd['groups']), str(pd['games'][:2]))
+           all('established' not in gr for gr in pd['groups']), str(pd['groups'][:2]))
 
         # ---------- the browse script actually renders ----------
         # It once threw on a video-only run's null frames and the movies page

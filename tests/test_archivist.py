@@ -894,6 +894,19 @@ def main():
                            {'screenshot': ('end.png', PNG)})
             ck('duplicate reproduction rejected', c == 400)
 
+            # --- the pickers' search (#56): members and games, as typed ---
+            c, r, _ = call(U + '/api/search?kind=members&q=testauth')
+            ck('member search answers the matching usernames', c == 200
+               and 'TestAuthor' in r.get('items', []), str(r)[:200])
+            c, r, _ = call(U + '/api/search?kind=games&q=pinball')
+            ck('game search answers key, title, system and group', c == 200
+               and any(g['key'] == 'nes/pinball' and g['title'] and g['system'] == 'nes'
+                       and 'group' in g for g in r.get('items', [])), str(r)[:200])
+            c, r, _ = call(U + '/api/search?kind=games&q=')
+            ck('an empty query is refused, not answered with everything', c == 400)
+            c, r, _ = call(U + '/api/search?kind=runs&q=x')
+            ck('only members and games are searchable', c == 400)
+
             # --- video-only runs: the encode is the run ---
             vsub = {'key': KEY, 'submitter': 'TestAuthor', 'game': 'nes/pinball',
                     'goal': '100k-glitched', 'authors': 'TestAuthor', 'consent': 'yes',

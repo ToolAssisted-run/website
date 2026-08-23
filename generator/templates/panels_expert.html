@@ -17,8 +17,8 @@ already cover, never wider than your own.</p></section>
   <p class="rules">Downward only: you may hand out authority over a game you already
   cover. Members who already speak for it, through the game, its group, its system or
   the whole site, are not listed: a narrower appointment would add nothing.</p>
-  <label>Game <select name="scope" id="appoint-game"></select></label>
-  <label>Member <select name="user" id="appoint-game-user"></select></label>
+  <label>Game <input name="scope" id="appoint-game" required placeholder="type to find a game"></label>
+  <label>Member <input name="user" id="appoint-game-user" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="what makes them the right person for it"></label>
   <button class="btn">Appoint</button>
@@ -29,7 +29,7 @@ already cover, never wider than your own.</p></section>
   <p class="rules">A group expert speaks for every game in it, now and as it grows.
   Members who already cover the group are not listed.</p>
   <label>Group <select name="scope" id="appoint-group"></select></label>
-  <label>Member <select name="user" id="appoint-group-user"></select></label>
+  <label>Member <input name="user" id="appoint-group-user" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="what makes them the right person for it"></label>
   <button class="btn">Appoint</button>
@@ -41,7 +41,7 @@ already cover, never wider than your own.</p></section>
   <p class="rules">A whole system, every game in it. Wider than this, the whole site, is
   the Steering Committee's to give, from its own panel.</p>
   <label>Scope <select name="scope" id="appoint-wide"></select></label>
-  <label>Member <select name="user" id="appoint-wide-user"></select></label>
+  <label>Member <input name="user" id="appoint-wide-user" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="what makes them the right person for it"></label>
   <button class="btn">Appoint</button>

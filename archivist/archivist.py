@@ -927,6 +927,75 @@ def categories_of_game():
     resp.headers['Cache-Control'] = 'no-store'
     return resp
 
+_search_cache = {'at': 0.0, 'members': [], 'games': []}
+
+def _search_index():
+    """Members and games, as the pickers search them (issue #56): read from
+    the checkout and kept for 20 s, so typing never hits the disk per key."""
+    now = time.monotonic()
+    if now - _search_cache['at'] > 20:
+        refresh_archive()
+        members = []
+        for author_file in (ARCHIVE / 'authors').glob('*.json'):
+            try:
+                members.append(json.loads(author_file.read_text())['username'])
+            except (OSError, ValueError, KeyError):
+                continue
+        groups = []
+        groups_file = ARCHIVE / 'groups.json'
+        if groups_file.exists():
+            try:
+                groups = json.loads(groups_file.read_text()).get('groups', [])
+            except (ValueError, AttributeError):
+                groups = []
+        group_of = {k: gr['key'] for gr in groups for k in gr.get('games', [])}
+        games = []
+        for game_file in ARCHIVE.glob('games/*/*/game.json'):
+            try:
+                game = json.loads(game_file.read_text())
+            except (OSError, ValueError):
+                continue
+            if game.get('rejected') or game.get('removed'):
+                continue
+            key = f'{game_file.parent.parent.name}/{game_file.parent.name}'
+            games.append({'key': key, 'title': game.get('title', key),
+                          'system': game_file.parent.parent.name, 'group': group_of.get(key, '')})
+        _search_cache.update(at=now, members=sorted(members, key=str.lower),
+                             games=sorted(games, key=lambda g: g['title'].lower()))
+    return _search_cache
+
+@app.get('/api/search')
+def search():
+    """Type-to-find for the pickers on the panels (issue #56): the matching
+    members or games, a page at a time, so no page carries the whole list.
+
+    Who: anybody
+    Reads: query args kind (members | games), q (at least one character),
+        limit (at most 50, default 20)
+    Answers: {ok, kind, items}; a member item is its username, a game item
+        {key, title, system, group}
+    """
+    kind = (request.args.get('kind') or '').strip()
+    query = (request.args.get('q') or '').strip().lower()[:80]
+    try:
+        limit = max(1, min(50, int(request.args.get('limit') or 20)))
+    except ValueError:
+        limit = 20
+    if kind not in ('members', 'games'):
+        return fail('kind must be members or games')
+    if not query:
+        return fail('q must say what to look for')
+    index = _search_index()
+    if kind == 'members':
+        hits = [m for m in index['members'] if query in m.lower()]
+        hits.sort(key=lambda m: (not m.lower().startswith(query), m.lower()))
+    else:
+        hits = [g for g in index['games'] if query in g['title'].lower() or query in g['key']]
+        hits.sort(key=lambda g: (not g['title'].lower().startswith(query), g['title'].lower()))
+    resp = jsonify({'ok': True, 'kind': kind, 'items': hits[:limit]})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
 @app.post('/api/category/add')
 def category_add():
     """Any member adds a category (creation is everybody's; only experts

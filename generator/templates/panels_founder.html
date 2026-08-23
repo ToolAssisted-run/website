@@ -11,8 +11,7 @@ deciding by poll, exists alongside this and keeps its thresholds.</p></div></hea
 <section><h2>Seat somebody</h2>
 <form id="f-seat" class="actform">
   <input type="hidden" name="action" value="granted">
-  <label>Member <input name="target" list="dl-members" required
-    placeholder="type to find a member"></label>
+  <label>Member <input name="target" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="published with the decision"></label>
   <button class="btn">Seat</button>
@@ -27,5 +26,4 @@ deciding by poll, exists alongside this and keeps its thresholds.</p></div></hea
 </form></section>
 <p class="msg" id="fpanel-msg" hidden></p>
 </div>
-{{ dl_members(exclude=committee_members) }}
-<script type="application/json" id="fpaneldata">{{ json_blob({'founders': founder_now}) }}</script>
+<script type="application/json" id="fpaneldata">{{ json_blob({'founders': founder_now, 'committee': committee_members}) }}</script>

@@ -30,7 +30,7 @@ much.</p>
   your name and reason are published with it. Members who already hold it are not
   listed.</p>
   <input type="hidden" name="scope" value="site">
-  <label>Member <select name="user" id="siteexpert-user"></select></label>
+  <label>Member <input name="user" id="siteexpert-user" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="what makes them the right person for the whole site"></label>
   <button class="btn">Appoint</button>
@@ -42,7 +42,7 @@ much.</p>
   themselves. A single Committee seat grants it, and your name and reason are
   published; taking it away is a Committee poll like any role removal. Members who
   already hold it are not listed.</p>
-  <label>Member <select name="user" id="editorrole-user"></select></label>
+  <label>Member <input name="user" id="editorrole-user" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="what makes them the right curator for the library"></label>
   <button class="btn">Appoint</button>
@@ -53,9 +53,7 @@ much.</p>
   page). Refused while they hold any role or authored any run: those have their own
   procedures. A sitting Committee member is the Founder's alone to delete, and the Founder
   is nobody's; neither is offered below. Your reason is public and permanent.</p>
-  <label>Member <input name="target" list="dl-delete-candidates" required
-    placeholder="type to find a member"></label>
-  <datalist id="dl-delete-candidates"></datalist>
+  <label>Member <input name="target" required placeholder="type to find a member"></label>
   <label>Why <input name="reason" required minlength="8" maxlength="500"
     placeholder="a spam account, a test, …"></label>
   <button class="btn danger">Delete</button>
@@ -68,9 +66,7 @@ poll: the poll must be restricted to the Committee, public, and closed, and a si
 majority of the whole Committee must have voted for it. Adding somebody to a forum
 group grants nothing.</p>
 <form id="f-role" class="actform">
-  <label>Member <input name="target" list="dl-role-candidates" required
-    placeholder="type to find a member"></label>
-  <datalist id="dl-role-candidates"></datalist>
+  <label>Member <input name="target" required placeholder="type to find a member"></label>
   <label>Role <select name="role">
     <option value="committee">Steering Committee</option>
     <option value="moderator">Moderator</option>

@@ -469,13 +469,119 @@
   // list you can type into, never typed blind. For multi-valued fields a
   // datalist alone cannot do it (picking replaces the whole value), so the
   // real input goes hidden and chips carry the choices.
-  function armMultiPick(form, name, listId, allowed){
+  // ---- the type-to-find picker (issue #56) ----
+  // Replaces a <select> or an <input> in place with a search box that asks
+  // the archivist as you type (debounced), or a local list, and shows the
+  // matches to click. The original element's name travels on a hidden
+  // input, so forms post exactly what they did. `opts.source(q)` returns a
+  // promise of items ({value, label}) or an array; `opts.filter(item)`
+  // drops what the page knows would be refused; `opts.onPick(item)`.
+  var searchCache = {};
+  function searchArchive(kind, q){
+    var key = kind + '\u0000' + q.toLowerCase();
+    if (searchCache[key]) return Promise.resolve(searchCache[key]);
+    return fetch(api + '/api/search?kind=' + kind + '&q=' + encodeURIComponent(q) + '&limit=40',
+                 {credentials: 'include'})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var items = (j && j.ok ? j.items : []).map(function(it){
+          return typeof it === 'string' ? {value: it, label: it}
+                                        : {value: it.key, label: it.title + ' (' + it.key + ')', item: it};
+        });
+        searchCache[key] = items;
+        return items;
+      })
+      .catch(function(){ return []; });
+  }
+  function localSource(items){
+    return function(q){
+      var low = q.toLowerCase();
+      return items.filter(function(it){ return it.label.toLowerCase().indexOf(low) >= 0 || String(it.value).toLowerCase().indexOf(low) >= 0; });
+    };
+  }
+  function armPicker(field, opts){
+    if (!field || !field.parentNode || field.dataset.picker) return null;
+    field.dataset.picker = '1';
+    var hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = field.name;
+    hidden.required = field.required;
+    var wrap = el('div', 'gamepick pickwrap');
+    var search = document.createElement('input');
+    search.className = 'gamesearch';
+    search.autocomplete = 'off';
+    search.placeholder = opts.placeholder || 'Type to find…';
+    if (field.required) search.required = true;
+    var list = el('div', 'gamelist');
+    list.hidden = true;
+    wrap.appendChild(search); wrap.appendChild(list); wrap.appendChild(hidden);
+    field.parentNode.replaceChild(wrap, field);
+    var timer = null, serial = 0, picked = null;
+    function choose(it){
+      picked = it;
+      hidden.value = it.value;
+      search.value = it.label;
+      list.hidden = true;
+      if (opts.onPick) opts.onPick(it);
+    }
+    function show(items){
+      list.innerHTML = '';
+      items = items.filter(function(it){ return !opts.filter || opts.filter(it); }).slice(0, 12);
+      if (!items.length) {
+        list.appendChild(el('div', 'authopt authnone', opts.empty || 'nothing matches'));
+      }
+      items.forEach(function(it){
+        var row = el('div', 'authopt', it.label);
+        row.addEventListener('mousedown', function(ev){ ev.preventDefault(); choose(it); });
+        list.appendChild(row);
+      });
+      list.hidden = false;
+    }
+    function lookup(){
+      var q = search.value.trim();
+      if (picked && search.value !== picked.label) { picked = null; hidden.value = ''; }
+      if (!q) { list.hidden = true; return; }
+      var mine = ++serial;
+      Promise.resolve(opts.source(q)).then(function(items){ if (mine === serial) show(items); });
+    }
+    search.addEventListener('input', function(){
+      clearTimeout(timer);
+      timer = setTimeout(lookup, 180);
+    });
+    search.addEventListener('focus', lookup);
+    search.addEventListener('blur', function(){ setTimeout(function(){ list.hidden = true; }, 150); });
+    search.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' && !list.hidden) {
+        var first = list.querySelector('.authopt:not(.authnone)');
+        if (first && !picked) { e.preventDefault(); first.dispatchEvent(new MouseEvent('mousedown')); }
+      }
+    });
+    var form = wrap.closest('form');
+    if (form) form.addEventListener('reset', function(){ picked = null; hidden.value = ''; search.value = ''; });
+    return {
+      input: hidden, search: search,
+      value: function(){ return hidden.value; },
+      picked: function(){ return picked; },
+      set: choose,
+      clear: function(){ picked = null; hidden.value = ''; search.value = ''; }
+    };
+  }
+
+  function armMultiPick(form, name, listId, allowed, fill){
     var input = form && form.querySelector('[name=' + name + ']');
     if (!input || !input.parentNode) return null;
     input.type = 'hidden';
     var pickInput = el('input', 'pickbox');
     pickInput.setAttribute('list', listId);
     pickInput.placeholder = 'type to find; picking adds it';
+    if (fill) {
+      var fillTimer = null;
+      pickInput.addEventListener('input', function(){
+        clearTimeout(fillTimer);
+        var q = pickInput.value.trim();
+        if (q) fillTimer = setTimeout(function(){ fill(q); }, 180);
+      });
+    }
     var chipsBox = el('span', 'picked');
     var chosen = [];
     function sync(){
@@ -705,6 +811,11 @@
       gate.hidden = true;
       document.getElementById('fpanel').hidden = false;
       var msg = document.getElementById('fpanel-msg');
+      var seated = (founderData.committee || []).map(function(x){ return x.toLowerCase(); });
+      armPicker(document.querySelector('#f-seat [name=target]'), {
+        source: function(q){ return searchArchive('members', q); },
+        filter: function(it){ return seated.indexOf(it.value.toLowerCase()) < 0; },
+        placeholder: 'type to find a member', empty: 'no such member, or already seated'});
       ['f-seat', 'f-unseat'].forEach(function(id){
         var form = document.getElementById(id);
         form.addEventListener('submit', function(ev){
@@ -759,25 +870,20 @@
       // offers a name the archivist would refuse.
       var roleSelect = roleForm.querySelector('[name=role]');
       var actionSelect = roleForm.querySelector('[name=action]');
-      var candidateList = document.getElementById('dl-role-candidates');
-      function refreshRoleCandidates(){
-        var holders = (roleSelect.value === 'committee' ? committeeData.committeeNames
-                       : roleSelect.value === 'editor' ? (committeeData.editors || [])
-                       : committeeData.moderators)
-          .map(function(x){ return x.toLowerCase(); });
-        var pool = actionSelect.value === 'granted'
-          ? committeeData.members.filter(function(m){ return holders.indexOf(m.toLowerCase()) < 0; })
-          : committeeData.members.filter(function(m){ return holders.indexOf(m.toLowerCase()) >= 0; });
-        candidateList.innerHTML = '';
-        pool.forEach(function(m){
-          var o = document.createElement('option');
-          o.value = m;
-          candidateList.appendChild(o);
-        });
+      function roleHolders(){
+        return (roleSelect.value === 'committee' ? committeeData.committeeNames
+                : roleSelect.value === 'editor' ? (committeeData.editors || [])
+                : committeeData.moderators).map(function(x){ return x.toLowerCase(); });
       }
-      roleSelect.addEventListener('change', refreshRoleCandidates);
-      actionSelect.addEventListener('change', refreshRoleCandidates);
-      refreshRoleCandidates();
+      var rolePicker = armPicker(roleForm.querySelector('[name=target]'), {
+        source: function(q){ return searchArchive('members', q); },
+        filter: function(it){
+          var holds = roleHolders().indexOf(it.value.toLowerCase()) >= 0;
+          return actionSelect.value === 'granted' ? !holds : holds;
+        },
+        placeholder: 'type to find a member', empty: 'nobody matches for this role and decision'});
+      roleSelect.addEventListener('change', function(){ rolePicker.clear(); });
+      actionSelect.addEventListener('change', function(){ rolePicker.clear(); });
       roleForm.addEventListener('submit', function(ev){
         ev.preventDefault();
         post('/api/role/decide', new FormData(roleForm), actionBtn(roleForm))
@@ -794,17 +900,16 @@
       // Founder's alone, and the Founder is nobody's
       var deleteForm = document.getElementById('f-memberdelete');
       var deleteMsg = document.getElementById('memberdelete-msg');
-      var deleteList = document.getElementById('dl-delete-candidates');
       var me = d.user.toLowerCase(), founders = (committeeData.founders || []).map(function(x){ return x.toLowerCase(); });
-      committeeData.members.forEach(function(m){
-        var low = m.toLowerCase();
-        if (founders.indexOf(low) >= 0) return;
-        if (committeeData.committeeNames.map(function(x){ return x.toLowerCase(); }).indexOf(low) >= 0
-            && founders.indexOf(me) < 0) return;
-        var o = document.createElement('option');
-        o.value = m;
-        deleteList.appendChild(o);
-      });
+      var seatedNames = committeeData.committeeNames.map(function(x){ return x.toLowerCase(); });
+      armPicker(deleteForm.querySelector('[name=target]'), {
+        source: function(q){ return searchArchive('members', q); },
+        filter: function(it){
+          var low = it.value.toLowerCase();
+          if (founders.indexOf(low) >= 0) return false;
+          return !(seatedNames.indexOf(low) >= 0 && founders.indexOf(me) < 0);
+        },
+        placeholder: 'type to find a member', empty: 'no such member, or not yours to delete'});
       deleteForm.addEventListener('submit', function(ev){
         ev.preventDefault();
         var target = deleteForm.querySelector('[name=target]').value.trim();
@@ -818,14 +923,10 @@
           });
       });
       // the whole-site appointment: everyone who does not already hold it
-      var siteExpertSelect = document.getElementById('siteexpert-user');
-      committeeData.members.forEach(function(m){
-        if (committeeData.siteExperts.indexOf(m.toLowerCase()) >= 0) return;
-        var o = document.createElement('option');
-        o.value = m;
-        o.textContent = m;
-        siteExpertSelect.appendChild(o);
-      });
+      armPicker(document.getElementById('siteexpert-user'), {
+        source: function(q){ return searchArchive('members', q); },
+        filter: function(it){ return committeeData.siteExperts.indexOf(it.value.toLowerCase()) < 0; },
+        placeholder: 'type to find a member', empty: 'no such member, or already a whole-site expert'});
       var siteExpertForm = document.getElementById('f-siteexpert');
       siteExpertForm.addEventListener('submit', function(ev){
         ev.preventDefault();
@@ -839,15 +940,11 @@
         });
       });
       // the editor seat: everyone who does not already hold it
-      var editorSelect = document.getElementById('editorrole-user');
-      committeeData.members.forEach(function(m){
-        if ((committeeData.editors || []).map(function(x){ return x.toLowerCase(); })
-            .indexOf(m.toLowerCase()) >= 0) return;
-        var o = document.createElement('option');
-        o.value = m;
-        o.textContent = m;
-        editorSelect.appendChild(o);
-      });
+      var editorNames = (committeeData.editors || []).map(function(x){ return x.toLowerCase(); });
+      armPicker(document.getElementById('editorrole-user'), {
+        source: function(q){ return searchArchive('members', q); },
+        filter: function(it){ return editorNames.indexOf(it.value.toLowerCase()) < 0; },
+        placeholder: 'type to find a member', empty: 'no such member, or already an editor'});
       var editorForm = document.getElementById('f-editorrole');
       editorForm.addEventListener('submit', function(ev){
         ev.preventDefault();
@@ -962,13 +1059,15 @@
       // the games and groups I may hand out authority over. A Committee seat
       // reaches everything for appointment (2.5.3), and appointment only: the
       // group forms and the pending list stay derived from expert scope.
-      var myGames = panelData.games.filter(function(g){ return coversGame(myScopes, g.key); });
       var myGroups = panelData.groups.filter(function(gr){ return coversGroup(myScopes, gr.key); });
-      var apptGames = amCommittee ? panelData.games : myGames;
       var apptGroups = amCommittee ? panelData.groups : myGroups;
-      fillSelect(document.getElementById('appoint-game'),
-           apptGames.map(function(g){ return {value: g.key, label: g.title + ' (' + g.key + ')'}; }),
-           'no game is yours to hand out');
+      // games are searched as you type (#56): the page carries no list of
+      // them; what comes back is filtered down to what is mine to hand out
+      var gamePicker = armPicker(document.getElementById('appoint-game'), {
+        source: function(q){ return searchArchive('games', q); },
+        filter: function(it){ return amCommittee || coversGame(myScopes, it.value); },
+        placeholder: 'type to find a game', empty: 'no such game, or not yours to hand out',
+        onPick: function(){ refreshCandidates(gamePicker.input, userPickers['appoint-game-user']); }});
       fillSelect(document.getElementById('appoint-group'),
            apptGroups.map(function(gr){ return {value: 'group:' + gr.key, label: gr.title}; }),
            'no group is yours to hand out');
@@ -981,27 +1080,36 @@
              'nothing');
       }
 
-      // members who do not already speak for the chosen scope
-      function refreshCandidates(scopeSel, userSel){
-        if (!scopeSel || !userSel) return;
-        var scope = scopeSel.value;
-        var free = panelData.members.filter(function(m){
-          var s = scopesOf(m);
-          if (!s.length) return true;
-          if (s.indexOf('site') >= 0) return false;
-          if (scope.indexOf('group:') === 0) return !coversGroup(s, scope.slice(6));
-          if (scope.indexOf('/') > 0) return !coversGame(s, scope);
-          return s.indexOf(scope) < 0;
-        });
-        fillSelect(userSel, free.map(function(m){ return {value: m, label: m}; }),
-             'everybody here already speaks for it');
+      // members who do not already speak for the chosen scope: the member
+      // box searches as you type and drops whoever the archivist would refuse
+      function speaksFor(name, scope){
+        var s = scopesOf(name);
+        if (!s.length) return false;
+        if (s.indexOf('site') >= 0) return true;
+        if (scope.indexOf('group:') === 0) return coversGroup(s, scope.slice(6));
+        if (scope.indexOf('/') > 0) return coversGame(s, scope);
+        return s.indexOf(scope) >= 0;
+      }
+      var userPickers = {};
+      function refreshCandidates(scopeField, picker){
+        if (picker) picker.clear();
       }
       [['appoint-game', 'appoint-game-user'], ['appoint-group', 'appoint-group-user'],
        ['appoint-wide', 'appoint-wide-user']].forEach(function(pair){
-        var scopeSelect = document.getElementById(pair[0]), userSelect = document.getElementById(pair[1]);
-        if (!scopeSelect) return;
-        scopeSelect.addEventListener('change', function(){ refreshCandidates(scopeSelect, userSelect); });
-        refreshCandidates(scopeSelect, userSelect);
+        var userField = document.getElementById(pair[1]);
+        if (!userField) return;
+        var scopeOf = function(){
+          var f = document.getElementById(pair[0]);
+          return f ? f.value : (pair[0] === 'appoint-game' ? gamePicker.value() : '');
+        };
+        userPickers[pair[1]] = armPicker(userField, {
+          source: function(q){ return searchArchive('members', q); },
+          filter: function(it){ var sc = scopeOf(); return !!sc && !speaksFor(it.value, sc); },
+          placeholder: 'type to find a member', empty: 'pick the scope first, or everybody matching already speaks for it'});
+        var scopeSelect = document.getElementById(pair[0]);
+        if (scopeSelect && scopeSelect.tagName === 'SELECT') {
+          scopeSelect.addEventListener('change', function(){ refreshCandidates(scopeSelect, userPickers[pair[1]]); });
+        }
       });
 
 
@@ -1017,21 +1125,29 @@
                      label: gr.title}; }),
            'no group is yours to change');
       // the group pickers offer only games a group could actually take: a
-      // game already in one would be refused, since a game belongs to one
-      var groupable = myGames.filter(function(g){ return !g.group; });
+      // game already in one would be refused, since a game belongs to one.
+      // The list fills from the archivist as you type (#56): what it holds
+      // is what has been seen to qualify, and only that is accepted
       var gameList = document.getElementById('panel-gamelist');
-      groupable.forEach(function(g){
-        var o = document.createElement('option');
-        o.value = g.key;
-        o.label = g.title;
-        gameList.appendChild(o);
-      });
-      var groupableKeys = groupable.map(function(g){ return g.key; });
+      var groupableKeys = [];
+      function groupableFill(q){
+        return searchArchive('games', q).then(function(items){
+          gameList.innerHTML = '';
+          items.filter(function(it){ return it.item && !it.item.group && coversGame(myScopes, it.value); })
+               .forEach(function(it){
+            if (groupableKeys.indexOf(it.value) < 0) groupableKeys.push(it.value);
+            var o = document.createElement('option');
+            o.value = it.value;
+            o.label = it.item.title;
+            gameList.appendChild(o);
+          });
+        });
+      }
       armMultiPick(document.getElementById('f-groupnew'), 'games',
-                   'panel-gamelist', function(){ return groupableKeys; });
+                   'panel-gamelist', function(){ return groupableKeys; }, groupableFill);
       var groupEditSelect = document.getElementById('groupedit-key');
       armMultiPick(document.getElementById('f-groupedit'), 'add',
-                   'panel-gamelist', function(){ return groupableKeys; });
+                   'panel-gamelist', function(){ return groupableKeys; }, groupableFill);
       // removing offers only what the chosen group actually holds
       var removeList = document.createElement('datalist');
       removeList.id = 'groupedit-removelist';

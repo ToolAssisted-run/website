@@ -2,7 +2,6 @@
 from config import OUT
 from model import (
     ROLES_NOW,
-    authors,
     committee_now,
     experts_reg,
     games,
@@ -24,7 +23,6 @@ def users_with(role):
     return sorted({ev['user'] for (u, r, sc), ev in ROLES_NOW.items() if r == role},
                   key=str.lower)
 
-all_members = sorted((a['username'] for a in authors.values()), key=str.lower)
 
 # ---- expert panel ----
 # Everything an expert can do lived behind curl. The powers are real and the
@@ -52,18 +50,10 @@ panel_data = {
                      key=lambda e: (e['user'].lower(), e['scope'])),
     'scopes': panel_scopes,
     'committee': committee_now,
-    # refused and removed games are offered nowhere: nothing can be done to
-    # one that the archivist would not refuse
-    'games': [{'key': k, 'title': g['title'], 'system': g['system'],
-               'group': next((gr['key'] for gr in groups if k in gr.get('games', [])), ''),
-               'rejected': bool(g.get('rejected'))}
-              for k, g in sorted(games.items())
-              if not g.get('rejected') and not g.get('removed')],
+    # games and members are not embedded (#56): the pickers search the
+    # archivist as you type; refused and removed games never come back from it
     'groups': [{'key': gr['key'], 'title': gr['title'], 'games': gr.get('games', []),
                 } for gr in groups],
-    # every member, so the appointment picker can offer people rather than ask
-    # for a name to be typed exactly right
-    'members': all_members,
     # open removal requests. Only a site-wide expert answers one, so the panel
     # shows them to nobody else, but the request itself is public on the page
     # it is about and in the site log.
@@ -84,7 +74,6 @@ write_panel('founder', 'Founder', tpl('panels_founder.html', committee_members=c
 # people entitled to see it, and lives in the browser for as long as they look.
 cpanel_data = {
     'committee': committee_now,
-    'members': all_members,
     'moderators': users_with('moderator'),
     'editors': users_with('editor'),
     'committeeNames': users_with('committee'),
