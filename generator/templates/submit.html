@@ -5,8 +5,10 @@
 {# the same page edits a run: /submit/?edit=M1234 (app.js turns it into
    edit mode: title, subtitle, record prefilled, Save instead of Submit) #}
 <header class="ghead"><div><h1 id="s-title">Submit a run</h1>
-<p class="authline" id="s-subtitle">Your run is archived instantly and appears immediately, as pending.
-Honest attribution of every author is the one hard rule. Never upload ROMs.</p></div>
+<p class="authline"><span id="s-subtitle">Your run is archived instantly and appears immediately, as pending.
+Honest attribution of every author is the one hard rule. Never upload ROMs.</span>
+{# the span is what edit mode rewrites; the policy link stays in both modes #}
+Read the <a href="https://github.com/ToolAssisted-run#29-run-submission-policy" target="_blank" rel="noopener">run submission policy</a> first.</p></div>
 <div class="hbtns" id="s-editback" hidden><a class="btn quiet" id="s-editback-link" href="../">Back to the run</a></div></header>
 <script type="application/json" id="gamedata">{{ json_blob({'raw': ARCHIVE_RAW, 'games': gamedata}) }}</script>
 <script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
