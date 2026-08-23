@@ -795,6 +795,15 @@ def main():
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
 
         contrib = all_html[out / 'contribute' / 'index.html']
+        # the third worklist: hardware verification, with its own remembered
+        # filter; a video-only run (no input movie) never appears on it
+        ck('contribute lists what needs hardware verification',
+           'Needs hardware verification' in contrib and 'id="hw-scroll"' in contrib
+           and 'id="hwfilter"' in contrib and 'Hardware I own' in contrib
+           and "'tar-my-hardware'" in contrib)
+        hw_list = contrib.split('id="hw-scroll"')[1].split('</table>')[0]
+        ck('the hardware list skips video-only runs and console-verified ones',
+           'M900109' not in hw_list and 'M900105' not in hw_list and 'M900101' in hw_list, hw_list[:300])
         ck('the systems filter applies after the rows it filters exist (#40)',
            "addEventListener('DOMContentLoaded', apply)" in contrib
            and contrib.index('#sysfilter') < contrib.index('id="nr-scroll"'))

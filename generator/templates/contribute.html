@@ -31,13 +31,15 @@ plays, recorded and paid; it does not gate ranking. The bounty <b>rises the long
 unreproduced</b>: the obscure long tail is the best-paying work on the board.</p>
 {# the filter serves the reproduction list alone: verifying only takes
    watching a video, so what systems you can RUN is irrelevant there #}
-{% if worklist_systems %}
-<div class="dimrow" id="sysfilter"><span class="dimname">Systems I can run</span>
-{% for s in worklist_systems %}<button class="dimopt sysopt" data-sys="{{ s }}">{{ systems[s]['name'] }}</button>{% endfor %}</div>
+{% macro system_filter(fid, key, label, syslist, scroll) %}
+{# a remembered system filter over one worklist: the buttons toggle, the
+   choice lives in localStorage under `key`, rows carry data-sys #}
+<div class="dimrow" id="{{ fid }}"><span class="dimname">{{ label }}</span>
+{% for s in syslist %}<button class="dimopt sysopt" data-sys="{{ s }}">{{ systems[s]['name'] }}</button>{% endfor %}</div>
 <script>
 (function(){
-  var KEY = 'tar-my-systems';
-  var btns = document.querySelectorAll('#sysfilter .sysopt');
+  var KEY = '{{ key }}';
+  var btns = document.querySelectorAll('#{{ fid }} .sysopt');
   var mine = null;
   try { mine = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
   function apply(){
@@ -45,7 +47,7 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
     btns.forEach(function(b){
       b.classList.toggle('on', active === null || active.indexOf(b.dataset.sys) >= 0);
     });
-    document.querySelectorAll('#nr-scroll tr[data-sys]').forEach(function(tr){
+    document.querySelectorAll('#{{ scroll }} tr[data-sys]').forEach(function(tr){
       tr.style.display = (active === null || active.indexOf(tr.dataset.sys) >= 0) ? '' : 'none';
     });
   }
@@ -68,7 +70,8 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
   else apply();
 })();
 </script>
-{% endif %}
+{% endmacro %}
+{% if worklist_systems %}{{ system_filter('sysfilter', 'tar-my-systems', 'Systems I can run', worklist_systems, 'nr-scroll') }}{% endif %}
 {% if need_repro %}
 <div class="contscroll nrgap" id="nr-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>
 {% for r in need_repro %}
@@ -80,6 +83,26 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 </tbody></table></div>
 {% else %}
 <p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>
+{% endif %}
+</section>
+
+<section><h2>Needs hardware verification</h2>
+<p class="rules fullw">Play the movie back on the original hardware (a replay device on a real
+console) and record it. The strongest assurance a run can carry, and the best-paid act on the
+board: a fixed <b>{{ PT_CONSOLE }} pts</b>, whatever the run. Only runs with an input movie
+qualify; imports count too when their source never verified them on hardware.</p>
+{% if hardware_systems %}{{ system_filter('hwfilter', 'tar-my-hardware', 'Hardware I own', hardware_systems, 'hw-scroll') }}{% endif %}
+{% if need_console %}
+<div class="contscroll nrgap" id="hw-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>
+{% for r in need_console %}
+<tr data-sys="{{ r['_game']['system'] }}" onclick="window.open('../runs/{{ r['id'] }}/', '_blank')">
+{{ run_cell(r) }}
+<td>{{ days_pending(r) }} day{{ 's' if days_pending(r) != 1 else '' }}</td>
+<td class="num"><b class="bounty">{{ PT_CONSOLE }}</b> pts</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% else %}
+<p class="emptynote">Nothing waiting: every run with an input movie has been played back on hardware.</p>
 {% endif %}
 </section>
 
