@@ -671,6 +671,20 @@ def main():
             ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
             ck('subcategories are reordered inside their category',
                c == 200 and [x['key'] for x in ep1['subcategories']] == ['nomonsters', 'any'], str(r))
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': 'episode-1', 'sub': 'nomonsters', 'reason': 'emptying the level, on the record'})
+            ck('an empty non-last subcategory goes', c == 200, str(r))
+            c, r, _ = call(U + '/api/category/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
+                            'option': 'episode-1', 'sub': 'any', 'reason': 'dissolving the level, on the record'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cj_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            ep1 = next(o for d in cj_['dimensions'] for o in d['options'] if o['key'] == 'episode-1')
+            rj_ = json.loads((work / f'games/nes/pinball/runs/{sub_run}/run.json').read_text())
+            ck('the last subcategory goes even with runs, which stay in the category naming none',
+               c == 200 and r['runs_released'] == 1 and 'subcategories' not in ep1
+               and rj_['category'] == {'goal': 'episode-1'}, f'{c} {r} {rj_["category"]}')
             c, r, _ = call(U + '/api/submit', dict(sub, game='nes/pinball',
                                                    goal='pacifist'), uniq_files())
             ck('a metric-bearing category demands its values',

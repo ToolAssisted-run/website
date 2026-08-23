@@ -1491,10 +1491,14 @@
             })();
           });
           row.appendChild(saveSub);
-          if (!sc.runs) {
+          // any empty subcategory may go; so may the last one, runs and all
+          // (they stay in the category, naming none)
+          if (!sc.runs || o.subcategories.length === 1) {
             var delSub = el('button', 'btn danger', 'Delete'); delSub.type = 'button';
             delSub.addEventListener('click', function(){
-              if (!window.confirm('Delete the unused subcategory ' + sc.key + '?')) return;
+              var ask = sc.runs ? 'Delete the last subcategory ' + sc.key + '? Its ' + sc.runs + ' run(s) stay in ' + o.key + ' without a subcategory.'
+                                : 'Delete the unused subcategory ' + sc.key + '?';
+              if (!window.confirm(ask)) return;
               var fd = new FormData();
               fd.append('game', gameEditData.game); fd.append('option', o.key); fd.append('sub', sc.key);
               fd.append('reason', whyIn.value.trim() || 'Removed unused by a covering expert.');

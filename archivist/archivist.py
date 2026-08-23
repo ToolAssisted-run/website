@@ -1100,7 +1100,8 @@ def category_delete():
 
     Who: an expert covering the game, or an editor (`key` plus `expert`)
     Reads: form fields game, option, sub (optional: remove that subcategory
-        alone), reason, dry_run
+        alone; the last one may hold runs, which then stay in the category
+        naming none), reason, dry_run
     Answers: {ok, game, removed}; 409 while any run sits in the category
     """
     category_form = request.form
@@ -1127,15 +1128,25 @@ def category_delete():
             sub = next((s for s in subs if s['key'] == sub_key), None)
             if not sub:
                 return fail(f'{option["label"]} has no subcategory {sub_key!r}', 404)
-            runs_in_sub = [json.loads(rp.read_text())['id']
-                           for rp in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
-                           if (json.loads(rp.read_text()).get('category') or {}).get('goal') == option_key
-                           and (json.loads(rp.read_text()).get('category') or {}).get('sub') == sub_key]
-            if runs_in_sub:
-                return fail(f'{sub_key!r} holds {len(runs_in_sub)} run(s); a subcategory with runs '
+            holders = [rp for rp in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
+                       if (json.loads(rp.read_text()).get('category') or {}).get('goal') == option_key
+                       and (json.loads(rp.read_text()).get('category') or {}).get('sub') == sub_key]
+            last = len(subs) == 1
+            # the last subcategory dissolves the level: its runs stay in the
+            # category, naming none (the mirror of the first one taking them);
+            # any other subcategory must be empty to go
+            if holders and not last:
+                return fail(f'{sub_key!r} holds {len(holders)} run(s); a subcategory with runs '
                             f'in it is their home, not clutter', 409)
             if dry_run:
-                return jsonify({'ok': True, 'dry_run': True})
+                return jsonify({'ok': True, 'dry_run': True, 'runs_released': len(holders) if last else 0})
+            released = 0
+            if last:
+                for rp in holders:
+                    run_doc = json.loads(rp.read_text())
+                    run_doc['category'].pop('sub', None)
+                    rp.write_text(json.dumps(run_doc, indent=1) + '\n')
+                    released += 1
             option['subcategories'] = [s for s in subs if s['key'] != sub_key]
             if not option['subcategories']:
                 option.pop('subcategories')
@@ -1143,8 +1154,10 @@ def category_delete():
             log_edit('category', f'{game_key}:{option_key}/{sub_key}', 'removed', sub.get('label', sub_key),
                      '', expert, (category_form.get('reason') or 'Removed unused by a covering expert.').strip()[:500])
             ensure_member(expert)
-            commit_push(f'Subcategory remove {game_key}:{option_key}/{sub_key}: by expert {expert}\n\nVia: archivist')
-            return jsonify({'ok': True, 'game': game_key, 'removed': f'{option_key}/{sub_key}'})
+            commit_push(f'Subcategory remove {game_key}:{option_key}/{sub_key}: by expert {expert}\n\n'
+                        f'Runs released into the category: {released}\nVia: archivist')
+            return jsonify({'ok': True, 'game': game_key, 'removed': f'{option_key}/{sub_key}',
+                            'runs_released': released})
         runs_in_category = [json.loads(run_json_path.read_text())['id']
                  for run_json_path in (ARCHIVE / 'games' / game_key / 'runs').glob('*/run.json')
                  if (json.loads(run_json_path.read_text()).get('category') or {}).get('goal') == option_key]
