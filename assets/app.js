@@ -2116,6 +2116,23 @@
       var panels = Array.prototype.slice.call(submitForm.querySelectorAll('.panel'));
       var revealed = {1: true};
       var previewed = false;
+      // why a step is not done, in a few words (the first broken step is
+      // named beside Submit once later panels are open)
+      function panelWhy(step){
+        if (step === 1) {
+          if (!gameSelect.value) return 'pick the game';
+          if (!goalSelect.value) return 'pick the category';
+          if (!subWrap.hidden && !subSelect.value) return 'pick the subcategory';
+          return 'describe what the run does';
+        }
+        if (step === 2) return document.getElementById('enc-status').className !== 'enc-good' ? 'the encode link is not valid' : 'name at least one author';
+        if (step === 3) return 'pick the movie file, or mark the run video-only';
+        if (step === 4) return timeStatedNeeded() && !/^(\d+:)?\d{1,2}:\d{2}/.test(document.getElementById('s-time').value) ? 'state the time' : 'every value the category ranks by is needed';
+        if (step === 5) return 'preview your notes';
+        if (step === 6) return 'tick the agreement';
+        return '';
+      }
+      var panelNames = {1: 'Game and category', 2: 'The run', 3: 'Reproduction information', 4: 'Scoring', 5: 'Submission notes', 6: 'Agreement'};
       function panelDone(step){
         if (step === 1) {
           if (!gameSelect.value || !goalSelect.value) return false;
@@ -2144,12 +2161,20 @@
       }
       function paintPanels(){
         var chain = true;   // a step counts only with every step before it
+        var broken = null;  // the first step that is open but not done
         panels.forEach(function(pn){
           var step = +pn.dataset.step;
+          var chainBefore = chain;
           var done = chain && panelDone(step);
           if (done && step < 6) revealed[step + 1] = true;
           pn.classList.toggle('folded', !revealed[step]);
           pn.classList.toggle('done', done);
+          // the first step undone while later ones are open: say so on its
+          // badge (the ones after it are merely waiting on it)
+          var later = revealed[step + 1];
+          var bad = chainBefore && !done && revealed[step] && later;
+          pn.classList.toggle('broken', bad);
+          if (bad && !broken) broken = step;
           chain = done;
         });
         // Submit only once every step is done, the movie included (a
@@ -2157,6 +2182,13 @@
         var movieOk = videoOnlyBox.checked || !!(movieInput.files && movieInput.files[0]);
         var sb = document.getElementById('s-submit');
         if (sb && !sb.dataset.sent) sb.disabled = !(chain && movieOk);
+        var need = document.getElementById('s-need');
+        if (need) {
+          var why = broken ? 'Step ' + broken + ' (' + panelNames[broken] + ') needs attention: ' + panelWhy(broken) + '.'
+                  : (chain && !movieOk && revealed[6] ? 'Step 3 (Reproduction information) needs attention: pick the movie file again; a draft cannot keep it.' : '');
+          need.hidden = !why;
+          need.textContent = why;
+        }
       }
       submitForm.addEventListener('input', paintPanels);
       submitForm.addEventListener('change', paintPanels);
@@ -2261,11 +2293,13 @@
           encodeCheck.hidden = url === '';
           encodeStatus.textContent = '✗ not a link from ENCODE_NAMES';
           encodeStatus.className = 'enc-bad';
+          paintPanels();
           return;
         }
         encodeCheck.hidden = false;
         encodeStatus.textContent = 'checking…';
         encodeStatus.className = 'enc-wait';
+          paintPanels();
         // the archivist resolves it: several platforms reveal their thumbnail
         // only through an API a browser is not allowed to call
         var asked = url;
@@ -2276,6 +2310,7 @@
             if (!j.ok) {
               encodeStatus.textContent = '✗ ' + (j.error || 'that link does not work');
               encodeStatus.className = 'enc-bad';
+          paintPanels();
               return;
             }
             submitBtn.disabled = false;
@@ -2292,6 +2327,7 @@
           .catch(function(){
             encodeStatus.textContent = '✗ could not reach the archivist to check the link';
             encodeStatus.className = 'enc-bad';
+          paintPanels();
           });
       }
       encodeInput.addEventListener('input', function(){
