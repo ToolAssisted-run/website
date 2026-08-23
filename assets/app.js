@@ -1408,6 +1408,9 @@
       return td ? td.textContent.trim() : '';
     }
     function parseVal(s){
+      // an ISO date (with or without a clock) orders by time, not by the
+      // leading year that parseFloat would stop at
+      if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(s)) return Date.parse(s.replace(' ', 'T') + (s.length > 10 ? 'Z' : ''));
       var m = /^([0-9]+):([0-9][0-9])(?::([0-9][0-9]))?(?:[.]([0-9]+))?$/.exec(s);
       if (m) {
         var sec = m[3] !== undefined

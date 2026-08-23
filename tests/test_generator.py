@@ -145,8 +145,8 @@ def main():
         ck('so does the profile listing (#39)',
            'title="completion date">2021-10-26' in rd('authors/newstar/index.html'))
         prof = rd('authors/newstar/index.html')
-        ck('the profile sorts by the date it shows, earliest first (#47)',
-           0 < prof.find('M900006') < prof.find('M900004'))
+        ck('the profile sorts by the date it shows, most recent first (#47)',
+           0 < prof.find('M900004') < prof.find('M900006'))
         # 1317419 frames at 1000/s is 22 minutes, not 6 hours
         ck('a movie with its own frame rate runs on its own clock',
            '21:57.419' in rd('runs/M900005/index.html'))

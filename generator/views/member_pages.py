@@ -34,8 +34,8 @@ NEWS_ICON = {'reproduced': '↻', 'verified': '✓', 'liked': '★'}
 for uname, a in authors.items():
     mine = sorted((r for r in runs if any(canon(x['user']) == uname for x in r['authors'])),
                   # the date the row shows is the date the list sorts by,
-                  # earliest first: a career read from its beginning (#47)
-                  key=lambda r: (board_date(r), r.get('submitted') or ''))
+                  # most recent first (#47)
+                  key=lambda r: (board_date(r), r.get('submitted') or ''), reverse=True)
     contrib = points.get(uname)
     cpts = contrib['points'] if contrib else 0
     acts = sorted(contrib['acts'],
