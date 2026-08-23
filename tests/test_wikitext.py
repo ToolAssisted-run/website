@@ -114,6 +114,8 @@ def main():
        'USER:feos' in wikitext.wiki_html('[user:feos]', refs=lambda s: s.replace('[user:feos]', 'USER:feos')))
     h = H('[#1] text\n\n[1] the footnote')
     ck('footnotes link and anchor', 'href="#fn-1"' in h and 'id="fn-1"' in h, h)
+    h = H('[#2] text\n\n[2]: the colon form')
+    ck('the colon form of a footnote anchors too', 'id="fn-2"' in h and 'the colon form' in h, h)
 
     # ---- images ----
     ck('[image.png] embeds', '<img' in H('[https://x.y/a.png]'))

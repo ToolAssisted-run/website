@@ -117,7 +117,7 @@ for r in runs:
     tu = thumb_url(r)
     seo_title = (f'{g["title"]} ({g["system"].upper()}) TAS in {primary_metric_text(r)} '
                  f'by {who} · {cl}')
-    state_word = ('Imported' if is_leg else 'Verified' if is_ranked(r) else 'Pending verification')
+    state_word = ('Verified' if (is_leg or is_ranked(r)) else 'Pending verification')
     seo_desc = (f'{g["title"]} ({sysname}) tool-assisted speedrun, {cl}, '
                 f'{primary_metric_text(r)} by {who}. {state_word}. Watch the encode'
                 + ('' if r.get('videoOnly') else ' and download the movie file')

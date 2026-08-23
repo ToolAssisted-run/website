@@ -91,7 +91,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <div class="actforms">
 {# an expert or editor moves the run to another category, or subcategory
    (#43); its own logged edit, shown to them alone (app.js) #}
-<div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category (expert mode)</summary>
+<div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category</summary>
 <form id="f-move">
   <p class="rules">The run keeps everything else. Moving it out of its category to Unclassified
   is refused while it holds live verifications; a category with subcategories wants one named.</p>
@@ -232,7 +232,7 @@ Log in (top right) to reply from here.</p></section>
     <label>Details</label><textarea name="details" rows="3"></textarea>
     <button class="btn warn">Report</button>
     <p class="rules">Reports are public, get a unique id, and are addressed by the
-    game's experts; everything lands in the open moderation log.</p>
+    game's experts; everything lands in the open site log.</p>
   </form></details>
   <p id="report-msg" class="actmsg" hidden></p>
   <script type="application/json" id="likedata">{{ json_blob(like_data) }}</script>
@@ -275,7 +275,7 @@ Log in (top right) to reply from here.</p></section>
 <div id="f-resolve-wrap" hidden><details class="actform"><summary>Close a report</summary>
 <form id="f-resolve">
   <p class="rules">Resolve it if something was done, dismiss it if nothing needed doing.
-  Either way your text is published with the report in the moderation log.</p>
+  Either way your text is published with the report in the site log.</p>
   <label>Which report</label>
   <select id="res-report" name="report"></select>
   <label>Outcome</label>

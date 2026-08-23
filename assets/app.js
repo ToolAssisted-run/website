@@ -243,6 +243,14 @@
     }
     search.addEventListener('input', fill);
     search.addEventListener('focus', fill);
+    // Enter picks the first match (or adds the typed name); it never submits
+    // the form the picker sits in
+    search.addEventListener('keydown', function(e){
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var first = list.querySelector('.authopt');
+      if (first) first.click();
+    });
     document.addEventListener('click', function(ev){
       if (!pick.contains(ev.target)) list.hidden = true;
     });
@@ -889,8 +897,8 @@
         post('/api/role/decide', new FormData(roleForm), actionBtn(roleForm))
           .then(function(res){
             if (res.ok && res.j.ok) {
-              noteBuilt(roleMsg, 'Recorded: ' + res.j.votes + ' of ' + res.j.committee +
-                        ' voted for it.', res.j.serial);
+              noteBuilt(roleMsg, 'Recorded: ' + res.j.votes + ' of the ' + (res.j.cast || res.j.committee) +
+                        ' votes cast went for it.', res.j.serial);
               roleForm.reset();
             } else note(roleMsg, res.j.error || 'something went wrong', false);
           });
@@ -2001,12 +2009,22 @@
             segs.forEach(function(seg){ seg.addEventListener('input', compose); });
             segs[2].required = true;
             compose();
+            // the record (edit mode) or a draft sets the value in seconds; the
+            // segments have to show it, or the empty seconds box blocks Save
+            hiddenField.fill = function(secs){
+              var t = Math.max(0, parseFloat(secs) || 0);
+              var h = Math.floor(t / 3600), mnt = Math.floor((t % 3600) / 60), sec = Math.floor(t % 60);
+              var ms = Math.round((t - Math.floor(t)) * 1000);
+              segs[0].value = h || ''; segs[1].value = mnt; segs[2].value = sec; segs[3].value = ms || '';
+              compose();
+            };
             metricFields.appendChild(wrap);
           } else {
             var numberInput = document.createElement('input');
             numberInput.type = 'number'; numberInput.min = 0; numberInput.step = 'any';
             numberInput.required = true; numberInput.inputMode = 'decimal';
             numberInput.addEventListener('input', function(){ hiddenField.value = String(secsOf(numberInput.value)); });
+            hiddenField.fill = function(v){ numberInput.value = v; hiddenField.value = String(secsOf(numberInput.value)); };
             metricFields.appendChild(numberInput);
           }
           metricFields.appendChild(hiddenField);
@@ -2078,7 +2096,7 @@
       paintKind();
       var goalCache = {};
       var pendingDraft = null;   // a restored draft waiting for its game's categories
-      function fillGoals(goals){
+      function fillGoals(goals, loaded){
         goalSelect.innerHTML = '';
         (goals || []).forEach(function(g){
           var o = document.createElement('option');
@@ -2088,7 +2106,9 @@
         var u = document.createElement('option');
         u.value = 'unclassified'; u.textContent = 'Unclassified (no goal; ranked by likes)';
         goalSelect.appendChild(u);
-        if (pendingDraft && (goals || []).length && pendingDraft.game === gameSelect.value) {
+        // a draft is applied once the game's categories are known, even when
+        // there are none (Unclassified only): `loaded` says they arrived
+        if (pendingDraft && loaded && pendingDraft.game === gameSelect.value) {
           var d = pendingDraft; pendingDraft = null;
           if (d.goal) goalSelect.value = d.goal;
           paintCategory();
@@ -2113,7 +2133,7 @@
           }
         }
         if (!gameSelect.value) { fillGoals([]); return; }
-        if (goalCache[gameSelect.value]) { fillGoals(goalCache[gameSelect.value]); return; }
+        if (goalCache[gameSelect.value]) { fillGoals(goalCache[gameSelect.value], true); return; }
         var key = gameSelect.value;
         fillGoals([]);
         // the archivist serves its checkout, at most ~20 s old; the raw-file
@@ -2134,7 +2154,7 @@
               });
             });
             goalCache[key] = goals;
-            fillGoals(goals);
+            fillGoals(goals, true);
           }).catch(function(){});
       }
       // the subcategory select: only when the chosen category has some
@@ -2158,9 +2178,7 @@
           Object.keys(mv).forEach(function(k){
             var h = submitForm.querySelector('input[name="metric_' + k + '"]');
             if (!h) return;
-            var vis = h.previousElementSibling;
-            if (vis && vis.tagName === 'INPUT') { vis.value = mv[k]; vis.dispatchEvent(new Event('input')); }
-            h.value = mv[k];
+            if (h.fill) h.fill(mv[k]); else h.value = mv[k];
           });
           paintPanels();
         }, 0);
@@ -2210,6 +2228,7 @@
           var val = fields[e.name];
           if (Array.isArray(val)) { var i = seen[e.name] || 0; seen[e.name] = i + 1; val = val[i]; if (val === undefined) return; }
           if (e.type === 'checkbox') e.checked = (val === e.value);
+          else if (e.fill) e.fill(val);
           else e.value = val;
           e.dispatchEvent(new Event('input', {bubbles: false}));
         });
@@ -2412,8 +2431,9 @@
       submitForm.addEventListener('input', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
       submitForm.addEventListener('change', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
       document.getElementById('s-clear').addEventListener('click', function(){
-        if (!window.confirm('Clear every field and discard the saved draft?')) return;
-        dropDraft();
+        if (!window.confirm(editRunId ? 'Reset every field to the archived record?'
+                                      : 'Clear every field and discard the saved draft?')) return;
+        if (!editRunId) dropDraft();   // the draft belongs to a new run, not to this edit
         submitFormDirty = false;
         location.reload();
       });
@@ -2616,7 +2636,12 @@
         var newGoal = expertish ? goalSelect.value + (subWrap.hidden ? '' : '/' + subSelect.value) : null;
         var oldGoal = run.category.goal + (run.category.sub ? '/' + run.category.sub : '');
         var moveGoal = newGoal && newGoal !== oldGoal ? newGoal : null;
-        post('/api/edit', revision(true), submitBtn).then(function(res){
+        // an editor may only move the run: /api/edit is not theirs, so the
+        // revision step is skipped and the move goes straight to expert/edit
+        var mayRevise = editMay.author || editMay.expert;
+        var dry = mayRevise ? post('/api/edit', revision(true), submitBtn)
+                            : Promise.resolve({ok: false, j: {error: 'nothing to change'}});
+        dry.then(function(res){
           var wv = (res.ok && res.j.ok) ? (res.j.would_void || []) : [];
           var nothing = !res.ok && /nothing to change/.test(res.j.error || '');
           if (!(res.ok && res.j.ok) && !nothing) { note(msg, res.j.error || 'something went wrong', false); return; }
@@ -3152,11 +3177,6 @@
     var logBox = document.getElementById('imp-log');
     var titles = {};
     var NL = String.fromCharCode(10);
-    function busy(btn, on){
-      if (!btn) return;
-      btn.disabled = on;
-      btn.classList.toggle('busy', on);
-    }
     function importPost(path, fd, btn){
       busy(btn, true);
       return fetch(api + path, {method: 'POST', credentials: 'include',

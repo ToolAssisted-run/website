@@ -291,6 +291,15 @@ def count_votes(poll, words):
     return sum(o.get('votes', 0) for o in poll.get('options', [])
                if any(w in (o.get('html') or '').lower() for w in words))
 
+def votes_cast(poll):
+    """Every vote in the poll, whichever way: a simple majority (2.1.1) is
+    counted against these, never against the seats. Discourse reports the
+    voters; the options are the fallback for an older payload."""
+    voters = poll.get('voters')
+    if isinstance(voters, int) and voters > 0:
+        return voters
+    return sum(o.get('votes', 0) for o in poll.get('options', []))
+
 def read_committee_poll(post_id):
     """The Committee decides in the forum, with Discourse's own poll. We only
     read it, and we refuse anything that is not a real committee decision:

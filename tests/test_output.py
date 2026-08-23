@@ -971,7 +971,7 @@ def main():
         ck('the import page says nothing is imported unpicked',
            'Nothing is imported unpicked' in imp, imp[:200])
         ck('and says a co-authored import is your responsibility',
-           'your responsibility' in imp and 'Co-authored works' in imp, imp[:200])
+           re.search(r'your\s+responsibility', imp) is not None and 'Co-authored works' in imp, imp[:200])
 
         # ---------- the founder panel ----------
         fpanel = all_html[out / 'founder' / 'index.html']

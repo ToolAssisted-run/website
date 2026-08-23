@@ -352,7 +352,8 @@ def wiki_html(text, refs=lambda s: s):
                 flush(); out.append('<dl>'); dl = True
             out.append(f'<dt>{inl(m.group(1))}</dt><dd>{inl(m.group(2))}</dd>')
             continue
-        m = re.match(r'^\[(\d+)\]\s+(.*)', s)
+        # `[1] text` and the `[1]: text` form TASVideos notes also use
+        m = re.match(r'^\[(\d+)\]:?\s+(.*)', s)
         if m:
             flush()
             out.append(f'<p class="footnote" id="fn-{m.group(1)}"><a href="#fnref-{m.group(1)}">[{m.group(1)}]</a> {inl(m.group(2))}</p>')

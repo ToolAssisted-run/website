@@ -19,7 +19,8 @@ is preserved the moment it arrives, and merit is decided in the open by the
 people who care about it.
 
 The community's **constitutional document** (Community Principles §1,
-Governance §2, Terms of Use §3, Code of Conduct §4, Privacy Policy §5) lives at
+Governance §2, Submission Policy §3, Terms of Use §4, Code of Conduct §5,
+Privacy Policy §6) lives at
 https://github.com/ToolAssisted-run/.github/blob/main/profile/README.md and
 **outranks every implementation choice**: when code and constitution disagree,
 the code is wrong. The constitution is amended only through its own process
@@ -103,7 +104,9 @@ A person can relate to the site in these ways, from lightest to heaviest:
 - **A credited name**: anyone may be credited on a run's author list,
   including people who have never heard of the site. A credit is text; it gets
   no profile, no record, no page. Honest attribution of every human author is
-  the one hard rule (§4.3); tool disclosure is voluntary and encouraged.
+  the one hard rule (§4.3); the tool used is asked for on the form (§4.3 wants
+  it for reproduction) but not enforced as required, since §1.9 says disclosure
+  is never an obligation; the two provisions await reconciliation.
 - **A member**: somebody with a forum account who has logged into the site at
   least once. First login writes their record in `authors/` (exactly two
   facts: the username, and that they are here; written in a background thread
@@ -138,9 +141,10 @@ Committee thresholds (§2): **simple majority** = >50% of votes cast in a 7-day
 window, no quorum (grants); **hard majority** = two thirds of all sitting
 members (removals, veto override, amendments). The archivist reads decisions
 from Discourse polls (`/api/role/decide`, `/api/expert/annul`): the poll must
-be restricted to the committee group, public, closed, and meet the threshold
-against `committee_size()` counted from `roles.json` — never from a forum
-group's member count.
+be restricted to the committee group, public, closed, and meet the threshold:
+a simple majority is counted against the poll's own votes cast (`voters`),
+a hard majority against `committee_size()` counted from `roles.json`, never
+from a forum group's member count.
 
 **Expert scopes** nest: `site` → system → `group:<key>` → `sys/slug` (game).
 Any covering scope can act. Group experts are assumed experts of the games
@@ -202,7 +206,7 @@ is shown as one row and never rewritten) · movie file, parsed mechanically (25 
 `archivist/movieparse.py`, GPL-3.0 with TASVideos contributors credited; the
 rest of the repo is MIT) — or **video-only** (see below) · optional completion
 date (real date, 1980+, not future; shown beside the submission date;
-author-editable later) · voluntary content disclosures (mature/violent,
+author-editable later) · content warnings, required where they apply (§3.1.7; mature/violent,
 sexual, photosensitivity, strong language; sexual blurs thumbnails behind a
 session-scoped 18+ overlay) · text attachments (allowlisted extensions incl.
 .xml, UTF-8, ≤128 KB each/≤512 KB total/≤8 files, plus up to 4 extra movie
@@ -821,7 +825,7 @@ archivist, module responsibilities). What matters designwise:
   status line on the run page, no row on the hardware worklist, and the
   archivist refuses the act. An import's source verification still shows.
 - **ROMs never touch the site.** Hashes and names are facts.
-- **Privacy commitments** (§5, and they bind the implementation): no
+- **Privacy commitments** (§6, and they bind the implementation): no
   analytics, no tracker, one session cookie after login; the archive holds
   no personal data beyond usernames; emails never shown (masked, transient,
   Committee-only during claims — §6.4.1) and never stored in the archive;

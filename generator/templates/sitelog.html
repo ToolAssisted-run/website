@@ -41,14 +41,14 @@ groups are printed from it.</p>
 {% else %}
 <section id="roles"><h2>Role changes</h2><p class="emptynote">No roles have changed hands yet.</p></section>
 {% endif %}
-{# ---- identity attestations: an expert vouching, on the record, that a member is an author ---- #}
+{# ---- identity attestations: a Committee member vouching, on the record, that a member is an author ---- #}
 {% if attestations %}
 <section id="attestations"><h2>Identity attestations ({{ attestations|length }})</h2>
 <p class="authline">A name held for an author elsewhere is handed to a member when a
 Steering Committee member vouches for the identity, because a proof that depends on another
 site's permissions leaves out the people most likely to need it. Each entry names who vouched
 and the method, and can be challenged.</p>
-<table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Method</th></tr></thead>
+<table><thead><tr><th>Date</th><th>Committee member</th><th>Action</th><th>Method</th></tr></thead>
 <tbody>
 {% for d, by, name, who, how in attestations %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, '../../') }}</td>

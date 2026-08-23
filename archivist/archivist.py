@@ -134,6 +134,7 @@ from forumapi import (
     avatar_for,
     committee_size,
     count_votes,
+    votes_cast,
     ensure_game_topic,
     ensure_topic,
     forum_account_exists,
@@ -1473,8 +1474,8 @@ def expert_edit():
                 run.setdefault('metrics', {})[metric_key] = new_value
                 value = str(new_value)
             elif field == 'duration':
-                if not run.get('videoOnly'):
-                    return fail('only a video-only run has a stated time to correct; '
+                if not run.get('videoOnly') and (run.get('movie') or {}).get('frames'):
+                    return fail('only a run without a frame count has a stated time to correct; '
                                 'a movie derives its time from its frames')
                 time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
                                    value)
@@ -1570,7 +1571,7 @@ def expert_edit():
                               'start': parsed_movie['start'],
                               **({'fps': parsed_movie['fps']} if parsed_movie.get('fps') else {})}
             would_void = []
-            if field in VOIDING_FIELDS and live_acts(run)['verifications']: would_void.append('verifications')
+            if (field in VOIDING_FIELDS or field.startswith('metric:')) and live_acts(run)['verifications']: would_void.append('verifications')
             if field == 'movie' and live_acts(run)['reproductions']: would_void.append('reproductions')
             if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
@@ -2020,7 +2021,7 @@ def member_delete():
         # The Committee does not eat itself: a sitting Committee member is the
         # Founder's alone to delete, and the Founder is nobody's (2.2.2).
         if any(role == 'founder' for role, s in target_roles):
-            return fail('the Founder cannot be deleted (Principles 2.2.2)', 403)
+            return fail('the Founder cannot be deleted (Governance 2.2.2)', 403)
         if any(role == 'committee' for role, s in target_roles) and not is_founder(actor):
             return fail('a sitting Committee member is deleted by the Founder alone, '
                         'never by fellow Committee members', 403)
@@ -2520,12 +2521,18 @@ def edit_run():
             notes = (edit_form.get('notes') or '').replace('\r\n', '\n').replace('\r', '\n')
             if len(notes.encode()) > 1024 * 1024:
                 return fail('notes exceed 1 MB')
-            notes = notes.rstrip() + '\n'
             try:
                 old_notes = (run_dir / 'notes.md').read_text()
             except OSError:
                 old_notes = ''
-            if old_notes.rstrip() + '\n' != notes:
+            # the form edits the author's part; the archive's own header (an
+            # import's disclaimer) stays on top, untouched, whatever is sent
+            notes_header, old_body = split_notes_header(old_notes)
+            sent = notes.strip() + '\n' if notes.strip() else ''
+            if notes_header and sent.startswith(notes_header):
+                sent = sent[len(notes_header):]
+            notes = notes_header + sent
+            if old_body != sent:
                 changed.append('notes')
         if 'emulator' in edit_form:
             new_emulator = (edit_form.get('emulator') or '').strip()[:120]
@@ -2641,7 +2648,10 @@ def edit_run():
         option_metrics = (option or {}).get('metrics')
         option_wants_time = option_metrics is None or any(mm['key'] == 'time' for mm in option_metrics)
         stated_time = (edit_form.get('time') or '').strip()
-        if 'time' in edit_form and run.get('videoOnly') and (stated_time or option_wants_time):
+        # a stated time exists where no frames derive one: a video-only run,
+        # or a movie in a format the parser reads no frame count from
+        stated_run = run.get('videoOnly') or not (run.get('movie') or {}).get('frames')
+        if 'time' in edit_form and stated_run and (stated_time or option_wants_time):
             time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated_time)
             if not time_match:
                 return fail('a video-only run in a time-ranked category states its time as [h:]mm:ss or [h:]mm:ss.mmm')
@@ -2710,6 +2720,18 @@ def edit_run():
                     f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
     return jsonify({'ok': True, 'run': run_id, 'changed': changed, 'voided': voided})
 
+def split_notes_header(text):
+    """(header, body): the leading block of `>` lines an import carries as
+    its disclaimer, and the author's notes after it. Only the leading block
+    is the archive's; a quote anywhere else is the author's own."""
+    lines = text.splitlines()
+    n = 0
+    while n < len(lines) and lines[n].startswith('>'):
+        n += 1
+    header = '\n'.join(lines[:n]) + '\n' if n else ''
+    body = '\n'.join(lines[n:]).strip()
+    return header, (body + '\n' if body else '')
+
 @app.get('/api/run/record')
 def run_record():
     """The run's record as the archivist holds it right now, for the edit
@@ -2731,14 +2753,15 @@ def run_record():
     run = json.loads((run_dir / 'run.json').read_text())
     notes_path = run_dir / 'notes.md'
     notes = notes_path.read_text() if notes_path.exists() else ''
-    # the archive's own header lines are not the author's notes
-    notes = '\n'.join(l for l in notes.splitlines() if not l.startswith('>')).strip() + '\n' if notes else ''
+    # the archive's own header (the import disclaimer, a leading quote block)
+    # is not the author's notes; their own quotes further down are
+    notes = split_notes_header(notes)[1]
     game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
     game = json.loads((run_dir.parent.parent / 'game.json').read_text())
     categories = json.loads((run_dir.parent.parent / 'categories.json').read_text())
     who = session_user()
     low = (who or '').lower()
-    may = {'author': bool(who) and low in {a['user'].lower() for a in run.get('authors', [])},
+    may = {'author': bool(who) and current_name(who).lower() in run_authors_now(run),
            'expert': bool(who) and expert_covers(who, game_key),
            'editor': bool(who) and is_editor(who)}
     resp = jsonify({'ok': True, 'run': {k: v for k, v in run.items() if not k.startswith('_')},
@@ -3007,7 +3030,7 @@ def expert_appoint():
             checkout_branch()
         roster = load_experts()
         appointer_scopes = [e for e in roster if e['user'].lower() == appointer.lower()]
-        # Two doors in (Principles 2.5.3 and 2.5.6): any single Committee
+        # Two doors in (Governance 2.5.3 and 2.5.6): any single Committee
         # member may appoint an expert at any scope, the whole site included,
         # and an expert appoints downward into scopes their own scope covers.
         # Equal scope still does not qualify on the expert door, or an expert
@@ -3017,7 +3040,7 @@ def expert_appoint():
                 or any(scope_covers(e['scope'], scope) for e in appointer_scopes)):
             return fail(f'{appointer} holds no scope that covers {scope} and no '
                         f'Committee seat; appointment runs downward, or from the '
-                        f'Committee (Principles 2.5.3)', 403)
+                        f'Committee (Governance 2.5.3)', 403)
         if any(e['user'].lower() == user.lower() and e['scope'] == scope
                for e in roster):
             return fail(f'{user} already holds {scope}', 409)
@@ -3286,22 +3309,28 @@ def role_decide():
                     'count a majority against', 409)
     words = GRANT_WORDS if action == 'granted' else ANNUL_WORDS
     votes = count_votes(poll, words)
-    # Granting is an ordinary decision (Principles 2.3.3, 2.4.1): a simple
+    # Granting is an ordinary decision (Governance 2.3.3, 2.4.1): a simple
     # majority. Taking a role away is not (2.3.5): it needs a hard majority,
     # two thirds of every sitting member, counted whether they voted or not.
     # Expert annulment is the documented exception and keeps its own rule
     # (2.5.4), which is why it lives in its own endpoint.
     # An editor is the documented exception the other way (2.6.3): removal
     # by simple majority, like an expert's annulment.
+    # A simple majority is more than half of the votes cast (2.1.1): absence
+    # is abstention and there is no quorum. A hard majority is two thirds of
+    # every sitting member (2.1.2), counted whether they voted or not.
+    cast = votes_cast(poll)
     if action == 'granted' or role == 'editor':
-        enough, needed = votes * 2 > size, 'a simple majority of the Committee'
+        enough, needed = cast > 0 and votes * 2 > cast, 'a simple majority of the votes cast'
+        against = f'{votes} of the {cast} votes cast'
     else:
         enough, needed = votes * 3 >= size * 2, ('a hard majority of the Committee, '
                                                  'two thirds of all sitting members')
+        against = f'{votes} of {size} committee members'
     if not enough:
-        return fail(f'{votes} of {size} committee members voted to '
+        return fail(f'{against} went to '
                     f'{"grant" if action == "granted" else "remove"} this role; '
-                    f'{needed} is required (Principles '
+                    f'{needed} is required (Governance '
                     f'{"2.3.3" if action == "granted" else "2.3.5"})', 409)
     dry_run = decision_form.get('dry_run') in ('1', 'true', 'yes')
     proof = f'{DISCOURSE_URL}/p/{post_id}'
@@ -3328,7 +3357,7 @@ def role_decide():
                             f'by a Committee vote, {votes} of {size}.{reason_suffix}')}
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_append': entry,
-                            'votes': votes, 'committee': size, 'proof': proof})
+                            'votes': votes, 'cast': cast, 'committee': size, 'proof': proof})
         append_role_event(entry)
         if action == 'granted':
             ensure_member(target)
@@ -3337,11 +3366,11 @@ def role_decide():
                     f'Recorded by: {caller}\nVia: archivist')
     forum_note = publish_group(role, target, add=(action == 'granted'))
     return jsonify({'ok': True, 'user': target, 'role': role, 'action': action,
-                    'votes': votes, 'committee': size, 'proof': proof, 'forum': forum_note})
+                    'votes': votes, 'cast': cast, 'committee': size, 'proof': proof, 'forum': forum_note})
 
 @app.post('/api/expert/annul')
 def expert_annul():
-    """Apply a Committee decision to annul an appointment (Principles 2.5.4).
+    """Apply a Committee decision to annul an appointment (Governance 2.5.4).
 
     We do not implement voting: the forum already has it. This reads the poll,
     checks it was a genuine Committee decision with a majority of the Committee
@@ -3371,9 +3400,11 @@ def expert_annul():
         return fail('the committee group is empty or unreadable; nothing to count '
                     'a majority against', 409)
     for_annul = count_votes(poll, ANNUL_WORDS)
-    if for_annul * 2 <= size:
-        return fail(f'{for_annul} of {size} committee members voted to annul; a simple '
-                    f'majority of the Committee is required', 409)
+    cast = votes_cast(poll)
+    # a simple majority: more than half of the votes cast (2.1.1, 2.5.4)
+    if cast <= 0 or for_annul * 2 <= cast:
+        return fail(f'{for_annul} of the {cast} votes cast went to annul; a simple '
+                    f'majority of the votes cast is required', 409)
     dry_run = annulment_form.get('dry_run') in ('1', 'true', 'yes')
     proof = f'{DISCOURSE_URL}/p/{post_id}'
     refresh_archive()
@@ -3388,7 +3419,7 @@ def expert_annul():
             return fail(f'{target} holds no such scope', 404)
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_drop': dropped,
-                            'votes': for_annul, 'committee': size, 'proof': proof})
+                            'votes': for_annul, 'cast': cast, 'committee': size, 'proof': proof})
         today = time.strftime('%Y-%m-%d', time.gmtime())
         for appointment in matching_scopes:
             append_role_event({
@@ -3401,7 +3432,7 @@ def expert_annul():
     still = any(appointment['user'].lower() == target.lower() for appointment in load_experts())
     forum_note = sync_expert_group(target, add=False) if not still else 'still an expert elsewhere'
     return jsonify({'ok': True, 'target': target, 'dropped': dropped,
-                    'votes': for_annul, 'committee': size, 'proof': proof, 'forum': forum_note})
+                    'votes': for_annul, 'cast': cast, 'committee': size, 'proof': proof, 'forum': forum_note})
 
 @app.post('/api/expert/resign')
 def expert_resign():
@@ -4041,7 +4072,23 @@ def discussion():
         return jsonify(cached[1])
     try:
         topic_json = _forum_get(f'/t/{topic_id}.json')
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            # the forum meters API calls by the minute; a busy minute is no
+            # reason to show an empty box. Serve what was shown before, or
+            # wait out the short window once, then give up for this call
+            if cached:
+                return jsonify(cached[1])
+            try:
+                time.sleep(min(3.0, float(exc.headers.get('Retry-After') or 1)))
+                topic_json = _forum_get(f'/t/{topic_id}.json')
+            except Exception as again:                          # noqa: BLE001
+                return fail(f'could not reach the forum: {again}', 502)
+        else:
+            return fail(f'could not reach the forum: {exc}', 502)
     except Exception as exc:                                    # noqa: BLE001
+        if cached:
+            return jsonify(cached[1])
         return fail(f'could not reach the forum: {exc}', 502)
     posts = []
     for post in topic_json.get('post_stream', {}).get('posts', []):

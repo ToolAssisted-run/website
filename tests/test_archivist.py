@@ -230,6 +230,7 @@ def main():
         # in no role event: under the old two-way mirror that made them a
         # committee member; now it makes them a stray the next publish removes.
         GROUPS = {'experts': {'eien86'}, 'committee': {'eien86', 'ForumOnly'}}
+        HITS = {}
         GROUP_WRITES = []
         DISCORD_MSGS = []          # what the archivist told 'Discord'
 
@@ -246,6 +247,16 @@ def main():
                     self.end_headers()
                     self.wfile.write(body)
 
+                # a run's topic: /t/777.json answers on the second ask only
+                # (the first is the forum's per-minute 429), /t/778.json always
+                if re.fullmatch(r'/t/77[78]\.json', path):
+                    HITS[path] = HITS.get(path, 0) + 1
+                    if path == '/t/777.json' and HITS[path] == 1:
+                        return _json({'errors': ['rate limited']}, 429)
+                    return _json({'id': int(path[3:6]), 'title': 'Topic ' + path[3:6], 'slug': 'topic',
+                                  'posts_count': 1, 'post_stream': {'posts': [
+                                      {'id': 1, 'username': 'Ada', 'cooked': '<p>hi</p>',
+                                       'created_at': '2026-08-01T00:00:00Z', 'post_number': 1}]}})
                 if path == '/groups.json':
                     return _json({'groups': [{'id': 41, 'name': 'experts'},
                                              {'id': 42, 'name': 'committee'}]})
@@ -287,6 +298,12 @@ def main():
                         '909': [{'status': 'closed', 'public': True, 'groups': 'committee',
                                  'options': [{'html': 'Grant', 'votes': 2},
                                              {'html': 'No', 'votes': 2}]}],
+                        # 2 of 3 votes cast, on a committee of 4: a simple
+                        # majority is of the votes cast (2.1.1), so this grants
+                        '910': [{'status': 'closed', 'public': True, 'groups': 'committee',
+                                 'voters': 3,
+                                 'options': [{'html': 'Grant', 'votes': 2},
+                                             {'html': 'No', 'votes': 1}]}],
                         '908': [{'status': 'closed', 'public': True, 'groups': 'committee',
                                  'options': [{'html': 'Remove', 'votes': 2},
                                              {'html': 'Keep', 'votes': 1}]}],
@@ -894,6 +911,13 @@ def main():
                            {'screenshot': ('end.png', PNG)})
             ck('duplicate reproduction rejected', c == 400)
 
+            # --- the run page's discussion survives the forum's rate limit ---
+            c, r, _ = call(U + '/api/discussion?topic=777')
+            ck('a 429 from the forum is waited out, not shown as an empty box',
+               c == 200 and r.get('ok') and r.get('replyCount') is not None, str(r)[:200])
+            c, r, _ = call(U + '/api/discussion?topic=778')
+            ck('a topic is fetched and rendered', c == 200 and r.get('ok'), str(r)[:200])
+
             # --- the pickers' search (#56): members and games, as typed ---
             c, r, _ = call(U + '/api/search?kind=members&q=testauth')
             ck('member search answers the matching usernames', c == 200
@@ -968,6 +992,22 @@ def main():
                                              'notes': 'Revised write-up.', 'time': ''})
             ck('in a time-ranked category the time is still demanded',
                c == 400 and 'time' in r.get('error', ''), str(r)[:200])
+            # the author's own quotes survive a round trip through the form,
+            # and an archive header on top of the notes stays where it was
+            vs_dir = next(iter(work.glob(f'games/*/*/runs/{vs_id}')))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            quoted = 'Intro.\n\n> a quote the author wrote\nAfter the quote.\n'
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vs_id,
+                                             'notes': quoted})
+            ck('notes with a quote are saved as sent', c == 200, str(r)[:200])
+            c, r, _ = call(U + '/api/run/record?run=' + vs_id)
+            ck('the edit form gets the quote back', c == 200 and '> a quote the author wrote' in r.get('notes', ''), str(r)[:300])
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vs_id,
+                                             'notes': r['notes'], 'emulator': 'BizHawk 2.11'})
+            ck('saving the form back changes the emulator only',
+               c == 200 and r.get('changed') == ['emulator'], str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            ck('the quote is still in the file', '> a quote the author wrote' in (vs_dir / 'notes.md').read_text())
 
             # --- expert edits: anything in the jurisdiction, all of it logged ---
             c, r, _ = call(U + '/api/expert/edit',
@@ -1876,8 +1916,13 @@ def main():
             c, r, _ = call(U + '/api/role/decide',
                            {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'moderator',
                             'action': 'granted', 'post': '909'})
-            ck('granting refuses a poll without a majority',
-               c == 409 and '2 of 4' in r.get('error', ''), str(r))
+            ck('granting refuses a poll without a majority of the votes cast',
+               c == 409 and '2 of the 4 votes cast' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/role/decide',
+                           {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'moderator',
+                            'action': 'granted', 'post': '910', 'dry_run': '1'})
+            ck('a simple majority is of the votes cast, not of the seats (2.1.1)',
+               c == 200 and r.get('ok') and r.get('votes') == 2 and r.get('cast') == 3, str(r))
             c, r, _ = call(U + '/api/role/decide',
                            {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'expert',
                             'action': 'granted', 'post': '901'})

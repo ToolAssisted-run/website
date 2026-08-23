@@ -13,7 +13,7 @@ attribution).
 
 Working rules:
 - **The implementation always abides by the constitution.** The community's
-  constitutional document (Principles, Governance, Terms, Privacy) lives at
+  constitutional document (Principles, Governance, Submission Policy, Terms, Code of Conduct, Privacy) lives at
   https://github.com/ToolAssisted-run/.github/blob/main/profile/README.md and
   outranks every implementation choice: when code and constitution disagree,
   the code is wrong. Changing the constitution has its own amendment process
