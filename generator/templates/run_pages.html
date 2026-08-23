@@ -126,6 +126,22 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
    placeholder="published in the site log beside your name"></label>
   <button class="btn">Save</button>
 </form></details></div>
+{# an expert or editor moves the run to another category, or subcategory
+   (#43); its own logged edit, shown to them alone (app.js) #}
+<div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category (expert mode)</summary>
+<form id="f-move">
+  <p class="rules">The run keeps everything else. Moving it out of its category to Unclassified
+  is refused while it holds live verifications; a category with subcategories wants one named.</p>
+  <input type="hidden" name="kind" value="run">
+  <input type="hidden" name="target" value="{{ r['id'] }}">
+  <input type="hidden" name="field" value="goal">
+  <input type="hidden" name="value">
+  <label>Category <select id="mv-goal"></select></label>
+  <label id="mv-subwrap" hidden>Subcategory <select id="mv-sub"></select></label>
+  <label>Why (public, shown in the edit log)
+  <input name="reason" required minlength="8" maxlength="500" placeholder="published in the site log beside your name"></label>
+  <button class="btn">Move</button>
+</form></details></div>
 <div id="f-withdraw-wrap" hidden><details class="actform"><summary>Withdraw</summary>
 <form id="f-withdraw">
   <p class="rules">Your own voluntary act as an author. For a mistake: a duplicate,

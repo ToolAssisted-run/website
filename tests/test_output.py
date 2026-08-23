@@ -567,6 +567,10 @@ def main():
            and subpage_.count('class="dimrow subrow"') == 1)
         ck('the composed rules carry the subcategory fragment',
            'Sub rule any.' in subpage_ and 'Sub rule 100.' in subpage_)
+        ck('the run page carries the move control with the categories and the current spot',
+           'id="f-move"' in all_html[out / 'runs' / 'M900110' / 'index.html']
+           and '"goal": "episode-1"' in all_html[out / 'runs' / 'M900110' / 'index.html']
+           and '"sub": "any"' in all_html[out / 'runs' / 'M900110' / 'index.html'])
         ck('a run page names the subcategory in its category',
            'episode 1 · any' in all_html[out / 'runs' / 'M900110' / 'index.html'])
         ck('games without subcategories show no subcategory row',

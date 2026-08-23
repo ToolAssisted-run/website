@@ -1146,6 +1146,37 @@
         return;
       }
       if (isAuthor) arm('f-withdraw', '/api/withdraw');
+      var isEditor = myName !== null && ((window.TAR || {}).editors || []).indexOf(myName) >= 0;
+      if (isExpert || isEditor) {
+        // move the run to another category or subcategory: the selects feed
+        // the hidden value ("option" or "option/sub") the archivist reads
+        arm('f-move', '/api/expert/edit', function(form){
+          var goalSel = document.getElementById('mv-goal'), subSel = document.getElementById('mv-sub');
+          var subWrap = document.getElementById('mv-subwrap'), valueField = form.querySelector('[name=value]');
+          runData.categories.forEach(function(o){
+            var opt = document.createElement('option'); opt.value = o.key; opt.textContent = o.label;
+            goalSel.appendChild(opt);
+          });
+          var uncl = document.createElement('option'); uncl.value = 'unclassified'; uncl.textContent = 'Unclassified';
+          goalSel.appendChild(uncl);
+          function paintMove(){
+            var picked = runData.categories.filter(function(o){ return o.key === goalSel.value; })[0];
+            var subs = (picked && picked.subcategories) || [];
+            subSel.innerHTML = '';
+            subs.forEach(function(x){
+              var opt = document.createElement('option'); opt.value = x.key; opt.textContent = x.label;
+              subSel.appendChild(opt);
+            });
+            subWrap.hidden = !subs.length;
+            if (subs.length && runData.goal === goalSel.value && runData.sub) subSel.value = runData.sub;
+            valueField.value = goalSel.value + (subs.length ? '/' + subSel.value : '');
+          }
+          goalSel.value = runData.goal || 'unclassified';
+          goalSel.addEventListener('change', paintMove);
+          subSel.addEventListener('change', function(){ valueField.value = goalSel.value + '/' + subSel.value; });
+          paintMove();
+        });
+      }
       if (isAuthor || isExpert) {
         arm('f-edit', '/api/edit', function(form){
           if (isAuthor) {

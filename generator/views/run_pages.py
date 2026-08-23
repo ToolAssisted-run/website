@@ -73,6 +73,14 @@ for r in runs:
                       'voted': [v['user'].lower() for v in open_case.get('reaffirmations', [])]}
                      if open_case else None),
         'emulator': r.get('contract', {}).get('emulator') or '',
+        # the game's categories, for the expert's move control: options and
+        # their subcategories, and where this run sits now
+        'categories': [{'key': o['key'], 'label': o['label'],
+                        'subcategories': [{'key': x['key'], 'label': x['label']}
+                                          for x in o.get('subcategories', [])]}
+                       for d in g['categories']['dimensions'] for o in d['options']],
+        'goal': (r.get('category') or {}).get('goal', ''),
+        'sub': (r.get('category') or {}).get('sub', ''),
         'completed': r.get('completed') or '',
         'notesUrl': f'{ARCHIVE_RAW}/games/{g["key"]}/runs/{r["id"]}/notes.md',
         # two different permissions, and they were both called 'experts': the
