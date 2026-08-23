@@ -10,59 +10,51 @@ is logged in the open with your name, the old value and the new.</p></div>
 <script type="application/json" id="gameeditdata">{{ json_blob(edit_data) }}</script>
 <p class="msg" id="ge-gate">Checking who you are…</p>
 <div id="geditor" hidden>
+{# Progressive editing (#50): every property is one row showing its name and
+   current value with an Edit button; the row's form (input, Why, Save,
+   Cancel, inline message) unfolds only when asked. app.js wires them. #}
+{% macro prop(field, label, value, control, hint='', verb='Save') %}
+<div class="prop" data-field="{{ field }}">
+  <div class="prop-head"><span class="prop-name">{{ label }}</span>
+  <span class="prop-value">{% if value is string or value is none %}{{ value or '' }}{% else %}{{ value }}{% endif %}{% if not value %}<span class="prop-empty">not set</span>{% endif %}</span>
+  <button type="button" class="btn quiet prop-edit">Edit</button></div>
+  <form id="f-ge-{{ field }}" class="actform prop-form" hidden>
+    <input type="hidden" name="kind" value="game">
+    <input type="hidden" name="target" value="{{ g['key'] }}">
+    <input type="hidden" name="field" value="{{ field }}">
+    {{ control }}
+    {% if hint %}<p class="rules">{{ hint }}</p>{% endif %}
+    <label>Why <input name="reason" required minlength="8" maxlength="500"
+      placeholder="the reason is public"></label>
+    <div class="btnrow"><button class="btn">{{ verb }}</button>
+    <button type="button" class="btn leave prop-cancel">Cancel</button></div>
+    <p class="actmsg prop-msg" hidden></p>
+  </form>
+</div>
+{% endmacro %}
 <section><h2>Identity</h2>
-<form id="f-ge-title" class="actform">
-  <input type="hidden" name="kind" value="game">
-  <input type="hidden" name="target" value="{{ g['key'] }}">
-  <input type="hidden" name="field" value="title">
-  <label>Title <input name="value" required maxlength="120" value="{{ g['title'] }}"></label>
-  <label>Why <input name="reason" required minlength="8" maxlength="500"
-    placeholder="the reason is public"></label>
-  <button class="btn">Rename</button>
-</form>
-<form id="f-ge-thumb" class="actform">
-  <input type="hidden" name="kind" value="game">
-  <input type="hidden" name="target" value="{{ g['key'] }}">
-  <input type="hidden" name="field" value="thumbnail">
-  {% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="current thumbnail">{% else %}<p class="rules">No thumbnail set; the card falls back to the newest run frame.</p>{% endif %}
+{% set title_in %}<label>Title <input name="value" required maxlength="120" value="{{ g['title'] }}"></label>{% endset %}
+{{ prop('title', 'Title', g['title'], title_in, verb='Rename') }}
+{% set thumb_in %}{% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="current thumbnail">{% endif %}
   <label>Thumbnail (png/jpg/webp, under 256 KB)
-    <input name="thumbnail" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>
-  <label>Why <input name="reason" required minlength="8" maxlength="500"></label>
-  <button class="btn">Set</button>
-</form></section>
+    <input name="thumbnail" type="file" accept=".png,.jpg,.jpeg,.webp" required></label>{% endset %}
+{{ prop('thumb', 'Thumbnail', 'set' if face else '', thumb_in, hint='' if face else 'No thumbnail set; the card falls back to the newest run frame.', verb='Set') }}
+</section>
 <section><h2>Properties</h2>
 <p class="rules">Facts about the game itself (#44). Leave a field empty and save to clear it.</p>
-{% macro prop_form(field, label, control) %}
-<form id="f-ge-{{ field }}" class="actform">
-  <input type="hidden" name="kind" value="game">
-  <input type="hidden" name="target" value="{{ g['key'] }}">
-  <input type="hidden" name="field" value="{{ field }}">
-  <label>{{ label }} {{ control }}</label>
-  <label>Why <input name="reason" required minlength="8" maxlength="500"
-    placeholder="the reason is public"></label>
-  <button class="btn">Save</button>
-</form>
-{% endmacro %}
-{% set released_in %}<input name="value" maxlength="10" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="YYYY, YYYY-MM or YYYY-MM-DD" value="{{ g.get('released', '') }}">{% endset %}
-{{ prop_form('released', 'Release date', released_in) }}
+{% set released_in %}<label>Release date <input name="value" maxlength="10" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="YYYY, YYYY-MM or YYYY-MM-DD" value="{{ g.get('released', '') }}"></label>{% endset %}
+{{ prop('released', 'Release date', release_text(g.get('released', '')), released_in) }}
 {# the flag is a checkbox; the hidden field carries yes/no so an unticked
    box still sends a value (app.js keeps the two in step) #}
-<form id="f-ge-unofficial" class="actform">
-  <input type="hidden" name="kind" value="game">
-  <input type="hidden" name="target" value="{{ g['key'] }}">
-  <input type="hidden" name="field" value="unofficial">
-  <input type="hidden" name="value" value="{{ 'yes' if g.get('unofficial') else 'no' }}">
-  <label class="check"><input type="checkbox" class="mirror" data-yes="yes" data-no="no"{% if g.get('unofficial') %} checked{% endif %}> <span><b>Unofficial</b> <span class="checkhint">· a ROM hack, mod, fangame or other unofficial release</span></span></label>
-  <label>Why <input name="reason" required minlength="8" maxlength="500"
-    placeholder="the reason is public"></label>
-  <button class="btn">Save</button>
-</form>
-{% set discord_in %}<input name="value" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)" value="{{ g.get('discord', '') }}">{% endset %}
-{{ prop_form('discord', 'Community Discord', discord_in) }}
-{% set website_in %}<input name="value" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}">{% endset %}
-{{ prop_form('website', 'Community website', website_in) }}
-{% set rta_in %}<input name="value" type="url" maxlength="300" placeholder="https://… (where the real-time records live, e.g. speedrun.com)" value="{{ g.get('rta', '') }}">{% endset %}
-{{ prop_form('rta', 'RTA leaderboards', rta_in) }}
+{% set unofficial_in %}<input type="hidden" name="value" value="{{ 'yes' if g.get('unofficial') else 'no' }}">
+  <label class="check"><input type="checkbox" class="mirror" data-yes="yes" data-no="no"{% if g.get('unofficial') %} checked{% endif %}> <span><b>Unofficial</b> <span class="checkhint">· a ROM hack, mod, fangame or other unofficial release</span></span></label>{% endset %}
+{{ prop('unofficial', 'Unofficial', 'yes' if g.get('unofficial') else 'no', unofficial_in) }}
+{% set discord_in %}<label>Community Discord <input name="value" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)" value="{{ g.get('discord', '') }}"></label>{% endset %}
+{{ prop('discord', 'Community Discord', g.get('discord', ''), discord_in) }}
+{% set website_in %}<label>Community website <input name="value" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}"></label>{% endset %}
+{{ prop('website', 'Community website', g.get('website', ''), website_in) }}
+{% set rta_in %}<label>RTA leaderboards <input name="value" type="url" maxlength="300" placeholder="https://… (where the real-time records live, e.g. speedrun.com)" value="{{ g.get('rta', '') }}"></label>{% endset %}
+{{ prop('rta', 'RTA leaderboards', g.get('rta', ''), rta_in) }}
 </section>
 <section><h2>Categories</h2>
 <p class="rules">The label is what the rankings say; the rule is what a verifier holds a

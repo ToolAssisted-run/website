@@ -1232,8 +1232,13 @@
       gate.hidden = true;
       document.getElementById('geditor').hidden = false;
       var msg = document.getElementById('ge-msg');
-      function noteSaved(text, serial){
-        noteBuilt(msg, text, serial);
+      // messages land beside the form they answer (#50): a form's own
+      // .prop-msg or .actmsg when it has one, the page's otherwise
+      function msgFor(form){
+        return (form && form.querySelector('.prop-msg, .actmsg')) || msg;
+      }
+      function noteSaved(text, serial, where){
+        noteBuilt(where || msg, text, serial);
       }
       function wire(id, path, confirmText, done){
         var form = document.getElementById(id);
@@ -1243,19 +1248,47 @@
           if (confirmText && !window.confirm(confirmText)) return;
           post(path, new FormData(form), actionBtn(form))
             .then(function(res){
-              if (res.ok && res.j.ok) noteSaved(done(res.j), res.j.serial);
-              else note(msg, res.j.error || 'something went wrong', false);
+              if (res.ok && res.j.ok) noteSaved(done(res.j, form), res.j.serial, msgFor(form));
+              else note(msgFor(form), res.j.error || 'something went wrong', false);
             });
         });
       }
+      // progressive rows (#50): Edit unfolds the row's form, Cancel folds it
+      // back, a save rewrites the static value and folds it after a moment
+      document.querySelectorAll('.prop').forEach(function(row){
+        var form = row.querySelector('.prop-form');
+        var editBtn = row.querySelector('.prop-edit');
+        function fold(){ form.hidden = true; row.classList.remove('editing'); }
+        editBtn.addEventListener('click', function(){
+          form.hidden = false; row.classList.add('editing');
+          var first = form.querySelector('input:not([type=hidden]), textarea');
+          if (first) first.focus();
+        });
+        row.querySelector('.prop-cancel').addEventListener('click', function(){
+          form.reset(); form.querySelector('.prop-msg').hidden = true; fold();
+        });
+        row.fold = fold;
+      });
+      function showValue(form, text){
+        var row = form.closest('.prop');
+        if (!row) return;
+        var v = row.querySelector('.prop-value');
+        v.textContent = '';
+        if (text) v.textContent = text;
+        else v.appendChild(el('span', 'prop-empty', 'not set'));
+        setTimeout(function(){ if (row.fold) row.fold(); }, 1800);
+      }
       wire('f-ge-title', '/api/expert/edit', null,
-           function(j){ return 'Renamed to ' + j.to + '.'; });
+           function(j, form){ showValue(form, j.to); return 'Renamed to ' + j.to + '.'; });
       wire('f-ge-thumb', '/api/expert/edit', null,
-           function(){ return 'Thumbnail set.'; });
+           function(j, form){ showValue(form, 'set'); return 'Thumbnail set.'; });
       // the game properties (#44): one logged edit per field
       ['released', 'unofficial', 'discord', 'website', 'rta'].forEach(function(field){
         wire('f-ge-' + field, '/api/expert/edit', null,
-             function(j){ return j.to === '' ? 'Cleared ' + field + '.' : 'Saved ' + field + ': ' + j.to + '.'; });
+             function(j, form){
+               showValue(form, field === 'unofficial' ? (j.to === 'True' ? 'yes' : 'no') : j.to);
+               return j.to === '' ? 'Cleared ' + field + '.' : 'Saved ' + field + ': ' + j.to + '.';
+             });
       });
       wire('f-ge-add', '/api/category/add', null,
            function(j){ return 'Added ' + j.key + '.'; });
@@ -1293,6 +1326,8 @@
         var metricsBefore = metricsEd.value();
         var reasonInput = field('Why (published with the change)');
         reasonInput.placeholder = 'required to save a change';
+        var cardMsg = el('p', 'actmsg');
+        cardMsg.hidden = true;
         var row = el('div', 'gebtns');
         var saveBtn = el('button', 'btn', 'Save');
         saveBtn.type = 'button';
@@ -1301,14 +1336,14 @@
           if (labelInput.value.trim() !== o.label) jobs.push(['label', labelInput.value.trim()]);
           if (ruleInput.value.trim() !== o.rule) jobs.push(['rule', ruleInput.value.trim()]);
           if (metricsEd.value() !== metricsBefore) jobs.push(['metrics', metricsEd.value()]);
-          if (!jobs.length) { note(msg, 'Nothing changed on ' + o.key + '.', false); return; }
+          if (!jobs.length) { note(cardMsg, 'Nothing changed on ' + o.key + '.', false); return; }
           var savedSerial;
           function step(){
             if (!jobs.length) {
               o.label = labelInput.value.trim();
               o.rule = ruleInput.value.trim();
               metricsBefore = metricsEd.value();
-              noteSaved('Saved ' + o.key + '.', savedSerial);
+              noteSaved('Saved ' + o.key + '.', savedSerial, cardMsg);
               return;
             }
             var job = jobs.shift();
@@ -1320,7 +1355,7 @@
             fd.append('reason', reasonInput.value.trim());
             post('/api/expert/edit', fd, saveBtn).then(function(res){
               if (res.ok && res.j.ok) { savedSerial = res.j.serial; step(); }
-              else note(msg, res.j.error || 'something went wrong', false);
+              else note(cardMsg, res.j.error || 'something went wrong', false);
             });
           }
           step();
@@ -1336,12 +1371,13 @@
             fd.append('option', o.key);
             post('/api/category/delete', fd, deleteBtn).then(function(res){
               if (res.ok && res.j.ok) { card.remove(); noteSaved('Removed ' + o.key + '.', res.j.serial); }
-              else note(msg, res.j.error || 'something went wrong', false);
+              else note(cardMsg, res.j.error || 'something went wrong', false);
             });
           });
           row.appendChild(deleteBtn);
         }
         card.appendChild(row);
+        card.appendChild(cardMsg);
         box.appendChild(card);
       });
       if (!(gameEditData.options || []).length) {
