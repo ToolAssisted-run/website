@@ -1283,7 +1283,16 @@
               if (res.ok && res.j.ok) {
                 var voided = (res.j.voided || []).length
                   ? ' Its ' + res.j.voided.join(' and ') + ' were invalidated by this change.' : '';
-                noteBuilt(msgBox, 'Recorded, thank you.' + voided, res.j.serial);
+                // the act is done: the form folds shut, the check moves onto
+                // its summary, and the message stands on its own (#68)
+                var det = form.closest('details');
+                if (det) {
+                  det.open = false;
+                  var sum = det.querySelector('summary');
+                  if (sum && !sum.querySelector('.sumdone')) sum.appendChild(el('span', 'sumdone', '\u2713 recorded'));
+                }
+                noteBuilt(msgBox, 'Recorded, thank you: your act is archived.' + voided +
+                          ' You can leave this page whenever you like.', res.j.serial, null, true);
               } else note(msgBox, res.j.error || 'something went wrong', false);
             });
           }

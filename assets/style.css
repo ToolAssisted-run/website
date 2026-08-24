@@ -591,6 +591,7 @@ footer a{color:var(--accent-text);text-decoration:none}
 .createq [aria-disabled=true]{opacity:.45;pointer-events:none}
 
 /* stated-time picker: four boxes, a mistake is not possible */
+.sumdone{margin-left:10px;color:var(--accent-text);font:700 .8rem/1 ui-monospace,monospace}
 .chimerahead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .chimeraicon{height:44px;width:auto}
 .chimeratype{height:26px;width:auto}
