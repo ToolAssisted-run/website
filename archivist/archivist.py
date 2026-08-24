@@ -130,6 +130,7 @@ from records import (
     sync_status,
 )
 from forumapi import (
+    close_announce_topic,
     _forum_get,
     avatar_for,
     committee_size,
@@ -1869,6 +1870,13 @@ def run_delete():
         log_deletion('run', run_id, title, actor, reason)
         ensure_member(actor)
         commit_push(f'Delete {run_id}: by expert {actor}\n\nReason: {reason}\nVia: archivist')
+    # the run's own announce topic closes with the reason (member replies
+    # stay readable), and Discord hears; both best-effort, after the write
+    close_announce_topic((run.get('forum') or {}).get('topicId'),
+                         f'This run was deleted from the archive by expert {actor}. '
+                         f'Reason, from the public log: {reason}')
+    notify_discord(f'\U0001f5d1\ufe0f Run {run_id} ({title}) was deleted by expert '
+                   f'**{member_md(actor)}**: {reason}')
     return jsonify({'ok': True, 'deleted': run_id,
                     'note': 'Gone, with your reason in the site log. Withdrawal and '
                             'all-author erasure remain the routes for genuine works.'})
@@ -1918,11 +1926,14 @@ def game_delete():
             return fail(f'unknown game {game_key}', 404)
         run_dirs = sorted(run_dir for run_dir in (game_dir / 'runs').glob('M*') if run_dir.is_dir())
         deleted_runs = []
+        orphan_topics = []
         for run_dir in run_dirs:
             try:
                 run_doc = json.loads((run_dir / 'run.json').read_text())
                 run_title = f'{game.get("title", game_key)} ' \
                          f'({(run_doc.get("category") or {}).get("goal", "?")})'
+                if (run_doc.get('forum') or {}).get('topicId'):
+                    orphan_topics.append((run_dir.name, run_doc['forum']['topicId']))
             except Exception:                                 # noqa: BLE001
                 run_title = game.get('title', game_key)
             log_deletion('run', run_dir.name, run_title, actor,
@@ -1951,6 +1962,16 @@ def game_delete():
                     f'Reason: {reason}\n'
                     f'Runs deleted with it: {", ".join(deleted_runs) or "none"}\n'
                     f'Via: archivist')
+    # each deleted run's announce topic closes with the reason; Discord
+    # hears once for the whole act; all best-effort, after the write
+    for orphan_run_id, orphan_topic in orphan_topics:
+        close_announce_topic(orphan_topic,
+                             f'This run was deleted from the archive with its game '
+                             f'{game_key}, by expert {actor}. Reason, from the public '
+                             f'log: {reason}')
+    notify_discord(f'\U0001f5d1\ufe0f Game {game.get("title", game_key)} ({game_key}) was '
+                   f'deleted by expert **{member_md(actor)}** with '
+                   f'{len(deleted_runs)} run(s): {reason}')
     return jsonify({'ok': True, 'deleted': game_key, 'runs_deleted': deleted_runs})
 
 @app.post('/api/group/delete')

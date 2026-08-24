@@ -358,6 +358,20 @@ def send_pm(username, title, body):
     except Exception as e:                                     # noqa: BLE001
         return f'could not tell {username} ({e})'
 
+def close_announce_topic(topic_id, note):
+    """A deleted run's own announce topic is closed with a system post
+    saying why, never deleted: any replies members left are theirs and
+    stay readable. Best-effort — returns a status string."""
+    if not DISCOURSE_KEY or not topic_id:
+        return 'forum not configured, or no topic'
+    try:
+        discourse_api('/posts.json', 'POST', {'topic_id': int(topic_id), 'raw': note})
+        discourse_api(f'/t/{int(topic_id)}/status', 'PUT',
+                      {'status': 'closed', 'enabled': 'true'})
+        return 'closed'
+    except Exception as e:                                     # noqa: BLE001
+        return f'could not close topic {topic_id} ({e})'
+
 def topics_for_imported(archive, run_ids):
     """Imported runs are real published works, so they get a discussion topic
     even while native test submissions deliberately do not."""

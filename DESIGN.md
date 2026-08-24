@@ -362,7 +362,10 @@ concerns use **contact@toolassisted.run** (§10).
   page: a delete button on a profile reads as a threat; refused while they
   authored runs; a seated member is the Founder's alone; the Founder is
   nobody's). Every deletion lands in
-  `deletions.json` and the site log; deleting a game deletes every run in
+  `deletions.json` and the site log; a deleted run's own forum announce
+  topic is closed with the reason posted into it (never deleted: member
+  replies stay readable) and Discord is notified, both best-effort after
+  the archive write; deleting a game deletes every run in
   it, one logged entry per run beside the game's own, because the use case
   is content that should never have been archived (rule violations, spam).
   A genuine work in a wrong game record is moved by an expert edit, never

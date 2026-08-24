@@ -239,6 +239,8 @@ def main():
         HITS = {}
         GROUP_WRITES = []
         DISCORD_MSGS = []          # what the archivist told 'Discord'
+        FORUM_POSTS = []           # replies posted into topics
+        TOPIC_STATUS = []          # (topic id, status) changes
 
         class MockHandler(http.server.SimpleHTTPRequestHandler):
             def do_GET(self):                                    # noqa: N802
@@ -365,6 +367,11 @@ def main():
             def do_POST(self):                                   # noqa: N802
                 n = int(self.headers.get('Content-Length') or 0)
                 body = self.rfile.read(n).decode()
+                if self.path == '/posts.json':
+                    try:
+                        FORUM_POSTS.append(json.loads(body))
+                    except ValueError:
+                        pass
                 if self.path == '/discord-hook':
                     try:
                         d = json.loads(body)
@@ -382,6 +389,21 @@ def main():
                 self.wfile.write(out)
 
             def do_PUT(self):                                    # noqa: N802
+                m_status = re.fullmatch(r'/t/(\d+)/status', self.path)
+                if m_status:
+                    n = int(self.headers.get('Content-Length') or 0)
+                    try:
+                        TOPIC_STATUS.append((int(m_status.group(1)),
+                                             json.loads(self.rfile.read(n).decode()).get('status')))
+                    except ValueError:
+                        pass
+                    out = b'{}'
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Content-Length', str(len(out)))
+                    self.end_headers()
+                    self.wfile.write(out)
+                    return None
                 return self._members(True)
 
             def do_DELETE(self):                                 # noqa: N802
@@ -2438,11 +2460,31 @@ def main():
                            {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
                             'reason': 'no'})
             ck('a deletion without a reason is refused', c == 400, str(r))
+            # a single run first: its announce topic closes with the reason,
+            # and Discord hears of the deletion
+            del FORUM_POSTS[:]; del TOPIC_STATUS[:]; del DISCORD_MSGS[:]
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            vo_doc = json.loads(next(iter(work.glob(f'games/*/*/runs/{vo_id}/run.json'))).read_text())
+            vo_topic = (vo_doc.get('forum') or {}).get('topicId')
+            c, r, _ = call(U + '/api/run/delete',
+                           {'key': KEY, 'expert': 'groupexpert', 'run': vo_id,
+                            'reason': 'a test entry, deleted on the record'})
+            ck('a run is deleted by a covering expert', c == 200 and r['deleted'] == vo_id, str(r))
+            time.sleep(1.5)   # topic close and Discord are best-effort, off the request
+            ck('its announce topic was closed with the reason posted',
+               (not vo_topic) or ((vo_topic, 'closed') in TOPIC_STATUS
+                and any(p.get('topic_id') == vo_topic and 'deleted from the archive' in p.get('raw', '')
+                        for p in FORUM_POSTS)), f'{vo_topic} {TOPIC_STATUS} {FORUM_POSTS}')
+            ck('Discord heard of the deletion',
+               any(vo_id in m and 'deleted' in m for m in DISCORD_MSGS), str(DISCORD_MSGS[-3:]))
             c, r, _ = call(U + '/api/game/delete',
                            {'key': KEY, 'expert': 'groupexpert', 'game': 'nes/pinball',
                             'reason': 'deleting the game its movies live in'})
             ck('deleting a game deletes its runs with it',
                c == 200 and 'M900010' in r['runs_deleted'], str(r))
+            time.sleep(1.0)
+            ck('Discord heard of the game deletion too',
+               any('nes/pinball' in m and 'deleted' in m for m in DISCORD_MSGS), str(DISCORD_MSGS[-3:]))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             ck('the deleted game is gone from the tree and its group',
                not (work / 'games/nes/pinball').exists()
