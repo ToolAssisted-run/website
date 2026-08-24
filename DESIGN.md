@@ -72,8 +72,10 @@ group  (groups.json)                      a game family ACROSS systems
   however empty: a group somebody just made IS the state worth seeing.
 - **Categories** are per-game dimensions; each option carries a rule
   (markdown, up to 2000 characters; a subcategory adds its own fragment),
-  rules compose per combination and open in a "View rules" dialog on the
-  game page rather than cluttering the board (#60). New options exist the moment they are
+  and a game may carry game-wide rules of its own (#64, same markdown and
+  cap, a game property edited in the game editor); game rules, then the
+  category's, then the subcategory's compose per combination and open in a
+  "View rules" dialog on the game page rather than cluttering the board (#60). New options exist the moment they are
   created; experts refine the wording, and delete unused mistakes.
 - **Subcategories** (issue #43): a category option may define a second
   level (`subcategories`: key, label, optional rule fragment), e.g. Episode 1
@@ -466,8 +468,9 @@ or "3 March 1989"), **unofficial** (a ROM hack, mod, fangame or other
 unofficial release; absent means official), **discord** (a permanent invite
 to the game's community server; only `discord.gg/…` and
 `discord.com/invite/…` are accepted) and **website** (the community hub,
-wiki or leaderboard) and **rta** (where the real-time records live, e.g.
-speedrun.com). They are set at creation by whoever creates the game,
+wiki or leaderboard), **rta** (where the real-time records live, e.g.
+speedrun.com) and **rules** (game-wide rules, markdown up to 2000
+characters, composed above every category's own rule in View rules; #64). They are set at creation by whoever creates the game,
 and afterwards by a covering expert or an editor through the game editor,
 one logged edit per field; an empty value clears the field. The game page
 shows the release date and the unofficial mark as chips beside the system,

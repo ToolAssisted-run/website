@@ -1433,7 +1433,7 @@ def parse_file_rows(form):
         return None, 'at most 50 files'
     return files, None
 
-GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website', 'rta')
+GAME_PROPERTY_FIELDS = ('released', 'unofficial', 'discord', 'website', 'rta', 'rules')
 
 def parse_game_property(field, raw):
     """(value, error) for one game property from form text; None clears."""
@@ -1467,6 +1467,12 @@ def parse_game_property(field, raw):
     if field in ('website', 'rta'):
         if len(text) > 300 or not re.fullmatch(r'https?://[^\s<>"\']+', text):
             return None, f'the {"RTA leaderboards" if field == "rta" else "community website"} link is an http(s) URL'
+        return text, None
+    if field == 'rules':
+        # game-wide rules (issue #64): markdown, shown above every
+        # category's own rule in the View rules dialog
+        if len(text) > 2000:
+            return None, 'game rules fit in 2000 characters of markdown'
         return text, None
     return None, f'unknown property {field}'
 

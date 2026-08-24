@@ -1271,6 +1271,19 @@ def main():
                c == 200 and r['voided'] == ['reproductions'] and vj['status']['reproduced'] == 'none'
                and all(x.get('invalidated') for x in vj['reproductions']), f'{r} {vj["status"]}')
             c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'game', 'target': 'nes/pinball',
+                            'field': 'rules', 'value': 'No cheats.\n\nUse **standard** settings.',
+                            'reason': 'game-wide rules, issue 64'})
+            ck('an expert sets game-wide rules', c == 200, str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            gj_ = json.loads((work / 'games/nes/pinball/game.json').read_text())
+            ck('the rules land on the game record, markdown as typed',
+               gj_.get('rules') == 'No cheats.\n\nUse **standard** settings.', str(gj_.get('rules')))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'game', 'target': 'nes/pinball',
+                            'field': 'rules', 'value': 'x' * 2001, 'reason': 'too long on purpose'})
+            ck('game rules over 2000 characters are refused', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'groupexpert', 'kind': 'run', 'target': vrun,
                             'field': 'movie', 'reason': 'a resynced movie file, on the record'},
                            {'movie': ('new.bk2', make_bk2())})

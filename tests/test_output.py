@@ -284,7 +284,8 @@ def main():
             game_props={'nes/testgame': {'released': '1989-03', 'unofficial': True,
                                          'discord': 'https://discord.gg/tg1',
                                          'website': 'https://example.org/tg',
-                                         'rta': 'https://www.speedrun.com/tg'}},
+                                         'rta': 'https://www.speedrun.com/tg',
+                                         'rules': 'No **game-breaking** glitches, game-wide.'}},
             experts=[{'user': 'Root', 'scope': 'site'},
                      {'user': 'Grp', 'scope': 'group:test-family'}],
             groups=[{'key': 'test-family', 'title': 'Test <b>Family</b>',
@@ -628,7 +629,11 @@ def main():
            'id="s-title"' in submit_ and 'id="s-editback"' in submit_ and 'id="s-why"' in submit_)
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
-           all(f'id="ge-{f}"' in gedit_ for f in ('title', 'thumb', 'released', 'unofficial', 'discord', 'website', 'rta')))
+           all(f'id="ge-{f}"' in gedit_ for f in ('title', 'thumb', 'released', 'unofficial', 'discord', 'website', 'rta', 'rules')))
+        gpage_ = all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
+        ck('game-wide rules render above the category rule in the dialog (#64)',
+           '<b>game-breaking</b> glitches, game-wide' in gpage_
+           and gpage_.find('game-breaking') < gpage_.find('Test rule.'), gpage_[:200])
         ck('the unofficial flag is a checkbox, ticked from the record',
            'id="ge-unofficial" checked' in gedit_)
         ck('the editor has exactly one Save, at the bottom, and one reason',

@@ -1459,7 +1459,8 @@
       var base = {
         title: gameEditData.title,
         props: {released: byId('ge-released').value, unofficial: byId('ge-unofficial').checked ? 'yes' : 'no',
-                discord: byId('ge-discord').value, website: byId('ge-website').value, rta: byId('ge-rta').value},
+                discord: byId('ge-discord').value, website: byId('ge-website').value, rta: byId('ge-rta').value,
+                rules: byId('ge-rules').value},
         selector: gameEditData.selector || 'buttons',
         cats: (gameEditData.options || []).map(function(o){
           return {key: o.key, label: o.label, rule: o.rule || '', runs: o.runs,
@@ -1609,14 +1610,15 @@
       // ---- the diff: what Save would do, in order ----
       function props(){
         return {released: byId('ge-released').value.trim(), unofficial: byId('ge-unofficial').checked ? 'yes' : 'no',
-                discord: byId('ge-discord').value.trim(), website: byId('ge-website').value.trim(), rta: byId('ge-rta').value.trim()};
+                discord: byId('ge-discord').value.trim(), website: byId('ge-website').value.trim(), rta: byId('ge-rta').value.trim(),
+                rules: byId('ge-rules').value.trim()};
       }
       function plan(){
         var ops = [];
         var title = byId('ge-title').value.trim();
         if (title && title !== base.title) ops.push({what: 'title', run: function(){ return edit('game', gameEditData.game, 'title', title); }, done: function(){ base.title = title; }});
         var pv = props();
-        ['released', 'unofficial', 'discord', 'website', 'rta'].forEach(function(f){
+        ['released', 'unofficial', 'discord', 'website', 'rta', 'rules'].forEach(function(f){
           if (pv[f] !== base.props[f]) ops.push({what: f, run: function(){ return edit('game', gameEditData.game, f, pv[f]); }, done: function(){ base.props[f] = pv[f]; }});
         });
         var thumb = byId('ge-thumb');
@@ -1722,7 +1724,7 @@
           ops.map(function(o){ return o.what; }).join(', ') : 'No changes yet';
         saveBtn.disabled = !ops.length;
       }
-      ['ge-title', 'ge-released', 'ge-unofficial', 'ge-discord', 'ge-website', 'ge-rta', 'ge-thumb'].forEach(function(id){
+      ['ge-title', 'ge-released', 'ge-unofficial', 'ge-discord', 'ge-website', 'ge-rta', 'ge-rules', 'ge-thumb'].forEach(function(id){
         byId(id).addEventListener('input', refresh);
         byId(id).addEventListener('change', refresh);
       });

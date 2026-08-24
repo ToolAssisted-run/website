@@ -30,6 +30,8 @@ with your name, the old value, the new, and your reason.</p></div>
 <label>Community Discord <input id="ge-discord" type="url" maxlength="120" pattern="https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]+" placeholder="https://discord.gg/… (a permanent invite)" value="{{ g.get('discord', '') }}"></label>
 <label>Community website <input id="ge-website" type="url" maxlength="300" placeholder="https://… (the community hub, wiki or leaderboard)" value="{{ g.get('website', '') }}"></label>
 <label>RTA leaderboards <input id="ge-rta" type="url" maxlength="300" placeholder="https://… (where the real-time records live)" value="{{ g.get('rta', '') }}"></label>
+<label>Game rules (optional; markdown, shown above every category's own rule in View rules)
+<textarea id="ge-rules" rows="5" maxlength="2000" placeholder="rules that apply to every category of this game">{{ g.get('rules', '') }}</textarea></label>
 </div>
 </section>
 <section><h2>Categories</h2>

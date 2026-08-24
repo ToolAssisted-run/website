@@ -75,8 +75,8 @@ def combo_section(g, combo):
         hist.append((r, behind_text(r, best, mdefs[0])))
     return {'ckey': '|'.join(leaf_key(o, s) for _, o, s in combo),
             'label': ' × '.join(o['label'] + (' · ' + s['label'] if s else '') for _, o, s in combo),
-            'rules': '\n\n'.join(t for _, o, s in combo
-                                  for t in (o.get('rule'), (s or {}).get('rule')) if t),
+            'rules': '\n\n'.join(t for t in [g.get('rules')] + [t2 for _, o, s in combo
+                                  for t2 in (o.get('rule'), (s or {}).get('rule'))] if t),
             'allrs': allrs, 'mdefs': mdefs,
             'custom_metrics': mdefs is not CLASSIC_METRICS,
             'table_runs': table_runs, 'pend': pend, 'history': hist}
@@ -134,6 +134,7 @@ for key, g in games.items():
                                   for s in o.get('subcategories', [])]})
     goal_dim = next((d_ for d_ in dims if d_['key'] == 'goal'), dims[0] if dims else {})
     edit_data = {'game': g['key'], 'title': g['title'],
+                 'rules': g.get('rules', ''),
                  'selector': goal_dim.get('selector', 'buttons'),
                  'experts': covering_experts(g['key']),
                  'options': opt_data}
