@@ -2273,7 +2273,7 @@
         byIdS('s-subtitle').textContent = 'Loading ' + editRunId + '…';
         byIdS('s-editback').hidden = false;
         byIdS('s-editback-link').href = '../runs/' + editRunId + '/';
-        byIdS('s-clear').textContent = 'Reset to the record';
+        byIdS('s-clear').textContent = 'Discard changes';
         byIdS('s-submit').textContent = 'Save changes';
         byIdS('s-draftnote').hidden = true;
         fetch(api + '/api/run/record?run=' + encodeURIComponent(editRunId), {credentials: 'include'})
@@ -2431,7 +2431,7 @@
       submitForm.addEventListener('input', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
       submitForm.addEventListener('change', function(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
       document.getElementById('s-clear').addEventListener('click', function(){
-        if (!window.confirm(editRunId ? 'Reset every field to the archived record?'
+        if (!window.confirm(editRunId ? 'Discard your changes and reload the archived record?'
                                       : 'Clear every field and discard the saved draft?')) return;
         if (!editRunId) dropDraft();   // the draft belongs to a new run, not to this edit
         submitFormDirty = false;

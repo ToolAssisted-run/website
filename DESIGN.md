@@ -745,7 +745,7 @@ archivist, module responsibilities). What matters designwise:
   stays, a covering expert may replace it; experts state their public
   reason; an editor touches nothing but category and subcategory. "Save
   changes" asks the archivist first (dry run) and warns before an edit that
-  voids the run's acts. No draft is kept in edit mode; "Reset to the record"
+  voids the run's acts. No draft is kept in edit mode; "Discard changes"
   reloads.
   The submit form is one form in six panels that unfold in sequence as
   the previous one is complete: 1 game, category, subcategory; 2 the run:
