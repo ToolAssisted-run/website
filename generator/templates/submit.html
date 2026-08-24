@@ -117,7 +117,11 @@ Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" 
     <span class="tseg"><input id="t-s" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-s">s</label></span>
     <span class="tseg"><input id="t-ms" type="number" inputmode="numeric" min="0" max="999" placeholder="000"><label for="t-ms">ms</label></span>
   </div>
-  <button type="button" class="btn quiet" id="s-timeimport" disabled>Import from movie</button>
+  <select class="btn quiet impsel" id="s-timeimport" disabled>
+    <option value="">Import from…</option>
+    <option value="movie" disabled>the movie file</option>
+    <option value="encode" disabled>the video encode</option>
+  </select>
   </div>
   <input type="hidden" name="time" id="s-time">
   </div>

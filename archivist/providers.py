@@ -167,6 +167,42 @@ def _dig(obj, path):
     return obj if isinstance(obj, str) else None
 
 
+def duration_seconds(kind, vid):
+    """How long the video runs, asked from the platform, for the submit
+    form's Import from... time source. None when the platform will not say
+    (Twitch and the Internet Archive have no anonymous answer)."""
+    try:
+        if kind == 'youtube':
+            page = fetch_text(f'https://www.youtube.com/watch?v={vid}')
+            m = re.search(r'"lengthSeconds"\s*:\s*"(\d+)"', page or '')
+            return int(m.group(1)) if m else None
+        if kind == 'niconico':
+            xml_text = fetch_text(f'https://ext.nicovideo.jp/api/getthumbinfo/{vid}')
+            m = re.search(r'<length>(?:(\d+):)?(\d+):(\d+)</length>', xml_text or '')
+            if m:
+                h, mnt, sec = int(m.group(1) or 0), int(m.group(2)), int(m.group(3))
+                return h * 3600 + mnt * 60 + sec
+            return None
+        if kind == 'bilibili':
+            body = fetch_text(f'https://api.bilibili.com/x/web-interface/view?bvid={vid}')
+            doc = json.loads(body) if body else {}
+            dur = (doc.get('data') or {}).get('duration')
+            return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
+        if kind == 'vimeo':
+            body = fetch_text(f'https://vimeo.com/api/oembed.json?url=https%3A//vimeo.com/{vid}')
+            doc = json.loads(body) if body else {}
+            dur = doc.get('duration')
+            return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
+        if kind == 'dailymotion':
+            body = fetch_text(f'https://api.dailymotion.com/video/{vid}?fields=duration')
+            doc = json.loads(body) if body else {}
+            dur = doc.get('duration')
+            return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
+    except Exception:                                      # noqa: BLE001
+        return None
+    return None
+
+
 def thumbnail_url(kind, vid):
     """Where the still frame lives, asking the platform's API when needed."""
     p = BY_KIND.get(kind)

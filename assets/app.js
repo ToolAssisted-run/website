@@ -2026,10 +2026,25 @@
             numberInput.required = true; numberInput.inputMode = 'decimal';
             numberInput.addEventListener('input', function(){ hiddenField.value = String(secsOf(numberInput.value)); });
             hiddenField.fill = function(v){ numberInput.value = v; hiddenField.value = String(secsOf(numberInput.value)); };
-            metricFields.appendChild(numberInput);
+            // a numeric metric can take the movie's frame or step count (for
+            // categories that rank by frames, steps, ticks); never automatic
+            var numberRow = document.createElement('div');
+            numberRow.className = 'timerow';
+            var fromBtn = document.createElement('button');
+            fromBtn.type = 'button'; fromBtn.className = 'btn quiet mfrom'; fromBtn.disabled = true;
+            fromBtn.textContent = 'From movie';
+            fromBtn.addEventListener('click', function(){
+              if (!(movieInfo && movieInfo.parsed && movieInfo.frames)) return;
+              numberInput.value = movieInfo.frames;
+              numberInput.dispatchEvent(new Event('input'));
+              paintPanels();
+            });
+            numberRow.appendChild(numberInput); numberRow.appendChild(fromBtn);
+            metricFields.appendChild(numberRow);
           }
           metricFields.appendChild(hiddenField);
         });
+        paintTimeImport();
       }
       // what the archivist read from the picked movie (see /api/movie/inspect):
       // null until a file is picked; parsed=false for a known format it
@@ -2072,17 +2087,42 @@
       function timeStatedNeeded(){
         return wantsTime() && goalSelect.value !== 'unclassified';
       }
-      var timeImportBtn = document.getElementById('s-timeimport');
-      function paintTimeImport(){
-        if (!timeImportBtn) return;
-        var can = !!(movieInfo && movieInfo.parsed && movieInfo.seconds);
-        timeImportBtn.disabled = !can;
-        timeImportBtn.title = can ? 'Fill the time from the movie: ' + secClock(movieInfo.seconds)
-                                  : 'Enabled when the movie file could be parsed';
+      // one Import from… selector for the time: its options are the sources
+      // the form has actually seen (a parsed movie, a checked encode)
+      var timeImportSel = document.getElementById('s-timeimport');
+      var encodeSeconds = null;   // from /api/encode/check, when the platform says
+      function importSources(){
+        return {movie: (movieInfo && movieInfo.parsed && movieInfo.seconds) || null,
+                encode: encodeSeconds || null};
       }
-      if (timeImportBtn) timeImportBtn.addEventListener('click', function(){
-        if (!(movieInfo && movieInfo.parsed && movieInfo.seconds)) return;
-        var sec = movieInfo.seconds;
+      function paintTimeImport(){
+        if (timeImportSel) {
+          var src = importSources();
+          var any = false;
+          Array.prototype.forEach.call(timeImportSel.options, function(o){
+            if (!o.value) return;
+            var sec = src[o.value];
+            o.disabled = !sec;
+            o.textContent = (o.value === 'movie' ? 'the movie file' : 'the video encode')
+                          + (sec ? ' · ' + secClock(sec) : '');
+            if (sec) any = true;
+          });
+          timeImportSel.disabled = !any;
+          timeImportSel.title = any ? 'Fill the time from a source the form has checked'
+                                    : 'Enabled when the movie file parses, or the encode names its length';
+        }
+        // the numeric metrics' own import: the movie's frame or step count
+        var canFrames = !!(movieInfo && movieInfo.parsed && movieInfo.frames);
+        submitForm.querySelectorAll('.mfrom').forEach(function(btn){
+          btn.disabled = !canFrames;
+          btn.title = canFrames ? 'Fill with the movie\u2019s frame count: ' + movieInfo.frames.toLocaleString()
+                                : 'Enabled when the movie file could be parsed';
+        });
+      }
+      if (timeImportSel) timeImportSel.addEventListener('change', function(){
+        var sec = importSources()[timeImportSel.value];
+        timeImportSel.value = '';
+        if (!sec) return;
         byIdS('t-h').value = Math.floor(sec / 3600) || '';
         byIdS('t-m').value = Math.floor(sec / 60) % 60;
         byIdS('t-s').value = Math.floor(sec) % 60;
@@ -2540,6 +2580,8 @@
         var url = encodeInput.value.trim();
         submitBtn.disabled = true;
         encodeThumb.hidden = true;
+        encodeSeconds = null;
+        paintTimeImport();
         if (!knownHost(url)) {
           encodeThumb.removeAttribute('src');
           encodeCheck.hidden = url === '';
@@ -2569,6 +2611,8 @@
             encodeStatus.textContent = '✓ ' + j.name +
               ' encode verified; this frame becomes the run thumbnail';
             encodeStatus.className = 'enc-good';
+            encodeSeconds = (typeof j.seconds === 'number' && j.seconds > 0) ? j.seconds : null;
+            paintTimeImport();
             paintPanels();
             if (j.thumb) {
               encodeThumb.onerror = function(){ encodeThumb.hidden = true; };

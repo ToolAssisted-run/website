@@ -4039,7 +4039,8 @@ def encode_check():
         # the page then loads the candidate that actually answered (#29)
         thumb = providers.thumbnail_source(encode_provider['kind'], encode_provider['id'], THUMB_MAX)
     payload = ({'ok': True, 'kind': encode_provider['kind'], 'name': encode_provider['name'],
-                'id': encode_provider['id'], 'thumb': thumb} if thumb else
+                'id': encode_provider['id'], 'thumb': thumb,
+                'seconds': providers.duration_seconds(encode_provider['kind'], encode_provider['id'])} if thumb else
                {'ok': False, 'kind': encode_provider['kind'], 'name': encode_provider['name'],
                 'error': f'that {encode_provider["name"]} video does not exist, or is private'})
     ENCODE_CACHE[url] = (time.time(), payload)

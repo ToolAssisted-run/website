@@ -241,9 +241,16 @@ the page says so plainly. Verification ranks it exactly like any other run.
 **The stated time is the record** (fully decoupled from the movie): whenever
 the category ranks by time, the submitter states the run's time through the
 segmented h/m/s/ms picker (a format mistake is impossible; stored as
-`duration` seconds). The field is never filled in for them; an **Import from
-movie** button beside it, enabled only when the uploaded movie parsed, reads
-the time out of the file on demand. `run_seconds` prefers the stated
+`duration` seconds). The field is never filled in for them; an **Import from…**
+selector beside it lists the sources the form has actually checked, each with
+its value: the movie file (when it parsed to a time) and the video encode
+(when the platform states its length; the archivist asks YouTube, Niconico,
+Bilibili, Vimeo and Dailymotion through `providers.duration_seconds`, cached
+with the encode check). Picking one fills the segments and the selector
+resets. Numeric metric fields carry their own **From movie** button that
+fills the movie's frame or step count (for categories ranked by frames,
+steps or ticks; formats whose frame count is readable but whose rate is not,
+like `.otts` and `.gmtas`, still feed this). `run_seconds` prefers the stated
 `duration` and falls back to frames/fps for older runs that never stated
 one; a time-less category stores no duration at all (§5).
 

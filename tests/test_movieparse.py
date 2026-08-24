@@ -260,6 +260,15 @@ def f_otts():
         {'type': 'comment', 'comment': 'mid'},
         {'type': 'action', 'frame': 4500}], 'boss_frame': 9999999999}).encode()
 
+def f_gmtas():
+    payload = ((0).to_bytes(16, 'little') + struct.pack('<i', 99)
+               + struct.pack('<Q', 0) + struct.pack('<Q', 5400) + b'\x00' * 16)
+    lit = len(payload)
+    tok = bytearray([15 << 4]); r = lit - 15
+    while r >= 255: tok.append(255); r -= 255
+    tok.append(r)
+    return struct.pack('<IQ', 1, lit) + bytes(tok) + payload
+
 def f_tas_ballance():
     raw = b''.join(struct.pack('<fI', 16.0, 0x21) for _ in range(30))
     return struct.pack('<I', len(raw)) + zlib.compress(raw)
@@ -299,6 +308,7 @@ FIXTURES = {
     'inputs': (f_inputs(), 8450, 'pc'),
     'itf': (f_itf(), 61, 'pc'),
     'otts': (f_otts(), 4500, 'pc'),
+    'gmtas': (f_gmtas(), 5400, 'pc'),
 }
 RERECORDS = {'bk2': 1234, 'fm2': 4321, 'fm3': 77, 'dsm': 99, 'gmv': 555,
              'vbm': 42, 'dtm': 12, 'm64': 8, 'mar': 7, 'p2m2': 3, 'ctm': 15,

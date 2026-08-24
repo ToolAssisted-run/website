@@ -60,7 +60,7 @@ GAME_TOOLS = [
     ('SoulsTAS', 'https://github.com/Vinjul1704/SoulsTAS',
      'FromSoftware games (Dark Souls III, Sekiro, Elden Ring)', 'TAS scripts (.txt)', False),
     ('OpenGMK / GM8emulator', 'https://github.com/OpenGMK/OpenGMK',
-     'GameMaker 8 games', '.gmtas', False),
+     'GameMaker 8 games', '.gmtas', True),
     ('ReplayBot', 'https://github.com/matcool/ReplayBot',
      'Geometry Dash', '.replay', True),
     ('Bunnymod XT', 'https://github.com/YaLTeR/BunnymodXT',

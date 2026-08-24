@@ -1183,6 +1183,69 @@ def parse_otts(data):
                ["the game's frame rate is not in the file"])
 
 
+def _lz4_block(src, out_size):
+    """LZ4 block decompression, the ~20 lines of it: enough to read an
+    OpenGMK replay without a native dependency."""
+    out = bytearray()
+    i = 0
+    n = len(src)
+    while i < n and len(out) < out_size:
+        token = src[i]; i += 1
+        lit = token >> 4
+        if lit == 15:
+            while True:
+                b = src[i]; i += 1
+                lit += b
+                if b != 255:
+                    break
+        out += src[i:i + lit]; i += lit
+        if i >= n:
+            break
+        offset = src[i] | (src[i + 1] << 8); i += 2
+        if offset == 0:
+            raise ValueError('bad offset')
+        mlen = (token & 15) + 4
+        if (token & 15) == 15:
+            while True:
+                b = src[i]; i += 1
+                mlen += b
+                if b != 255:
+                    break
+        start = len(out) - offset
+        for k in range(mlen):
+            out.append(out[start + k])
+    return bytes(out)
+
+
+def parse_gmtas(data):
+    """OpenGMK / GM8emulator (.gmtas): u32 version, u64 uncompressed size,
+    an LZ4 block of a bincode Replay. The frame count is the frames vector's
+    length prefix; GM8's room speed is a property of the game, not the
+    movie, so only frames are read."""
+    if len(data) < 13 or struct.unpack_from('<I', data, 0)[0] != 1:
+        return _err('gmtas', 'Not a .gmtas replay (version != 1)')
+    out_size = struct.unpack_from('<Q', data, 4)[0]
+    if out_size > 64 * 1024 * 1024:
+        return _err('gmtas', 'Replay too large to read')
+    try:
+        raw = _lz4_block(data[12:], out_size)
+    except (ValueError, IndexError):
+        return _err('gmtas', 'LZ4 stream is damaged')
+    if len(raw) < 36:
+        return _err('gmtas', 'Replay too short')
+    # bincode: start_time u128 (16) + start_seed i32 (4) + startup_events
+    # Vec (u64 count; events are variable-width, so a replay carrying any
+    # cannot be walked safely) + frames Vec (u64 count)
+    startup = struct.unpack_from('<Q', raw, 20)[0]
+    if startup:
+        return _err('gmtas', 'Replay carries startup events; frame count not readable')
+    frames = struct.unpack_from('<Q', raw, 28)[0]
+    if not frames or frames > 100_000_000:
+        return _err('gmtas', 'Implausible frame count')
+    return _ok('gmtas', frames, None, 'power-on', 'pc', None,
+               ["the game's room speed (frame rate) is not in the file"])
+
+
 PARSERS = {
 
     'bk2': lambda d: parse_bk2(d, 'bk2'),
@@ -1220,6 +1283,7 @@ PARSERS = {
     'inputs': parse_inputs,
     'itf': parse_itf,
     'otts': parse_otts,
+    'gmtas': parse_gmtas,
 }
 
 
@@ -1228,7 +1292,7 @@ PARSERS = {
 KNOWN_UNPARSED = {'mcm', 'mmv', 'smv', 'zmv', 'fcm', 'fmv', 'vmv', 'pjm', 'pxm', 'yrm',
                   'mc2', 'bkm', 'dof', 'irm', 'ljm', 'lmp2', 'nmv', 'pmv', 'rec', 'tm2',
                   'usb', 'vbm2', 'xmv', 'zrm',
-                  'gmtas', 'ronr'}
+                  'ronr'}
 
 def known_extension(ext):
     return ext in PARSERS or ext in KNOWN_UNPARSED

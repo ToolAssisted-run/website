@@ -226,6 +226,9 @@ def main():
                 b'<thumb><thumbnail_url>https://nico.cdn.example/sm9.jpg'
                 b'</thumbnail_url></thumb>',
             'https://nico.cdn.example/sm9.jpg': b'\xff\xd8\xff' + b'\0' * 60,
+            # the watch page, for the encode's duration (Import from...)
+            'https://www.youtube.com/watch?v=goodvid12345':
+                b'<html>{"lengthSeconds":"754","other":1}</html>',
         }
 
         # The forum's groups as they stand, and every membership change the
@@ -924,6 +927,11 @@ def main():
             c, r, _ = call(U + '/api/reproduce', {'key': KEY, 'user': 'helper', 'run': 'M900010'},
                            {'screenshot': ('end.png', PNG)})
             ck('duplicate reproduction rejected', c == 400)
+
+            # the encode check names the video's length, for Import from...
+            c, r, _ = call(U + '/api/encode/check?url=https://youtu.be/goodvid12345')
+            ck('the encode check answers the platform-stated duration',
+               c == 200 and r.get('ok') and r.get('seconds') == 754, str(r)[:200])
 
             # --- the run page's discussion survives the forum's rate limit ---
             c, r, _ = call(U + '/api/discussion?topic=777')
