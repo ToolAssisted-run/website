@@ -48,6 +48,14 @@ def f_bk2(fmt='bk2'):
     return buf.getvalue()
 
 
+def f_bk2_dosbox():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w') as z:
+        z.writestr('Header.txt', 'Platform DOS\nCore DOSBox-X\nClockRate 1000\n'
+                                 'CycleCount 10000\nrerecordCount 5\n')
+        z.writestr('Input Log.txt', 'LogKey:#Reset|Power|\n' + '|..|........|\n' * 600)
+    return buf.getvalue()
+
 def f_fm2():
     return ('version 3\nemuVersion 20604\nrerecordCount 4321\nromFilename game\n'
             + '|0|........|........||\n' * 120).encode()
@@ -480,6 +488,12 @@ def main():
     ck('every parser except lmp has a fixture',
        set(FIXTURES) | {'lmp'} >= set(movieparse.PARSERS),
        str(sorted(set(movieparse.PARSERS) - set(FIXTURES) - {'lmp'})))
+
+    # DOSBox-X: milliseconds in CycleCount; frames are the input lines (#67)
+    res = movieparse.parse('m.bk2', f_bk2_dosbox())
+    ck('bk2/DOSBox-X: frames are the input lines, the rate follows the ms count',
+       res.get('ok') and res['frames'] == 600 and abs(res['frames'] / res['fps'] - 10.0) < 1e-9,
+       str(res))
 
     # ---------------- 2b. the .tas family: four formats, one extension ----------------
     res = movieparse.parse('m.tas', f_tas_ballance())

@@ -200,9 +200,12 @@ def parse_bk2(data, fmt='bk2'):
 
     if cycle_count is not None:
         if clock_rate == '1000':
-            # cycle count is actually a millisecond count
-            frames = cycle_count
-            fps = 1000.0
+            # DOSBox-X: the cycle count is a millisecond count. The frames
+            # stay the input log's own lines; the rate follows (issue #67:
+            # storing the milliseconds as frames showed 1.9M "frames" on a
+            # 113k-frame movie)
+            seconds = cycle_count / 1000.0
+            fps = frames / seconds if seconds else None
         elif clock_rate in VALID_CLOCK_RATES:
             seconds = cycle_count / float(clock_rate)
             fps = frames / seconds if seconds else None
