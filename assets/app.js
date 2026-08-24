@@ -1955,6 +1955,7 @@
       // Checks input elements of Step 1. If all of them are empty, don't show "Leave page?" browser warning, if user leaves 
       function noteMeaningfulFormChange(ev){
         var t = ev && ev.target;
+        if (ev && ev.isTrusted === false) return;
         if (!t) { submitFormDirty = true; return; }
         if (t.id === 's-gamesearch' || (t.closest && t.closest('#s-uncldesc'))) {
           if (!(t.value || '').trim()) return;
