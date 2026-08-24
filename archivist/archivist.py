@@ -726,6 +726,7 @@ try:
     _visits = json.loads(VISITS_FILE.read_text())
 except (OSError, ValueError):
     _visits = {}
+_visit_seen = {}   # (ip, run) -> monotonic time of the counted visit
 
 @app.post('/api/visit')
 def visit():
@@ -740,7 +741,20 @@ def visit():
         return fail('run must be an id like M100001')
     if not find_run(run_id):
         return fail(f'unknown run {run_id}', 404)
+    # one count per address per run per hour: a reload is not a new reader,
+    # and a scripted loop must not inflate the number (the address is never
+    # stored beyond this in-memory hour)
+    ip = request.headers.get('X-Real-IP') or request.remote_addr or '?'
+    now = time.monotonic()
     with _visits_lock:
+        seen_at = _visit_seen.get((ip, run_id))
+        if seen_at is not None and now - seen_at < 3600:
+            return jsonify({'ok': True, 'run': run_id, 'visits': _visits.get(run_id, 0)})
+        _visit_seen[(ip, run_id)] = now
+        if len(_visit_seen) > 100_000:   # bounded memory under a wide flood
+            cutoff = now - 3600
+            for k in [k for k, t in _visit_seen.items() if t < cutoff]:
+                del _visit_seen[k]
         _visits[run_id] = _visits.get(run_id, 0) + 1
         count = _visits[run_id]
         try:
@@ -2877,6 +2891,15 @@ def run_record():
     resp.headers['Cache-Control'] = 'no-store'
     return resp
 
+
+def _helper_gate():
+    """The submit helpers (inspect, preview, encode check) parse files and
+    fetch third-party pages: real work. The form that uses them only shows
+    to a logged-in member, so anonymous calls are a script, not a person."""
+    if session_user() or request.form.get('key') == SUBMIT_KEY or request.args.get('key') == SUBMIT_KEY:
+        return None
+    return fail('log in via the forum to use this', 403)
+
 @app.post('/api/movie/inspect')
 def movie_inspect():
     """Read a movie file the way a submission would, and say what it holds,
@@ -2890,6 +2913,9 @@ def movie_inspect():
     Answers: {ok, format, known, parsed, frames, fps, seconds, rerecords};
         400 for a missing, empty, oversized or unknown-format file
     """
+    gate = _helper_gate()
+    if gate:
+        return gate
     movie_upload = request.files.get('movie')
     if not movie_upload or not movie_upload.filename:
         return fail('attach the movie file')
@@ -2924,6 +2950,9 @@ def preview_notes():
     Reads: form field notes
     Answers: {ok, html}, Cache-Control: no-store
     """
+    gate = _helper_gate()
+    if gate:
+        return gate
     import wikitext
     text = (request.form.get('notes') or '').replace('\r\n', '\n')
     if len(text.encode()) > 1024 * 1024:
@@ -4138,6 +4167,9 @@ def encode_check():
     Reads: query arg url
     Answers: {ok, kind, name, id, thumb}, or {ok: false, kind, name, error}
     """
+    gate = _helper_gate()
+    if gate:
+        return gate
     url = (request.args.get('url') or '').strip()
     encode_provider = providers.resolve(url)
     if not encode_provider:

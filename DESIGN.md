@@ -985,8 +985,17 @@ commit, a rebuild and often a log entry, so the archivist paces writes per
 member in memory (`pace_gate`: likes 12/10min, edits 40/h counting dry
 runs, acts 30/h, submissions 12/h, reports 6/h, creations 20/h; 429 with a
 plain sentence). The operator key is never paced (imports, tests). nginx
-holds a per-IP backstop in front (`limit_req` 5 r/s, burst 20, on
-`/archivist/`), keyed on the Cloudflare real IP.
+holds a per-IP backstop in front (`limit_req` 5 r/s burst 20 on
+`/archivist/`; 30 r/s burst 80 on the whole site), keyed on the Cloudflare
+real IP; Cloudflare's own DDoS layer sits before all of it. The submit
+helpers (`/api/movie/inspect`, `/api/preview`, `/api/encode/check`) do real
+work (parsing uploads, fetching third-party pages), so they require a
+session: the form that uses them only shows to a logged-in member. The
+anonymous `/api/visit` counter counts each address once per run per hour,
+in memory only (no address is stored), so reload loops cannot inflate view
+counts. Account registration is the forum's: Discourse defaults apply
+(email verification, at most 3 accounts per IP per day, its own signup
+rate limits); registration stays open by principle (§1.4).
 - **Code quality**: `bash tools/sonar.sh` runs a local SonarQube (docker)
   over the repo per `sonar-project.properties`.
 

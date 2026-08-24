@@ -72,7 +72,7 @@ def free_port():
     return p
 
 
-def call(url, data=None, files=None, cookie=None, method=None):
+def call(url, data=None, files=None, cookie=None, method=None, headers=None):
     """multipart/form POST helper; returns (status, json)."""
     if files or data:
         boundary = 'testboundary42'
@@ -91,6 +91,8 @@ def call(url, data=None, files=None, cookie=None, method=None):
                                      headers={'Content-Type': f'multipart/form-data; boundary={boundary}'})
     else:
         req = urllib.request.Request(url, method=method or 'GET')
+    for hk, hv in (headers or {}).items():
+        req.add_header(hk, hv)
     if cookie:
         req.add_header('Cookie', cookie)
     try:
@@ -595,11 +597,11 @@ def main():
                c == 200 and r['run']['movie']['format'] == 'xyz'
                and r['run']['movie']['frames'] == 0, str(r)[:300])
             # the form reads the movie before submitting (Scoring shows the derived time)
-            c, r, _ = call(U + '/api/movie/inspect', {'game': 'nes/pinball'}, {'movie': ('t.bk2', BK2)})
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'}, {'movie': ('t.bk2', BK2)})
             ck('inspect reads a parseable movie', c == 200 and r['parsed'] and r['frames'] > 0 and r['seconds'] > 0, str(r))
-            c, r, _ = call(U + '/api/movie/inspect', {}, {'movie': ('t.smv', b'x' * 10)})
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY}, {'movie': ('t.smv', b'x' * 10)})
             ck('inspect says when a known format cannot be read', c == 200 and r['parsed'] is False and r['frames'] is None, str(r))
-            c, r, _ = call(U + '/api/movie/inspect', {}, {'movie': ('t.xyz', b'x' * 10)})
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY}, {'movie': ('t.xyz', b'x' * 10)})
             ck('inspect says when a format is not known at all, without refusing',
                c == 200 and r['known'] is False and r['parsed'] is False, str(r))
 
@@ -846,7 +848,7 @@ def main():
             ck('verify on unclassified rejected', c == 400 and 'Unclassified' in r.get('error', ''))
 
             # --- the preview is the published renderer (issue #30) ---
-            c, r, _ = call(U + '/api/preview', {'notes': '!!Head\r\n*one\r\n**two\r\nsee [M900010]'})
+            c, r, _ = call(U + '/api/preview', {'key': KEY, 'notes': '!!Head\r\n*one\r\n**two\r\nsee [M900010]'})
             ck('the preview renders the dialect exactly as the site does',
                c == 200 and '<h3>Head</h3>' in r['html'] and '<li>two\n</li></ul>' in r['html']
                and 'href="/runs/M900010/"' in r['html'], str(r)[:200])
@@ -869,7 +871,10 @@ def main():
             c, r, _ = call(U + '/api/visit', {'run': uncl_id})
             ck('the first visit counts', c == 200 and r['visits'] == 1, str(r))
             c, r, _ = call(U + '/api/visit', {'run': uncl_id})
-            ck('and the tally climbs, no auth needed',
+            ck('a reload from the same address within the hour counts once',
+               c == 200 and r['visits'] == 1, str(r))
+            c, r, _ = call(U + '/api/visit', {'run': uncl_id}, headers={'X-Real-IP': '203.0.113.9'})
+            ck('a different address climbs the tally, no auth needed',
                c == 200 and r['visits'] == 2, str(r))
 
             c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'TestAuthor', 'run': uncl_id})
@@ -951,7 +956,7 @@ def main():
             ck('duplicate reproduction rejected', c == 400)
 
             # the encode check names the video's length, for Import from...
-            c, r, _ = call(U + '/api/encode/check?url=https://youtu.be/goodvid12345')
+            c, r, _ = call(U + '/api/encode/check?url=https://youtu.be/goodvid12345&key=' + KEY)
             ck('the encode check answers the platform-stated duration',
                c == 200 and r.get('ok') and r.get('seconds') == 754, str(r)[:200])
 
@@ -2304,6 +2309,14 @@ def main():
                 ck('nonce replay rejected', False)
             except urllib.error.HTTPError as e:
                 ck('nonce replay rejected', e.code == 403)
+
+            # the submit helpers are for members: anonymous calls are scripts
+            c, r, _ = call(U + '/api/movie/inspect', {'x': '1'}, {'movie': ('t.bk2', BK2)})
+            ck('anonymous movie inspection is refused', c == 403, str(r))
+            c, r, _ = call(U + '/api/preview', {'notes': 'hi'})
+            ck('anonymous preview is refused', c == 403, str(r))
+            c, r, _ = call(U + '/api/encode/check?url=https://youtu.be/goodvid12345', method='GET')
+            ck('anonymous encode checking is refused', c == 403, str(r))
 
             # --- write pacing: a scripted flood hits the wall, the key never ---
             pace_ok = pace_429 = 0
