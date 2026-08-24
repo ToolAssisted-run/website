@@ -2782,30 +2782,24 @@
   function initMetricsEd(root, initial){
     var rowsEl = root.querySelector('.mrows');
     var addBtn = root.querySelector('.med-add');
-    var timeCheckbox = root.querySelector('.med-time');
     var metricsField = root.querySelector('[name=metrics]');
-    var rows = [];   // {time:true} or {label,type,better,unit}
+    var rows = [];   // {label,type,better,unit}; time is a metric like any other
     function serialize(){
       var arr = rows.map(function(row){
-        if (row.time) return {key: 'time'};
         return {label: row.label.value.trim(), type: row.type.value,
                 better: row.better.value,
                 unit: row.type.value === 'number' && row.unit.value.trim()
                       ? row.unit.value.trim() : undefined};
-      }).filter(function(m){ return m.key === 'time' || m.label; });
+      }).filter(function(m){ return m.label; });
       metricsField.value = arr.length ? JSON.stringify(arr) : '';
     }
     function paint(){
       rowsEl.innerHTML = '';
       rows.forEach(function(row, i){
         var div = el('div', 'mrow');
-        if (row.time) {
-          div.appendChild(el('span', 'mfixed', 'Real time (derived) — lower is better'));
-        } else {
-          div.appendChild(row.label); div.appendChild(row.type);
-          div.appendChild(row.better); div.appendChild(row.unit);
-          row.unit.hidden = row.type.value === 'time';
-        }
+        div.appendChild(row.label); div.appendChild(row.type);
+        div.appendChild(row.better); div.appendChild(row.unit);
+        row.unit.hidden = row.type.value === 'time';
         [['↑', -1], ['↓', 1]].forEach(function(move){
           var b = el('button', 'btn quiet mmove', move[0]);
           b.type = 'button';
@@ -2816,16 +2810,13 @@
           });
           div.appendChild(b);
         });
-        if (!row.time) {
-          var removeBtn = el('button', 'btn quiet mmove', '×');
-          removeBtn.type = 'button';
-          removeBtn.addEventListener('click', function(){ rows.splice(i, 1); paint(); });
-          div.appendChild(removeBtn);
-        }
+        var removeBtn = el('button', 'btn quiet mmove', '×');
+        removeBtn.type = 'button';
+        removeBtn.addEventListener('click', function(){ rows.splice(i, 1); paint(); });
+        div.appendChild(removeBtn);
         rowsEl.appendChild(div);
       });
       addBtn.disabled = rows.length >= 4;
-      timeCheckbox.disabled = !timeCheckbox.checked && rows.length >= 4;
       serialize();
     }
     function makeRow(def){
@@ -2860,13 +2851,10 @@
       rows.push(makeRow(null));
       paint();
     });
-    timeCheckbox.addEventListener('change', function(){
-      if (timeCheckbox.checked) { if (rows.length < 4) rows.push({time: true}); else timeCheckbox.checked = false; }
-      else rows = rows.filter(function(row){ return !row.time; });
-      paint();
-    });
     (initial || []).forEach(function(def){
-      if (def.key === 'time') { rows.push({time: true}); timeCheckbox.checked = true; }
+      // the stored reserved form {key:'time'} is just a Time row here: the
+      // label Time slugifies back to the same key on save
+      if (def.key === 'time') rows.push(makeRow({label: def.label || 'Time', type: 'time', better: def.better || 'lower'}));
       else rows.push(makeRow(def));
     });
     paint();

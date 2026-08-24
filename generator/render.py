@@ -145,12 +145,10 @@ def clock(frames, fps):
 # app.js (initMetricsEd) builds the rows and keeps the hidden input as JSON
 METRICS_ED = '''<div class="metricsbox metriced">
   <h4 class="medtitle">Metrics</h4>
-  <p class="rules fullw medhint">Ranks by up to 4 metrics, in tie-break order, the first shown where a time shows; leave empty for classic: real time, lower wins.</p>
+  <p class="rules fullw medhint">Ranks by up to 4 metrics, in tie-break order, the first shown where a time shows; leave empty for classic: real time, lower wins. A metric named Time is the run's main time, stated by the author (importable from the movie or the encode on demand).</p>
   <div class="mrows"></div>
   <div class="medbtns">
     <button type="button" class="btn quiet med-add">+ Add a metric</button>
-    <label class="cwlab"><input type="checkbox" class="med-time"> Include real time
-    (derived from the movie or the video; never typed by authors)</label>
   </div>
   <input type="hidden" name="metrics">
 </div>'''

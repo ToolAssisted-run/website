@@ -482,9 +482,11 @@ A category defines what it ranks by.
   time|number, better: lower|higher, unit?}]` (schema-checked, at most 4).
   Array order IS the tie-break hierarchy; the first entry is the primary
   metric, shown wherever time shows classically (browse, thumbnails, home
-  shelf, member lists, group records). The reserved key `time` means the
-  derived real time (movie frames/fps, or the stated duration of a
-  video-only run) and is never typed for movie runs. **Absent `metrics`
+  shelf, member lists, group records). The reserved key `time` (which a
+  metric labeled Time slugifies to) is the run's main time: stated by the
+  author like any other metric, stored as `duration`, importable from the
+  movie file or the encode on demand; metrics and the movie are fully
+  decoupled. **Absent `metrics`
   means the implicit classic metric** (real time, lower better): zero
   migration. Runs store stated values in `run.json` `metrics: {key: number}`
   (times as seconds); `0` means "not yet stated", renders as the dash and
@@ -508,9 +510,9 @@ A category defines what it ranks by.
   member creates a game (`/create-game/`: title, system, plus the first
   category) or a category (`/create-category/?game=<key>`, game locked).
   Both forms share the **metrics editor** (up to 4 rows: label, type,
-  direction, unit, reorder; derived real time is a checkbox, never a typed
-  row; keys derive from labels; `unclassified` refused; skipping metrics
-  yields the classic category). Entry points: "Create a game" on `/games/`,
+  direction, unit, reorder; time is a row like any other, and a row labeled
+  Time becomes the run's main time; keys derive from labels; `unclassified`
+  refused; skipping metrics yields the classic category). Entry points: "Create a game" on `/games/`,
   "Create a category" on every game page, and a question + button BESIDE
   the submit form's selectors ("Game not there? Create it") opening in a
   new tab so a half-filled submission survives. The selectors themselves

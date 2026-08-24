@@ -581,7 +581,6 @@ footer a{color:var(--accent-text);text-decoration:none}
 .metriced .mrow input,.metriced .mrow select{margin:0}
 .metriced .mlabel{flex:2;min-width:140px}
 .metriced .munit{flex:1;min-width:80px;max-width:120px}
-.metriced .mfixed{flex:2;font-family:ui-monospace,monospace;font-size:.85rem;color:var(--faint)}
 .metriced .mmove{padding:6px 10px;font-size:.8rem}
 .metriced .medbtns{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}
 /* selector + "not there? create" question, side by side */
