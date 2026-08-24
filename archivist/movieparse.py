@@ -20,11 +20,13 @@ parse(filename, data) -> dict with keys:
 """
 import gzip
 import io
+import json
 import math
 import re
 import struct
 import tarfile
 import zipfile
+import zlib
 import xml.etree.ElementTree as ET
 
 NTSC_NES = 60.0988138974405
@@ -709,36 +711,6 @@ def parse_lmp(data):
     return _err('lmp', 'Invalid file format, does not seem to be a lmp')
 
 
-def parse_tas(data):
-    text = data.decode('utf-8', 'replace')
-    frames = 0
-    rerecords = None
-    file_time_found = False
-    for s in text.splitlines():
-        if s.startswith('FileTime:'):
-            file_time_found = True
-            m = re.search(r'\((\d+)\)', s)
-            if m:
-                frames = int(m.group(1))
-        elif not file_time_found and s.startswith('ChapterTime:'):
-            m = re.search(r'\((\d+)\)', s)
-            if m:
-                frames = int(m.group(1))
-        elif s.startswith('TotalRecordCount:'):
-            try:
-                rerecords = int(s.split(':', 1)[1].strip())
-            except ValueError:
-                pass
-        elif rerecords is None and s.startswith('RecordCount:'):
-            try:
-                rerecords = int(s.split(':', 1)[1].strip())
-            except ValueError:
-                pass
-    if not frames:
-        return _err('tas', 'No FileTime/ChapterTime duration found')
-    return _ok('tas', frames, rerecords, 'power-on', 'pc', 1000.0 / 17.0)
-
-
 def parse_ctas(data):
     if struct.unpack_from('<I', data, 0)[0] != 0x53415443:
         return _err('ctas', 'Invalid file format, does not seem to be a ctas')
@@ -825,7 +797,394 @@ def parse_dft(data):
     return _ok('dft', totals['main.txt'], None, 'power-on', 'pc', 60.0)
 
 
+# ---- game-specific TAS tools (surveyed from their own sources; the tools
+# page names each). The stated time is the record either way: these read
+# frames and, where the file carries it, the wall time, for Import from movie.
+
+def parse_tas(data, fmt='tas'):
+    """.tas is four formats sharing one extension, told apart by content:
+    Ballance TASSupport (binary: u32 size + zlib of 8-byte frame records),
+    PICO-8 Celeste Classic (one line: [seeds]bitmask,bitmask,...),
+    CelesteTAS (FileTime/ChapterTime headers), and the ShootMe family
+    (JumpKing, Kalimba, Ori DE, Splasher, Teslagrad, Tinertia: lines of
+    frames,actions summed; the frame rate is assumed 60, Teslagrad's 150
+    cannot be told from the file)."""
+    # Ballance TASSupport: little-endian byte count, then a zlib stream of
+    # FrameData {float deltaTime_ms; uint32 keystates}
+    if len(data) >= 6 and data[4] == 0x78:
+        try:
+            size = struct.unpack_from('<I', data, 0)[0]
+            raw = zlib.decompress(data[4:])
+        except Exception:   # noqa: BLE001 — not a Ballance record, fall through
+            raw = None
+        if raw is not None and size == len(raw) and size and size % 8 == 0:
+            n = size // 8
+            seconds = sum(struct.unpack_from('<f', raw, i * 8)[0] for i in range(n)) / 1000.0
+            if seconds <= 0:
+                return _err(fmt, 'Ballance record with no elapsed time')
+            return _ok(fmt, n, None, 'power-on', 'pc', n / seconds)
+    text = data.decode('utf-8', 'replace')
+    stripped = text.strip()
+    # PICO-8 Celeste Classic: a single line, [rng seeds] then one 6-bit
+    # bitmask per frame at 30 fps
+    m = re.fullmatch(r'\[[0-9, ]*\]([0-9]+(?:, ?[0-9]+)*),?', stripped, re.S)
+    if m and '\n' not in stripped:
+        frames = len([t for t in m.group(1).split(',') if t.strip()])
+        return _ok(fmt, frames, None, 'power-on', 'pc', 30.0)
+    # CelesteTAS: the total is in the FileTime/ChapterTime header
+    frames = 0
+    rerecords = None
+    file_time_found = False
+    for s in text.splitlines():
+        if s.startswith('FileTime:'):
+            file_time_found = True
+            m = re.search(r'\((\d+)\)', s)
+            if m:
+                frames = int(m.group(1))
+        elif not file_time_found and s.startswith('ChapterTime:'):
+            m = re.search(r'\((\d+)\)', s)
+            if m:
+                frames = int(m.group(1))
+        elif s.startswith('TotalRecordCount:'):
+            try:
+                rerecords = int(s.split(':', 1)[1].strip())
+            except ValueError:
+                pass
+        elif rerecords is None and s.startswith('RecordCount:'):
+            try:
+                rerecords = int(s.split(':', 1)[1].strip())
+            except ValueError:
+                pass
+    if frames:
+        return _ok(fmt, frames, rerecords, 'power-on', 'pc', 1000.0 / 17.0)
+    # ShootMe family: every line whose first token is an integer holds its
+    # inputs for that many frames; @x,y lines cost one frame; everything
+    # else (labels, ***, comments) costs none
+    total = 0
+    counted = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith('@'):
+            total += 1
+            counted += 1
+            continue
+        m = re.match(r'(\d+)(?:[,\s]|$)', line)
+        if m:
+            total += int(m.group(1))
+            counted += 1
+    if counted and total:
+        return _ok(fmt, total, None, 'power-on', 'pc', 60.0,
+                   ['frame rate assumed 60 fps (ShootMe-family .tas); Teslagrad runs at 150'])
+    return _err(fmt, 'No FileTime/ChapterTime duration and no frame-count lines found')
+
+
+def parse_htas(data):
+    """hatTAS (A Hat in Time): metadata lines (length: required, fps:
+    defaults to 60) until the first line starting with a digit."""
+    text = data.decode('utf-8', 'replace')
+    length = None
+    fps = 60.0
+    for line in text.splitlines():
+        line = line.split('//', 1)[0].strip()
+        if not line:
+            continue
+        if line[0].isdigit():
+            break
+        if line.startswith('length:'):
+            try:
+                length = int(line.split(':', 1)[1].strip())
+            except ValueError:
+                pass
+        elif line.startswith('fps:'):
+            try:
+                fps = float(line.split(':', 1)[1].strip())
+            except ValueError:
+                pass
+    if not length:
+        return _err('htas', 'No length: line found (hatTAS requires one)')
+    return _ok('htas', length, None, 'savestate', 'pc', fps if fps > 0 else 60.0)
+
+
+def parse_hltas(data):
+    """Bunnymod XT / HLTAS (.hltas): framebulks carry their own frame time,
+    so the file is self-timing: seconds = sum(frametime x count)."""
+    text = data.decode('utf-8', 'replace')
+    lines = text.splitlines()
+    if not lines or not lines[0].strip().startswith('version'):
+        return _err('hltas', 'Not an HLTAS script: no version line')
+    frames = 0
+    seconds = 0.0
+    in_frames = False
+    for line in lines[1:]:
+        line = line.split('//', 1)[0].strip()
+        if not line:
+            continue
+        if not in_frames:
+            if line == 'frames':
+                in_frames = True
+            continue
+        fields = line.split('|')
+        if len(fields) < 7:
+            continue   # save/seed/buttons/strafing and friends
+        try:
+            frame_time = float(fields[3])
+            count = int(fields[6].split()[0]) if fields[6].strip() else 0
+        except (ValueError, IndexError):
+            continue
+        if count <= 0:
+            continue
+        frames += count
+        seconds += frame_time * count
+    if not frames:
+        return _err('hltas', 'No framebulks found after the frames line')
+    return _ok('hltas', frames, None, 'savestate', 'pc',
+               (frames / seconds) if seconds > 0 else None)
+
+
+def parse_p2tas(data):
+    """SourceAutoRecord (Portal 2, .p2tas): tickbulks at absolute or
+    +relative ticks, repeat/end blocks; 60 ticks per second."""
+    text = data.decode('utf-8', 'replace')
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
+    lines = [ln.split('//', 1)[0].strip() for ln in text.splitlines()]
+    lines = [ln for ln in lines if ln]
+    if not lines or not lines[0].startswith('version'):
+        return _err('p2tas', 'Not a p2tas script: no version line')
+    if not any(ln.startswith('start') for ln in lines[:4]):
+        return _err('p2tas', 'Not a p2tas script: no start line')
+
+    def walk(i, cur):
+        # one stretch of lines, until the matching end; returns (index of
+        # the end/eof, tick after the stretch)
+        while i < len(lines):
+            ln = lines[i]
+            if ln.startswith('repeat'):
+                try:
+                    n = int(ln.split()[1])
+                except (ValueError, IndexError):
+                    n = 0
+                after, out = i + 1, cur
+                for _ in range(max(1, n)):
+                    after, out = walk(i + 1, out)
+                cur = out if n > 0 else cur
+                i = after + 1   # past the matching end
+                continue
+            if ln == 'end':
+                return i, cur
+            m = re.match(r'(\+?)(\d+)>', ln)
+            if m:
+                cur = cur + int(m.group(2)) if m.group(1) else max(cur, int(m.group(2)))
+            i += 1
+        return i, cur
+    _, ticks = walk(1, 0)
+    if not ticks:
+        return _err('p2tas', 'No tickbulks found')
+    return _ok('p2tas', ticks, None, 'savestate', 'pc', 60.0)
+
+
+def parse_srctas(data):
+    """SourcePauseTool (.srctas): framebulks spend their TICKS field (the
+    sixth pipe field); the Source builds these scripts target tick at
+    66.67/s (0.015 s)."""
+    text = data.decode('utf-8', 'replace')
+    ticks = 0
+    bulks = 0
+    in_frames = False
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if not in_frames:
+            if line == 'frames':
+                in_frames = True
+            continue
+        fields = line.split('|')
+        if len(fields) < 7:
+            continue   # ss / sl savestate lines and stray text
+        try:
+            n = int(fields[5])
+        except ValueError:
+            continue
+        bulks += 1
+        if n > 0:
+            ticks += n
+    if not bulks:
+        return _err('srctas', 'No framebulks found after the frames line')
+    return _ok('srctas', ticks, None, 'savestate', 'pc', 1.0 / 0.015)
+
+
+def parse_qtas(data):
+    """TASQuake (.qtas): blocks at absolute or +relative frames; the frame
+    rate is the cl_maxfps cvar (10..72, default 72), tracked through the
+    script so the wall time follows the file itself."""
+    text = data.decode('utf-8', 'replace')
+    cur = 0
+    seconds = 0.0
+    fps_state = [72.0]
+    blocks = 0
+    pending = []   # lines of the open block, scanned for cl_maxfps on close
+
+    def close_block():
+        for pending_line in pending:
+            m = re.match(r'cl_maxfps\s+"?(\d+(?:\.\d+)?)"?', pending_line)
+            if m:
+                fps_state[0] = min(72.0, max(10.0, float(m.group(1))))
+        del pending[:]
+    for line in text.splitlines():
+        line = line.split('//', 1)[0].strip()
+        if not line:
+            continue
+        m = re.match(r'(\+?)(\d+):$', line)
+        if m:
+            new = cur + int(m.group(2)) if m.group(1) else int(m.group(2))
+            close_block()
+            if new > cur:
+                seconds += (new - cur) / fps_state[0]
+                cur = new
+            blocks += 1
+            continue
+        pending.append(line)
+    close_block()
+    if not blocks:
+        return _err('qtas', 'No frame blocks found')
+    return _ok('qtas', cur, None, 'power-on', 'pc',
+               (cur / seconds) if seconds > 0 else 72.0)
+
+
+def parse_mctas(data):
+    """TASmod (Minecraft, .mctas): a text TASfile; ticks are the unindented
+    tick|keyboard|mouse|camera lines, 20 per second; the header carries the
+    rerecord count."""
+    text = data.decode('utf-8', 'replace')
+    if 'TASfile' not in text[:512]:
+        return _err('mctas', 'Not a TASfile: no header')
+    rerecords = None
+    ticks = 0
+    for line in text.splitlines():
+        m = re.match(r'Rerecords:\s*(\d+)', line)
+        if m:
+            rerecords = int(m.group(1))
+        if re.match(r'\d+\|', line):   # unindented: subticks are indented
+            ticks += 1
+    if not ticks:
+        return _err('mctas', 'No tick lines found')
+    return _ok('mctas', ticks, rerecords, 'power-on', 'pc', 20.0)
+
+
+def parse_replay(data):
+    """ReplayBot (Geometry Dash, .replay): three layouts. Only the
+    frame-typed v2 layout carries a frame number to read a duration from;
+    the x-position layouts parse but yield no frames."""
+    if len(data) >= 10 and data[:4] == b'RPLY':
+        version = data[4]
+        if version >= 2:
+            rtype = data[5]
+            fps = struct.unpack_from('<f', data, 6)[0]
+            body = data[10:]
+            n = len(body) // 5
+            if n and rtype in (0x01, 0x31):   # frame-typed (writer quirk: ASCII '1')
+                last = struct.unpack_from('<I', body, (n - 1) * 5)[0]
+                if fps and fps > 0:
+                    return _ok('replay', last, None, 'power-on', 'pc', fps,
+                               ['the last input lands on this frame; the run plays on a little longer'])
+            if n:
+                return _ok('replay', 0, None, 'power-on', 'pc', None,
+                           ['x-position replay: no frame count in the file'])
+        else:
+            if len(data) - 9 >= 5:
+                return _ok('replay', 0, None, 'power-on', 'pc', None,
+                           ['x-position replay: no frame count in the file'])
+        return _err('replay', 'Empty replay')
+    if len(data) >= 10 and (len(data) - 4) % 6 == 0:
+        fps = struct.unpack_from('<f', data, 0)[0]
+        if 0 < fps <= 100000:
+            return _ok('replay', 0, None, 'power-on', 'pc', None,
+                       ['legacy x-position replay: no frame count in the file'])
+    return _err('replay', 'Not a ReplayBot replay')
+
+
+def parse_inputs(data):
+    """TMInterface (TrackMania, .inputs): timestamped commands; physics
+    ticks every 10 ms, and the last timestamp is when the last input lands."""
+    text = data.decode('utf-8', 'replace')
+    last_ms = -1
+    timed = 0
+
+    def to_ms(tok):
+        if ':' in tok:
+            mnt, rest = tok.split(':', 1)
+            return int(round((int(mnt) * 60 + float(rest)) * 1000))
+        if '.' in tok:
+            return int(round(float(tok) * 1000))
+        return int(tok)
+    for line in text.splitlines():
+        line = line.split('#', 1)[0].strip()
+        if not line:
+            continue
+        for part in line.split(';'):
+            m = re.match(r'((?:\d+:)?\d+(?:\.\d+)?)(?:-((?:\d+:)?\d+(?:\.\d+)?))?\s+(press|rel|steer|gas)\b', part.strip())
+            if not m:
+                continue
+            try:
+                ms = to_ms(m.group(2) or m.group(1))
+            except ValueError:
+                continue
+            timed += 1
+            last_ms = max(last_ms, ms)
+    if not timed or last_ms <= 0:
+        return _err('inputs', 'No timestamped input commands found')
+    return _ok('inputs', last_ms // 10, None, 'power-on', 'pc', 100.0,
+               ['the last input lands here; the run drives on to the finish'])
+
+
+def parse_itf(data):
+    """Iji TAS mod (.itf): frames,inputs lines summed; Save:/Skip lines cost
+    one frame each; End stops playback; 30 fps."""
+    text = data.decode('utf-8', 'replace')
+    total = 0
+    counted = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith('//'):
+            continue
+        if line == 'End':
+            break
+        if line.startswith(('Save:', 'Skip')):
+            total += 1
+            counted += 1
+            continue
+        m = re.match(r'(\d+)(?:,|$)', line)
+        if m:
+            total += int(m.group(1))
+            counted += 1
+    if not counted or not total:
+        return _err('itf', 'No frame lines found')
+    return _ok('itf', total, None, 'power-on', 'pc', 30.0)
+
+
+def parse_otts(data):
+    """OTS TAS Tool (Out There Somewhere, .otts): a JSON project whose
+    action entries carry frame numbers; the game's rate is not in the file,
+    so only the frame count is read."""
+    try:
+        doc = json.loads(data.decode('utf-8', 'replace'))
+    except ValueError:
+        return _err('otts', 'Not an OTS project: not JSON')
+    entries = doc.get('entries') if isinstance(doc, dict) else None
+    if not isinstance(entries, list):
+        return _err('otts', 'Not an OTS project: no entries list')
+    frames = 0
+    for e in entries:
+        if isinstance(e, dict) and isinstance(e.get('frame'), (int, float)):
+            frames = max(frames, int(e['frame']))
+    if not frames:
+        return _err('otts', 'No frame-numbered entries found')
+    return _ok('otts', frames, None, 'savestate', 'pc', None,
+               ["the game's frame rate is not in the file"])
+
+
 PARSERS = {
+
     'bk2': lambda d: parse_bk2(d, 'bk2'),
     'tasproj': lambda d: parse_bk2(d, 'tasproj'),
     'gbmv': lambda d: parse_bk2(d, 'gbmv'),
@@ -847,10 +1206,20 @@ PARSERS = {
     'omr': parse_omr,
     'jrsr': parse_jrsr,
     'lmp': parse_lmp,
-    'tas': parse_tas,
+    'tas': lambda d: parse_tas(d, 'tas'),
     'ctas': parse_ctas,
     '3ct': parse_3ct,
     'dft': parse_dft,
+    'htas': parse_htas,
+    'hltas': parse_hltas,
+    'p2tas': parse_p2tas,
+    'srctas': parse_srctas,
+    'qtas': parse_qtas,
+    'mctas': parse_mctas,
+    'replay': parse_replay,
+    'inputs': parse_inputs,
+    'itf': parse_itf,
+    'otts': parse_otts,
 }
 
 
@@ -858,7 +1227,8 @@ PARSERS = {
 # the frame count stays unknown and the submitter states the time
 KNOWN_UNPARSED = {'mcm', 'mmv', 'smv', 'zmv', 'fcm', 'fmv', 'vmv', 'pjm', 'pxm', 'yrm',
                   'mc2', 'bkm', 'dof', 'irm', 'ljm', 'lmp2', 'nmv', 'pmv', 'rec', 'tm2',
-                  'usb', 'vbm2', 'xmv', 'zrm'}
+                  'usb', 'vbm2', 'xmv', 'zrm',
+                  'gmtas', 'ronr'}
 
 def known_extension(ext):
     return ext in PARSERS or ext in KNOWN_UNPARSED

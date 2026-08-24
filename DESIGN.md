@@ -206,9 +206,13 @@ core (optional) · the files the movie was made against, 0 to n rows of
 name+sha1 (`contract.files`: ROMs, disc images, executables, sources; each
 picked and hashed locally, **the file never leaves the machine**, or typed;
 revisable from Edit run; the legacy single `contract.rom` on older records
-is shown as one row and never rewritten) · movie file, parsed mechanically (25 TASVideos formats,
-`archivist/movieparse.py`, GPL-3.0 with TASVideos contributors credited; the
-rest of the repo is MIT) — or **video-only** (see below) · optional completion
+is shown as one row and never rewritten) · movie file, **optional**: a run
+without one is video-only (see below). Any extension is archived as it is;
+a supported format is parsed mechanically (`archivist/movieparse.py`: the
+TASVideos emulator formats plus the game-specific tools the Tools page marks
+with a check; GPL-3.0 with TASVideos contributors credited; the rest of the
+repo is MIT), and a parse failure or an unknown format is a warning at the
+form, never a refusal · optional completion
 date (real date, 1980+, not future; shown beside the submission date;
 author-editable later) · content warnings, required where they apply (§3.1.7; mature/violent,
 sexual, photosensitivity, strong language; sexual blurs thumbnails behind a
@@ -226,13 +230,22 @@ Caps: 32 MB at intake (a human decides past that), 100 MB in the validator
 whose own frame rate differs from the system default carries `movie.fps`
 (times and ranks derive from frames over the movie's own rate).
 
-**Video-only runs**: no input movie exists; the encode IS the run. When the
-category's metrics include real time, the submitter states it through a
-segmented h/m/s/ms picker (a format mistake is impossible; stored as
-`duration` seconds); in a time-less category no duration exists at all (§5). Nothing exists to
+**Video-only runs**: no movie file was provided (there is no checkbox: the
+absence of the file is the fact; the API's `video_only` flag survives for
+callers, and a flag plus a file is refused as a contradiction); the encode
+IS the run. Nothing exists to
 reproduce, in emulator or on console: both gates are marked `not-applicable`
 (a status only video-only runs may carry), the endpoints refuse the acts, and
 the page says so plainly. Verification ranks it exactly like any other run.
+
+**The stated time is the record** (fully decoupled from the movie): whenever
+the category ranks by time, the submitter states the run's time through the
+segmented h/m/s/ms picker (a format mistake is impossible; stored as
+`duration` seconds). The field is never filled in for them; an **Import from
+movie** button beside it, enabled only when the uploaded movie parsed, reads
+the time out of the file on demand. `run_seconds` prefers the stated
+`duration` and falls back to frames/fps for older runs that never stated
+one; a time-less category stores no duration at all (§5).
 
 ### States and the ranking gate
 

@@ -16,6 +16,7 @@ matters more here than almost anywhere else. Three layers:
 Hermetic: pure in-memory bytes, no network, no archive access.
 """
 import io
+import json
 import math
 import pathlib
 import random
@@ -24,6 +25,7 @@ import sys
 import tarfile
 import time
 import zipfile
+import zlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
 import movieparse  # noqa: E402
@@ -209,6 +211,59 @@ def f_dft():
 
 
 # name -> (bytes, expected frames or None, expected system or None)
+def f_htas():
+    return (b'name: sample\ntype: immediate\nlength: 6000\nfps: 60\n\n'
+            b'000001: LT LY:32767 // sprint\n000031: ~LT A\n')
+
+def f_hltas():
+    return (b'version 1\ndemo bhop\nframetime0ms 0.0000001\nhlstrafe_version 1\nframes\n'
+            b'----------|------|------|0.001|-|-|1|sensitivity 0\n'
+            b's03-------|------|------|0.001|170|0|400\n'
+            b's03l-D----|------|------|0.001|90|-|5315\n')
+
+def f_p2tas():
+    return (b'version 7\nstart map testchamber_01\n\n'
+            b'120>0 1 // start moving\n+10>||J1\nrepeat 2\n+5>||J1\nend\n+35>||O1\n')
+
+def f_srctas():
+    return (b'save start\nsettings y_spt_autojump 1\n\nframes\n'
+            b'<<<<<<<<<<|<<<<<<|<<<<<<<<|-|-|-1|-attack\n'
+            b'<<<<<<<<<<|<<<<<<|<<<<<<<<|-|-|0|+duck\n'
+            b'<<<<<<<<<<|<<<<<<|<<<<<<<<|-|-|26|\n'
+            b'<<<<<<<<<<|<<<<<<|<<<<<<<<|-|-|100|walk\n')
+
+def f_qtas():
+    return (b'+1:\n\ttas_strafe_version 2\n\tcl_maxfps 72\n'
+            b'+7:\n\ttas_strafe_yaw 108.2\n+64:\n\ttas_strafe 1\n')
+
+def f_mctas():
+    head = (b'##################### TASfile ####################\n'
+            b'Flavor: beta1\n\nTitle:Test\nAuthor:Ada\nRerecords:77\n'
+            b'##################################################\n')
+    return head + b''.join(b'%d|W;w|;0,0,0|0.0;0.0\n\t1|W;|;|0.0;0.0\n' % i for i in range(40))
+
+def f_replay():
+    # v2, frame-typed (the writer streams the type as ASCII), 240 fps
+    return (b'RPLY' + bytes([2, 0x31]) + struct.pack('<f', 240.0)
+            + struct.pack('<IB', 3000, 1) + struct.pack('<IB', 14400, 0))
+
+def f_inputs():
+    return (b'# a TrackMania input script\n0 press up\n2.00 press left\n'
+            b'3.00 rel left\n1:23.45 press down; 1:24.00 rel down\n84500 steer 13292\n')
+
+def f_itf():
+    return (b'// Generated\n  11\n   1,escape\n   7\n   1,enter\nSave: sector\n  40,R,U\nEnd\n  999\n')
+
+def f_otts():
+    return json.dumps({'entries': [
+        {'type': 'action', 'frame': 100, 'jump': True},
+        {'type': 'comment', 'comment': 'mid'},
+        {'type': 'action', 'frame': 4500}], 'boss_frame': 9999999999}).encode()
+
+def f_tas_ballance():
+    raw = b''.join(struct.pack('<fI', 16.0, 0x21) for _ in range(30))
+    return struct.pack('<I', len(raw)) + zlib.compress(raw)
+
 FIXTURES = {
     'bk2': (f_bk2(), 250, 'nes'),
     'tasproj': (f_bk2('tasproj'), 250, 'nes'),
@@ -234,11 +289,21 @@ FIXTURES = {
     'dft': (f_dft(), 40, 'pc'),
     'fbm': (f_fbm(), 5400, 'arcade'),
     'omr': (f_omr(), None, 'msx'),
+    'htas': (f_htas(), 6000, 'pc'),
+    'hltas': (f_hltas(), 5716, 'pc'),
+    'p2tas': (f_p2tas(), 175, 'pc'),
+    'srctas': (f_srctas(), 126, 'pc'),
+    'qtas': (f_qtas(), 72, 'pc'),
+    'mctas': (f_mctas(), 40, 'pc'),
+    'replay': (f_replay(), 14400, 'pc'),
+    'inputs': (f_inputs(), 8450, 'pc'),
+    'itf': (f_itf(), 61, 'pc'),
+    'otts': (f_otts(), 4500, 'pc'),
 }
 RERECORDS = {'bk2': 1234, 'fm2': 4321, 'fm3': 77, 'dsm': 99, 'gmv': 555,
              'vbm': 42, 'dtm': 12, 'm64': 8, 'mar': 7, 'p2m2': 3, 'ctm': 15,
              'wtf': 21, 'gzm': 17, 'lsmv': 888, 'ltm': 64, 'jrsr': 55,
-             'tas': 250, 'ctas': 31, 'fbm': 19, 'omr': 66}
+             'tas': 250, 'ctas': 31, 'fbm': 19, 'omr': 66, 'mctas': 77}
 
 
 def main():
@@ -304,6 +369,17 @@ def main():
     ck('every parser except lmp has a fixture',
        set(FIXTURES) | {'lmp'} >= set(movieparse.PARSERS),
        str(sorted(set(movieparse.PARSERS) - set(FIXTURES) - {'lmp'})))
+
+    # ---------------- 2b. the .tas family: four formats, one extension ----------------
+    res = movieparse.parse('m.tas', f_tas_ballance())
+    ck('tas: a Ballance TASSupport record parses (frames from the size field)',
+       res.get('ok') and res['frames'] == 30 and abs(res['frames'] / res['fps'] - 0.48) < 0.01, str(res))
+    res = movieparse.parse('m.tas', b'[1,2]1,1,33,0,17,36,')
+    ck('tas: a PICO-8 Celeste Classic line parses at 30 fps',
+       res.get('ok') and res['frames'] == 6 and res['fps'] == 30.0, str(res))
+    res = movieparse.parse('m.tas', b'#Start\n   1,J\n 545\n@23100,30200,1\n  35,L,J\n***\n')
+    ck('tas: a ShootMe-family file sums its frame lines (@ costs one, *** none)',
+       res.get('ok') and res['frames'] == 582 and res['fps'] == 60.0 and res['warnings'], str(res))
 
     # ---------------- 3. confusion and bombs ----------------
     res = movieparse.parse('movie.bk2', FIXTURES['lsmv'][0])
