@@ -1952,8 +1952,17 @@
       // half-written submissions are easy to lose to a stray click: once
       // anything in the form changes, leaving asks the standard are-you-sure
       var submitFormDirty = false;
-      submitForm.addEventListener('input', function(){ submitFormDirty = true; });
-      submitForm.addEventListener('change', function(){ submitFormDirty = true; });
+      // Checks input elements of Step 1. If all of them are empty, don't show "Leave page?" browser warning, if user leaves 
+      function noteMeaningfulFormChange(ev){
+        var t = ev && ev.target;
+        if (!t) { submitFormDirty = true; return; }
+        if (t.id === 's-gamesearch' || (t.closest && t.closest('#s-uncldesc'))) {
+          if (!(t.value || '').trim()) return;
+        }
+        submitFormDirty = true;
+      }
+      submitForm.addEventListener('input', noteMeaningfulFormChange);
+      submitForm.addEventListener('change', noteMeaningfulFormChange);
       window.addEventListener('beforeunload', function(ev){
         if (!submitFormDirty) return;
         ev.preventDefault();
