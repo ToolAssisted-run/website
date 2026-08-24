@@ -497,22 +497,11 @@ def verify_bounty(r):
     the base, plus one point per day waiting, capped at double."""
     return min(PT_VERIFY + days_pending(r) * PT_VERIFY_AGE_PER_DAY, PT_VERIFY_MAX)
 
-BADGES = [(25000, '25k'), (10000, '10k'), (5000, '5k'), (1000, '1k')]
-
 def contrib_tier(pts):
-    """(label, tier class) for a contributor, or None for somebody who has
-    yet to earn a point. The first act earns the plain badge; the tiers are
-    milestones on top of it."""
-    if pts < 1:
-        return None
-    for threshold, lbl in BADGES:
-        if pts >= threshold:
-            return f'{lbl} Contributor', f'tier-{lbl}'
-    return 'Contributor', 'tier-first'
-
-def badge_for(pts):
-    tier = contrib_tier(pts)
-    return tier[0] if tier and tier[1] != 'tier-first' else None
+    """One badge, earned by the first act: Contributor. The medals carry
+    the honors (top of the week, act counts); the badge only says this
+    member has contributed."""
+    return ('Contributor', 'tier-first') if pts >= 1 else None
 
 points = {}   # user(lower) -> {'points': n, 'acts': [(date, html-free desc, pts, run)]}
 

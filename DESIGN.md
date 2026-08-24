@@ -601,9 +601,10 @@ hard-to-reproduce systems (flagged in systems.json) +50 on any reproduction ·
 first verification 20 + 1/day waiting, topping out at 1,000; later
 verifications 20 · console verification a fixed 1,000 (real hardware, a
 capture setup, a recording). Both contribute worklists sort by bounty.
-Badges by thresholds alone (1k/5k/10k/25k), never act counts; the tier chip
-shows beside a name everywhere except on the contributor board, where the
-points column already says it (#59). There, and on the member page, **medals**
+One plain **Contributor** badge, earned by the first act; the milestone
+tiers (1k/5k/10k/25k) are retired, since the medals carry the honors. The
+badge shows beside a name everywhere except on the contributor board, where
+the points column already says it (#59). There, and on the member page, **medals**
 take its place: little gold/silver/bronze discs, one letter each, the
 achievement in the tooltip. All recomputed from the recorded acts at build
 time, nothing stored: top contributor of the last 7 / 30 days (W, M; ties

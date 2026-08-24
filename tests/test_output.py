@@ -464,32 +464,24 @@ def main():
         # earned, not granted: one act is enough
         ck('a member who has earned a point is badged a contributor',
            'role-contrib' in rows_html, rows_html[:300])
-        ck('a console verification alone reaches the first milestone',
-           'tier-1k' in rows_html and '1k Contributor' in rows_html,
+        ck('the milestone tiers are retired: one plain Contributor badge',
+           'tier-1k' not in rows_html and '1k Contributor' not in rows_html,
            rows_html[:300])
         member_pages = {f.parent.name: h for f, h in all_html.items()
                         if f.parent.parent.name == 'authors' and f.name == 'index.html'}
         badged = {n for n, h in member_pages.items() if 'role-contrib' in h}
         ck('the contributor badge is on their own page as well as the list',
            badged, str(sorted(member_pages)))
-        # the tier a member wears must be the tier their score buys, at every
-        # threshold, or the badge is decoration rather than a fact
-        TIERS = [(25000, '25k Contributor'), (10000, '10k Contributor'),
-                 (5000, '5k Contributor'), (1000, '1k Contributor'),
-                 (1, 'Contributor')]
+        # everybody who earned a point wears the same plain badge: the
+        # milestone tiers are retired, the medals carry the honors
         for name in badged:
             page_ = member_pages[name]
             score = re.search(r'<b>(\d+)</b><span>contributor score', page_)
             ck(f'{name} is badged a contributor because they earned it',
                score and int(score.group(1)) >= 1, name + ': ' + str(score))
-            if not score:
-                continue
-            pts = int(score.group(1))
-            want = next(lbl for t_, lbl in TIERS if pts >= t_)
             worn = re.search(r'class="rolechip role-contrib[^"]*"[^>]*>([^<]+)<', page_)
-            ck(f'{name} wears the tier {pts} points buys',
-               worn and worn.group(1) == want,
-               f'{pts} points wants {want!r}, wears {worn and worn.group(1)!r}')
+            ck(f'{name} wears the plain Contributor badge',
+               worn and worn.group(1) == 'Contributor', str(worn and worn.group(1)))
         for name, h in member_pages.items():
             if name in badged:
                 continue

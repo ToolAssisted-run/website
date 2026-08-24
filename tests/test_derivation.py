@@ -196,17 +196,16 @@ def main():
         r = build(arch, out)
         ck('tier build succeeds', r.returncode == 0, r.stderr[-300:])
         stats = json.loads((out / 'assets/authorstats.json').read_text())
-        for who, want_pts, want_label, want_class in (
-                ('tiera', 1000, '1k Contributor', 'tier-1k'),
-                ('tierb', 5000, '5k Contributor', 'tier-5k'),
-                ('tierc', 10000, '10k Contributor', 'tier-10k'),
-                ('tierd', 25000, '25k Contributor', 'tier-25k')):
+        # the milestone tiers are retired: every contributor wears the same
+        # plain badge, and the medals carry the honors
+        for who, want_pts in (('tiera', 1000), ('tierb', 5000),
+                              ('tierc', 10000), ('tierd', 25000)):
             ck(f'{who} earned exactly {want_pts}',
                stats.get(who, {}).get('contrib') == want_pts, str(stats.get(who)))
             page_ = (out / 'authors' / who / 'index.html').read_text()
             worn = re.search(r'class="rolechip role-contrib ([^"]+)"[^>]*>([^<]+)<', page_)
-            ck(f'{want_pts} points wears {want_label}',
-               worn and worn.group(1) == want_class and worn.group(2) == want_label,
+            ck(f'{want_pts} points wears the plain Contributor badge',
+               worn and worn.group(1) == 'tier-first' and worn.group(2) == 'Contributor',
                str(worn and worn.groups()))
 
         # neglect bonus is capped

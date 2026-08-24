@@ -481,12 +481,10 @@ def medals(name):
     return (' <span class="medals">' + ''.join(out) + '</span>') if out else ''
 
 def badge_chip(pts):
-    """The milestone chip, for lists where everybody is already a contributor
-    and a plain 'Contributor' on every row would say nothing."""
-    tier = contrib_tier(pts)
-    if not tier or tier[1] == 'tier-first':
-        return ''
-    return f' <span class="rolechip role-contrib {tier[1]}">{esc(tier[0])}</span>'
+    """Nothing: the milestone tiers are retired (the medals carry the
+    honors), and on lists where everybody contributed the plain badge would
+    say nothing."""
+    return ''
 
 EXPERT_NAMES_JS = json.dumps(sorted({e['user'].lower() for e in experts_reg}))
 
