@@ -212,7 +212,10 @@ a supported format is parsed mechanically (`archivist/movieparse.py`: the
 TASVideos emulator formats, classic ones included (smv, zmv, fcm, fmv, vmv,
 nmv, mmv, mcm, pjm, pxm, mc2, ymv, bkm, dof, rec), plus the game-specific
 tools the Tools page marks with a check; every parser validated against
-real movies from the TASVideos corpus; GPL-3.0 with TASVideos contributors credited; the rest of the
+real movies from the TASVideos corpus. The Tools page carries three tables:
+current emulators, classic emulator formats (the retired rerecording
+emulators whose movies still parse in full), and game-specific tools, each
+row marked parsed or not; GPL-3.0 with TASVideos contributors credited; the rest of the
 repo is MIT), and a parse failure or an unknown format is a warning at the
 form, never a refusal · optional completion
 date (real date, 1980+, not future; shown beside the submission date;

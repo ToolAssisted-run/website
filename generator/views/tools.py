@@ -29,6 +29,28 @@ EMULATORS = [
 ]
 emulators = [dict(name=n, url=u, systems=sy, formats=x) for n, u, sy, x in EMULATORS]
 
+# The classic rerecording emulators: retired tools whose movies the archive
+# still reads in full (frames, time, rerecords), so a historical work arrives
+# with its record intact. Every one of these parsers was written from the
+# TASVideos format specification and validated against real publications.
+HISTORICAL = [
+    ('Snes9x-rr', 'https://tasvideos.org/EmulatorResources/Snes9x', 'SNES', '.smv'),
+    ('ZSNES-rr', 'https://tasvideos.org/OtherEmulators/ZMV', 'SNES', '.zmv'),
+    ('FCEU 0.98', 'https://tasvideos.org/EmulatorResources/FCEU', 'NES / Famicom', '.fcm'),
+    ('Famtasia', 'https://tasvideos.org/EmulatorResources/Famtasia', 'NES / Famicom', '.fmv'),
+    ('VirtuaNES', 'https://tasvideos.org/OtherEmulators/VMV', 'NES / Famicom', '.vmv'),
+    ('Nintendulator', 'https://tasvideos.org/OtherEmulators/NMV', 'NES / Famicom', '.nmv'),
+    ('Dega', 'https://tasvideos.org/EmulatorResources/MMV', 'Master System / Game Gear', '.mmv'),
+    ('Mednafen-rr', 'https://tasvideos.org/EmulatorResources/Mednafen',
+     'PC Engine, PC-FX, WonderSwan, Neo Geo Pocket, Lynx', '.mcm, .mc2'),
+    ('PSXjin', 'https://tasvideos.org/EmulatorResources/PSXjin', 'PlayStation', '.pjm'),
+    ('PCSX-rr', 'https://tasvideos.org/EmulatorResources/PCSX', 'PlayStation', '.pxm'),
+    ('Yabause-rr', 'https://tasvideos.org/EmulatorResources/Yabause', 'Sega Saturn', '.ymv'),
+    ('BizHawk 1.x', 'https://tasvideos.org/Bizhawk/BKMFormat', 'multi-system', '.bkm'),
+    ("DOSBox-rr (Bisqwit's patch)", 'https://tasvideos.org/EmulatorResources/DOSBox', 'DOS', '.dof'),
+]
+historical = [dict(name=n, url=u, systems=sy, formats=x) for n, u, sy, x in HISTORICAL]
+
 # (tool, link, game/engine, movie format, parsed mechanically at submission)
 # surveyed from the community's collections; ordered by game
 GAME_TOOLS = [
@@ -113,13 +135,15 @@ GAME_TOOLS = [
      'TrackMania Nations / United Forever', '.inputs', True),
     ('UniTAS', 'https://github.com/eddio0141/UniTAS',
      'Unity games (generic; in development)', 'Lua movie scripts', False),
+    ('Elasto Mania (built-in replays)', 'https://elmaonline.net',
+     'Elasto Mania', '.rec', True),
     ('gz / practice macros', 'https://github.com/glankk/gz',
      "Zelda: Ocarina of Time and Majora's Mask (N64)", '.gzm', True),
 ]
 # parsed formats first, then the rest in survey order
 game_tools = [dict(name=n, url=u, game=g, format=x, parsed=p)
               for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4])]
-body = tpl('tools.html', emulators=emulators, game_tools=game_tools)
+body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=game_tools)
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page(
     'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',
