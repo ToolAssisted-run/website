@@ -13,17 +13,21 @@ will point you the right way.</div>
 <div class="policy fullw"><p><b>Chimera</b> is this site's endorsed emulator: a derivative fork of
 <a href="https://github.com/TASEmulators/BizHawk">BizHawk</a> that keeps its TAS toolchain
 (movies, savestates, TAStudio, RAM tools, Lua) and removes everything else, most
-importantly every emulation core. It is built around four ideas: <b>modularity</b>
-(cores are external, self-contained packages, each in its own repository, loaded
-explicitly like a ROM), a <b>lightweight frontend</b> (one audio driver, one display
-driver, one adapter for every core), <b>performance</b> (the functional machinery lives
-in a native engine that also runs headless and links into bots and solvers directly),
-and <b>stronger reproducibility guarantees</b>: a movie's reproduction contract is the
-pair (movie, core package), movies record the exact core version, package hash, firmware
-hashes and host provenance, and every change must pass a witness gate that byte-compares
-emulator memory against goldens. The frontend, the TAS tooling and the architecture it
-builds on are the original work of the BizHawk team, and all credit for them belongs to
-BizHawk's developers.
+importantly every emulation core. Four ideas drive it:</p>
+<ul>
+<li><b>Modularity</b>: cores are external, self-contained packages, each in its own
+repository, loaded explicitly like a ROM.</li>
+<li><b>Lightweight</b>: one audio driver, one display driver, one adapter for every
+core, nothing else.</li>
+<li><b>Performance</b>: the machinery lives in a native engine that also runs headless
+and links into bots and solvers directly.</li>
+<li><b>Reproducibility</b>: a movie's contract is the pair (movie, core package);
+movies record the exact core version, package hash, firmware hashes and host
+provenance, and every change passes a witness gate that byte-compares emulator
+memory against goldens.</li>
+</ul>
+<p>The frontend, the TAS tooling and the architecture are the original work of the
+BizHawk team; all credit for them belongs to BizHawk's developers.
 <a href="https://github.com/ToolAssisted-run/chimera">Follow it on GitHub</a>.</p></div></section>
 <section><h2>Botting and brute-forcing tools</h2>
 <div class="cols3">
