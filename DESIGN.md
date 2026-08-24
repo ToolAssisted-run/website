@@ -972,6 +972,21 @@ archivist, module responsibilities). What matters designwise:
   classifier blocks it by design). After any rewrite: GitHub keeps old
   commits fetchable by SHA until Support gc's the repo, and clones elsewhere
   persist — §6.8 says so rather than promising what git cannot deliver.
+
+**The site log page is a window, the archive is the log**: every section of
+`/policy/site-log/` renders the last 7 days (always at least the latest 25
+entries so a quiet section still reads, at most 500, and anything still open
+whatever its age); the headings carry the full-history totals, and the page
+says where the complete record lives (the archive repository and its git
+log), so the page never grows with the archive.
+
+**Write pacing (log-flooding defence)**: every member-triggered write is a
+commit, a rebuild and often a log entry, so the archivist paces writes per
+member in memory (`pace_gate`: likes 12/10min, edits 40/h counting dry
+runs, acts 30/h, submissions 12/h, reports 6/h, creations 20/h; 429 with a
+plain sentence). The operator key is never paced (imports, tests). nginx
+holds a per-IP backstop in front (`limit_req` 5 r/s, burst 20, on
+`/archivist/`), keyed on the Cloudflare real IP.
 - **Code quality**: `bash tools/sonar.sh` runs a local SonarQube (docker)
   over the repo per `sonar-project.properties`.
 

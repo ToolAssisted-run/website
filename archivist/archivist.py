@@ -331,12 +331,50 @@ def request_identity(form, field='user'):
         return None, fail(f'{field} must be a valid username')
     return user, None
 
+# ---- write pacing (log-flooding defence) ----
+# Every write is a git commit, a rebuild, and often a log entry, so a
+# scripted flood of likes or edits would swell the history and the site
+# log without limit. Writes are paced per member, in memory: honest use
+# never notices, a script hits the wall. The operator key (the archivist
+# bot's own imports and the test harness) is never paced, and nginx holds
+# a per-IP backstop in front of all of this.
+WRITE_PACE = {          # kind -> (calls allowed, per seconds)
+    'like': (12, 600),         # a dozen votes in ten minutes
+    'edit': (40, 3600),        # revisions of one's own work (a save is a dry run + a write)
+    'act': (30, 3600),         # reproductions, verifications, console
+    'submit': (12, 3600),      # new runs
+    'report': (6, 3600),       # reports and cases
+    'create': (20, 3600),      # games, categories, groups
+}
+_pace = {}
+_pace_lock = threading.Lock()
+
+def pace_gate(form, user, kind):
+    """fail(429) when this member is writing faster than people do."""
+    if form.get('key') == SUBMIT_KEY:
+        return None                       # the operator path is never paced
+    cap, window = WRITE_PACE[kind]
+    now = time.monotonic()
+    with _pace_lock:
+        stamps = _pace.setdefault((user.lower(), kind), [])
+        stamps[:] = [t for t in stamps if now - t < window]
+        if len(stamps) >= cap:
+            return fail(f'easy there: at most {cap} of these each '
+                        f'{window // 60} minutes. The archive is permanent; '
+                        f'it can wait a moment.', 429)
+        stamps.append(now)
+    return None
+
+
 def act_common(form):
     """Shared validation for /api/reproduce and /api/verify.
     Returns (error_response, run_dir, run, user) — error_response is None on success."""
     user, error = request_identity(form)
     if error:
         return error, None, None, None
+    paced = pace_gate(form, user, 'act')
+    if paced:
+        return paced, None, None, None
     run_id = (form.get('run') or '').strip()
     if not re.fullmatch(r'M[0-9]+', run_id):
         return fail('run must be a run id like M100001'), None, None, None
@@ -427,6 +465,9 @@ def submit():
     submitter, error = request_identity(submission, 'submitter')
     if error:
         return error
+    paced = pace_gate(submission, submitter, 'submit')
+    if paced:
+        return paced
     if submission.get('consent') != 'yes':
         return fail('submission requires consent: licensing under CC BY 4.0, agreeing '
                     'with the Community Principles, Terms of Use, Code of Conduct and '
@@ -1024,6 +1065,9 @@ def category_add():
         expert, game_key, categories_file, categories, error = _category_gate(category_form, need_expert=False)
         if error:
             return error
+        paced = pace_gate(category_form, expert, 'create')
+        if paced:
+            return paced
         metric_defs, metric_error = parse_metric_defs(category_form.get('metrics'))
         if metric_error:
             return fail(metric_error)
@@ -2125,6 +2169,9 @@ def game_create():
         expert, error = request_identity(game_form, 'user')
         if error:
             return error
+        paced = pace_gate(game_form, expert, 'create')
+        if paced:
+            return paced
         system = (game_form.get('system') or '').strip()
         title = (game_form.get('title') or '').strip()[:120]
         group_key = (game_form.get('group') or '').strip().lower()
@@ -2230,6 +2277,9 @@ def group_create():
         expert, error = request_identity(group_form, 'expert')
         if error:
             return error
+        paced = pace_gate(group_form, expert, 'create')
+        if paced:
+            return paced
         key = (group_form.get('group') or '').strip().lower()
         title = (group_form.get('title') or '').strip()
         games = [g.strip() for g in (group_form.get('games') or '').replace(',', ' ').split() if g.strip()]
@@ -2407,6 +2457,9 @@ def report():
         user, error = request_identity(report_form)
         if error:
             return error
+        paced = pace_gate(report_form, user, 'report')
+        if paced:
+            return paced
         run_id = (report_form.get('run') or '').strip()
         run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
         if not run_dir:
@@ -2524,6 +2577,9 @@ def edit_run():
         user, error = request_identity(edit_form)
         if error:
             return error
+        paced = pace_gate(edit_form, user, 'edit')
+        if paced:
+            return paced
         run_id = (edit_form.get('run') or '').strip()
         run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
         if not run_dir:
@@ -2901,6 +2957,9 @@ def like():
         user, error = request_identity(like_form)
         if error:
             return error
+        paced = pace_gate(like_form, user, 'like')
+        if paced:
+            return paced
         run_id = (like_form.get('run') or '').strip()
         run_dir = find_run(run_id) if re.fullmatch(r'M[0-9]+', run_id) else None
         if not run_dir:

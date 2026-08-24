@@ -20,6 +20,28 @@ from model import (
     withdrawn_runs,
 )
 from render import page, tpl
+import datetime
+
+# ---- the page cap (the archive is the log; the page is a window) ----
+# Every event stays in the archive forever (edits.json, deletions.json,
+# run.json, git history). The PAGE shows the last 7 days, always at least
+# the latest 25 entries so a quiet section still reads, never more than
+# 500; entries still open are shown whatever their age. The totals stay
+# in the section headers, so nothing looks smaller than it is.
+LOG_WINDOW_DAYS = 7
+LOG_FLOOR = 25
+LOG_CEIL = 500
+_cutoff = (datetime.date.today() - datetime.timedelta(days=LOG_WINDOW_DAYS)).isoformat()
+
+def log_window(entries, when, keep=None):
+    """(shown, total): the recent window of an already newest-first list."""
+    shown = []
+    for i, e in enumerate(entries):
+        if len(shown) >= LOG_CEIL:
+            break
+        if (keep and keep(e)) or i < LOG_FLOOR or (when(e) or '')[:10] >= _cutoff:
+            shown.append(e)
+    return shown, len(entries)
 
 # ---- moderation log ----
 # (conduct and terms are sections of the Community Principles on GitHub)
@@ -125,6 +147,20 @@ all_removals = sorted(
 
 open_cases = [(r_, c) for r_ in runs for c in r_.get('cases', []) if c['status'] == 'open']
 
+role_events_desc, n_roles = log_window(role_events_desc, lambda e: e.get('at') or e['date'])
+attestations, n_att = log_window(attestations, lambda t: t[0])
+claim_reqs, n_claims = log_window(claim_reqs, lambda r: r.get('at') or r['date'],
+                                  keep=lambda r: r['status'] == 'open')
+all_reports, n_reports = log_window(all_reports, lambda x: x[0].get('at') or x[0]['date'],
+                                    keep=lambda x: x[0]['status'] == 'open')
+decisions, n_decisions = log_window(decisions, lambda d: str(d[0]))
+all_removals, n_removals = log_window(all_removals, lambda x: x[0].get('at') or x[0]['date'],
+                                      keep=lambda x: x[0]['status'] == 'open')
+edits_desc, n_edits = log_window(edits_desc, lambda e: e.get('at') or e['date'])
+del_events, n_dels = log_window(del_events, lambda e: e.get('at') or e['date'])
+mod_entries, n_mods = log_window(mod_entries, lambda t: t[0])
+withdrawn_desc, n_withdrawn = log_window(withdrawn_desc, lambda w: w['withdrawn'].get('at') or w['withdrawn'].get('date', ''))
+
 modlog = tpl('sitelog.html',
              role_events=role_events_desc, attestations=attestations,
              claim_reqs=claim_reqs, CLAIM_CHIPS=CLAIM_CHIPS,
@@ -133,6 +169,11 @@ modlog = tpl('sitelog.html',
              all_removals=all_removals, REMOVAL_CHIPS=REMOVAL_CHIPS,
              edit_events=edits_desc,
              del_events=del_events, DEL_KIND=DEL_KIND,
+             LOG_WINDOW_DAYS=LOG_WINDOW_DAYS,
+             totals={'roles': n_roles, 'attestations': n_att, 'claims': n_claims,
+                     'reports': n_reports, 'decisions': n_decisions,
+                     'removals': n_removals, 'edits': n_edits, 'deletions': n_dels,
+                     'mods': n_mods, 'withdrawn': n_withdrawn},
              withdrawn_runs=withdrawn_desc,
              open_cases=open_cases,
              mod_entries=mod_entries)

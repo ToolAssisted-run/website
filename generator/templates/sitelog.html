@@ -17,6 +17,10 @@
 to a run after it was archived. Every entry states who acted, when, and why, and none of it
 is ever removed: an act of authority that cannot be read back is not accountable to
 anyone.</p>
+<p class="rules fullw">This page shows the last {{ LOG_WINDOW_DAYS }} days of each section
+(always at least the latest entries, and everything still open); the totals in the
+headings count the whole history, which lives complete and public in the
+<a href="{{ ARCHIVE_RAW.rsplit('/', 2)[0] }}">archive repository</a> and its git log.</p>
 <p class="statline"><a href="#roles">Role changes</a> · <a href="#attestations">Identity
 attestations</a> · <a href="#claims">Name claims</a> ·
 <a href="#reports">Run reports</a> ·
@@ -25,7 +29,7 @@ attestations</a> · <a href="#claims">Name claims</a> ·
 <a href="#cases">Cases</a> · <a href="#moderation">Moderation</a></p></div></header>
 {# ---- role changes: granted and taken away, site-wide, newest first ---- #}
 {% if role_events %}
-<section id="roles"><h2>Role changes ({{ role_events|length }})</h2>
+<section id="roles"><h2>Role changes ({{ totals.roles }})</h2>
 <p class="authline">Every grant and every removal, with the reason given at the time. Roles
 are not a status somebody has always had, and this is the only record of them: the forum's
 groups are printed from it.</p>
@@ -43,7 +47,7 @@ groups are printed from it.</p>
 {% endif %}
 {# ---- identity attestations: a Committee member vouching, on the record, that a member is an author ---- #}
 {% if attestations %}
-<section id="attestations"><h2>Identity attestations ({{ attestations|length }})</h2>
+<section id="attestations"><h2>Identity attestations ({{ totals.attestations }})</h2>
 <p class="authline">A name held for an author elsewhere is handed to a member when a
 Steering Committee member vouches for the identity, because a proof that depends on another
 site's permissions leaves out the people most likely to need it. Each entry names who vouched
@@ -61,7 +65,7 @@ and the method, and can be challenged.</p>
 {% endif %}
 {# ---- name claims: asked, answered, and never carrying an address ---- #}
 {% if claim_reqs %}
-<section id="claims"><h2>Name claims ({{ claim_reqs|length }})</h2>
+<section id="claims"><h2>Name claims ({{ totals.claims }})</h2>
 <p class="authline">A name held for an author elsewhere is handed over when the Steering
 Committee agrees it is theirs. The asking and the answer are both here. What the Committee
 saw of the claimant's email address is not, and never was: they see a masked form of it,
@@ -80,7 +84,7 @@ worked out when they look, written into neither this archive nor anywhere else.<
 {% endif %}
 {# ---- run reports: open ones first, then newest arrival first ---- #}
 {% if all_reports %}
-<section id="reports"><h2>Run reports ({{ all_reports|length }})</h2><div class="roster">
+<section id="reports"><h2>Run reports ({{ totals.reports }})</h2><div class="roster">
 {% for rep, r_ in all_reports %}
 <div class="act" id="R{{ rep.id }}">
 <div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
@@ -99,7 +103,7 @@ worked out when they look, written into neither this archive nor anywhere else.<
 {% endif %}
 {# ---- ratifications and refusals: the same decision, answered either way ---- #}
 {% if decisions %}
-<section id="ratifications"><h2>Game and group decisions ({{ decisions|length }})</h2>
+<section id="ratifications"><h2>Game and group decisions ({{ totals.decisions }})</h2>
 <p class="authline">Historical: while ratification existed as a mechanism, experts vouched
 here for games and groups being real, distinct things. Creations are real on arrival now,
 and a mistaken one is deleted on the record; these acts remain the record of who vouched
@@ -119,7 +123,7 @@ seeding import arrived established and were ratified by nobody on this site.</p>
 {% endif %}
 {# ---- removal requests: asked in public, answered in public ---- #}
 {% if all_removals %}
-<section id="removals"><h2>Removal requests ({{ all_removals|length }})</h2>
+<section id="removals"><h2>Removal requests ({{ totals.removals }})</h2>
 <p class="authline">An expert never deletes a game or a group: they ask, and a site-wide
 expert answers. A granted removal takes the thing out of the index and leaves every page and
 every run exactly where it was, because the runs inside were never what was in question.</p>
@@ -138,7 +142,7 @@ every run exactly where it was, because the runs inside were never what was in q
 {% endif %}
 {# ---- edits: git carries the diff, this carries the account ---- #}
 {% if edit_events %}
-<section id="edits"><h2>Edits ({{ edit_events|length }})</h2>
+<section id="edits"><h2>Edits ({{ totals.edits }})</h2>
 <p class="authline">Authors revise their own runs; experts may correct anything inside their
 jurisdiction, member content included, and answer for it. Every revision says who, what it
 was, what it became, and why. Git history carries the exact diff and the way back.</p>
@@ -156,7 +160,7 @@ was, what it became, and why. Git history carries the exact diff and the way bac
 {% endif %}
 {# ---- deletions: the log is all that remains, so it renders always ---- #}
 {% if del_events %}
-<section id="deletions"><h2>Deletions ({{ del_events|length }})</h2>
+<section id="deletions"><h2>Deletions ({{ totals.deletions }})</h2>
 <p class="authline">Deleted outright by an expert (runs, games, groups) or the Steering
 Committee (members): tests, spam, mistakes, things that were never really works. The thing
 is gone; who deleted it and why is not, and never will be.</p>
@@ -174,7 +178,7 @@ is gone; who deleted it and why is not, and never will be.</p>
 {% endif %}
 {# ---- runs withdrawn, and the ones erased for good ---- #}
 {% if withdrawn_runs %}
-<section id="withdrawn"><h2>Withdrawals and erasures ({{ withdrawn_runs|length }})</h2>
+<section id="withdrawn"><h2>Withdrawals and erasures ({{ totals.withdrawn }})</h2>
 <p class="authline">A withdrawn run keeps its page as a tombstone, because a hole in the
 record is worse than an honest gap. Where every author asked for it, the movie file itself
 was permanently erased, and that is marked here.</p>
@@ -211,7 +215,7 @@ have stood by their word</td></tr>
 <section id="cases"><h2>Open cases</h2><p class="emptynote">No case is open.</p></section>
 {% endif %}
 {# ---- moderation log: invalidations of somebody else's word ---- #}
-<section id="moderation"><h2>Moderation actions ({{ mod_entries|length }})</h2>
+<section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
 <p class="authline">Moderation in moderation: every action is justified, states its reason,
 is appealable, and is logged here, in the open, permanently.</p>
 {% if mod_entries %}

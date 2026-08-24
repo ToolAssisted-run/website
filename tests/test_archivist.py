@@ -2305,6 +2305,17 @@ def main():
             except urllib.error.HTTPError as e:
                 ck('nonce replay rejected', e.code == 403)
 
+            # --- write pacing: a scripted flood hits the wall, the key never ---
+            pace_ok = pace_429 = 0
+            for _ in range(13):
+                c, r, _ = call(U + '/api/like', {'run': 'M900010', 'dry_run': '1'}, cookie=cookie)
+                if c == 200: pace_ok += 1
+                elif c == 429: pace_429 += 1
+            ck('a like flood is paced per member (12 allowed, then 429)',
+               pace_ok == 12 and pace_429 == 1, f'{pace_ok} ok, {pace_429} limited')
+            c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'ssouser', 'run': 'M900010', 'dry_run': '1'})
+            ck('the operator key is never paced', c == 200, str(r))
+
             # --- self-service TASVideos import (session-only, claimed users) ---
             c, r, _ = call(U + '/api/import/scan', {'x': '1'})
             ck('import scan needs a session', c == 403, str(r))

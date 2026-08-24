@@ -1015,6 +1015,8 @@ def main():
            'id="f-memberdelete"' in all_html[out / 'committee' / 'index.html']
            and '"founders"' in all_html[out / 'committee' / 'index.html'])
         log_page0 = all_html[out / 'policy' / 'site-log' / 'index.html']
+        ck('the site log page is a window, the archive the log',
+           'shows the last 7 days' in log_page0 and 'archive repository' in log_page0)
         ck('the site log has a Deletions section even when nothing was deleted',
            '<h2>Deletions' in log_page0 and 'Nothing has been deleted outright' in log_page0)
 
