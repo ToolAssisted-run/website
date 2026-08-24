@@ -273,6 +273,90 @@ def f_tas_ballance():
     raw = b''.join(struct.pack('<fI', 16.0, 0x21) for _ in range(30))
     return struct.pack('<I', len(raw)) + zlib.compress(raw)
 
+def f_smv():
+    head = (b'SMV\x1a' + struct.pack('<III', 1, 0, 777) + struct.pack('<I', 4321)
+            + bytes([0x01, 0x03, 0, 0]) + struct.pack('<II', 0x20, 0x20))
+    return head + b'\x00' * (4321 + 1) * 2
+
+def f_zmv():
+    h = bytearray(b'ZMV' + struct.pack('<H', 0x0151))
+    h += struct.pack('<I', 0xDEADBEEF) + struct.pack('<II', 2500, 321)
+    h += b'\x00' * (0x27 - len(h)) + bytes([0x40]) + b'\x00\x00\x00'
+    return bytes(h)
+
+def f_fcm():
+    return (b'FCM\x1a' + struct.pack('<I', 2) + bytes([0x02, 0, 0, 0])
+            + struct.pack('<IIIII', 6000, 88, 0, 0x38, 0x38)
+            + b'\x00' * 16 + struct.pack('<I', 98) + b'rom\x00')
+
+def f_fmv():
+    head = (b'FMV\x1a' + bytes([0x00, 0x80]) + b'\x00' * 4
+            + struct.pack('<I', 41) + b'\x00' * 2 + b'\x00' * 64 + b'\x00' * 64)
+    assert len(head) == 0x90
+    return head + b'\x00' * 900
+
+def f_vmv():
+    h = bytearray(b'VirtuaNES MV' + struct.pack('<HH', 0x0400, 0x0400))
+    h += struct.pack('<I', 0x41) + struct.pack('<I', 0) + struct.pack('<HH', 0, 0)
+    h += struct.pack('<I', 55) + bytes([0, 0, 0, 0]) + b'\x00' * 8
+    h += struct.pack('<IIII', 0x40, 0x40, 0x40, 1800) + struct.pack('<I', 0)
+    assert len(h) == 0x40
+    return bytes(h) + b'\x00' * 1800
+
+def f_nmv():
+    payload = (bytes([1, 0, 0, 0x01]) + struct.pack('<I', 66) + struct.pack('<I', 0)
+               + struct.pack('<I', 720) + b'\x00' * 720)
+    body = b'NMOV' + struct.pack('<I', len(payload)) + payload
+    return b'NSS\x1a' + b'0960' + struct.pack('<I', len(body)) + b'NMOV' + body
+
+def f_mmv():
+    h = (b'MMV\x00' + struct.pack('<IIII', 1, 3300, 44, 1)
+         + struct.pack('<III', 0xF4, 0xF4, 2) + b'\x00' * 64
+         + struct.pack('<I', 0) + b'\x00' * 128 + b'\x00' * 16)
+    assert len(h) == 0xF4
+    return h + b'\x00' * 3300 * 2
+
+def f_mcm():
+    h = bytearray(b'MDFNMOVI' + struct.pack('<II', 0, 0) + b'0' * 32 + b'\x00' * 64)
+    h += struct.pack('<I', 12) + b'pce\x00\x00' + b'\x00' * 32
+    h += b'\x00' * (0x100 - len(h))
+    return bytes(h) + b'\x00' * 11 * 240
+
+
+def f_pjm():
+    return (b'PJM ' + struct.pack('<I', 2) + b'\x00' * 4 + struct.pack('<H', 0)
+            + bytes([4, 4]) + struct.pack('<II', 12345, 678)
+            + struct.pack('<IIIIII', 0, 0, 0, 0, 0x34, 0x35) + struct.pack('<I', 0)
+            + b'\x00' + b'\x00' * 5 * 4)
+
+def f_pxm():
+    return (b'PXM ' + struct.pack('<I', 2) + b'\x00' * 4 + bytes([0, 0])
+            + bytes([4, 4]) + struct.pack('<II', 999, 56)
+            + struct.pack('<IIIIII', 0, 0, 0, 0, 0x34, 0x35) + struct.pack('<I', 0)
+            + b'\x00' + b'\x00' * 5 * 4)
+
+def f_mc2():
+    return (b'version 1\nemuVersion 1\nrerecordCount 9\nports 1\nPCECD 0\n'
+            + b'|0|........|\n' * 100)
+
+def f_ymv():
+    return (b'version 1\nemuVersion 1\nrerecordCount 4\nisPal 0\n'
+            + b'|0|.............|\n' * 50)
+
+def f_bkm():
+    return (b'MovieVersion BizHawk v1.0.0\nPlatform SNES\nrerecordCount 13\n'
+            b'StartsFromSavestate False\nPAL False\n'
+            + b'|.|............|\n' * 77)
+
+def f_dof():
+    return (struct.pack('<IiiIII', 0x1A564F44, 3000, 20, 9000, 34, 1)
+            + b'\x00' * 4296 + b'\x00' * 16 * 9000)
+
+def f_rec():
+    return (struct.pack('<iIii', 900, 0x83, 0, 0) + struct.pack('<I', 0)
+            + b'QWQUICK1'.ljust(16, b'\x00') + b'\x00' * (900 * 27)
+            + struct.pack('<i', 0) + struct.pack('<i', 0x00492F75))
+
 FIXTURES = {
     'bk2': (f_bk2(), 250, 'nes'),
     'tasproj': (f_bk2('tasproj'), 250, 'nes'),
@@ -309,11 +393,28 @@ FIXTURES = {
     'itf': (f_itf(), 61, 'pc'),
     'otts': (f_otts(), 4500, 'pc'),
     'gmtas': (f_gmtas(), 5400, 'pc'),
+    'smv': (f_smv(), 4321, 'snes'),
+    'zmv': (f_zmv(), 2500, 'snes'),
+    'fcm': (f_fcm(), 6000, 'nes'),
+    'fmv': (f_fmv(), 900, 'nes'),
+    'vmv': (f_vmv(), 1800, 'nes'),
+    'nmv': (f_nmv(), 720, 'nes'),
+    'mmv': (f_mmv(), 3300, 'sms'),
+    'mcm': (f_mcm(), 240, 'pce'),
+    'pjm': (f_pjm(), 12345, 'psx'),
+    'pxm': (f_pxm(), 999, 'psx'),
+    'mc2': (f_mc2(), 100, 'pce'),
+    'ymv': (f_ymv(), 50, 'saturn'),
+    'bkm': (f_bkm(), 77, 'snes'),
+    'dof': (f_dof(), 9000, 'dos'),
+    'rec': (f_rec(), 900, 'pc'),
 }
 RERECORDS = {'bk2': 1234, 'fm2': 4321, 'fm3': 77, 'dsm': 99, 'gmv': 555,
              'vbm': 42, 'dtm': 12, 'm64': 8, 'mar': 7, 'p2m2': 3, 'ctm': 15,
              'wtf': 21, 'gzm': 17, 'lsmv': 888, 'ltm': 64, 'jrsr': 55,
-             'tas': 250, 'ctas': 31, 'fbm': 19, 'omr': 66, 'mctas': 77}
+             'tas': 250, 'ctas': 31, 'fbm': 19, 'omr': 66, 'mctas': 77, 'smv': 777, 'zmv': 321, 'fcm': 88,
+             'fmv': 42, 'vmv': 55, 'nmv': 66, 'mmv': 44, 'mcm': 12,
+             'pjm': 678, 'pxm': 56, 'mc2': 9, 'ymv': 4, 'bkm': 13, 'dof': 34}
 
 
 def main():
