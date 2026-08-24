@@ -2636,7 +2636,7 @@
         // the archivist resolves it: several platforms reveal their thumbnail
         // only through an API a browser is not allowed to call
         var asked = url;
-        fetch(api + '/api/encode/check?url=' + encodeURIComponent(url))
+        fetch(api + '/api/encode/check?url=' + encodeURIComponent(url), {credentials: 'include'})
           .then(function(r){ return r.json(); })
           .then(function(j){
             if (encodeInput.value.trim() !== asked) return;      // the field moved on
@@ -2695,7 +2695,7 @@
         previewNotes.textContent = 'Rendering…';
         var previewForm = new FormData();
         previewForm.append('notes', submitForm.querySelector('[name=notes]').value || '');
-        fetch(api + '/api/preview', {method: 'POST', body: previewForm})
+        fetch(api + '/api/preview', {method: 'POST', body: previewForm, credentials: 'include'})
           .then(function(r){ return r.json(); })
           .then(function(j){ previewNotes.innerHTML = j.ok ? j.html : escapeHtml(j.error || 'preview failed'); })
           .catch(function(){ previewNotes.textContent = 'The archivist is not reachable; the preview needs it.'; });
