@@ -224,7 +224,10 @@ sexual, photosensitivity, strong language; sexual blurs thumbnails behind a
 session-scoped 18+ overlay) · text attachments (allowlisted extensions incl.
 .xml, UTF-8, ≤128 KB each/≤512 KB total/≤8 files, plus up to 4 extra movie
 files) · notes (the author's write-up) · consent: **CC BY 4.0** license grant
-plus agreement with all four constitutional sections.
+plus agreement with the Community Principles (§1), the Run submission policy
+(§3.1) and the Multiple author submission policy (§3.2); the constitution's
+§3 intro says submitting is that agreement, so the checkbox and the
+document state the same thing.
 
 The run is **archived instantly and appears immediately, as pending**. One
 commit per run; git history is the public submission log. Duplicates are
