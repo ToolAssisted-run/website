@@ -1533,6 +1533,12 @@
         }
         var labelIn = field('Label'); labelIn.value = c.label; labelIn.maxLength = 80;
         labelIn.addEventListener('input', function(){ c.label = labelIn.value; refresh(); });
+        if (!c.isNew) {
+          c.newKey = c.newKey || c.key;
+          var keyIn = field('Key (lowercase-with-hyphens: the address rankings and links use; runs follow a rename)');
+          keyIn.value = c.newKey; keyIn.maxLength = 60; keyIn.pattern = '[a-z0-9]+(-[a-z0-9]+)*';
+          keyIn.addEventListener('input', function(){ c.newKey = keyIn.value.trim(); refresh(); });
+        }
         var ruleIn = field('Rule (markdown)', 'textarea'); ruleIn.value = c.rule; ruleIn.rows = 4; ruleIn.maxLength = 2000;
         ruleIn.addEventListener('input', function(){ c.rule = ruleIn.value; refresh(); });
         var metricsRoot = el('div');
@@ -1680,6 +1686,12 @@
               return post('/api/category/delete', fd, saveBtn);
             }, done: function(){ c.subs.splice(c.subs.indexOf(x), 1); if (b) b.subs = b.subs.filter(function(z){ return z.key !== x.key; }); }});
           });
+          // the key rename runs LAST for this category, so every op above
+          // still finds it under the old address; runs follow on the server
+          if (b && c.newKey && c.newKey !== c.key && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.newKey)) {
+            ops.push({what: c.key + ' key \u2192 ' + c.newKey, run: function(){ return edit('category', gameEditData.game + ':' + c.key, 'key', c.newKey); },
+                      done: function(){ b.key = c.newKey; c.key = c.newKey; }});
+          }
         });
         draft.cats.filter(function(c){ return c.deleted && !c.isNew; }).forEach(function(c){
           ops.push({what: c.key + ' delete', run: function(){

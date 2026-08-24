@@ -76,7 +76,12 @@ group  (groups.json)                      a game family ACROSS systems
   cap, a game property edited in the game editor); game rules, then the
   category's, then the subcategory's compose per combination and open in a
   "View rules" dialog on the game page rather than cluttering the board (#60). New options exist the moment they are
-  created; experts refine the wording, and delete unused mistakes.
+  created; experts refine the wording, and delete unused mistakes. A
+  category's (or subcategory's) **key** — the address rankings, links and
+  runs point at — is renameable from the game editor (#69: kebab-case,
+  unique per game, `unclassified` reserved); every run in it follows the
+  rename in the same commit, nothing is voided, and the editor runs the
+  rename last so the save's other edits still find the old address.
 - **Subcategories** (issue #43): a category option may define a second
   level (`subcategories`: key, label, optional rule fragment), e.g. Episode 1
   → any%, 100%. A run in such a category names one (`category.sub`,

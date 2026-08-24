@@ -1479,7 +1479,7 @@ def parse_game_property(field, raw):
 EXPERT_EDITABLE = {'run': ('duration', 'goal', 'encode', 'goalDescription',
                            'notes', 'movie'),
                    'game': ('title', 'thumbnail') + GAME_PROPERTY_FIELDS,
-                   'category': ('label', 'rule', 'metrics', 'selector', 'subSelector'),
+                   'category': ('label', 'rule', 'metrics', 'selector', 'subSelector', 'key'),
                    'group': ('title',)}
 
 @app.post('/api/expert/edit')
@@ -1780,6 +1780,68 @@ def expert_edit():
                         if o['key'] == option_key), None)
             if not option:
                 return fail(f'{game_key} defines no category {option_key!r}', 404)
+            if field == 'key':
+                # rename the category's (or subcategory's) key (issue #69):
+                # the label is what readers see, the key is the address the
+                # rankings and runs point at, so every run in it follows in
+                # the same commit. Nothing judged changes: nothing is voided.
+                new_key = slugify(value)
+                if not new_key:
+                    return fail('a key is lowercase-with-hyphens')
+                if new_key == 'unclassified':
+                    return fail('unclassified is reserved')
+                runs_dir = ARCHIVE / 'games' / game_key / 'runs'
+                if sub_key:
+                    subs = option.get('subcategories', [])
+                    sub = next((s for s in subs if s['key'] == sub_key), None)
+                    if not sub:
+                        return fail(f'{option_key} has no subcategory {sub_key!r}', 404)
+                    if new_key == sub_key:
+                        return fail('that is already its key')
+                    if any(s['key'] == new_key for s in subs):
+                        return fail(f'{new_key!r} already exists in {option["label"]}', 409)
+                    old_value = sub_key
+                else:
+                    if new_key == option_key:
+                        return fail('that is already its key')
+                    if any(o['key'] == new_key for d in categories['dimensions']
+                           for o in d['options']):
+                        return fail(f'{new_key!r} already exists on this game', 409)
+                    old_value = option_key
+                moved = 0
+                for run_json_path in runs_dir.glob('*/run.json'):
+                    run_doc = json.loads(run_json_path.read_text())
+                    run_cat = run_doc.get('category') or {}
+                    if run_cat.get('goal') != option_key:
+                        continue
+                    if sub_key:
+                        if run_cat.get('sub') != sub_key:
+                            continue
+                    if dry_run:
+                        moved += 1
+                        continue
+                    if sub_key:
+                        run_cat['sub'] = new_key
+                    else:
+                        run_cat['goal'] = new_key
+                    run_json_path.write_text(json.dumps(run_doc, indent=1) + '\n')
+                    moved += 1
+                if dry_run:
+                    return jsonify({'ok': True, 'dry_run': True, 'field': field,
+                                    'from': old_value, 'to': new_key, 'runs_moved': moved})
+                if sub_key:
+                    sub['key'] = new_key
+                else:
+                    option['key'] = new_key
+                categories_file.write_text(json.dumps(categories, indent=1) + '\n')
+                log_edit('category', target, field, old_value, new_key, actor, reason)
+                ensure_member(actor)
+                commit_push(f'Expert edit category {target}: key\n\n'
+                            f'From: {old_value}\nTo: {new_key}\n'
+                            f'Runs following the rename: {moved}\n'
+                            f'By: {actor}\nReason: {reason}\nVia: archivist')
+                return jsonify({'ok': True, 'kind': kind, 'key': target, 'field': field,
+                                'from': old_value, 'to': new_key, 'runs_moved': moved})
             if field == 'subSelector' and not sub_key:
                 # how this category's subcategories are offered
                 if value not in ('buttons', 'dropdown'):

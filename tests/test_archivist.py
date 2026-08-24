@@ -1270,6 +1270,35 @@ def main():
             ck('a tool change invalidates the reproductions (reproduction information)',
                c == 200 and r['voided'] == ['reproductions'] and vj['status']['reproduced'] == 'none'
                and all(x.get('invalidated') for x in vj['reproductions']), f'{r} {vj["status"]}')
+            # a category key rename (#69): the runs follow in the same commit
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'category',
+                            'target': 'nes/pinball:100k-glitched', 'field': 'key',
+                            'value': 'any-percent', 'reason': 'clearer key, issue 69'})
+            ck('a category key is renamed', c == 200 and r['to'] == 'any-percent'
+               and r['runs_moved'] >= 1, str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            cats_ = json.loads((work / 'games/nes/pinball/categories.json').read_text())
+            keys_ = [o['key'] for d in cats_['dimensions'] for o in d['options']]
+            ck('the option carries the new key', 'any-percent' in keys_ and '100k-glitched' not in keys_, str(keys_))
+            moved_ok = all(json.loads(p_.read_text())['category'].get('goal') != '100k-glitched'
+                           for p_ in (work / 'games/nes/pinball/runs').glob('*/run.json'))
+            ck('every run followed the rename', moved_ok)
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'category',
+                            'target': 'nes/pinball:any-percent', 'field': 'key',
+                            'value': 'unclassified', 'reason': 'trying the reserved key'})
+            ck('unclassified is refused as a key', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'category',
+                            'target': 'nes/pinball:any-percent', 'field': 'key',
+                            'value': 'pacifist', 'reason': 'colliding on purpose'})
+            ck('a key collision is refused', c == 409, str(r)[:120])
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'category',
+                            'target': 'nes/pinball:any-percent', 'field': 'key',
+                            'value': '100k-glitched', 'reason': 'renamed back for the tests that follow'})
+            ck('renamed back', c == 200, str(r)[:120])
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'eien86', 'kind': 'game', 'target': 'nes/pinball',
                             'field': 'rules', 'value': 'No cheats.\n\nUse **standard** settings.',
