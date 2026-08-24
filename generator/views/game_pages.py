@@ -36,7 +36,10 @@ def behind_text(r, best, prim):
     otherwise the metric's own unit."""
     pv, bv = metric_value(r, prim), metric_value(best, prim)
     if (prim['key'] == 'time' and not r.get('videoOnly') and not best.get('videoOnly')
-            and r['movie'].get('frames') and best['movie'].get('frames')):
+            and r['movie'].get('frames') and best['movie'].get('frames')
+            and not r.get('duration') and not best.get('duration')):
+        # frames against frames only while frames are what ranks: a stated
+        # duration on either side decides the order, so the gap follows it
         return f"+{r['movie']['frames'] - best['movie']['frames']:,}f"
     if pv is None or bv is None:
         return '—'

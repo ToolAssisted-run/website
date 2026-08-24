@@ -69,7 +69,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   {% if not is_leg %}
   {# community rosters #}
   <h2>Reproductions ({{ live(reps)|length }})</h2>
-<div class="roster">{% if reps %}{{ roster_acts(r, reps, 'repro') }}{% elif not r.get('contract', {}).get('emulator') %}<p class="emptynote">No reproductions yet, and the run does not name the tool that plays its movie back, so a sync cannot be confirmed (Terms 4.3). An author or a covering expert can add the tool through Edit run; the bounty, currently <b>{{ repro_bounty(r) }} contributor points</b>, waits for whoever syncs it then.</p>{% else %}<p class="emptynote">No reproductions yet. Load the movie file in <b>{{ r['contract']['emulator'] }}</b> on your own setup, confirm it syncs, and be the first; the current bounty is <b>{{ repro_bounty(r) }} contributor points</b>.</p>{% endif %}</div>
+<div class="roster">{% if reps %}{{ roster_acts(r, reps, 'repro') }}{% elif r.get('videoOnly') %}<p class="emptynote">Nothing exists to reproduce: this run is video-only, with no movie file; the encode is the run.</p>{% elif not r.get('contract', {}).get('emulator') %}<p class="emptynote">No reproductions yet, and the run does not name the tool that plays its movie back, so a sync cannot be confirmed (Terms 4.3). An author or a covering expert can add the tool through Edit run; the bounty, currently <b>{{ repro_bounty(r) }} contributor points</b>, waits for whoever syncs it then.</p>{% else %}<p class="emptynote">No reproductions yet. Load the movie file in <b>{{ r['contract']['emulator'] }}</b> on your own setup, confirm it syncs, and be the first; the current bounty is <b>{{ repro_bounty(r) }} contributor points</b>.</p>{% endif %}</div>
 {% if is_unclassified(r) %}
 <h2>Verifications</h2><p class="emptynote">Unclassified runs are never verified because no goal is defined. They rank by likes instead.</p>
 {% else %}
@@ -188,7 +188,7 @@ Log in (top right) to reply from here.</p></section>
     {% if r.get('videoOnly') %}<dt>Kind</dt><dd>Video-only: no input movie exists</dd>
     {% elif r['movie'].get('frames') %}<dt>Frames</dt><dd class="big">{{ '{:,}'.format(r['movie']['frames']) }}</dd>
     {% else %}<dt>Frames</dt><dd>unknown: the .{{ r['movie']['format'] }} format is kept as it is, not read</dd>{% endif %}
-    {% if run_seconds(r) is not none %}<dt>Time</dt><dd>{{ t }}{% if r.get('videoOnly') or not r['movie'].get('frames') %} (stated by the submitter){% endif %}</dd>{% endif %}
+    {% if run_seconds(r) is not none %}<dt>Time</dt><dd>{{ t }}{% if r.get('duration') or r.get('videoOnly') or not r['movie'].get('frames') %} (stated by the submitter){% endif %}</dd>{% endif %}
     {% for m, mv in metric_rows %}<dt>{{ m['label'] }}</dt><dd>{{ fmt_metric(mv, m) }}{% if mv is none %} (not yet stated){% endif %}</dd>{% endfor %}
     {% if not r.get('videoOnly') %}
     <dt>Rerecords</dt><dd>{{ '{:,}'.format(r['movie'].get('rerecords') or 0) }}</dd>

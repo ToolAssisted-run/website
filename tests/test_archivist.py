@@ -1214,29 +1214,44 @@ def main():
             c, r, _ = call(U + '/api/reproduce', {'key': KEY, 'user': 'helper', 'run': vrun, 'emulator': 'x'},
                            {'screenshot': ('end.png', PNG)})
             ck('verified and reproduced', c == 200 and r['status']['reproduced'] == 'community', str(r)[:200])
-            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun, 'notes': 'fresh notes'})
-            ck('a notes edit voids nothing', c == 200 and r['voided'] == [], str(r))
-            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
-                                             'encode': 'https://youtu.be/videoonly001', 'dry_run': '1'})
-            ck('the dry run announces what an encode change would void',
-               c == 200 and r['would_void'] == ['verifications'], str(r))
+            # the general voiding rule: scoring -> verifications;
+            # reproduction information -> reproductions + console; else nothing
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun, 'notes': 'fresh notes',
+                                             'time': '1:00.000'})
+            ck('a notes edit voids nothing, the prefilled time sent back included',
+               c == 200 and r['voided'] == [] and r['changed'] == ['notes'], str(r))
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
                                              'encode': 'https://youtu.be/videoonly001'})
+            ck('an encode change voids nothing: verification attests the scoring',
+               c == 200 and r['voided'] == [], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
+                                             'time': '1:02.500', 'dry_run': '1'})
+            ck('the dry run announces what a scoring change would void',
+               c == 200 and r['would_void'] == ['verifications'], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
+                                             'time': '1:02.500'})
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             vj = json.loads((work / f'games/nes/pinball/runs/{vrun}/run.json').read_text())
-            ck('an encode change invalidates the verifications and unranks the run',
+            ck('a scoring change invalidates the verifications and unranks the run',
                c == 200 and r['voided'] == ['verifications'] and vj['status']['verified'] == 'none'
                and all(v.get('invalidated') for v in vj['verifications'])
                and vj['status']['reproduced'] == 'community', f'{r} {vj["status"]}')
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun,
+                                             'emulator': 'BizHawk 2.12', 'time': '1:02.500'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            vj = json.loads((work / f'games/nes/pinball/runs/{vrun}/run.json').read_text())
+            ck('a tool change invalidates the reproductions (reproduction information)',
+               c == 200 and r['voided'] == ['reproductions'] and vj['status']['reproduced'] == 'none'
+               and all(x.get('invalidated') for x in vj['reproductions']), f'{r} {vj["status"]}')
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'groupexpert', 'kind': 'run', 'target': vrun,
                             'field': 'movie', 'reason': 'a resynced movie file, on the record'},
                            {'movie': ('new.bk2', make_bk2())})
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             vj = json.loads((work / f'games/nes/pinball/runs/{vrun}/run.json').read_text())
-            ck('a movie replacement voids the reproductions too',
-               c == 200 and vj['status']['reproduced'] == 'none'
-               and all(x.get('invalidated') for x in vj['reproductions']), f'{c} {r} {vj["status"]}')
+            ck('a movie replacement leaves the verifications and voids nothing else live',
+               c == 200 and vj['status']['verified'] == 'none'
+               and vj['status']['reproduced'] == 'none', f'{c} {r} {vj["status"]}')
 
             # --- cases: upheld path ---
             c, r, _ = call(U + '/api/case/open', {'key': KEY, 'user': 'disputer',

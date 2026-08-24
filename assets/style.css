@@ -97,9 +97,13 @@ a{color:inherit}
 /* the mark beside a button: spinner, then a green check or a red cross
    whose tooltip carries the error. Frame-quantized, like everything */
 .bmark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;vertical-align:middle;border-radius:50%;flex:none;align-self:center}
-.bmark:empty{display:none}.bmark.spin,.bmark.ok,.bmark.bad{display:inline-flex}
+.bmark:empty{display:none}.bmark.spin,.bmark.ok,.bmark.bad,.bmark.warn{display:inline-flex}
 .bmark.spin{border:2.5px solid var(--hairs);border-top-color:var(--accent);animation:busyspin .8s steps(8) infinite}
 .bmark.ok{background:var(--accent)}.bmark.ok::before{content:"";width:12px;height:12px;background:#fff;clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0,43% 62%)}
+.bmark.warn{background:var(--bg);border:2.5px solid #2563EB;cursor:help;color:#2563EB;font:700 .82rem/1 ui-monospace,monospace}.bmark.warn::before{content:"!"}
+.movierow{display:flex;align-items:center;gap:4px}
+.movierow input[type=file]{flex:1;width:auto;min-width:0}
+.notewarn{color:#2563EB}
 .bmark.bad{background:#DC2626;cursor:help}.bmark.bad::before{content:"";width:11px;height:11px;background:#fff;clip-path:polygon(20% 0,0 20%,30% 50%,0 80%,20% 100%,50% 70%,80% 100%,100% 80%,70% 50%,100% 20%,80% 0,50% 30%)}
 @keyframes busyspin{to{transform:rotate(360deg)}}
 .side{display:flex;flex-direction:column;gap:22px;position:sticky;top:16px}
@@ -592,7 +596,10 @@ footer a{color:var(--accent-text);text-decoration:none}
 
 /* stated-time picker: four boxes, a mistake is not possible */
 .timerow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.impsel{appearance:auto;padding-right:8px}
+.timerow > input[type=number]{flex:1;min-width:120px;max-width:260px}
+.timerow .btn,.timerow .impsel{flex:none}
+.actform select.impsel,.impsel{appearance:auto;padding-right:8px;width:auto;flex:none}
+.timerow .timepick{flex:none}
 .timepick{display:flex;gap:10px}
 .tseg{display:flex;flex-direction:column;align-items:center;gap:2px}
 .tseg input{width:5.5ch;text-align:center;font-family:ui-monospace,monospace;

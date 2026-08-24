@@ -292,8 +292,8 @@ def parse_date(s):
 # ---- per-category metrics ----
 # A category option may define `metrics`: an ordered hierarchy of what it
 # ranks by. Absent means the classic implicit metric: real time, lower is
-# better. The reserved key 'time' is always derived (frames/fps or stated
-# duration), never typed for movie runs.
+# better. The reserved key 'time' is the run's own time (the stated
+# duration; frames/fps for older runs that never stated one).
 CLASSIC_METRICS = [{'key': 'time', 'label': 'Time', 'type': 'time',
                     'better': 'lower'}]
 

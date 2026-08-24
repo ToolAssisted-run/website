@@ -233,7 +233,7 @@ refused at intake: same movie bytes (`movie.sha1`), the same work saved again
 Caps: 32 MB at intake (a human decides past that), 100 MB in the validator
 (what a git host will hold). Movie frame counts are ≥0 by schema; a movie
 whose own frame rate differs from the system default carries `movie.fps`
-(times and ranks derive from frames over the movie's own rate).
+(the fallback rate for older runs whose time still derives from frames).
 
 **Video-only runs**: no movie file was provided (there is no checkbox: the
 absence of the file is the fact; the API's `video_only` flag survives for
@@ -365,18 +365,23 @@ concerns use **contact@toolassisted.run** (§10).
 
 ### Edits (the record can be corrected; the history always shows)
 
-**An edit that changes what was judged voids the judgement.** A new
-encode, a changed scoring (stated metric values or stated time) or a
-replaced movie file invalidates every live verification on the run (the
-run leaves the ranking until verified again); a replaced movie file also
-invalidates its reproductions (they synced the old file). The archivist
-does this on both edit paths, logs it, and a dry run announces it
+**The general voiding rule: an edit voids exactly the acts that attested
+what it changed.** A change to the run's **scoring** (its stated time or
+any metric value) invalidates every live verification (the run leaves the
+ranking until verified again). A change to its **reproduction
+information** (the movie file, the tool it plays in, the files it was
+made against) invalidates every live reproduction and console
+verification (they synced the old setup). Nothing else voids anything:
+encode, notes, dates, disclosures and authors are free. The archivist
+enforces this on both edit paths (`SCORING_FIELDS` / `REPRO_FIELDS` +
+`metric:*` in `void_acts_for`), logs it, and a dry run announces it
 (`would_void`), so the Edit run form asks "are you sure" before sending.
-Notes, tool, files list, dates, disclosures and authors void nothing.
+The prefilled record sent back unchanged is never a change: only a real
+difference (sub-ms tolerance for times) is recorded or voids anything.
 
 - **One "Edit run" panel serves authors and covering experts** (`/api/edit`):
   notes, emulator, completion date, goal description, encode, stated time
-  (video-only), metric values. Authors alone may also revise the author list
+  (whenever the category ranks by it), metric values. Authors alone may also revise the author list
   (refused if it would credit somebody who already acted on the run) and
   upload **supplementary files** (same validation and caps as submission's
   attachments, counted together; stored under `attachments/` with role
@@ -493,9 +498,10 @@ A category defines what it ranks by.
   sorts LAST at its level regardless of direction, falling through to the
   next metric. The final tie-break is the submission date (imports: original
   publication), earlier wins, so ranks are always plain 1, 2, 3.
-- **Verification is untouched by metrics, absolutely**: it attests the
-  category's goal; metrics only order the achievers. No value edit voids a
-  verification; dishonest values are a moderation matter.
+- **Verification attests the goal and the scoring**: metrics order the
+  achievers, and editing a stated value afterwards voids the live
+  verifications (the general voiding rule above); dishonest values that
+  slip past are a moderation matter.
 - **Derivation lives in the generator only**: `model.py` `run_metric_defs`
   / `metric_value` / `rank_key` (comparator), `render.py` `fmt_metric` /
   `primary_metric_html` / `primary_metric_text`. The archive stores facts;

@@ -1936,10 +1936,8 @@
         ev.preventDefault();
         ev.returnValue = '';
       });
-      // video-only: the movie input and the stated time trade places, and
-      // the one that is hidden must not hold a stale required flag
-      // video-only is no checkbox: a run without a movie file IS video-only
-      function isVideoOnly(){ return !(movieInput.files && movieInput.files[0]) && !(editRunId && editRecord && editRecord.run.movie); }
+      // the movie file is optional; without one the run is video-only
+
       var movieWrap = document.getElementById('s-moviewrap');
       var timeWrap = document.getElementById('s-timewrap');
       // the stated time is four number boxes (h m s ms): a format mistake is
@@ -1948,6 +1946,17 @@
         return document.getElementById(id);
       });
       var timeField = document.getElementById('s-time');
+      // a restored draft hands back seconds through the hidden field; the
+      // segments have to show them, or composeTime wipes the value
+      timeField.fill = function(v){
+        var m = /^(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?$/.exec(String(v || '').trim());
+        if (!m) return;
+        var sec = (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+((m[4] || '').padEnd(3, '0')) / 1000 || 0);
+        byIdS('t-h').value = Math.floor(sec / 3600) || '';
+        byIdS('t-m').value = Math.floor(sec / 60) % 60;
+        byIdS('t-s').value = Math.floor(sec) % 60;
+        byIdS('t-ms').value = Math.round((sec % 1) * 1000);
+      };
       function pad2(n){ return (n < 10 ? '0' : '') + n; }
       function composeTime(){
         if (!timeField) return;
@@ -1968,7 +1977,7 @@
       });
       var gameSelect = document.getElementById('s-game'), goalSelect = document.getElementById('s-goal');
       // the category's stated metrics: fields appear on category pick, in
-      // the dashed box; the derived real time is never typed for movie runs
+      // the dashed box; every value is the author's to state, time included
       var metricsBox = document.getElementById('s-metrics');
       var metricFields = document.getElementById('s-mfields');
       var curMetrics = null;   // null = classic (real time, lower is better)
@@ -1986,7 +1995,7 @@
         statedDefs().forEach(function(m){
           var lab = document.createElement('label');
           lab.textContent = m.label + (m.unit ? ' (' + m.unit + ')' : '')
-            + ' — ' + (m.better === 'higher' ? 'higher' : 'lower') + ' is better';
+            + ' · ' + (m.better === 'higher' ? 'higher' : 'lower') + ' is better';
           metricFields.appendChild(lab);
           var hiddenField = document.createElement('input');
           hiddenField.type = 'hidden'; hiddenField.name = 'metric_' + m.key;
@@ -2052,29 +2061,54 @@
       var movieInfo = null;
       var movieInput = movieWrap.querySelector('input');
       var movieNote = document.getElementById('s-movienote');
+      var movieMark = document.getElementById('s-moviemark');
+      function setMovieMark(state, title){
+        if (!movieMark) return;
+        movieMark.className = 'bmark' + (state ? ' ' + state : '');
+        movieMark.title = title || '';
+      }
       movieInput.addEventListener('change', function(){
         var file = movieInput.files && movieInput.files[0];
         movieInfo = null;
-        if (!file) { movieNote.hidden = true; paintKind(); paintPanels(); return; }
-        movieNote.hidden = false; movieNote.textContent = 'reading ' + file.name + '…';
+        if (!file) { movieNote.hidden = true; setMovieMark('', ''); paintKind(); paintPanels(); return; }
+        movieNote.hidden = false; movieNote.className = 'rules fullw';
+        movieNote.textContent = 'reading ' + file.name + '…';
+        setMovieMark('spin', 'reading the movie…');
         var fd = new FormData(); fd.append('movie', file); fd.append('game', gameSelect.value);
         fetch(api + '/api/movie/inspect', {method: 'POST', body: fd, credentials: 'include'})
           .then(function(r){ return r.json(); })
           .then(function(j){
-            if (!j.ok) { movieInfo = {error: j.error || 'not a movie file'}; movieNote.textContent = '✗ ' + movieInfo.error; movieNote.className = 'rules fullw enc-bad'; }
-            else {
+            if (!j.ok) {
+              movieInfo = {error: j.error || 'not a movie file'};
+              movieNote.textContent = '✗ ' + movieInfo.error;
+              movieNote.className = 'rules fullw enc-bad';
+              setMovieMark('bad', movieInfo.error);
+            } else {
               movieInfo = j;
-              movieNote.className = 'rules fullw';
               // an unreadable or unknown file is a warning, never a stop: the
-              // archive keeps the file as it is and the author states the time
-              movieNote.textContent = j.parsed
-                ? '✓ .' + j.format + ': ' + (j.frames || 0).toLocaleString() + ' frames' + (j.seconds ? ', ' + secClock(j.seconds) : '') + (j.rerecords ? ', ' + j.rerecords.toLocaleString() + ' rerecords' : '')
-                : (j.known ? '⚠ .' + j.format + ' is a known format the archive keeps as it is but cannot read' + (j.error ? ' (' + j.error + ')' : '')
-                           : '⚠ .' + j.format + ' is not a format the archive can read; the file is kept as it is');
+              // archive keeps the file as it is and the author states the values
+              if (j.parsed) {
+                movieNote.className = 'rules fullw';
+                movieNote.textContent = '✓ .' + j.format + ': ' + (j.frames || 0).toLocaleString() + ' frames' + (j.seconds ? ', ' + secClock(j.seconds) : '') + (j.rerecords ? ', ' + j.rerecords.toLocaleString() + ' rerecords' : '');
+                setMovieMark('ok', 'movie read: ' + (j.frames || 0).toLocaleString() + ' frames');
+              } else {
+                var why = j.known ? '.' + j.format + ' is a known format the archive could not read' + (j.error ? ' (' + j.error + ')' : '')
+                                  : '.' + j.format + ' is not a format the archive can read';
+                movieNote.className = 'rules fullw notewarn';
+                movieNote.textContent = '! ' + why + '. You can continue: the file is archived exactly as it is, '
+                  + 'but nothing could be parsed, so nothing is importable from the movie.';
+                setMovieMark('warn', why);
+              }
             }
             paintKind(); paintPanels();
           })
-          .catch(function(){ movieInfo = {error: 'could not reach the archivist to read the movie'}; movieNote.textContent = '✗ ' + movieInfo.error; paintKind(); paintPanels(); });
+          .catch(function(){
+            movieInfo = {error: 'could not reach the archivist to read the movie'};
+            movieNote.textContent = '✗ ' + movieInfo.error;
+            movieNote.className = 'rules fullw enc-bad';
+            setMovieMark('bad', movieInfo.error);
+            paintKind(); paintPanels();
+          });
       });
       function secClock(sec){
         var h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s2 = Math.floor(sec) % 60, ms = Math.round((sec % 1) * 1000);
@@ -2103,6 +2137,7 @@
             if (!o.value) return;
             var sec = src[o.value];
             o.disabled = !sec;
+            o.hidden = !sec;   // a removed movie takes its option away entirely
             o.textContent = (o.value === 'movie' ? 'the movie file' : 'the video encode')
                           + (sec ? ' · ' + secClock(sec) : '');
             if (sec) any = true;
@@ -2131,8 +2166,10 @@
         paintPanels();
       });
       function paintKind(){
-        // in edit mode the movie stays as it is: only experts see the picker, to replace it
-        movieWrap.hidden = !!(editRunId && !(editMay && (editMay.expert || editMay.editor)));
+        // in edit mode the movie stays as it is: only experts see the picker,
+        // to replace it; a video-only run has nothing to replace
+        movieWrap.hidden = !!(editRunId && (!(editMay && (editMay.expert || editMay.editor))
+                                            || (editRecord && editRecord.run.videoOnly)));
         var stated = timeStatedNeeded();
         timeWrap.hidden = !stated;
         var secs = document.getElementById('t-s');
@@ -2303,7 +2340,7 @@
         // name, which is no reason to claim one was saved
         var fields = draftFields();
         var typed = gameSelect.value || Object.keys(fields).some(function(k){
-          return k !== 'authors' && k !== 'video_only' && k !== 'goal_description' && [].concat(fields[k]).some(function(v){ return v; });
+          return k !== 'authors' && k !== 'goal_description' && [].concat(fields[k]).some(function(v){ return v; });
         });
         if (!typed) return;
         var data = {t: new Date().toISOString(), game: gameSelect.value, goal: goalSelect.value,
@@ -2362,7 +2399,7 @@
             else { movieWrap.hidden = true; }
             movieInfo = run.videoOnly ? null : {parsed: !!(run.movie && run.movie.frames), frames: (run.movie || {}).frames,
               seconds: (run.movie && run.movie.frames && run.movie.fps) ? run.movie.frames / run.movie.fps : null,
-              format: (run.movie || {}).format, kept: true};
+              format: (run.movie || {}).format};
             submitForm.querySelector('[name=emulator]').value = (run.contract || {}).emulator || '';
             var files = (run.contract || {}).files || ((run.contract || {}).rom ? [run.contract.rom] : []);
             var rowsBox = submitForm.querySelector('.filerows');
@@ -2390,8 +2427,10 @@
           }).catch(function(){ byIdS('s-subtitle').textContent = 'could not reach the archivist'; });
       }
       function editStatedTime(run){
-        // the stated time of a video-only or unread movie, back into h m s ms
+        // the record's time, back into h m s ms: the stated duration, or,
+        // for a legacy run that never stated one, the frames-derived value
         var sec = run.duration;
+        if (!sec && run.movie && run.movie.frames && run.movie.fps) sec = run.movie.frames / run.movie.fps;
         if (!sec) return;
         byIdS('t-h').value = Math.floor(sec / 3600) || '';
         byIdS('t-m').value = Math.floor(sec / 60) % 60;
@@ -2442,7 +2481,7 @@
         }
         if (step === 4) {
           // every value the category ranks by: stated metrics, and the time
-          // when it is stated by hand (a derived time is already there)
+          // whenever the category ranks by it (typed, or imported on demand)
           var ok = Array.prototype.every.call(submitForm.querySelectorAll('#s-mfields input[type=hidden]'), function(h){ return h.value !== '' && !isNaN(+h.value); });
           if (timeStatedNeeded() && !/^(\d+:)?\d{1,2}:\d{2}/.test(document.getElementById('s-time').value)) ok = false;
           return ok;
@@ -2703,10 +2742,11 @@
           var wv = (res.ok && res.j.ok) ? (res.j.would_void || []) : [];
           var nothing = !res.ok && /nothing to change/.test(res.j.error || '');
           if (!(res.ok && res.j.ok) && !nothing) { note(msg, res.j.error || 'something went wrong', false); return; }
-          if (newMovie) wv = wv.concat(['verifications', 'reproductions']);
+          if (newMovie) wv = wv.concat(['reproductions', 'consoleVerifications']);
           var text = '';
-          if (wv.indexOf('verifications') >= 0) text = 'This run is verified. The change you are saving (encode, scoring or movie) invalidates its verifications: it leaves the ranking until somebody verifies it again.';
-          if (wv.indexOf('reproductions') >= 0) text += (text ? ' ' : '') + 'Its reproductions are invalidated too: they synced the old movie.';
+          if (wv.indexOf('verifications') >= 0) text = 'This run is verified. Changing its scoring invalidates the verifications: it leaves the ranking until somebody verifies it again.';
+          if (wv.indexOf('reproductions') >= 0) text += (text ? ' ' : '') + 'Changing its reproduction information invalidates the reproductions: they synced the old setup.';
+          if (wv.indexOf('consoleVerifications') >= 0) text += (text ? ' ' : '') + 'Its console verifications are invalidated too.';
           if (text && !window.confirm(text + ' Save anyway?')) { setMark(submitBtn, '', ''); return; }
           submitting = true;
           var steps = [];
@@ -2778,7 +2818,8 @@
 
   // ---- create-game / create-category pages ----
   // The metrics editor both forms share: up to 4 rows, order = tie-break
-  // hierarchy; the derived real-time metric is a checkbox, never a typed row.
+  // hierarchy; time is a row like any other (a row labeled Time is the
+  // run's main time).
   function initMetricsEd(root, initial){
     var rowsEl = root.querySelector('.mrows');
     var addBtn = root.querySelector('.med-add');

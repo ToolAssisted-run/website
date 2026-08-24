@@ -412,10 +412,11 @@ def submit():
 
     Who: a logged-in member, or the shared `key` plus `submitter`
     Reads: form fields consent, game (system/slug), goal, goal_description,
-        metric_<key>, authors (comma-separated), video_only, time,
+        metric_<key>, authors (comma-separated), video_only, time (whenever
+        the category ranks by time; the record is what the author states),
         sub (the subcategory key, required iff the category defines
-        subcategories), encode, emulator (the tool and its version), time (stated [h:]mm:ss[.mmm]: video-only runs, and movies in a known
-        format the parser cannot read), file_name / file_sha1 (repeatable rows; the old
+        subcategories), encode, emulator (the tool and its version),
+        file_name / file_sha1 (repeatable rows; the old
         rom_name / rom_sha1 pair still counts as one), completed, notes,
         content_warnings (repeatable), dry_run; files movie, attachments
     Answers: {ok, id, archive, forum}; dry_run: {ok, dry_run, would_be, run,
@@ -473,7 +474,7 @@ def submit():
     stated_metrics = {}
     for metric_def in (metric_defs or []):
         if metric_def['key'] == 'time':
-            continue                    # derived for movies, stated via `time`
+            continue                    # the run's time is stated via `time`
         raw_value = (submission.get(f'metric_{metric_def["key"]}') or '').strip()
         if raw_value == '':
             return fail(f'this category ranks by {metric_def["label"]}: state its '
@@ -1292,29 +1293,41 @@ def place_subcategory(categories, category, raw_sub):
         category.pop('sub', None)
     return None
 
-VOIDING_FIELDS = {'encode', 'duration', 'movie'}   # plus every metric:<key>
+# The general voiding rule: a change to the run's SCORING (its time or any
+# metric) invalidates the verifications, which attested those values from
+# the encode; a change to its REPRODUCTION INFORMATION (the movie file, the
+# tool it plays in, the files it was made against) invalidates the
+# reproductions and the console verifications, which synced the old setup.
+# Nothing else voids anything.
+SCORING_FIELDS = {'duration'}                      # plus every metric:<key>
+REPRO_FIELDS = {'movie', 'emulator', 'files'}
 
 def void_acts_for(run, changed, by):
-    """What an edit does to the acts already on the run: a new encode, a new
-    movie or a changed score means the verifiers judged something else, so
-    every live verification is invalidated (the run drops out of the
-    ranking until somebody verifies it again); a new movie also voids the
-    reproductions, which synced the old file. Returns the kinds voided."""
+    """What an edit does to the acts already on the run, by the general
+    rule: a scoring change (time or any metric) invalidates the live
+    verifications, which attested those values, and the run leaves the
+    ranking until somebody verifies it again; a reproduction-information
+    change (the movie file, the tool, the files it was made against)
+    invalidates the live reproductions and console verifications, which
+    synced the old setup. Nothing else voids anything.
+    Returns the kinds voided."""
     voided = []
-    scoring = any(c == 'duration' or c.startswith('metric:') for c in changed)
-    if ('encode' in changed or 'movie' in changed or scoring):
-        what = 'the movie file' if 'movie' in changed else ('the encode' if 'encode' in changed else 'the scoring')
+    stamp = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'cause': 'edit'}
+    if any(c in SCORING_FIELDS or c.startswith('metric:') for c in changed):
         for v in run.get('verifications', []):
             if not v.get('invalidated'):
-                v['invalidated'] = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                                    'reason': f'{what} changed after this verification', 'cause': 'edit'}
+                v['invalidated'] = dict(stamp, reason='the scoring changed after this verification')
                 if 'verifications' not in voided: voided.append('verifications')
-    if 'movie' in changed:
+    if any(c in REPRO_FIELDS for c in changed):
+        what = 'the movie file' if 'movie' in changed else 'the reproduction information'
         for r_ in run.get('reproductions', []):
             if not r_.get('invalidated'):
-                r_['invalidated'] = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                                     'reason': 'the movie file changed after this reproduction', 'cause': 'edit'}
+                r_['invalidated'] = dict(stamp, reason=f'{what} changed after this reproduction')
                 if 'reproductions' not in voided: voided.append('reproductions')
+        for c_ in run.get('consoleVerifications', []):
+            if not c_.get('invalidated'):
+                c_['invalidated'] = dict(stamp, reason=f'{what} changed after this console verification')
+                if 'consoleVerifications' not in voided: voided.append('consoleVerifications')
     if voided:
         sync_status(run)
     return voided
@@ -1464,6 +1477,8 @@ def expert_edit():
             run = json.loads((run_dir / 'run.json').read_text())
             if field.startswith('metric:'):
                 metric_key = field.split(':', 1)[1]
+                if metric_key == 'time':
+                    return fail("the run's time is the duration field, not a stored metric")
                 try:
                     new_value = float(value)
                 except ValueError:
@@ -1474,9 +1489,14 @@ def expert_edit():
                 run.setdefault('metrics', {})[metric_key] = new_value
                 value = str(new_value)
             elif field == 'duration':
-                if not run.get('videoOnly') and (run.get('movie') or {}).get('frames'):
-                    return fail('only a run without a frame count has a stated time to correct; '
-                                'a movie derives its time from its frames')
+                sys_key, slug_key = run['game'].split('/')
+                _, cats_doc = load_game(sys_key, slug_key)
+                goal_key = (run.get('category') or {}).get('goal')
+                opt_def = next((o for dim in (cats_doc or {}).get('dimensions', [])
+                                for o in dim['options'] if o['key'] == goal_key), None)
+                opt_metrics = (opt_def or {}).get('metrics')
+                if not (opt_metrics is None or any(mm['key'] == 'time' for mm in opt_metrics)):
+                    return fail('this category does not rank by time; there is no stated time to correct')
                 time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?',
                                    value)
                 if not time_match:
@@ -1549,14 +1569,14 @@ def expert_edit():
                 if not new_movie_upload or not new_movie_upload.filename:
                     return fail('attach the replacement movie file')
                 movie_ext = new_movie_upload.filename.rsplit('.', 1)[-1].lower()
-                if movie_ext not in MOVIE_EXTS:
-                    return fail(f'movie extension .{movie_ext} not a known TAS format')
                 movie_bytes = new_movie_upload.read()
                 if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
                     return fail('movie must be non-empty and under 16 MB')
+                # the same door as submission: any extension, and a parse
+                # failure keeps the file with frames unknown
                 parsed_movie = movieparse.parse(new_movie_upload.filename, movie_bytes)
                 if not parsed_movie['ok']:
-                    return fail(f'movie did not parse as .{movie_ext}: {parsed_movie["error"]}')
+                    parsed_movie = {'ok': False, 'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
                 old_value = f"{run['movie']['file']} (sha1 {run['movie'].get('sha1', '?')[:12]})"
                 value = f"{run['id']}.{movie_ext} (sha1 {hashlib.sha1(movie_bytes).hexdigest()[:12]})"
                 if dry_run:
@@ -1571,8 +1591,10 @@ def expert_edit():
                               'start': parsed_movie['start'],
                               **({'fps': parsed_movie['fps']} if parsed_movie.get('fps') else {})}
             would_void = []
-            if (field in VOIDING_FIELDS or field.startswith('metric:')) and live_acts(run)['verifications']: would_void.append('verifications')
-            if field == 'movie' and live_acts(run)['reproductions']: would_void.append('reproductions')
+            if (field in SCORING_FIELDS or field.startswith('metric:')) and live_acts(run)['verifications']: would_void.append('verifications')
+            if field in REPRO_FIELDS:
+                if live_acts(run)['reproductions']: would_void.append('reproductions')
+                if any(not c_.get('invalidated') for c_ in run.get('consoleVerifications', [])): would_void.append('consoleVerifications')
             if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
                                 'from': old_value, 'to': value, 'would_void': would_void})
@@ -2465,8 +2487,9 @@ def edit_run():
         metric_<key>, completed, goalDescription, encode, time (video-only
         runs), content_warnings (repeatable, with content_warnings_set as
         the marker that the field was sent), file_name / file_sha1 rows
-        (with files_set as the marker), dry_run; files attachments (authors
-        only)
+        (with files_set as the marker), time (whenever the category ranks by
+        time; only a real change is recorded), dry_run; files attachments
+        (authors only)
     Answers: {ok, run, changed}; dry_run: {ok, dry_run, would_change}
     """
     edit_form = request.form
@@ -2648,18 +2671,24 @@ def edit_run():
         option_metrics = (option or {}).get('metrics')
         option_wants_time = option_metrics is None or any(mm['key'] == 'time' for mm in option_metrics)
         stated_time = (edit_form.get('time') or '').strip()
-        if 'time' in edit_form and (stated_time or option_wants_time):
+        # a legacy run that never stated a duration still ranks by its
+        # frames; an empty time on one means "keep deriving", never an error
+        legacy_frames = run.get('duration') is None and (run.get('movie') or {}).get('frames')
+        if 'time' in edit_form and option_wants_time and not (stated_time == '' and legacy_frames):
             time_match = re.fullmatch(r'(?:(\d{1,3}):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?', stated_time)
             if not time_match:
-                return fail('a video-only run in a time-ranked category states its time as [h:]mm:ss or [h:]mm:ss.mmm')
+                return fail('this category ranks by time, so the run states it as [h:]mm:ss or [h:]mm:ss.mmm')
             hours, minutes, seconds, fraction = time_match.groups()
             duration = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
                    + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))
             if duration <= 0:
                 return fail('a run that takes no time at all is not a run')
-            befores['duration'] = str(run.get('duration'))
-            run['duration'] = duration
-            changed.append('duration')
+            # only a real change is a change: the form sends the record's own
+            # value back on every save, and that must never void anything
+            if run.get('duration') is None or abs(duration - run['duration']) >= 0.0005:
+                befores['duration'] = str(run.get('duration'))
+                run['duration'] = duration
+                changed.append('duration')
         new_attachments, attachment_error = read_attachments(run.get('attachments') or [])
         if attachment_error:
             return attachment_error
@@ -2677,11 +2706,15 @@ def edit_run():
         if not changed:
             return fail('nothing to change: every value sent already matches the '
                         'record (send notes, emulator, completed, goalDescription, '
-                        'encode, attachments, or, video-only, time)')
+                        'encode, attachments, or time)')
         # what this revision would void (the form asks before sending)
         would_void = []
-        if any(c in ('encode', 'duration') or c.startswith('metric:') for c in changed):
+        if any(c in SCORING_FIELDS or c.startswith('metric:') for c in changed):
             if live_acts(run)['verifications']: would_void.append('verifications')
+        if any(c in REPRO_FIELDS for c in changed):
+            if live_acts(run)['reproductions']: would_void.append('reproductions')
+            if any(not c_.get('invalidated') for c_ in run.get('consoleVerifications', [])):
+                would_void.append('consoleVerifications')
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_change': changed, 'would_void': would_void})
         voided = void_acts_for(run, changed, user)
@@ -2770,9 +2803,9 @@ def run_record():
 @app.post('/api/movie/inspect')
 def movie_inspect():
     """Read a movie file the way a submission would, and say what it holds,
-    before anything is submitted: the submit form shows the derived time
-    in its Scoring panel, or asks for a stated one when the format cannot
-    be read. Nothing is stored.
+    before anything is submitted: the submit form's Import from... offers
+    what was read; the author states the values either way. Nothing is
+    stored.
 
     Who: anybody (the file is the caller's own)
     Reads: file movie; form field game (system/slug, for the frame rate when
