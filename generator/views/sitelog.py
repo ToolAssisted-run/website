@@ -24,13 +24,14 @@ import datetime
 
 # ---- the page cap (the archive is the log; the page is a window) ----
 # Every event stays in the archive forever (edits.json, deletions.json,
-# run.json, git history). The PAGE shows the last 7 days, always at least
-# the latest 25 entries so a quiet section still reads, never more than
-# 500; entries still open are shown whatever their age. The totals stay
-# in the section headers, so nothing looks smaller than it is.
+# run.json, git history). The PAGE shows the last 7 days, at least the
+# latest 25 entries so a quiet section still reads, and never more than
+# the latest 50 per section; entries still open are shown whatever their
+# age. The totals stay in the section headers, so nothing looks smaller
+# than it is.
 LOG_WINDOW_DAYS = 7
 LOG_FLOOR = 25
-LOG_CEIL = 500
+LOG_CEIL = 50
 _cutoff = (datetime.date.today() - datetime.timedelta(days=LOG_WINDOW_DAYS)).isoformat()
 
 def log_window(entries, when, keep=None):

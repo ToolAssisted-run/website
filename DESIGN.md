@@ -998,7 +998,7 @@ archivist, module responsibilities). What matters designwise:
 
 **The site log page is a window, the archive is the log**: every section of
 `/policy/site-log/` renders the last 7 days (always at least the latest 25
-entries so a quiet section still reads, at most 500, and anything still open
+entries so a quiet section still reads, at most 50, and anything still open
 whatever its age); the headings carry the full-history totals, and the page
 says where the complete record lives (the archive repository and its git
 log), so the page never grows with the archive.
