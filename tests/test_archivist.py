@@ -1950,17 +1950,19 @@ def main():
                            {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'moderator',
                             'action': 'granted', 'post': '907'})
             ck('granting a role twice is refused', c == 409, str(r))
-            # taking a role away needs two thirds of every sitting member
-            # (Principles 2.3.5), which three of four clears and two does not
+            # only a Committee seat's removal needs two thirds of every
+            # sitting member (Governance 2.3.5); a moderator goes by a
+            # simple majority of the votes cast, like a grant
             c, r, _ = call(U + '/api/role/decide',
-                           {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'moderator',
-                            'action': 'revoked', 'post': '908'})
-            ck('removal refuses a simple majority',
+                           {'key': KEY, 'user': 'eien86', 'target': 'Ada', 'role': 'committee',
+                            'action': 'revoked', 'post': '908', 'dry_run': '1'})
+            ck('unseating the Committee refuses a simple majority',
                c == 409 and 'hard majority' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/role/decide',
                            {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'moderator',
-                            'action': 'revoked', 'post': '901'})
-            ck('a hard majority removes it', c == 200 and r['action'] == 'revoked', str(r))
+                            'action': 'revoked', 'post': '908'})
+            ck('a moderator is removed by a simple majority of the votes cast (2.3.5)',
+               c == 200 and r['action'] == 'revoked', str(r))
             c, r, _ = call(U + '/api/role/decide',
                            {'key': KEY, 'user': 'eien86', 'target': 'TestAuthor', 'role': 'moderator',
                             'action': 'revoked', 'post': '901'})

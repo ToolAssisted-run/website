@@ -141,8 +141,9 @@ page and the archivist tags each run's topic) but only staff may create or
 apply them, so members never meet a tag picker.
 
 Committee thresholds (§2): **simple majority** = >50% of votes cast in a 7-day
-window, no quorum (grants); **hard majority** = two thirds of all sitting
-members (removals, veto override, amendments). The archivist reads decisions
+window, no quorum (grants, and every removal except a Committee seat's);
+**hard majority** = two thirds of all sitting members (unseating the
+Committee, veto override, amendments). The archivist reads decisions
 from Discourse polls (`/api/role/decide`, `/api/expert/annul`): the poll must
 be restricted to the committee group, public, closed, and meet the threshold:
 a simple majority is counted against the poll's own votes cast (`voters`),

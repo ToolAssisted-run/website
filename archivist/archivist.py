@@ -3310,17 +3310,15 @@ def role_decide():
     words = GRANT_WORDS if action == 'granted' else ANNUL_WORDS
     votes = count_votes(poll, words)
     # Granting is an ordinary decision (Governance 2.3.3, 2.4.1): a simple
-    # majority. Taking a role away is not (2.3.5): it needs a hard majority,
+    # majority of the votes cast. So is every removal except a Committee
+    # seat's (2.3.5): unseating the Committee alone needs a hard majority,
     # two thirds of every sitting member, counted whether they voted or not.
-    # Expert annulment is the documented exception and keeps its own rule
-    # (2.5.4), which is why it lives in its own endpoint.
-    # An editor is the documented exception the other way (2.6.3): removal
-    # by simple majority, like an expert's annulment.
+    # Expert annulment keeps its own rule (2.5.4) in its own endpoint.
     # A simple majority is more than half of the votes cast (2.1.1): absence
     # is abstention and there is no quorum. A hard majority is two thirds of
     # every sitting member (2.1.2), counted whether they voted or not.
     cast = votes_cast(poll)
-    if action == 'granted' or role == 'editor':
+    if action == 'granted' or role != 'committee':
         enough, needed = cast > 0 and votes * 2 > cast, 'a simple majority of the votes cast'
         against = f'{votes} of the {cast} votes cast'
     else:
