@@ -13,16 +13,15 @@ will point you the right way.</div>
 <div class="policy fullw"><p><b><a href="https://github.com/ToolAssisted-run/chimera">Chimera</a></b>
 is this site's endorsed TAS emulator, currently under development. Its main features are:</p>
 <ul>
-<li><b>Modularity</b>: cores are external, self-contained packages, each in its own
-repository, loaded explicitly like a ROM.</li>
-<li><b>Lightweight</b>: one audio driver, one display driver, one adapter for every
-core, nothing else.</li>
-<li><b>Performance</b>: the machinery lives in a native engine that also runs headless
-and links into bots and solvers directly.</li>
-<li><b>Reproducibility</b>: a movie's contract is the pair (movie, core package);
-movies record the exact core version, package hash, firmware hashes and host
-provenance, and every change passes a witness gate that byte-compares emulator
-memory against goldens.</li>
+<li><b>Any console, one tool</b>: emulation cores are separate packages you load like a
+ROM; when a new core exists, Chimera already runs it.</li>
+<li><b>Nothing in your way</b>: no menus for systems you don't own, no databases, no
+clutter; the frontend does TAS work and gets out of the way.</li>
+<li><b>Fast where it counts</b>: the engine is native code and runs without the GUI
+too, so bots and solvers can hammer it at full speed.</li>
+<li><b>Your run stays yours</b>: a movie plus its core package replays identically on
+any machine, forever; every build is checked, byte for byte, against known-good runs
+before it ships.</li>
 </ul>
 <p>Chimera is a derivative work of
 <a href="https://github.com/TASEmulators/BizHawk">BizHawk</a>, under the same MIT license
