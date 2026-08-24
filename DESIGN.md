@@ -255,7 +255,12 @@ with the encode check). Picking one fills the segments and the selector
 resets. Numeric metric fields carry their own **From movie** button that
 fills the movie's frame or step count (for categories ranked by frames,
 steps or ticks; formats whose frame count is readable but whose rate is not,
-like `.otts` and `.gmtas`, still feed this). `run_seconds` prefers the stated
+like `.otts` and `.gmtas`, still feed this). **Importing is a copy/paste,
+never a commitment**: it only writes the value into the field, which stays
+hand-editable like any typed value. Every import control sits on the same
+line as the field it fills, and its sources track the form live: removing
+the movie file takes its option out of the selector and disables the
+From movie buttons. `run_seconds` prefers the stated
 `duration` and falls back to frames/fps for older runs that never stated
 one; a time-less category stores no duration at all (§5).
 
@@ -783,9 +788,13 @@ archivist, module responsibilities). What matters designwise:
   The submit form is one form in six panels that unfold in sequence as
   the previous one is complete: 1 game, category, subcategory; 2 the run:
   encode (checked live), authors, completion date; 3 reproduction
-  information: the optional movie file (read at once by
-  `/api/movie/inspect`; unreadable or unknown formats warn and are kept as
-  they are, `frames` 0), the tool and its version (free text), the files
+  information: the optional movie file, read at once by
+  `/api/movie/inspect` with a status mark beside the picker: a spinner
+  while it reads, a green check when it parsed, an outlined blue "!" when
+  the format is unknown or unreadable, with a note saying the submission
+  or edit continues but nothing is importable from the movie (the file is
+  archived exactly as it is, `frames` 0), the tool and its version
+  (free text), the files
   the movie was made against, supplementary uploads; 4 scoring: the
   category's metric values, and the time, stated by the author, never
   filled in for them (Import from movie fills it on demand when the movie
