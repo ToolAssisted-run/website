@@ -316,7 +316,7 @@ def main():
 
             sub = {'key': KEY, 'submitter': 'Member', 'game': 'nes/testgame',
                    'goal': 'fastest',
-                   'authors': 'Member', 'consent': 'yes', 'dry_run': '1',
+                   'authors': 'Member', 'consent': 'yes', 'dry_run': '1', 'time': '1:00.000',
                    'encode': 'https://youtu.be/goodvid12345'}
             create = {'key': KEY, 'user': 'Member', 'system': 'nes', 'dry_run': '1'}
             code, r, _ = call(U + '/api/game/create', dict(create, title='../../etc/passwd'))

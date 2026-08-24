@@ -592,6 +592,7 @@ footer a{color:var(--accent-text);text-decoration:none}
 .createq [aria-disabled=true]{opacity:.45;pointer-events:none}
 
 /* stated-time picker: four boxes, a mistake is not possible */
+.timerow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .timepick{display:flex;gap:10px}
 .tseg{display:flex;flex-direction:column;align-items:center;gap:2px}
 .tseg input{width:5.5ch;text-align:center;font-family:ui-monospace,monospace;

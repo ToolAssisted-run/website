@@ -117,7 +117,7 @@ def main():
                                 env=env, stdout=log, stderr=subprocess.STDOUT)
         U = f'http://127.0.0.1:{port}'
         sub = {'key': KEY, 'submitter': 'Member', 'game': 'nes/testgame',
-               'goal': 'fastest', 'authors': 'Member', 'consent': 'yes',
+               'goal': 'fastest', 'authors': 'Member', 'consent': 'yes', 'time': '1:00.000',
                'encode': 'https://youtu.be/goodvid12345'}
         try:
             for _ in range(60):

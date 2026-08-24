@@ -208,6 +208,9 @@ def main():
         (pages / 'thumbs' / 'videoonly002').mkdir(parents=True)
         (pages / 'thumbs' / 'videoonly002' / 'maxresdefault.jpg').write_bytes(
             b'\xff\xd8\xff' + b'\0' * 80)
+        (pages / 'thumbs' / 'goodvid12346').mkdir(parents=True)
+        (pages / 'thumbs' / 'goodvid12346' / 'maxresdefault.jpg').write_bytes(
+            b'\xff\xd8\xff' + b'\0' * 60)
         (pages / 'thumbs' / 'goodvid12345').mkdir(parents=True)
         (pages / 'thumbs' / 'goodvid12345' / 'maxresdefault.jpg').write_bytes(
             b'\xff\xd8\xff' + b'\0' * 60)
@@ -498,8 +501,11 @@ def main():
             ck('a username starts with a letter or digit', c == 400, str(r))
 
             # --- submit: encode is mandatory; the thumbnail derives from it ---
+            # every time-ranked submission states its time: the form's own
+            # field, filled by hand or by its Import from movie button
             sub = {'key': KEY, 'submitter': 'TestAuthor', 'game': 'nes/pinball',
                    'goal': '100k-glitched', 'authors': 'TestAuthor', 'dry_run': '1',
+                   'time': '1:00.000',
                    'encode': 'https://youtu.be/goodvid12345', 'consent': 'yes'}
             files = {'movie': ('t.bk2', BK2)}
             noconsent = dict(sub)
@@ -549,20 +555,28 @@ def main():
                            uniq_files())
             ck('a Niconico video that does not exist is rejected',
                c == 400 and 'Niconico' in r.get('error', ''), str(r)[:140])
-            c, r, _ = call(U + '/api/submit', sub, {'movie': ('junk.bk2', b'not a movie')})
-            ck('a known format the parser cannot read wants the time stated',
-               c == 400 and 'could not be read' in r.get('error', '') and 'stated' in r.get('error', ''), str(r))
+            nots = {k: v for k, v in sub.items() if k != 'time'}
+            c, r, _ = call(U + '/api/submit', nots, files)
+            ck('a time-ranked category demands the stated time even with a parseable movie',
+               c == 400 and 'ranks by time' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/submit', dict(sub, time='12:34.567'), {'movie': ('junk.smv', b'not readable')})
-            ck('then it is archived, frames unknown, time as stated',
+            ck('an unreadable known format is archived, frames unknown, time as stated',
                c == 200 and r['run']['movie']['frames'] == 0 and abs(r['run']['duration'] - 754.567) < 1e-6
                and r['run']['movie']['format'] == 'smv', str(r)[:300])
-            c, r, _ = call(U + '/api/submit', sub, {'movie': ('junk.xyz', b'x')})
-            ck('an unknown extension is still refused', c == 400 and 'not a known TAS format' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/submit', dict(sub, time='2:00.000',
+                                                   encode='https://youtu.be/goodvid12346'),
+                           {'movie': ('mystery.xyz', b'x')})
+            ck('an unknown extension is archived as it is: a warning, never a refusal',
+               c == 200 and r['run']['movie']['format'] == 'xyz'
+               and r['run']['movie']['frames'] == 0, str(r)[:300])
             # the form reads the movie before submitting (Scoring shows the derived time)
             c, r, _ = call(U + '/api/movie/inspect', {'game': 'nes/pinball'}, {'movie': ('t.bk2', BK2)})
             ck('inspect reads a parseable movie', c == 200 and r['parsed'] and r['frames'] > 0 and r['seconds'] > 0, str(r))
             c, r, _ = call(U + '/api/movie/inspect', {}, {'movie': ('t.smv', b'x' * 10)})
             ck('inspect says when a known format cannot be read', c == 200 and r['parsed'] is False and r['frames'] is None, str(r))
+            c, r, _ = call(U + '/api/movie/inspect', {}, {'movie': ('t.xyz', b'x' * 10)})
+            ck('inspect says when a format is not known at all, without refusing',
+               c == 200 and r['known'] is False and r['parsed'] is False, str(r))
 
             # --- games and categories exist beforehand; creation is its own
             # flow, open to every member ---

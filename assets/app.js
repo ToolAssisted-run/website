@@ -1938,7 +1938,8 @@
       });
       // video-only: the movie input and the stated time trade places, and
       // the one that is hidden must not hold a stale required flag
-      var videoOnlyBox = document.getElementById('s-videoonly');
+      // video-only is no checkbox: a run without a movie file IS video-only
+      function isVideoOnly(){ return !(movieInput.files && movieInput.files[0]) && !(editRunId && editRecord && editRecord.run.movie); }
       var movieWrap = document.getElementById('s-moviewrap');
       var timeWrap = document.getElementById('s-timewrap');
       // the stated time is four number boxes (h m s ms): a format mistake is
@@ -2049,9 +2050,12 @@
             else {
               movieInfo = j;
               movieNote.className = 'rules fullw';
+              // an unreadable or unknown file is a warning, never a stop: the
+              // archive keeps the file as it is and the author states the time
               movieNote.textContent = j.parsed
                 ? '✓ .' + j.format + ': ' + (j.frames || 0).toLocaleString() + ' frames' + (j.seconds ? ', ' + secClock(j.seconds) : '') + (j.rerecords ? ', ' + j.rerecords.toLocaleString() + ' rerecords' : '')
-                : '✓ .' + j.format + ' is a known format the archive keeps as it is but cannot read; state the time in Scoring';
+                : (j.known ? '⚠ .' + j.format + ' is a known format the archive keeps as it is but cannot read' + (j.error ? ' (' + j.error + ')' : '')
+                           : '⚠ .' + j.format + ' is not a format the archive can read; the file is kept as it is');
             }
             paintKind(); paintPanels();
           })
@@ -2062,37 +2066,45 @@
         var body = String(m).padStart(2, '0') + ':' + String(s2).padStart(2, '0') + '.' + String(ms).padStart(3, '0');
         return h ? h + ':' + body : body;
       }
-      var timeDerived = document.getElementById('s-timederived');
-      var timeDerivedText = document.getElementById('s-timederived-text');
       var scoreNote = document.getElementById('s-scorenote');
+      // the run's time is the one the author states, always: never filled in
+      // for them. Import from movie reads it out of a parsed file on demand.
       function timeStatedNeeded(){
-        // the time comes from the movie when it could be read; by hand for
-        // video-only runs and for movies the parser cannot read
-        if (!wantsTime() || goalSelect.value === 'unclassified') return false;
-        if (videoOnlyBox.checked) return true;
-        return !!(movieInfo && !movieInfo.error && !movieInfo.parsed);
+        return wantsTime() && goalSelect.value !== 'unclassified';
       }
+      var timeImportBtn = document.getElementById('s-timeimport');
+      function paintTimeImport(){
+        if (!timeImportBtn) return;
+        var can = !!(movieInfo && movieInfo.parsed && movieInfo.seconds);
+        timeImportBtn.disabled = !can;
+        timeImportBtn.title = can ? 'Fill the time from the movie: ' + secClock(movieInfo.seconds)
+                                  : 'Enabled when the movie file could be parsed';
+      }
+      if (timeImportBtn) timeImportBtn.addEventListener('click', function(){
+        if (!(movieInfo && movieInfo.parsed && movieInfo.seconds)) return;
+        var sec = movieInfo.seconds;
+        byIdS('t-h').value = Math.floor(sec / 3600) || '';
+        byIdS('t-m').value = Math.floor(sec / 60) % 60;
+        byIdS('t-s').value = Math.floor(sec) % 60;
+        byIdS('t-ms').value = Math.round((sec % 1) * 1000);
+        composeTime();
+        paintPanels();
+      });
       function paintKind(){
-        var v = videoOnlyBox.checked;
         // in edit mode the movie stays as it is: only experts see the picker, to replace it
-        movieWrap.hidden = v || (editRunId && !(editMay && (editMay.expert || editMay.editor)));
-        movieWrap.querySelector('input').required = !v && !editRunId;
-        var needsTime = wantsTime() && goalSelect.value !== 'unclassified';
+        movieWrap.hidden = !!(editRunId && !(editMay && (editMay.expert || editMay.editor)));
         var stated = timeStatedNeeded();
         timeWrap.hidden = !stated;
-        var derived = needsTime && !v && movieInfo && movieInfo.parsed && movieInfo.seconds;
-        timeDerived.hidden = !derived;
-        if (derived) timeDerivedText.textContent = secClock(movieInfo.seconds) + ' · derived from the movie (' + movieInfo.frames.toLocaleString() + ' frames)';
         var secs = document.getElementById('t-s');
         if (secs) secs.required = stated;
+        paintTimeImport();
         var n = statedDefs().length;
         scoreNote.textContent = goalSelect.value === 'unclassified'
           ? 'Unclassified runs rank by likes alone: nothing to score.'
-          : (needsTime ? (n ? 'This category ranks by time and by the values below.' : 'This category ranks by time' + (derived ? ', read from the movie.' : (stated ? ', which you state.' : '.')))
-                       : 'This category ranks by the values below.');
+          : (stated ? (n ? 'This category ranks by time, which you state, and by the values below.' : 'This category ranks by time, which you state.')
+                    : 'This category ranks by the values below.');
         composeTime();
       }
-      videoOnlyBox.addEventListener('change', paintKind);
       paintKind();
       var goalCache = {};
       var pendingDraft = null;   // a restored draft waiting for its game's categories
@@ -2302,13 +2314,15 @@
             if (pick && pick.setAuthors) pick.setAuthors(run.authors.map(function(a){ return a.user; }));
             if (!editMay.author) { pick.querySelector('.authsearch').disabled = true; pick.querySelectorAll('.authx').forEach(function(x){ x.disabled = true; }); }
             submitForm.querySelector('[name=completed]').value = run.completed || '';
-            videoOnlyBox.checked = !!run.videoOnly; videoOnlyBox.disabled = true;
+
             // the movie file stays; an expert may replace it
             movieInput.required = false;
             if (run.videoOnly) { movieWrap.hidden = true; }
             else if (expertish) { byIdS('s-movielabel').textContent = 'Replace the movie file (optional; the current one stays unless you pick another)'; }
             else { movieWrap.hidden = true; }
-            movieInfo = run.videoOnly ? null : {parsed: !!(run.movie && run.movie.frames), frames: (run.movie || {}).frames, seconds: null, format: (run.movie || {}).format, kept: true};
+            movieInfo = run.videoOnly ? null : {parsed: !!(run.movie && run.movie.frames), frames: (run.movie || {}).frames,
+              seconds: (run.movie && run.movie.frames && run.movie.fps) ? run.movie.frames / run.movie.fps : null,
+              format: (run.movie || {}).format, kept: true};
             submitForm.querySelector('[name=emulator]').value = (run.contract || {}).emulator || '';
             var files = (run.contract || {}).files || ((run.contract || {}).rom ? [run.contract.rom] : []);
             var rowsBox = submitForm.querySelector('.filerows');
@@ -2362,7 +2376,7 @@
           return 'describe what the run does';
         }
         if (step === 2) return document.getElementById('enc-status').className !== 'enc-good' ? 'the encode link is not valid' : 'name at least one author';
-        if (step === 3) return 'pick the movie file, or mark the run video-only';
+        if (step === 3) return 'the movie file could not be checked; pick it again or remove it';
         if (step === 4) return timeStatedNeeded() && !/^(\d+:)?\d{1,2}:\d{2}/.test(document.getElementById('s-time').value) ? 'state the time' : 'every value the category ranks by is needed';
         if (step === 5) return 'preview your notes';
         if (step === 6) return editRunId ? 'say why, publicly (at least 8 characters)' : 'tick the agreement';
@@ -2381,8 +2395,10 @@
             && !!submitForm.querySelector('[name=authors]').value;
         }
         if (step === 3) {
-          // the video-only switch, or a movie the archivist accepted
-          return videoOnlyBox.checked || !!(movieInfo && !movieInfo.error);
+          // everything here is optional; a picked movie only counts once the
+          // archivist has looked at it (even an unreadable one is kept)
+          if (movieInput.files && movieInput.files[0]) return !!(movieInfo && !movieInfo.error);
+          return true;
         }
         if (step === 4) {
           // every value the category ranks by: stated metrics, and the time
@@ -2413,15 +2429,13 @@
           if (bad && !broken) broken = step;
           chain = done;
         });
-        // Submit only once every step is done, the movie included (a
-        // restored draft cannot carry the file, so it is asked for here)
-        var movieOk = videoOnlyBox.checked || !!(movieInput.files && movieInput.files[0]) || !!(movieInfo && movieInfo.kept);
+        // Submit only once every step is done (the movie is optional; a
+        // restored draft cannot carry a file, so one is re-picked if wanted)
         var sb = document.getElementById('s-submit');
-        if (sb && !sb.dataset.sent) sb.disabled = !(chain && movieOk);
+        if (sb && !sb.dataset.sent) sb.disabled = !chain;
         var need = document.getElementById('s-need');
         if (need) {
-          var why = broken ? 'Step ' + broken + ' (' + panelNames[broken] + ') needs attention: ' + panelWhy(broken) + '.'
-                  : (chain && !movieOk && revealed[6] ? 'Step 3 (Reproduction information) needs attention: pick the movie file again; a draft cannot keep it.' : '');
+          var why = broken ? 'Step ' + broken + ' (' + panelNames[broken] + ') needs attention: ' + panelWhy(broken) + '.' : '';
           need.hidden = !why;
           need.textContent = why;
         }

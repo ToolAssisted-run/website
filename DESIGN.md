@@ -474,11 +474,11 @@ A category defines what it ranks by.
   `primary_metric_html` / `primary_metric_text`. The archive stores facts;
   nothing ranking-shaped is written.
 - **Submission**: the category's stated metrics are required fields; they
-  appear on category pick in a **dashed-edge box** below the video-only
-  checkbox (segmented h/m/s/ms for time-types, number+unit otherwise; posted
-  as `metric_<key>`, times as seconds). The stated-time input appears only
-  when `time` is among the category's metrics AND the run is video-only; a
-  time-less category stores no duration at all (schema + validator enforce).
+  appear on category pick in a **dashed-edge box** in the Scoring panel
+  (segmented h/m/s/ms for time-types, number+unit otherwise; posted
+  as `metric_<key>`, times as seconds). The stated-time input appears
+  whenever `time` is among the category's metrics, whatever the movie holds;
+  a time-less category stores no duration at all (schema + validator enforce).
 - **Creation is everybody's; curation is the experts'**: any logged-in
   member creates a game (`/create-game/`: title, system, plus the first
   category) or a category (`/create-category/?game=<key>`, game locked).
@@ -750,13 +750,13 @@ archivist, module responsibilities). What matters designwise:
   The submit form is one form in six panels that unfold in sequence as
   the previous one is complete: 1 game, category, subcategory; 2 the run:
   encode (checked live), authors, completion date; 3 reproduction
-  information: video-only switch or movie file (read at once by
-  `/api/movie/inspect`), the tool and its version (free text), the files
+  information: the optional movie file (read at once by
+  `/api/movie/inspect`; unreadable or unknown formats warn and are kept as
+  they are, `frames` 0), the tool and its version (free text), the files
   the movie was made against, supplementary uploads; 4 scoring: the
-  category's metric values, the time derived from the movie when it could
-  be read, stated by hand for video-only runs and for known formats the
-  parser cannot read (such a movie is archived as it is with `frames` 0 and
-  a stated `duration`); 5 submission notes: disclosures, notes, Preview;
+  category's metric values, and the time, stated by the author, never
+  filled in for them (Import from movie fills it on demand when the movie
+  parsed); 5 submission notes: disclosures, notes, Preview;
   6 agreement and Submit, which appears once Preview was pressed. An
   unfolded panel stays open, a folded one says what it waits for.
   The submit form arms the standard leave-page dialog once anything changes,

@@ -81,12 +81,11 @@ Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" 
   <h2 class="ptitle"><span class="pnum">3</span> Reproduction information</h2>
   <p class="pwaits">After a valid encode link and at least one author.</p>
   <div class="pbody">
-  <label class="cwlab" style="margin:8px 0"><input type="checkbox" id="s-videoonly"
-    name="video_only" value="1"> This is a <b>video-only</b> run: no input movie exists.
-    It can never be reproduced, in emulator or on console, and the page will say so;
-    one verification still ranks it like any other run.</label>
   <div id="s-moviewrap">
-  <label id="s-movielabel">Movie file</label><input name="movie" type="file" required>
+  <label id="s-movielabel">Movie file (optional). A run without one is <b>video-only</b>:
+  it can never be reproduced, in emulator or on console, and the page will say so;
+  one verification still ranks it like any other run.</label>
+  <input name="movie" type="file">
   <p class="rules fullw" id="s-movienote" hidden></p>
   </div>
   <label>Tool used to produce the movie: name it precisely (emulator, emulator + core, game-specific tool, or other) with its version</label>
@@ -103,19 +102,22 @@ Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" 
 
   <section class="panel actform folded" id="p-score" data-step="4">
   <h2 class="ptitle"><span class="pnum">4</span> Scoring</h2>
-  <p class="pwaits">After the movie file, or the video-only switch.</p>
+  <p class="pwaits">After the reproduction information.</p>
   <div class="pbody">
   <p class="rules fullw" id="s-scorenote">What this category ranks by.</p>
   <div id="s-metrics" class="metricsbox">
   <div id="s-mfields"></div>
-  <div id="s-timederived" hidden><label>Time</label><p class="statline" id="s-timederived-text"></p></div>
   <div id="s-timewrap" hidden>
-  <label>Run time, stated by you</label>
+  <label>Run time, stated by you. It is never filled in for you; the button reads it
+  out of the movie when the file could be parsed.</label>
+  <div class="timerow">
   <div class="timepick" id="s-timepick">
     <span class="tseg"><input id="t-h" type="number" inputmode="numeric" min="0" max="999" placeholder="0"><label for="t-h">h</label></span>
     <span class="tseg"><input id="t-m" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-m">m</label></span>
     <span class="tseg"><input id="t-s" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><label for="t-s">s</label></span>
     <span class="tseg"><input id="t-ms" type="number" inputmode="numeric" min="0" max="999" placeholder="000"><label for="t-ms">ms</label></span>
+  </div>
+  <button type="button" class="btn quiet" id="s-timeimport" disabled>Import from movie</button>
   </div>
   <input type="hidden" name="time" id="s-time">
   </div>

@@ -276,13 +276,14 @@ def run_fps(r):
     return (r.get('movie') or {}).get('fps') or systems[r['_game']['system']]['fps']
 
 def run_seconds(r):
-    """How long the run takes, whatever kind it is: frames over fps for a
-    movie, the stated duration for a video-only run, None when unknowable."""
-    if r.get('videoOnly'):
-        return r.get('duration')
-    if r['movie'].get('frames'):
+    """How long the run takes, whatever kind it is: the stated duration is
+    the record (the author states it, importing from the movie if they like);
+    frames over fps stand in for older runs that never stated one."""
+    if r.get('duration'):
+        return r['duration']
+    if not r.get('videoOnly') and r['movie'].get('frames'):
         return r['movie']['frames'] / run_fps(r)
-    return r.get('duration')   # a movie the parser could not read: stated
+    return None
 
 def parse_date(s):
     m = re.match(r'(\d{4})-(\d{2})-(\d{2})', s or '')
