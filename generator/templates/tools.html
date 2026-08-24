@@ -1,4 +1,4 @@
-{# The Tools page: miniHawk, botting tools, then the emulator and game-tool tables. #}
+{# The Tools page: Chimera, botting tools, then the emulator and game-tool tables. #}
 <header class="ghead"><div><h1>Tools</h1>
 <p class="authline">You can create your run with any emulator and any tools you like; you only
 need to submit the encoded video, and the movie file if one exists. Below are the TAS tools commonly used.</p>
@@ -7,13 +7,24 @@ need to submit the encoded video, and the movie file if one exists. Below are th
 Ask on <a href="{{ FORUM }}">our forum</a> or on
 <a href="https://discord.gg/VsKDT9XB6u">our Discord server</a>; somebody who uses it
 will point you the right way.</div>
-<section><h2>miniHawk <span class="chip pendchip">in development</span></h2>
-<div class="policy fullw"><p><b>miniHawk</b> is this site's endorsed emulator, a re-implementation
-of <a href="https://github.com/TASEmulators/BizHawk">BizHawk</a> built around three ideas:
-<b>modular emulation cores</b>, <b>performance</b>, and a <b>higher standard of
-reproducibility</b>: every core runs waterboxed, and the movie format carries extended
-build environment metadata.
-<a href="https://github.com/ToolAssisted-run/miniHawk">Follow it on GitHub</a>.</p></div></section>
+<section><h2 class="chimerahead"><img class="chimeraicon" src="../assets/chimera-icon.svg"
+  alt="the Chimera eye"><img class="chimeratype" src="../assets/chimera-logotype.svg"
+  alt="CHIMERA"><span class="chip pendchip">in development</span></h2>
+<div class="policy fullw"><p><b>Chimera</b> is this site's endorsed emulator: a derivative fork of
+<a href="https://github.com/TASEmulators/BizHawk">BizHawk</a> that keeps its TAS toolchain
+(movies, savestates, TAStudio, RAM tools, Lua) and removes everything else, most
+importantly every emulation core. It is built around four ideas: <b>modularity</b>
+(cores are external, self-contained packages, each in its own repository, loaded
+explicitly like a ROM), a <b>lightweight frontend</b> (one audio driver, one display
+driver, one adapter for every core), <b>performance</b> (the functional machinery lives
+in a native engine that also runs headless and links into bots and solvers directly),
+and <b>stronger reproducibility guarantees</b>: a movie's reproduction contract is the
+pair (movie, core package), movies record the exact core version, package hash, firmware
+hashes and host provenance, and every change must pass a witness gate that byte-compares
+emulator memory against goldens. The frontend, the TAS tooling and the architecture it
+builds on are the original work of the BizHawk team, and all credit for them belongs to
+BizHawk's developers.
+<a href="https://github.com/ToolAssisted-run/chimera">Follow it on GitHub</a>.</p></div></section>
 <section><h2>Botting and brute-forcing tools</h2>
 <div class="cols3">
 <div class="factbox"><h4>jaffarPlus</h4><p class="statline">A high-performance botting

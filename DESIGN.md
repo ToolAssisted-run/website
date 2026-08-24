@@ -1030,12 +1030,13 @@ rate limits); registration stays open by principle (§1.4).
 ## 13. Open items
 
 - Contributor point weights are provisional; the community settles them.
-- miniHawk's own movie format joins `movieparse.py` when it lands.
+- Chimera's own movie format joins `movieparse.py` when it lands (the
+  miniHawk name is retired; the project lives at ToolAssisted-run/chimera).
 - Full-launch checklist: re-review policy drafts and point weights.
 - **v2, deferred by explicit decision**: automated client-side reproduction
-  (browser/desktop miniHawk replays locally, ROMs never leave the machine,
+  (browser/desktop Chimera replays locally, ROMs never leave the machine,
   signed receipts with state-hash samples corroborate independently). Revive
-  when miniHawk's WASM determinism is proven.
+  when Chimera's WASM determinism is proven.
 
 ## 14. Retired, so nobody trips on it
 

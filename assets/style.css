@@ -591,6 +591,9 @@ footer a{color:var(--accent-text);text-decoration:none}
 .createq [aria-disabled=true]{opacity:.45;pointer-events:none}
 
 /* stated-time picker: four boxes, a mistake is not possible */
+.chimerahead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.chimeraicon{height:44px;width:auto}
+.chimeratype{height:26px;width:auto}
 .timerow{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
 .timerow > input[type=number]{flex:1;min-width:120px;max-width:260px}
 .timerow .btn,.timerow .impsel{flex:none}
