@@ -104,9 +104,12 @@ A person can relate to the site in these ways, from lightest to heaviest:
 - **A credited name**: anyone may be credited on a run's author list,
   including people who have never heard of the site. A credit is text; it gets
   no profile, no record, no page. Honest attribution of every human author is
-  the one hard rule (§4.3); the tool used is asked for on the form (§4.3 wants
-  it for reproduction) but not enforced as required, since §1.9 says disclosure
-  is never an obligation; the two provisions await reconciliation.
+  the one hard rule (§4.3). The tool used gates reproduction only (§4.3):
+  a run is archived and verified without it, but its reproduction bounty is
+  waiting until the tool is named (the empty reproduction roster says so,
+  and names the tool when it is known); the submit form asks but never
+  requires, and anything beyond the tool is a badge, never an obligation
+  (§1.9).
 - **A member**: somebody with a forum account who has logged into the site at
   least once. First login writes their record in `authors/` (exactly two
   facts: the username, and that they are here; written in a background thread
