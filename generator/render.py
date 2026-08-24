@@ -90,20 +90,33 @@ def group_chip(game_key, rel='../../'):
     return f'<p class="grpline">Part of {links}</p>'
 
 def expert_line(game_key, rel):
-    """Who speaks for this game: its own experts and its group' experts.
-
-    Site-wide scope is deliberately left out. It covers every game here, so
-    printing it on every game page says nothing about this one and would put
-    the same names under thousands of titles.
-    """
-    reach = {game_key} | {'group:' + gr['key'] for gr in groups
-                          if game_key in gr.get('games', [])}
-    who = sorted({e['user'] for e in experts_reg if e['scope'] in reach},
+    """Who speaks for this game, closest scope first (#65): its own experts,
+    then its group's, marked so, then a quiet count of the wider scopes
+    (system and whole-site) whose names, covering everything, say nothing
+    about this game in particular. The count carries the names in its
+    tooltip; no line renders when nobody holds a game or group scope."""
+    own = sorted({e['user'] for e in experts_reg if e['scope'] == game_key},
                  key=str.lower)
-    if not who:
+    group_scopes = {'group:' + gr['key'] for gr in groups
+                    if game_key in gr.get('games', [])}
+    shown = {u.lower() for u in own}
+    grp = sorted({e['user'] for e in experts_reg if e['scope'] in group_scopes
+                  and e['user'].lower() not in shown}, key=str.lower)
+    shown |= {u.lower() for u in grp}
+    wider = sorted({e['user'] for e in experts_reg
+                    if e['scope'] in ('site', game_key.split('/')[0])
+                    and e['user'].lower() not in shown}, key=str.lower)
+    if not own and not grp:
         return ''
-    return ('<p class="authline">Experts: '
-            + ' · '.join(member_chip(u, rel) for u in who) + '</p>')
+    parts = []
+    if own:
+        parts.append(' · '.join(member_chip(u, rel) for u in own))
+    if grp:
+        parts.append(' · '.join(member_chip(u, rel) for u in grp)
+                     + ' <span class="actmeta">(group scope)</span>')
+    tail = (f' <span class="actmeta scopetail" title="{esc(", ".join(wider))}">'
+            f'+{len(wider)} wider-scope</span>' if wider else '')
+    return '<p class="authline">Experts: ' + ' · '.join(parts) + tail + '</p>'
 
 def esc(s): return html.escape(str(s), quote=True)
 

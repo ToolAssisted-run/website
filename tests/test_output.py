@@ -831,8 +831,17 @@ def main():
         # every title says nothing about any of them.
         gp = all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
         head_ = gp[:gp.find('</header>')]
-        ck('a game page names its group expert', 'Grp' in head_, head_[-400:])
-        ck('and leaves the site-wide expert off it', 'Root' not in head_, head_[-400:])
+        ck('a game page names its group expert', 'Grp' in head_
+           and '(group scope)' in head_, head_[-400:])
+        ck('the site-wide expert is a quiet count, never a chip (#65)',
+           'authors/root' not in head_ and 'wider-scope' in head_
+           and 'title="Root"' in head_, head_[-400:])
+        grp_page = all_html[out / 'groups' / 'test-family' / 'index.html']
+        ck('a group page names only its own group experts (#65)',
+           'Group experts:' in grp_page and 'authors/grp' in grp_page
+           and 'Group experts and above' not in grp_page, grp_page[:300])
+        ck('site-wide experts roll up on the group page too',
+           'site-wide' in grp_page and 'title="Root"' in grp_page, grp_page[:300])
 
         # ---------- acts on the page they are about ----------
         # Each zone starts hidden and opens only for the people who may use it.

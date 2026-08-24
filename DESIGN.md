@@ -477,7 +477,18 @@ wiki or leaderboard), **rta** (where the real-time records live, e.g.
 speedrun.com) and **rules** (game-wide rules, markdown up to 2000
 characters, composed above every category's own rule in View rules; #64). They are set at creation by whoever creates the game,
 and afterwards by a covering expert or an editor through the game editor,
-one logged edit per field; an empty value clears the field. The game page
+one logged edit per field; an empty value clears the field.
+
+**Who speaks for a game shows closest scope first** (#65): the game page's
+expert line names the game's own experts, then its group's marked "(group
+scope)", and rolls the wider scopes (system, whole-site) into a quiet
+"+N wider-scope" count whose tooltip carries the names; nothing renders
+when nobody holds a game or group scope. Group pages likewise name only
+the group's own experts with a "+N site-wide" rollup (child-game experts
+stay on their game pages); the permission data the action zones read keeps
+the full covering union.
+
+The game page
 shows the release date and the unofficial mark as chips beside the system,
 and the links as buttons in the header, opened apart and referrer-free.
 Group and system pages sort their cards by stars, views, title or release

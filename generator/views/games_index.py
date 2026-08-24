@@ -100,7 +100,14 @@ if live_groups:
     for gr in live_groups:
         ggames = group_games(gr)
         grunts = group_runs(gr)
+        # display follows the closest scope (#65): the group's own experts by
+        # name, the site-wide ones as a quiet count; child-game experts stay
+        # on their game pages. Permissions (gact_data) keep the full union.
         gexperts = sorted({u for g in ggames for u in covering_experts(g['key'])})
+        group_experts = sorted({e['user'].lower() for e in experts_reg
+                                if e['scope'] == 'group:' + gr['key']})
+        site_experts = sorted({e['user'] for e in experts_reg
+                               if e['scope'] == 'site'}, key=str.lower)
         # the move form lists every game not already here, with the group
         # each would leave
         placed_in = {k: grx['title'] for grx in live_groups
@@ -113,7 +120,8 @@ if live_groups:
                                                  key=lambda k: games[k]['title'].lower())
                                  if k not in gr.get('games', [])]}
         gbody = tpl('games_group.html', gr=gr, ggames=ggames, grunts=grunts,
-                    gexperts=gexperts, synthetic=bool(gr.get('synthetic')),
+                    gexperts=group_experts, site_experts=site_experts,
+                    synthetic=bool(gr.get('synthetic')),
                     rows=ranked_rows(grunts), gact_data=gact_data, **HELPERS)
         gdir = OUT / 'groups' / gr['key']
         gdir.mkdir(parents=True, exist_ok=True)
