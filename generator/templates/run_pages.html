@@ -53,6 +53,12 @@
 {% else %}
 {{ vid }}
 {% endif %}
+{# eight nearby runs, closest scope first: designated picks, then the same
+   category, game, group, system, then the site's best (view code: reel_for) #}
+{% if reel %}
+<section class="alsolike"><h2>You may also like…</h2>
+<div class="hwrap"><div class="hrow">{% for rr in reel %}{{ run_card(rr, '../') }}{% endfor %}</div></div></section>
+{% endif %}
 <div class="cols">
 <div class="main">
   {% if warns %}
@@ -69,11 +75,11 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <div class="notes">{{ wiki_html(notes_src) }}</div>
   {% if not is_leg %}
   {# community rosters #}
+  {% if not r.get('videoOnly') or reps %}
   <h2>Reproductions ({{ live(reps)|length }})</h2>
-<div class="roster">{% if reps %}{{ roster_acts(r, reps, 'repro') }}{% elif r.get('videoOnly') %}<p class="emptynote">Nothing exists to reproduce: this run is video-only, with no movie file; the encode is the run.</p>{% elif not r.get('contract', {}).get('emulator') %}<p class="emptynote">No reproductions yet, and the run does not name the tool that plays its movie back, so a sync cannot be confirmed (Terms 4.3). An author or a covering expert can add the tool through Edit run; the bounty, currently <b>{{ repro_bounty(r) }} contributor points</b>, waits for whoever syncs it then.</p>{% else %}<p class="emptynote">No reproductions yet. Load the movie file in <b>{{ r['contract']['emulator'] }}</b> on your own setup, confirm it syncs, and be the first; the current bounty is <b>{{ repro_bounty(r) }} contributor points</b>.</p>{% endif %}</div>
-{% if is_unclassified(r) %}
-<h2>Verifications</h2><p class="emptynote">Unclassified runs are never verified because no goal is defined. They rank by likes instead.</p>
-{% else %}
+<div class="roster">{% if reps %}{{ roster_acts(r, reps, 'repro') }}{% elif not r.get('contract', {}).get('emulator') %}<p class="emptynote">No reproductions yet, and the run does not name the tool that plays its movie back, so a sync cannot be confirmed (Terms 4.3). An author or a covering expert can add the tool through Edit run; the bounty, currently <b>{{ repro_bounty(r) }} contributor points</b>, waits for whoever syncs it then.</p>{% else %}<p class="emptynote">No reproductions yet. Load the movie file in <b>{{ r['contract']['emulator'] }}</b> on your own setup, confirm it syncs, and be the first; the current bounty is <b>{{ repro_bounty(r) }} contributor points</b>.</p>{% endif %}</div>
+  {% endif %}
+{% if not is_unclassified(r) %}
 <h2>Verifications ({{ live(vers)|length }})</h2>
 <div class="roster">{% if vers %}{{ roster_acts(r, vers, 'verify') }}{% elif enc %}<p class="emptynote">No verifications yet. Watch the encode and confirm the run achieves its stated goal.</p>{% else %}<p class="emptynote">No verifications yet, and no encode is linked, so verification is not possible until one is added.</p>{% endif %}</div>
 {% endif %}
@@ -239,12 +245,6 @@ Log in (top right) to reply from here.</p></section>
   <script type="application/json" id="likedata">{{ json_blob(like_data) }}</script>
   {% if not is_leg and not is_ranked(r) %}<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>{% endif %}
 </aside></div>
-{# eight nearby runs, closest scope first: designated picks, then the same
-   category, game, group, system, then the site's best (view code: reel_for) #}
-{% if reel %}
-<section class="alsolike"><h2>You may also like…</h2>
-<div class="hwrap"><div class="hrow">{% for rr in reel %}{{ run_card(rr, '../') }}{% endfor %}</div></div></section>
-{% endif %}
 {% if is_leg %}
 {# the import notice, at the very bottom: where it came from, who brought
    it, and the license it travels under #}
