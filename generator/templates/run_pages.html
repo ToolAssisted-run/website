@@ -12,7 +12,7 @@
   {% if r.get('goalDescription') %}<p class="gdesc">“{{ r['goalDescription'] }}”</p>{% endif %}</div>
   <div class="hbtns">
     <div class="likerow"><button id="likebtn" class="likestar" title="Like this run">
-      <span class="starglyph">★</span> Like<span class="likecount" id="likecount">{{ nlikes(r) }}</span></button>
+      <span class="starglyph">★</span> <span class="likeword">Like</span><span class="likecount" id="likecount">{{ nlikes(r) }}</span></button>
     {# revealed by app.js to authors, covering experts and editors; editing
        happens on the submit page, in edit mode #}
     <span id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></span></div>

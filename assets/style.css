@@ -424,7 +424,10 @@ input.bad{border-color:#DC2626!important}
 .likestar{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:.86rem;font-weight:600;padding:8px 14px;border-radius:9px;border:2.5px solid var(--hairs);background:var(--bg);color:var(--ink);cursor:pointer}
 .likestar:hover:not(:disabled){border-color:var(--accent)}
 .likestar .starglyph{color:var(--accent);font-size:1rem}
-.likestar.on .starglyph{text-shadow:0 0 6px rgba(34,197,94,.8)}
+.likestar.on{background:var(--accent);border-color:var(--accent);color:#04140A;box-shadow:inset 0 2px 5px rgba(0,0,0,.3)}
+.likestar.on .starglyph{color:#04140A;text-shadow:none}
+.likestar.on .likecount{border-left-color:rgba(4,20,10,.35)}
+.likestar.on:hover:not(:disabled){border-color:#04140A}
 .starchip{border-color:rgba(34,197,94,.5)}
 .likestar:disabled{cursor:not-allowed;opacity:.85}
 .likestar .likecount{font-family:ui-monospace,monospace;font-weight:700;padding-left:9px;border-left:2.5px solid var(--hair)}
