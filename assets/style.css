@@ -300,7 +300,6 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .upheldchip{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.45);color:#DC2626;font-weight:700}
 .draftbox{background:rgba(217,119,6,.07);border:2.5px solid rgba(217,119,6,.35);border-left:5px solid #D97706;border-radius:10px;padding:10px 14px;font-size:.85rem;color:var(--muted);margin-bottom:18px}
 .notes{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);font-size:.92rem}
-.editrow{display:flex;justify-content:flex-end;margin:10px 0 0}
 .notes h3,.notes h4{margin:14px 0 6px}.notes h3:first-child{margin-top:0}
 .notes ul{margin:6px 0 6px 22px}.notes p{margin:6px 0}.notes hr{border:none;border-top:2.5px solid var(--hair);margin:12px 0}
 .notes a{color:var(--accent-text)}
@@ -420,6 +419,8 @@ input.bad{border-color:#DC2626!important}
 .medal-gold{background:#E5B933}.medal-silver{background:#C9CED6}.medal-bronze{background:#C98A4B}
 .gdesc{margin-top:4px;font-size:.92rem;color:var(--muted);font-style:italic}
 .udesc{font-size:.86rem;color:var(--muted);max-width:34ch}
+.likerow{display:flex;gap:10px;align-items:stretch}
+.likerow #edit-link{height:100%;display:inline-flex;align-items:center}
 .likestar{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:.86rem;font-weight:600;padding:8px 14px;border-radius:9px;border:2.5px solid var(--hairs);background:var(--bg);color:var(--ink);cursor:pointer}
 .likestar:hover:not(:disabled){border-color:var(--accent)}
 .likestar .starglyph{color:var(--accent);font-size:1rem}

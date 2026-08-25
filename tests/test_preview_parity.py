@@ -72,7 +72,7 @@ def server_render(td, snippets):
     rendered = []
     for i, _ in enumerate(snippets):
         page = (out / 'runs' / f'M9006{i:02d}' / 'index.html').read_text()
-        m = re.search(r'<div class="notes">(.*?)</div>\s*(?:<!--.*?-->\s*)?<div class="editrow"', page, re.S)
+        m = re.search(r'<div class="notes">(.*?)</div>\s*(?:<!--.*?-->\s*)?<h2>', page, re.S)
         rendered.append(m.group(1) if m else '')
     return rendered, out
 

@@ -11,8 +11,11 @@
   <p class="authline">by {% for a in r['authors'] %}{% if not loop.first %} · {% endif %}{{ author_chip(a['user'], '../../') }}{% endfor %}</p>
   {% if r.get('goalDescription') %}<p class="gdesc">“{{ r['goalDescription'] }}”</p>{% endif %}</div>
   <div class="hbtns">
-    <button id="likebtn" class="likestar" title="Like this run">
+    <div class="likerow"><button id="likebtn" class="likestar" title="Like this run">
       <span class="starglyph">★</span> Like<span class="likecount" id="likecount">{{ nlikes(r) }}</span></button>
+    {# revealed by app.js to authors, covering experts and editors; editing
+       happens on the submit page, in edit mode #}
+    <span id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></span></div>
     {% if r.get('videoOnly') %}<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>{% endif %}
     <a class="srclink" href="https://github.com/ToolAssisted-run/archive/tree/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}">view run folder in the archive →</a>
     <a class="srclink" href="https://github.com/ToolAssisted-run/archive/commits/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}"
@@ -64,9 +67,6 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   {% endif %}
   <h2>Author's notes</h2>
   <div class="notes">{{ wiki_html(notes_src) }}</div>
-  {# editing happens on the submit page, in edit mode: one form, one set of
-     rules (app.js reveals the button to authors, covering experts, editors) #}
-  <div class="editrow" id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></div>
   {% if not is_leg %}
   {# community rosters #}
   <h2>Reproductions ({{ live(reps)|length }})</h2>
