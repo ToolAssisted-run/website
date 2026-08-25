@@ -737,7 +737,11 @@ archivist, module responsibilities). What matters designwise:
   (`/tag/<system>-<slug>`) IS the game's forum home, run topics included
   (`max_tag_length` raised to 60). Run pages proxy their thread through the
   archivist (`/api/discussion`, 60 s cache) and accept replies session-only,
-  posting under the member's own Discourse name. Role groups on the forum
+  posting under the member's own Discourse name. Theme components on the
+  default theme: our own "toolAssisted tweaks" and the official **DiscoTOC**
+  (#70: automatic table of contents; auto-applied in General and Emulators
+  for posts with 3+ headings, insertable by any author from the composer
+  gear elsewhere). Role groups on the forum
   are **printed projections** of `roles.json`, one-way, reconciled
   periodically; joining a forum group grants nothing. Private messages are
   never relayed anywhere.
