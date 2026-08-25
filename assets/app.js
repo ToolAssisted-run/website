@@ -1464,6 +1464,146 @@
       var pendingEl = document.getElementById('ge-pending');
       var byId = function(id){ return document.getElementById(id); };
 
+      // Client image cropper logic START
+      var thumbInput = byId('ge-thumb');
+      var thumbPreview = byId('ge-thumb-preview');
+      var thumbImage = byId('ge-thumb-image');
+      var cropPanel = byId('ge-crop');
+      var cropStage = byId('ge-crop-stage');
+      var cropImage = byId('ge-crop-image');
+      var cropBox = byId('ge-crop-box');
+      var cropSize = byId('ge-crop-size');
+      var cropStatus = byId('ge-thumb-status');
+      var thumbSource = null, thumbObjectUrl = null, preparedThumb = null;
+      var cropGeom = null, cropDragging = false, cropDragX = 0, cropDragY = 0;
+
+      function cropCanvasBlob(source, sx, sy, sw, sh){
+        return new Promise(function(resolve, reject){
+          var canvas = document.createElement('canvas');
+          var maxWidth = 1280;
+          var width = Math.min(maxWidth, sw);
+          var height = Math.round(width * 9 / 16);
+          canvas.width = width; canvas.height = height;
+          var ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('thumbnail crop is not supported by this browser')); return; }
+          ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(source, sx, sy, sw, sh, 0, 0, width, height);
+          canvas.toBlob(function(blob){
+            if (blob) resolve(blob);
+            else reject(new Error('could not prepare the thumbnail'));
+          }, 'image/jpeg', .86);
+        });
+      }
+      function imageFrame(){
+        if (!thumbSource || !cropStage) return null;
+        var stageW = cropStage.clientWidth, stageH = cropStage.clientHeight;
+        var ratio = thumbSource.naturalWidth / thumbSource.naturalHeight;
+        var imageW = ratio >= stageW / stageH ? stageW : stageH * ratio;
+        var imageH = imageW / ratio;
+        return {left: (stageW - imageW) / 2, top: (stageH - imageH) / 2,
+                width: imageW, height: imageH};
+      }
+      function paintCrop(){
+        if (!cropGeom) return;
+        cropBox.style.left = cropGeom.x + 'px'; cropBox.style.top = cropGeom.y + 'px';
+        cropBox.style.width = cropGeom.w + 'px'; cropBox.style.height = cropGeom.h + 'px';
+      }
+      function layoutCrop(){
+        var frame = imageFrame();
+        if (!frame) return;
+        var maxW = Math.min(frame.width, frame.height * 16 / 9);
+        var scale = Number(cropSize.value) / 100;
+        var w = maxW * scale, h = w * 9 / 16;
+        cropImage.style.left = frame.left + 'px'; cropImage.style.top = frame.top + 'px';
+        cropImage.style.width = frame.width + 'px'; cropImage.style.height = frame.height + 'px';
+        cropGeom = {frame: frame, x: frame.left + (frame.width - w) / 2,
+                    y: frame.top + (frame.height - h) / 2, w: w, h: h};
+        paintCrop();
+      }
+      function clampCrop(){
+        if (!cropGeom) return;
+        var f = cropGeom.frame;
+        cropGeom.x = Math.max(f.left, Math.min(cropGeom.x, f.left + f.width - cropGeom.w));
+        cropGeom.y = Math.max(f.top, Math.min(cropGeom.y, f.top + f.height - cropGeom.h));
+        paintCrop();
+      }
+      function openCrop(){
+        if (!thumbSource) return;
+        cropPanel.hidden = false;
+        cropImage.onload = layoutCrop;
+        cropImage.src = thumbSource.src;
+        if (cropImage.complete) layoutCrop();
+        cropPanel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      }
+      function closeCrop(){ cropPanel.hidden = true; cropDragging = false; }
+      function cropResult(){
+        var f = cropGeom && cropGeom.frame;
+        if (!f) return Promise.reject(new Error('choose an image before cropping'));
+        return cropCanvasBlob(thumbSource,
+          (cropGeom.x - f.left) * thumbSource.naturalWidth / f.width,
+          (cropGeom.y - f.top) * thumbSource.naturalHeight / f.height,
+          cropGeom.w * thumbSource.naturalWidth / f.width,
+          cropGeom.h * thumbSource.naturalHeight / f.height);
+      }
+      function autoCrop(){
+        var ratio = thumbSource.naturalWidth / thumbSource.naturalHeight;
+        var sw = ratio >= 16 / 9 ? thumbSource.naturalHeight * 16 / 9 : thumbSource.naturalWidth;
+        var sh = sw * 9 / 16;
+        return cropCanvasBlob(thumbSource, (thumbSource.naturalWidth - sw) / 2,
+                              (thumbSource.naturalHeight - sh) / 2, sw, sh);
+      }
+      function prepareThumbnail(){
+        if (preparedThumb) return Promise.resolve(preparedThumb);
+        if (!thumbSource) return Promise.reject(new Error('choose a thumbnail image'));
+        return autoCrop().then(function(blob){ preparedThumb = blob; return blob; });
+      }
+      if (thumbInput) {
+        thumbInput.addEventListener('change', function(){
+          var file = thumbInput.files && thumbInput.files[0];
+          preparedThumb = null; thumbSource = null;
+          if (thumbObjectUrl) URL.revokeObjectURL(thumbObjectUrl);
+          if (!file) { thumbPreview.hidden = true; closeCrop(); refresh(); return; }
+          thumbObjectUrl = URL.createObjectURL(file);
+          var image = new Image();
+          image.onload = function(){
+            thumbSource = image; thumbImage.src = thumbObjectUrl; thumbPreview.hidden = false;
+            cropStatus.textContent = 'Centered 16:9 crop will be used on save.';
+            closeCrop(); refresh();
+          };
+          image.onerror = function(){ thumbPreview.hidden = true; note(msg, 'The selected file is not a readable image.', false); };
+          image.src = thumbObjectUrl;
+        });
+        byId('ge-thumb-crop').addEventListener('click', openCrop);
+        byId('ge-crop-size').addEventListener('input', function(){
+          if (!cropGeom) return;
+          var old = {x: cropGeom.x + cropGeom.w / 2, y: cropGeom.y + cropGeom.h / 2};
+          var maxW = Math.min(cropGeom.frame.width, cropGeom.frame.height * 16 / 9);
+          cropGeom.w = maxW * Number(cropSize.value) / 100; cropGeom.h = cropGeom.w * 9 / 16;
+          cropGeom.x = old.x - cropGeom.w / 2; cropGeom.y = old.y - cropGeom.h / 2;
+          clampCrop();
+        });
+        byId('ge-crop-apply').addEventListener('click', function(){
+          cropResult().then(function(blob){
+            preparedThumb = blob; thumbImage.src = URL.createObjectURL(blob);
+            cropStatus.textContent = 'Manual 16:9 crop applied.';
+            closeCrop(); refresh();
+          }).catch(function(err){ note(msg, err.message, false); });
+        });
+        byId('ge-crop-cancel').addEventListener('click', closeCrop);
+        cropStage.addEventListener('pointerdown', function(ev){
+          if (!cropGeom || ev.target !== cropBox && !cropBox.contains(ev.target)) return;
+          cropDragging = true; cropDragX = ev.clientX; cropDragY = ev.clientY;
+          cropBox.setPointerCapture(ev.pointerId);
+        });
+        cropStage.addEventListener('pointermove', function(ev){
+          if (!cropDragging || !cropGeom) return;
+          cropGeom.x += ev.clientX - cropDragX; cropGeom.y += ev.clientY - cropDragY;
+          cropDragX = ev.clientX; cropDragY = ev.clientY; clampCrop();
+        });
+        cropStage.addEventListener('pointerup', function(){ cropDragging = false; });
+      }
+      // Client image cropper logic FINISH
+
       // ---- the baseline (what the archive holds) and the draft ----
       var base = {
         title: gameEditData.title,
@@ -1638,8 +1778,11 @@
         });
         var thumb = byId('ge-thumb');
         if (thumb.files && thumb.files[0]) ops.push({what: 'thumbnail', run: function(){
-          var fd = form('game', gameEditData.game, 'thumbnail', ''); fd.append('thumbnail', thumb.files[0]);
-          return post('/api/expert/edit', fd, saveBtn);
+          return prepareThumbnail().then(function(blob){
+            var fd = form('game', gameEditData.game, 'thumbnail', '');
+            fd.append('thumbnail', blob, 'thumbnail.jpg');
+            return post('/api/expert/edit', fd, saveBtn);
+          }).catch(function(err){ return {ok: false, j: {error: err.message}}; });
         }, done: function(){ thumb.value = ''; }});
         var selv = selectorChoice();
         if (selv !== base.selector) ops.push({what: 'category selector', run: function(){ return edit('category', gameEditData.game + ':*', 'selector', selv); }, done: function(){ base.selector = selv; }});

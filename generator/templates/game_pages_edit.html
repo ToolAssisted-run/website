@@ -18,8 +18,32 @@ with your name, the old value, the new, and your reason.</p></div>
 <div class="actform">
 <label>Title <input id="ge-title" maxlength="120" value="{{ g['title'] }}"></label>
 {% if face %}<img class="gface" src="/thumbs/{{ face }}" alt="current thumbnail">{% else %}<p class="rules">No thumbnail set; the card falls back to the newest run frame.</p>{% endif %}
+<p class="rules thumb-guidance"><b>Thumbnail guidance:</b> 16:9 is recommended. A title screen or framed key art
+    with the logo, or any frame that makes the game recognisable to its players, works best. Images are prepared
+    as a centered 16:9 crop unless you apply your own crop.</p>
 <label>Thumbnail (png/jpg/webp, under 256 KB; pick one to replace it)
   <input id="ge-thumb" type="file" accept=".png,.jpg,.jpeg,.webp"></label>
+<div id="ge-thumb-preview" class="thumb-edit-preview" hidden>
+  <img id="ge-thumb-image" alt="thumbnail preview">
+  <div class="btnrow" style="justify-content:flex-start">
+    <button type="button" class="btn shade" id="ge-thumb-crop">Crop</button>
+    <span id="ge-thumb-status" class="rules">Centered 16:9 crop will be used on save.</span>
+  </div>
+</div>
+<div id="ge-crop" class="crop-panel" hidden>
+  <div class="crop-head"><b>Frame the thumbnail</b><span class="rules">Drag the crop area. The ratio stays locked at 16:9.</span></div>
+  <div id="ge-crop-stage" class="crop-stage">
+    <img id="ge-crop-image" alt="">
+    <div id="ge-crop-box" class="crop-box"><span></span></div>
+  </div>
+  <label class="crop-size">Crop size
+    <input id="ge-crop-size" type="range" min="40" max="100" value="90">
+  </label>
+  <div class="btnrow" style="justify-content:flex-start">
+    <button type="button" class="btn" id="ge-crop-apply">Apply crop</button>
+    <button type="button" class="btn leave" id="ge-crop-cancel">Cancel</button>
+  </div>
+</div>
 </div>
 </section>
 <section><h2>Properties</h2>

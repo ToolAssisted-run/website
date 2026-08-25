@@ -93,6 +93,20 @@ a{color:inherit}
 .btn.quiet{background:var(--accent);color:#04140A;text-align:center}
 .btn:hover{filter:brightness(1.06)}
 .gface{max-height:84px;border-radius:10px;border:2.5px solid var(--hair);display:block}
+/* Client cropper styles */
+.thumb-guidance{max-width:58rem;margin:8px 0;color:var(--muted)}
+.thumb-edit-preview{margin:10px 0 4px;max-width:360px}
+.thumb-edit-preview>img{display:block;width:100%;max-height:84px;aspect-ratio:16/9;object-fit:contain;background:#000;border:2.5px solid var(--hair);border-radius:9px}
+.thumb-edit-preview .btnrow{align-items:center;margin-top:8px}
+.crop-panel{margin-top:12px;padding:14px;border:2.5px solid var(--hair);border-radius:10px;background:var(--ground)}
+.crop-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.crop-stage{position:relative;width:min(100%,720px);aspect-ratio:16/9;overflow:hidden;background:#070D17;border:2.5px solid var(--hairs);touch-action:none}
+.crop-stage>img{position:absolute;max-width:none;user-select:none;pointer-events:none}
+.crop-box{position:absolute;border:3px solid var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.58);cursor:move;touch-action:none}
+.crop-box span{position:absolute;inset:33.33% 0;border-top:1px solid rgba(255,255,255,.45);border-bottom:1px solid rgba(255,255,255,.45);pointer-events:none}
+.crop-size{display:flex;align-items:center;gap:12px;max-width:420px;margin:12px 0 4px;color:var(--muted);font-size:.86rem}
+.crop-size input{flex:1;accent-color:var(--accent)}
+
 .btn:disabled,.btn.busy{filter:grayscale(1);opacity:.55;box-shadow:none;cursor:not-allowed;pointer-events:none}
 /* the mark beside a button: spinner, then a green check or a red cross
    whose tooltip carries the error. Frame-quantized, like everything */

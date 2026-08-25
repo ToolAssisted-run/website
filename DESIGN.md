@@ -455,9 +455,13 @@ difference (sub-ms tolerance for times) is recorded or voids anything.
   Expert menu, revealed only to covering experts, enforced server-side):
   identity (rename, thumbnail) and the **category manager**: one card per
   option with label, rule and metric definitions edited in place (public
-  reason required),
-  unused options deletable (a category with runs in it is their home and
-  cannot be deleted), new options simply added. Endpoints:
+  reason required), unused options deletable (a category with runs in it is 
+  their home and cannot be deleted), new options simply added.
+  Thumbnail uploads are guided toward 16:9 and prepared in
+  the browser: contributors may apply a locked 16:9 crop, otherwise the
+  client uploads the largest centered 16:9 crop. The archivist's existing
+  image validation and size cap remain the backend guard; it does not
+  letterbox or pillarbox uploads. Endpoints:
   `/api/category/add` (option_key field: 'key' is the auth field) and
   `/api/category/delete`; every act lands in edits.json. The editor carries
   no governance acts: deletion lives on the game page's Expert menu alone.

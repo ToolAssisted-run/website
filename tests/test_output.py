@@ -356,6 +356,18 @@ def main():
            '[M999999]' in run_page and run_page.count('refcard') == 1)
         ck('[user:] reference resolves', 'href="../../authors/ada/"' in run_page)
 
+        # ---------- game thumbnail editor ----------
+        game_edit = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
+        ck('game editor explains the 16:9 thumbnail standard',
+           '16:9 is recommended' in game_edit
+           and 'recognisable to its players' in game_edit
+           and 'centered 16:9 crop' in game_edit)
+        ck('game editor carries the thumbnail preview and crop controls',
+           'id="ge-thumb-preview"' in game_edit
+           and 'id="ge-thumb-crop"' in game_edit
+           and 'id="ge-crop-apply"' in game_edit
+           and 'id="ge-crop-size"' in game_edit)
+
         # ---------- content warnings / 18+ gate / reports ----------
         warned = all_html[out / 'runs' / 'M900102' / 'index.html']
         ck('content warning chips render', 'warnchip' in warned)
