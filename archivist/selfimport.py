@@ -101,6 +101,9 @@ def load_pubs(dumps):
         _pub_cache['pubs'] = json.loads(pfile.read_text())
         _pub_cache['subs'] = {s['id']: s for s in json.loads(
             (dumps / 'metadata' / 'submissions.json').read_text())}
+        versions_file = dumps / 'metadata' / 'game-versions.json'
+        _pub_cache['versions'] = (json.loads(versions_file.read_text())
+                                  if versions_file.exists() else {})
         _pub_cache['mtime'] = mtime
     return _pub_cache['pubs'], _pub_cache['subs']
 
@@ -302,10 +305,16 @@ def import_one(dumps, archive, p, sub, username, today, thumb_base,
         notes_md = disclaimer(pid)
 
     rom_name = sub.get('romName') or sub.get('gameVersion') or ''
+    # the file's SHA1 lives on the source's game-version record (issue #72);
+    # the submission notes are the fallback for records that state it there
     sha1 = ''
-    m = re.search(r'SHA-?1:?\s*\*?\s*([0-9a-fA-F]{40})', notes_md)
-    if m:
-        sha1 = m.group(1).lower()
+    version_row = _pub_cache.get('versions', {}).get(str(sub.get('gameVersionId') or ''))
+    if version_row and version_row.get('sha1'):
+        sha1 = version_row['sha1'].lower()
+    if not sha1:
+        m = re.search(r'SHA-?1:?\s*\*?\s*([0-9a-fA-F]{40})', notes_md)
+        if m:
+            sha1 = m.group(1).lower()
     # one file row, as every new record carries them (the legacy single
     # `rom` object stays on the records that already have it)
     files = []

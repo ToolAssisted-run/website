@@ -448,8 +448,11 @@ def main():
              'createTimestamp': '2022-01-01T00:00:00Z', 'obsoletedById': None},
         ]
         (dumps / 'metadata' / 'publications.json').write_text(json.dumps(pubs))
+        (dumps / 'metadata' / 'game-versions.json').write_text(json.dumps(
+            {'4242': {'sha1': 'f' * 40, 'name': 'Pinball (U).nes'}}))
         (dumps / 'metadata' / 'submissions.json').write_text(json.dumps([
             {'id': 810001, 'gameName': 'Pinball', 'romName': 'Pinball (U).nes',
+             'gameVersionId': 4242,
              'movieStartType': 0, 'emulatorVersion': 'FCEUX 2.6.4'},
             {'id': 810002, 'gameName': 'Impo Quest', 'romName': '',
              'movieStartType': 0, 'emulatorVersion': 'BizHawk 2.9'},
@@ -2506,6 +2509,8 @@ def main():
                 ck('the co-authored import credits every author and names the importer',
                    {a['user'] for a in co['authors']} == {'ssouser', 'CoAuthorX'}
                    and co['imported']['importedBy'] == 'ssouser', str(co['authors']))
+                ck("the import carries the source's file SHA1 (#72)",
+                   ir['contract']['files'][0]['sha1'] == 'f' * 40, str(ir['contract']))
                 ck('imported run marked imported',
                    ir['status']['reproduced'] == 'imported'
                    and ir['status']['verified'] == 'imported'
