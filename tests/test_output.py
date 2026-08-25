@@ -620,7 +620,7 @@ def main():
         rfiles_ = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('the run page lists every file with its sha1',
            'Disc 1.iso' in rfiles_ and 'game.exe' in rfiles_
-           and 'title="sha1 ' + 'a' * 40 + '"' in rfiles_ and rfiles_.count('class="filefact"') == 2, rfiles_[:100])
+           and 'SHA1</span> ' + 'a' * 40 in rfiles_ and rfiles_.count('class="filefact"') == 2, rfiles_[:100])
         rlegacy_ = all_html[out / 'runs' / 'M900105' / 'index.html']
         ck('a legacy single rom still shows as one file row',
            'Old Game (USA).nes' in rlegacy_ and rlegacy_.count('class="filefact"') == 1)
