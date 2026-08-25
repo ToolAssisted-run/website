@@ -715,7 +715,8 @@ html:has(.agegate){overflow:hidden}
 .filerow-actions{justify-content:flex-start;margin:6px 0 10px}
 .filerow .hashing{font-size:.74rem;color:var(--faint)}
 .filefact{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.filefact .filesha{font-size:.76rem;color:var(--faint)}
+.filefact .filesha{font-size:.76rem;color:var(--faint);overflow-wrap:anywhere}
+.filefact .shalabel{font-weight:700;color:var(--muted)}
 @media (max-width:640px){.filerow{flex-wrap:wrap}.filerow input{min-width:100%}}
 /* the date picker's calendar icon: Signal Green and a size that can be hit,
    instead of the browser's small dark glyph */

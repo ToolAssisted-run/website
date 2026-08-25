@@ -208,7 +208,7 @@ Log in (top right) to reply from here.</p></section>
   {% if not r.get('videoOnly') %}<div class="factbox"><h4>Reproduction info</h4><dl>
     <dt>Emulator</dt><dd>{{ r.get('contract', {}).get('emulator') or '—' }}</dd>
     {% for f in files %}
-    <dt>{{ 'Files' if loop.first else '' }}</dt><dd class="filefact"><span class="filename">{{ f['name'] }}</span>{% if f.get('sha1') %}<code class="filesha" title="sha1 {{ f['sha1'] }}">{{ f['sha1'][:12] }}…</code>{% endif %}</dd>
+    <dt>{{ 'Files' if loop.first else '' }}</dt><dd class="filefact"><span class="filename">{{ f['name'] }}</span>{% if f.get('sha1') %}<code class="filesha"><span class="shalabel">SHA1</span> {{ f['sha1'] }}</code>{% endif %}</dd>
     {% endfor %}
 </dl></div>{% endif %}
   {% if atts %}<div class="factbox"><h4>Attached files</h4>{% for a in atts %}<p class="statline"><a href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ a['file'] }}">{{ a['file'].split('/')[-1] }}</a> · {{ a.get('role', '') }}</p>{% endfor %}</div>{% endif %}
