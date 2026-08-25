@@ -2879,8 +2879,24 @@ def edit_run():
             if duration <= 0:
                 return fail('a run that takes no time at all is not a run')
             # only a real change is a change: the form sends the record's own
-            # value back on every save, and that must never void anything
-            if run.get('duration') is None or abs(duration - run['duration']) >= 0.0005:
+            # value back on every save, and that must never void anything.
+            # A legacy run's record is its frames-derived time: the form
+            # prefills that, so getting it back (to the millisecond the form
+            # rounds to) means "keep deriving", not a newly stated duration
+            derived = None
+            if legacy_frames:
+                movie_fps = (run.get('movie') or {}).get('fps')
+                if not movie_fps:
+                    try:
+                        movie_fps = json.loads((ARCHIVE / 'systems.json').read_text()).get(
+                            run['game'].split('/')[0], {}).get('fps')
+                    except (OSError, ValueError):
+                        movie_fps = None
+                if movie_fps:
+                    derived = run['movie']['frames'] / movie_fps
+            same_as_record = (abs(duration - run['duration']) < 0.0005 if run.get('duration') is not None
+                              else derived is not None and abs(duration - derived) < 0.002)
+            if not same_as_record:
                 befores['duration'] = str(run.get('duration'))
                 run['duration'] = duration
                 changed.append('duration')

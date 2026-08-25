@@ -1020,6 +1020,22 @@ def main():
             ck('the same encode twice is the same run twice', c == 409
                and 'same encode' in r.get('error', ''), str(r))
 
+            # a legacy run (frames, no stated duration): the form prefills
+            # the frames-derived time, and sending it back with an encode
+            # change must not read as a scoring change (no voiding)
+            c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'legacywatch', 'run': 'M900011'})
+            ck('legacy run verified for the test', c == 200, str(r)[:120])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            lj_ = json.loads((work / 'games/nes/pinball/runs/M900011/run.json').read_text())
+            lfps_ = lj_['movie'].get('fps') or 60.0988138974405
+            lsec_ = lj_['movie']['frames'] / lfps_
+            prefill_ = '%d:%02d.%03d' % (lsec_ // 60, int(lsec_) % 60, round((lsec_ % 1) * 1000))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900011',
+                                             'encode': 'https://youtu.be/goodvid12346',
+                                             'time': prefill_, 'dry_run': '1'})
+            ck('an encode change with the prefilled derived time voids nothing',
+               c == 200 and r['would_change'] == ['encode'] and r['would_void'] == [], str(r)[:200])
+
             # designated "You may also like" picks live on /api/edit
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                                              'related': 'M900011 M900012', 'time': ''})
