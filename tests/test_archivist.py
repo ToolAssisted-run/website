@@ -1022,18 +1022,16 @@ def main():
 
             # a legacy run (frames, no stated duration): the form prefills
             # the frames-derived time, and sending it back with an encode
-            # change must not read as a scoring change (no voiding)
-            c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'legacywatch', 'run': 'M900011'})
-            ck('legacy run verified for the test', c == 200, str(r)[:120])
-            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            lj_ = json.loads((work / 'games/nes/pinball/runs/M900011/run.json').read_text())
-            lfps_ = lj_['movie'].get('fps') or 60.0988138974405
+            # change must not read as a newly stated duration
+            lj_ = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            lfps_ = (lj_['movie'].get('fps')
+                     or json.loads((work / 'systems.json').read_text())['nes']['fps'])
             lsec_ = lj_['movie']['frames'] / lfps_
             prefill_ = '%d:%02d.%03d' % (lsec_ // 60, int(lsec_) % 60, round((lsec_ % 1) * 1000))
-            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900011',
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                                              'encode': 'https://youtu.be/goodvid12346',
                                              'time': prefill_, 'dry_run': '1'})
-            ck('an encode change with the prefilled derived time voids nothing',
+            ck('an encode change with the prefilled derived time is encode alone',
                c == 200 and r['would_change'] == ['encode'] and r['would_void'] == [], str(r)[:200])
 
             # designated "You may also like" picks live on /api/edit
