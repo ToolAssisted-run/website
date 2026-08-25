@@ -849,7 +849,7 @@ def main():
            'authors/root' not in head_ and 'wider-scope' in head_
            and 'title="Root"' in head_, head_[-400:])
         # ---------- you may also like ----------
-        reel_page = all_html[out / 'runs' / 'M900010' / 'index.html']
+        reel_page = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('a run page carries the also-like reel', 'alsolike' in reel_page
            and 'You may also like' in reel_page, reel_page[:200])
         ck('the reel cards link a sibling run relative to the page',
