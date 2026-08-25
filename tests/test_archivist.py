@@ -977,8 +977,8 @@ def main():
                        and 'group' in g for g in r.get('items', [])), str(r)[:200])
             c, r, _ = call(U + '/api/search?kind=games&q=')
             ck('an empty query is refused, not answered with everything', c == 400)
-            c, r, _ = call(U + '/api/search?kind=runs&q=x')
-            ck('only members and games are searchable', c == 400)
+            c, r, _ = call(U + '/api/search?kind=topics&q=x')
+            ck('only members, games and runs are searchable', c == 400)
 
             # --- video-only runs: the encode is the run ---
             vsub = {'key': KEY, 'submitter': 'TestAuthor', 'game': 'nes/pinball',
@@ -1019,6 +1019,24 @@ def main():
                                                    authors='newuser'), files={})
             ck('the same encode twice is the same run twice', c == 409
                and 'same encode' in r.get('error', ''), str(r))
+
+            # designated "You may also like" picks live on /api/edit
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'related': 'M900011 M900012', 'time': ''})
+            ck('an author designates also-like runs', c == 200 and 'related' in r['changed'], str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rj_ = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('the picks land on the record in order',
+               rj_.get('related') == ['M900011', 'M900012'], str(rj_.get('related')))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'related': 'M900010', 'time': ''})
+            ck('a run cannot recommend itself', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'related': 'M424242', 'time': ''})
+            ck('an unknown pick is refused', c == 404, str(r)[:120])
+            c, r, _ = call(U + '/api/search?kind=runs&q=pinball')
+            ck('runs are searchable for the picker', c == 200
+               and any(x['key'] == 'M900010' for x in r.get('items', [])), str(r)[:200])
 
             # a video-only run in a category without a time metric (issue #62):
             # the form sends no time, and an empty one is not an error either

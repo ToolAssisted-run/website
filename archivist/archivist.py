@@ -1018,8 +1018,20 @@ def _search_index():
             key = f'{game_file.parent.parent.name}/{game_file.parent.name}'
             games.append({'key': key, 'title': game.get('title', key),
                           'system': game_file.parent.parent.name, 'group': group_of.get(key, '')})
+        titles = {g['key']: g['title'] for g in games}
+        run_rows = []
+        for run_file in ARCHIVE.glob('games/*/*/runs/*/run.json'):
+            try:
+                run_doc = json.loads(run_file.read_text())
+            except (OSError, ValueError):
+                continue
+            goal_txt = (run_doc.get('category') or {}).get('goal', '')
+            run_rows.append({'key': run_doc.get('id', run_file.parent.name),
+                             'title': f"{titles.get(run_doc.get('game'), run_doc.get('game', ''))} \u00b7 {goal_txt}",
+                             'system': (run_doc.get('game') or '/').split('/')[0], 'group': ''})
         _search_cache.update(at=now, members=sorted(members, key=str.lower),
-                             games=sorted(games, key=lambda g: g['title'].lower()))
+                             games=sorted(games, key=lambda g: g['title'].lower()),
+                             runs=sorted(run_rows, key=lambda x: x['key']))
     return _search_cache
 
 @app.get('/api/search')
@@ -1039,8 +1051,8 @@ def search():
         limit = max(1, min(50, int(request.args.get('limit') or 20)))
     except ValueError:
         limit = 20
-    if kind not in ('members', 'games'):
-        return fail('kind must be members or games')
+    if kind not in ('members', 'games', 'runs'):
+        return fail('kind must be members, games or runs')
     if not query:
         return fail('q must say what to look for')
     index = _search_index()
@@ -1048,7 +1060,7 @@ def search():
         hits = [m for m in index['members'] if query in m.lower()]
         hits.sort(key=lambda m: (not m.lower().startswith(query), m.lower()))
     else:
-        hits = [g for g in index['games'] if query in g['title'].lower() or query in g['key']]
+        hits = [g for g in index[kind] if query in g['title'].lower() or query in g['key'].lower()]
         hits.sort(key=lambda g: (not g['title'].lower().startswith(query), g['title'].lower()))
     resp = jsonify({'ok': True, 'kind': kind, 'items': hits[:limit]})
     resp.headers['Cache-Control'] = 'no-store'
@@ -2800,6 +2812,30 @@ def edit_run():
                 else:
                     run.pop('contentWarnings', None)
                 changed.append('contentWarnings')
+        if 'related' in edit_form:
+            # the run page's "You may also like" picks (up to 8 run ids,
+            # shown before every computed suggestion); presentation only,
+            # so nothing is voided
+            raw_ids = [t for t in re.split(r'[,\s]+', edit_form.get('related') or '') if t]
+            related_ids = []
+            for rid_ in raw_ids:
+                if not re.fullmatch(r'M[0-9]+', rid_):
+                    return fail(f'{rid_!r} is not a run id like M100001')
+                if rid_ == run_id:
+                    return fail('a run cannot recommend itself')
+                if not find_run(rid_):
+                    return fail(f'unknown run {rid_}', 404)
+                if rid_ not in related_ids:
+                    related_ids.append(rid_)
+            if len(related_ids) > 8:
+                return fail('at most 8 designated runs')
+            if related_ids != run.get('related', []):
+                befores['related'] = ', '.join(run.get('related', []))
+                if related_ids:
+                    run['related'] = related_ids
+                else:
+                    run.pop('related', None)
+                changed.append('related')
         if 'goalDescription' in edit_form:
             goal_description = (edit_form.get('goalDescription') or '').strip()
             if len(goal_description) > 500:
@@ -2900,6 +2936,7 @@ def edit_run():
                            'encode': (run.get('encodes') or [{}])[0].get('url', ''),
                            'duration': run.get('duration', ''),
                            'contentWarnings': ', '.join(run.get('contentWarnings', [])),
+                           'related': ', '.join(run.get('related', [])),
                            'files': '; '.join(f"{f.get('name', '')} {f.get('sha1', '')}".strip()
                                               for f in run.get('contract', {}).get('files', [])),
                            'attachments': ', '.join(name for name, _ in new_attachments),

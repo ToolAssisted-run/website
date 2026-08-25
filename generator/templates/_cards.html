@@ -1,10 +1,10 @@
 {# A run as a shelf card: thumbnail, game, category, authors, and the foot
    line (length, stars, views, state). Shared by the home shelves and any
    other horizontal row. #}
-{% macro run_card(r) %}
+{% macro run_card(r, prefix='runs/') %}
 {% set g = r['_game'] %}
 {% set rs, vs = eff_state(r) %}
-<a class="card" href="runs/{{ r['id'] }}/">
+<a class="card" href="{{ prefix }}{{ r['id'] }}/">
 {% set dur %}<span class="dur">{{ primary_metric_text(r) }}</span>{% endset %}
 {{ thumb_html(r, dur) }}
 <span class="cbody"><b>{{ g['title'] }}</b><span class="ccat">{{ cat_label(r) }}</span>

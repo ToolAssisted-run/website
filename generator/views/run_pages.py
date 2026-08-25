@@ -6,6 +6,9 @@ from config import ARCHIVE_RAW, OUT
 from model import (
     canon,
     cat_label,
+    groups,
+    nlikes,
+    nvisits,
     console_state,
     covering_experts,
     edits_of,
@@ -22,6 +25,62 @@ from model import (
 from render import SITE_URL, breadcrumb_ld, page, primary_metric_text, run_clock, thumb_url, tpl
 
 # ---- run pages ----
+# ---- "You may also like": eight runs, closest first ----
+# Buckets in priority order: the run's own designated picks (related, kept
+# in the author's order), same category different subcategory, same game,
+# same group, same system, then the site's most liked, most viewed, most
+# recent. Within every computed bucket the verified come first, then the
+# most liked, then the most recent.
+REEL_SIZE = 8
+_runs_by_id = {r_['id']: r_ for r_ in runs}
+_group_of_game = {}
+for _gr in groups:
+    for _k in _gr.get('games', []):
+        _group_of_game.setdefault(_k, set()).add(_gr['key'])
+
+
+def _bucket_order(cands):
+    c = sorted(cands, key=lambda x: x.get('submitted') or '', reverse=True)
+    c = sorted(c, key=nlikes, reverse=True)
+    return sorted(c, key=is_ranked, reverse=True)
+
+
+def reel_for(r):
+    picked = []
+    seen = {r['id']}
+
+    def take(cands):
+        for c in cands:
+            if len(picked) >= REEL_SIZE:
+                return
+            if c['id'] in seen:
+                continue
+            seen.add(c['id'])
+            picked.append(c)
+    take(_runs_by_id[i] for i in r.get('related', []) if i in _runs_by_id)
+    goal = (r.get('category') or {}).get('goal')
+    sub = (r.get('category') or {}).get('sub')
+    same_game = [x for x in runs if x['game'] == r['game']]
+    take(_bucket_order([x for x in same_game
+                        if (x.get('category') or {}).get('goal') == goal
+                        and (x.get('category') or {}).get('sub') != sub]))
+    take(_bucket_order(same_game))
+    my_groups = _group_of_game.get(r['game'], set())
+    if my_groups:
+        take(_bucket_order([x for x in runs
+                            if _group_of_game.get(x['game'], set()) & my_groups]))
+    system = r['game'].split('/')[0]
+    take(_bucket_order([x for x in runs if x['game'].split('/')[0] == system]))
+    if len(picked) < REEL_SIZE:
+        rest = sorted(runs, key=lambda x: x.get('submitted') or '', reverse=True)
+        take(sorted(sorted(rest, key=nlikes, reverse=True),
+                    key=is_ranked, reverse=True))                    # most liked
+        take(sorted(sorted(rest, key=nvisits, reverse=True),
+                    key=is_ranked, reverse=True))                    # most viewed
+        take(sorted(rest, key=is_ranked, reverse=True))              # most recent
+    return picked
+
+
 for r in runs:
     g = r['_game']
     t = run_clock(r)
@@ -101,6 +160,7 @@ for r in runs:
                  'authors': [canon(a['user']) for a in r['authors']],
                  'likes': [l['user'].lower() for l in r.get('likes', [])]}
     body = tpl('run_pages.html', r=r, g=g, t=t, cl=cl, rs=rs, vs=vs, enc=enc, enc_url=enc_url,
+               reel=reel_for(r),
                pv=pv, warns=warns, files=files, imported=imported, is_leg=is_leg,
                reps=reps, vers=vers, cons=cons, cases=cases,
                topic=forum.get('topicId'), forum_url=forum.get('url'),

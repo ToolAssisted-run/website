@@ -274,6 +274,17 @@ From movie buttons. `run_seconds` prefers the stated
 `duration` and falls back to frames/fps for older runs that never stated
 one; a time-less category stores no duration at all (§5).
 
+**"You may also like"** (every run page): a single-row reel of 8 cards in
+the home-shelf style, filled closest scope first — the run's own designated
+picks (`related` on run.json: up to 8 run ids, chosen in the edit form
+through a search-as-you-type chips picker over `/api/search?kind=runs`,
+author- or expert-edited, presentation only so nothing is voided), then the
+same category in a different subcategory, the same game, the same group,
+the same system, then the site's most liked, most viewed and most recent.
+Within every computed bucket the verified come first, then the most liked,
+then the most recent; designated picks keep their designated order
+(`reel_for` in views/run_pages.py).
+
 ### States and the ranking gate
 
 **Verification is the ranking gate.** Reproduction gates nothing (it is a

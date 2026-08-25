@@ -622,8 +622,9 @@
     });
     input.parentNode.insertBefore(pickInput, input);
     input.parentNode.insertBefore(chipsBox, input);
-    form.addEventListener('reset', function(){ chosen = []; sync(); });
-    return {reset: function(){ chosen = []; sync(); }};
+    form.addEventListener('reset', function(){ chosen.length = 0; sync(); });
+    return {reset: function(){ chosen.length = 0; sync(); },
+            set: function(vs){ chosen.length = 0; (vs || []).forEach(function(v){ chosen.push(v); }); sync(); }};
   }
   // any form input marked data-pick becomes one, with that datalist
   document.querySelectorAll('input[data-pick]').forEach(function(inp){
@@ -2567,6 +2568,25 @@
             if (pick && pick.setAuthors) pick.setAuthors(run.authors.map(function(a){ return a.user; }));
             if (!editMay.author) { pick.querySelector('.authsearch').disabled = true; pick.querySelectorAll('.authx').forEach(function(x){ x.disabled = true; }); }
             submitForm.querySelector('[name=completed]').value = run.completed || '';
+            // the designated "You may also like" picks: search-as-you-type
+            byIdS('s-relatedwrap').hidden = false;
+            var relatedSeen = [];
+            var relatedList = document.getElementById('s-relatedlist');
+            var relatedPick = armMultiPick(submitForm, 'related', 's-relatedlist',
+              function(){ return relatedSeen; },
+              function(q){ return searchArchive('runs', q).then(function(items){
+                relatedList.innerHTML = '';
+                items.forEach(function(it){
+                  if (it.value === editRunId) return;
+                  if (relatedSeen.indexOf(it.value) < 0) relatedSeen.push(it.value);
+                  var o = document.createElement('option');
+                  o.value = it.value;
+                  o.label = it.item ? it.item.title : it.value;
+                  relatedList.appendChild(o);
+                });
+              }); });
+            (run.related || []).forEach(function(v){ if (relatedSeen.indexOf(v) < 0) relatedSeen.push(v); });
+            if (relatedPick) relatedPick.set(run.related || []);
 
             // the movie file stays; an expert may replace it
             movieInput.required = false;
@@ -2888,6 +2908,7 @@
           var fd = new FormData();
           fd.append('run', editRunId);
           if (dry) fd.append('dry_run', '1');
+          fd.append('related', (submitForm.querySelector('[name=related]') || {value: ''}).value);
           ['encode', 'emulator', 'completed', 'notes', 'goal_description'].forEach(function(n){
             var e = submitForm.querySelector('[name=' + n + ']'); if (e) fd.append(n === 'goal_description' ? 'goalDescription' : n, e.value);
           });

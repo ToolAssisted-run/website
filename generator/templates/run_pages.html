@@ -1,3 +1,4 @@
+{% from '_cards.html' import run_card %}
 {# A run page: header, encode, notes, community rosters, act forms, sidebar facts, expert menu. #}
 {% from '_run_pages.html' import act_row, roster_acts, case_box, nmembers %}
 {% from '_filerows.html' import file_rows %}
@@ -238,6 +239,12 @@ Log in (top right) to reply from here.</p></section>
   <script type="application/json" id="likedata">{{ json_blob(like_data) }}</script>
   {% if not is_leg and not is_ranked(r) %}<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>{% endif %}
 </aside></div>
+{# eight nearby runs, closest scope first: designated picks, then the same
+   category, game, group, system, then the site's best (view code: reel_for) #}
+{% if reel %}
+<section class="alsolike"><h2>You may also like…</h2>
+<div class="hwrap"><div class="hrow">{% for rr in reel %}{{ run_card(rr, '../') }}{% endfor %}</div></div></section>
+{% endif %}
 {% if is_leg %}
 {# the import notice, at the very bottom: where it came from, who brought
    it, and the license it travels under #}

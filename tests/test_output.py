@@ -848,6 +848,12 @@ def main():
         ck('the site-wide expert is a quiet count, never a chip (#65)',
            'authors/root' not in head_ and 'wider-scope' in head_
            and 'title="Root"' in head_, head_[-400:])
+        # ---------- you may also like ----------
+        reel_page = all_html[out / 'runs' / 'M900010' / 'index.html']
+        ck('a run page carries the also-like reel', 'alsolike' in reel_page
+           and 'You may also like' in reel_page, reel_page[:200])
+        ck('the reel cards link a sibling run relative to the page',
+           re.search(r'class="card" href="\.\./M\d+/"', reel_page) is not None)
         grp_page = all_html[out / 'groups' / 'test-family' / 'index.html']
         ck('a group page names only its own group experts (#65)',
            'Group experts:' in grp_page and 'authors/grp' in grp_page
