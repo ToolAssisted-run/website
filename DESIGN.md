@@ -992,15 +992,23 @@ archivist, module responsibilities). What matters designwise:
   `/usr/local/bin/tar-site-sync`: pull the website checkout at
   `/opt/archivist/website`, copy **all** of `archivist/*.py` to
   `/opt/archivist/`, restart the archivist (whose startup build republishes
-  the site). **A second, independent door**: GitHub's own webhook on
-  `push` reaches `POST /api/hooks/github` on the archivist, which verifies
-  the HMAC (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`), ignores anything
-  but `refs/heads/main`, and runs that same script in a transient systemd
-  unit (so the restart it ends with cannot kill it); repeat pushes inside
-  20 s fold into the sync under way. It exists because Actions is not
-  always there: a backed-up queue, or a push that produces no run at all,
-  used to leave the VPS serving old code with nothing to notice it. The
-  manual path (scp the same files, restart) remains the last fallback.
+  the site). **A second, independent door**: GitHub's own webhook reaches
+  `POST /api/hooks/github` on the archivist, HMAC-verified
+  (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`). It opens on exactly the
+  condition CI's own job does — a **successful `Build and deploy` run,
+  triggered by a push to main** (`workflow_run` completed) — and it
+  deploys **that run's commit**, passed to the script as its argument, so
+  main racing ahead to a red commit cannot ride along. A bare push only
+  logs that work is coming; red runs, other branches, and the schedule and
+  archive-content runs (both skip the suite) deploy nothing. The script
+  runs in a transient systemd unit, since it ends by restarting the
+  archivist and would otherwise kill its own parent; repeat calls inside
+  20 s fold together. It exists because Actions is not always there: a
+  backed-up queue, or a push that produces no run at all, used to leave the
+  VPS serving old code with nothing to notice it. When Actions cannot
+  report at all, a `repository_dispatch` of type `deploy-now` (optional
+  `client_payload.sha`) is the operator's override, and the manual path
+  (scp the same files, restart) remains the last fallback.
 - **Secrets** (never committed): `/etc/archivist.env` on the VPS
   (`SUBMIT_KEY`, `DISCOURSE_*`, `SESSION_SECRET`, `SSO`, `DISCORD_WEBHOOK_URL`,
   `GITHUB_HOOK_SECRET`, `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under

@@ -477,7 +477,7 @@ def main():
         # real /usr/local/bin/tar-site-sync on the live origin
         sync_marker = td / 'site-synced'
         sync_script = td / 'fake-site-sync.sh'
-        sync_script.write_text(f'#!/bin/sh\necho synced > {sync_marker}\n')
+        sync_script.write_text(f'#!/bin/sh\necho "${{1:-origin/main}}" > {sync_marker}\n')
         sync_script.chmod(0o755)
 
         port = free_port()
@@ -993,7 +993,7 @@ def main():
             c, r, _ = call(U + '/api/submit', dict(wsub), {'movie': ('again.bk2', wbytes)})
             ck('after withdrawal the same movie submits again', c == 200, str(r)[:200])
 
-            # --- the GitHub webhook: the second door to a code deploy ---
+            # --- the GitHub webhook: a code deploy, gated on the suite ---
             def gh_hook(body, event='push', secret='ghhooksecret'):
                 payload = json.dumps(body).encode()
                 sig = 'sha256=' + hmac.new(secret.encode(), payload,
@@ -1008,22 +1008,38 @@ def main():
                 except urllib.error.HTTPError as e_:
                     return e_.code, json.loads(e_.read() or b'{}')
 
+            def wf_run(conclusion='success', branch='main', event='push',
+                       name='Build and deploy', sha='b' * 40):
+                return {'action': 'completed',
+                        'workflow_run': {'name': name, 'head_branch': branch,
+                                         'head_sha': sha, 'conclusion': conclusion,
+                                         'event': event}}
+
             c, r = gh_hook({'ref': 'refs/heads/main'}, secret='wrong-secret')
             ck('a hook without the right signature is refused', c == 403, str(r)[:120])
             c, r = gh_hook({'zen': 'hi'}, event='ping')
             ck('a ping is answered, nothing deployed', c == 200 and r.get('pong'), str(r)[:120])
-            ck('and no deploy ran for it', not sync_marker.exists())
-            c, r = gh_hook({'ref': 'refs/heads/feature', 'after': 'a' * 40})
-            ck('a push to another branch deploys nothing',
-               c == 200 and 'ignored' in r and not sync_marker.exists(), str(r)[:140])
             c, r = gh_hook({'ref': 'refs/heads/main', 'after': 'b' * 40})
-            ck('a signed push to main starts the code deploy',
+            ck('a push to main waits for the suite, it does not deploy',
+               c == 200 and 'waiting' in r.get('ignored', ''), str(r)[:140])
+            c, r = gh_hook(wf_run(conclusion='failure'), event='workflow_run')
+            ck('a red run deploys nothing', c == 200 and 'ignored' in r, str(r)[:140])
+            c, r = gh_hook(wf_run(event='schedule'), event='workflow_run')
+            ck('a run that skipped the suite deploys nothing',
+               c == 200 and 'ignored' in r, str(r)[:140])
+            c, r = gh_hook(wf_run(branch='feature'), event='workflow_run')
+            ck('a green run off main deploys nothing', c == 200 and 'ignored' in r, str(r)[:140])
+            ck('nothing has deployed so far', not sync_marker.exists())
+            c, r = gh_hook(wf_run(), event='workflow_run')
+            ck('a green push run on main deploys the commit it passed on',
                c == 202 and r.get('syncing') == 'b' * 12, str(r)[:160])
             for _ in range(50):
                 if sync_marker.exists():
                     break
                 time.sleep(0.1)
-            ck('the deploy script actually ran', sync_marker.exists())
+            ck('the deploy script ran, checking out that very commit',
+               sync_marker.exists() and sync_marker.read_text().strip() == 'b' * 40,
+               sync_marker.read_text()[:80] if sync_marker.exists() else 'no marker')
 
             # --- the pickers' search (#56): members and games, as typed ---
             c, r, _ = call(U + '/api/search?kind=members&q=testauth')

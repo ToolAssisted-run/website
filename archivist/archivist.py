@@ -3388,43 +3388,54 @@ ANNUL_WORDS = ('annul', 'remove', 'revoke', 'yes')
 _sync_lock = threading.Lock()
 _sync_last = [0.0]
 
-def spawn_site_sync():
+def spawn_site_sync(ref=None):
     """Run the code deploy detached from this process.
 
     The script ends in `systemctl restart archivist`, and a child living in
     our own cgroup would be killed along with us, so as root the work goes
-    into a transient unit of its own. Returns how it was started."""
+    into a transient unit of its own. `ref` is the exact commit the tests
+    passed on, so main racing ahead to a red commit cannot ride along.
+    Returns how it was started."""
     with _sync_lock:
         now = time.monotonic()
         if now - _sync_last[0] < 20:
             return 'already syncing'
         _sync_last[0] = now
+    argv = [SITE_SYNC_CMD] + ([ref] if ref else [])
     try:
         if os.geteuid() == 0:
             subprocess.Popen(['systemd-run', '--collect', '--quiet',
-                              '--unit=tar-site-sync-' + secrets.token_hex(4),
-                              SITE_SYNC_CMD], start_new_session=True)
+                              '--unit=tar-site-sync-' + secrets.token_hex(4)] + argv,
+                             start_new_session=True)
             return 'systemd-run'
-        subprocess.Popen([SITE_SYNC_CMD], start_new_session=True)
+        subprocess.Popen(argv, start_new_session=True)
         return 'detached'
     except (OSError, subprocess.SubprocessError) as exc:      # noqa: BLE001
         LOG.warning('site sync could not start: %s', exc)
         return 'failed'
 
+DEPLOY_WORKFLOW = 'Build and deploy'   # the workflow whose green light deploys
+
 @app.post('/api/hooks/github')
 def github_hook():
-    """GitHub says main moved; the live origin pulls the code and restarts.
+    """GitHub reports; the live origin deploys what the tests passed on.
 
     Site code reaches this machine through CI (deploy.yml, job sync-vps).
     When Actions is backed up, or a push produces no run at all, that path
     goes quiet and the VPS keeps serving yesterday's code. This is the
-    second, independent door: GitHub's own webhook, signature-checked,
-    `main` only, running the very script the CI key runs. Repeat calls
-    inside 20 seconds fold into the sync already under way.
+    second, independent door, and it opens on the same condition CI's does:
+    a **successful run of the deploy workflow, triggered by a push to
+    main**. A bare push only says the work is on its way; a red run, a
+    scheduled or archive-content run (both of which skip the suite), and
+    every other branch deploy nothing. The commit that passed is the commit
+    checked out, so main racing ahead to a red one cannot ride along.
+
+    `repository_dispatch` with action `deploy-now` is the operator's own
+    override, for when Actions cannot report at all.
 
     Who: GitHub, proven by the HMAC in X-Hub-Signature-256
     Reads: the raw JSON body and the X-GitHub-Event header
-    Answers: {ok, syncing, how} 202; {ok, ignored} for anything else
+    Answers: {ok, syncing, how} 202; {ok, ignored: why} otherwise
     """
     if not GITHUB_HOOK_SECRET:
         return fail('github hooks are not configured on this server', 503)
@@ -3437,18 +3448,55 @@ def github_hook():
     event = request.headers.get('X-GitHub-Event', '')
     if event == 'ping':
         return jsonify({'ok': True, 'pong': True})
-    if event != 'push':
-        return jsonify({'ok': True, 'ignored': f'not a push event ({event})'})
     try:
-        payload = json.loads(raw)
+        payload = json.loads(raw) if raw else {}
     except ValueError:
         return fail('unreadable payload')
-    if payload.get('ref') != 'refs/heads/main':
+
+    def deploy(sha, why):
+        if not re.fullmatch(r'[0-9a-f]{40}', sha or ''):
+            return jsonify({'ok': True, 'ignored': 'no commit to deploy'})
+        how = spawn_site_sync(sha)
+        LOG.info('github hook: deploying %s (%s), site sync %s', sha[:12], why, how)
+        return jsonify({'ok': True, 'syncing': sha[:12], 'why': why, 'how': how}), 202
+
+    if event == 'push':
+        # the tests have not spoken yet; CI's green light is what deploys
+        if payload.get('ref') == 'refs/heads/main':
+            LOG.info('github hook: main at %s, waiting for the suite',
+                     (payload.get('after') or '')[:12])
+            return jsonify({'ok': True, 'ignored': 'waiting for the test suite'})
         return jsonify({'ok': True, 'ignored': f'not main ({payload.get("ref")})'})
-    head = (payload.get('after') or '')[:12]
-    how = spawn_site_sync()
-    LOG.info('github hook: main at %s, site sync %s', head, how)
-    return jsonify({'ok': True, 'syncing': head, 'how': how}), 202
+
+    if event == 'workflow_run':
+        run = payload.get('workflow_run') or {}
+        if payload.get('action') != 'completed':
+            return jsonify({'ok': True, 'ignored': 'run not finished'})
+        if run.get('name') != DEPLOY_WORKFLOW:
+            return jsonify({'ok': True, 'ignored': f'not the {DEPLOY_WORKFLOW} workflow'})
+        if run.get('head_branch') != 'main':
+            return jsonify({'ok': True, 'ignored': f'not main ({run.get("head_branch")})'})
+        if run.get('conclusion') != 'success':
+            LOG.info('github hook: %s on main concluded %s; nothing deployed',
+                     DEPLOY_WORKFLOW, run.get('conclusion'))
+            return jsonify({'ok': True, 'ignored': f'run {run.get("conclusion")}'})
+        if run.get('event') != 'push':
+            # schedule and archive-content dispatches skip the suite entirely
+            return jsonify({'ok': True, 'ignored': f'run triggered by {run.get("event")}'})
+        return deploy(run.get('head_sha'), 'suite passed')
+
+    if event == 'repository_dispatch' and payload.get('action') == 'deploy-now':
+        # the way out when Actions cannot report at all: a named commit, or
+        # whatever main holds right now
+        sha = ((payload.get('client_payload') or {}).get('sha') or '').lower()
+        if re.fullmatch(r'[0-9a-f]{40}', sha):
+            return deploy(sha, 'operator override')
+        how = spawn_site_sync()
+        LOG.info('github hook: operator override on main, site sync %s', how)
+        return jsonify({'ok': True, 'syncing': 'main',
+                        'why': 'operator override', 'how': how}), 202
+
+    return jsonify({'ok': True, 'ignored': f'not an event we act on ({event})'})
 
 @app.post('/api/hooks/discourse')
 def discourse_hook():
