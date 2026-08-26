@@ -62,7 +62,7 @@ a{color:inherit}
 .ghead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:18px 0 16px;border-bottom:3px solid var(--hair);margin-bottom:20px}
 .ghead h1{font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.02em}
 .ghead .hbtns{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.btnrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 .srclink{font-size:.76rem;color:var(--faint);text-decoration:none}.srclink:hover{color:var(--accent-text)}
 .chips{display:flex;gap:7px;margin-bottom:7px;flex-wrap:wrap}
 .chip{font-family:ui-monospace,monospace;font-size:.72rem;font-weight:500;padding:3px 9px;border:2.5px solid var(--hairs);border-radius:6px;color:var(--muted)}
@@ -687,7 +687,7 @@ th .eyeic{width:12px;height:12px;vertical-align:-1px}
 .agegate-box h2{margin:0 0 10px}
 .agegate-box p{margin:8px 0;color:var(--muted)}
 .agegate-decl{font-weight:700;color:var(--ink)}
-.agegate-box .btnrow{justify-content:flex-start;margin-top:16px;flex-wrap:nowrap}
+.agegate-box .btnrow{justify-content:flex-start;margin-top:16px;flex-wrap:nowrap;align-items:center}
 .btn.leave{background:transparent;color:var(--ink);border:2.5px solid var(--hairs)}
 /* the gate lives inside .wrap, so the blur goes on the wrap's other
    children, never on .wrap itself: a filtered ancestor would become the
@@ -703,7 +703,7 @@ html:has(.agegate){overflow:hidden}
 .prop-empty{color:var(--faint);font-style:italic}
 .prop-edit{padding:6px 12px;font-size:.78rem}
 .prop-form{margin-top:10px;padding-top:10px;border-top:2.5px solid var(--hair)}
-.prop-form .btnrow{justify-content:flex-start;margin-top:8px}
+.prop-form .btnrow{justify-content:flex-start;margin-top:8px;align-items:center}
 .prop-msg{margin-top:10px}
 .prop.editing .prop-value,.prop.editing .prop-edit{display:none}
 .gecard .actmsg{margin-top:10px}
@@ -785,4 +785,4 @@ input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::
 .rulesdlg::backdrop{background:rgba(7,13,23,.6)}
 .rulesbox{background:var(--bg);border:2.5px solid var(--hairs);border-radius:14px;padding:22px 26px;box-shadow:var(--shadow);color:var(--ink);max-height:82vh;overflow:auto}
 .rulesbox h3{margin:0 0 10px}
-.rulesbox .btnrow{justify-content:flex-end;margin-top:14px}
+.rulesbox .btnrow{justify-content:flex-end;margin-top:14px;align-items:center}
