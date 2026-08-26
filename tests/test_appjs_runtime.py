@@ -321,6 +321,11 @@ def main():
         if r.returncode:
             sys.exit(1)
         assets_dir = out / 'assets'
+        # Node picks ES-module vs CommonJS from the extension and the
+        # nearest package.json; the emitted assets are .js files a browser
+        # only ever loads through <script type="module">, so say as much
+        # here or every `import` in them reads as a syntax error.
+        (assets_dir / 'package.json').write_text('{"type": "module"}\n')
 
         if not node:
             print('SKIP runtime checks (node not installed)')
