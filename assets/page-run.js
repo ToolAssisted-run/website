@@ -218,8 +218,10 @@ import { api, mePromise, viewAsCoverage, el, fileRowsOf, note, noteBuilt,
       // the same star both ways: press to like, press again to take it back
       function paint(liked){
         likeBtn.classList.toggle('on', liked);
+        var word = likeBtn.querySelector('.likeword');
+        if (word) word.textContent = liked ? 'Liked' : 'Like';
         likeBtn.title = liked ? 'You like this run; press again to take it back'
-                           : 'Like this run';
+            : 'Like this run';
       }
       paint(likeData.likes.indexOf(myName) >= 0);
       likeBtn.addEventListener('click', function(){
