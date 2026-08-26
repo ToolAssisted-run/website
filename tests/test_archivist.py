@@ -970,6 +970,21 @@ def main():
             c, r, _ = call(U + '/api/discussion?topic=778')
             ck('a topic is fetched and rendered', c == 200 and r.get('ok'), str(r)[:200])
 
+            # a withdrawn run never blocks resubmitting the same movie
+            wsub = dict(sub, dry_run='0', encode='https://youtu.be/goodvid12345')
+            wfiles = {'movie': ('again.bk2', make_bk2())}
+            c, r, _ = call(U + '/api/submit', wsub, wfiles)
+            ck('a run to withdraw and resubmit', c == 200, str(r)[:160])
+            wid = r['id']
+            wbytes = wfiles['movie'][1]
+            c, r, _ = call(U + '/api/submit', dict(wsub), {'movie': ('again.bk2', wbytes)})
+            ck('the same bytes are a duplicate while the run stands', c == 409, str(r)[:120])
+            c, r, _ = call(U + '/api/withdraw', {'key': KEY, 'user': 'TestAuthor', 'run': wid,
+                                                 'reason': 'taking it back to resubmit'})
+            ck('withdrawn', c == 200, str(r)[:160])
+            c, r, _ = call(U + '/api/submit', dict(wsub), {'movie': ('again.bk2', wbytes)})
+            ck('after withdrawal the same movie submits again', c == 200, str(r)[:200])
+
             # --- the pickers' search (#56): members and games, as typed ---
             c, r, _ = call(U + '/api/search?kind=members&q=testauth')
             ck('member search answers the matching usernames', c == 200

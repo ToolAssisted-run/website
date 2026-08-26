@@ -643,6 +643,8 @@ def submit():
             # video twice is the same run twice
             for other_run_json in ARCHIVE.glob('games/*/*/runs/*/run.json'):
                 other_run = json.loads(other_run_json.read_text())
+                if other_run.get('withdrawn'):
+                    continue   # a withdrawn run never blocks a resubmission
                 if any(e.get('url') == encode for e in other_run.get('encodes', [])):
                     return fail(f'this video is already archived as '
                                 f'{other_run["id"]}: the encode is the run, and it is '

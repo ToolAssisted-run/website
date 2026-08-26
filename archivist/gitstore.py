@@ -50,13 +50,18 @@ def load_game(system, slug):
 def duplicate_of(sha1, game_key=None, goal=None, frames=None, authors=None):
     """Is this movie already archived? Exact bytes first, then the same work
     submitted again after a re-save: same game, category, frame count and
-    author set. Returns (existing run id, why) or (None, None)."""
+    author set. A withdrawn run holds nothing against a resubmission: taking
+    a run back and later submitting it again is the author's right, so a
+    tombstone never counts as a duplicate.
+    Returns (existing run id, why) or (None, None)."""
     same_work = None
     aset = {a.lower() for a in (authors or [])}
     for rj in ARCHIVE.glob('games/*/*/runs/*/run.json'):
         try:
             d = json.loads(rj.read_text())
         except Exception:                                     # noqa: BLE001
+            continue
+        if d.get('withdrawn'):
             continue
         mv = d.get('movie') or {}
         if sha1 and mv.get('sha1') == sha1:
