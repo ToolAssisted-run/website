@@ -3430,8 +3430,10 @@ def github_hook():
     every other branch deploy nothing. The commit that passed is the commit
     checked out, so main racing ahead to a red one cannot ride along.
 
-    `repository_dispatch` with action `deploy-now` is the operator's own
-    override, for when Actions cannot report at all.
+    A `repository_dispatch`-shaped body with action `deploy-now` is the
+    operator's own override, for when Actions cannot report at all: GitHub
+    never delivers that event to a webhook, so only somebody holding the
+    secret can send it.
 
     Who: GitHub, proven by the HMAC in X-Hub-Signature-256
     Reads: the raw JSON body and the X-GitHub-Event header

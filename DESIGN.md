@@ -1006,9 +1006,11 @@ archivist, module responsibilities). What matters designwise:
   20 s fold together. It exists because Actions is not always there: a
   backed-up queue, or a push that produces no run at all, used to leave the
   VPS serving old code with nothing to notice it. When Actions cannot
-  report at all, a `repository_dispatch` of type `deploy-now` (optional
-  `client_payload.sha`) is the operator's override, and the manual path
-  (scp the same files, restart) remains the last fallback.
+  report at all, the override is an operator's own signed call to the same
+  endpoint (a `repository_dispatch`-shaped body, action `deploy-now`,
+  optional `client_payload.sha`; GitHub itself never delivers that event to
+  a webhook), or plainly `ssh ubuntu@… sync`; the manual path (scp the same
+  files, restart) remains the last fallback.
 - **Secrets** (never committed): `/etc/archivist.env` on the VPS
   (`SUBMIT_KEY`, `DISCOURSE_*`, `SESSION_SECRET`, `SSO`, `DISCORD_WEBHOOK_URL`,
   `GITHUB_HOOK_SECRET`, `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under
