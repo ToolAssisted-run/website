@@ -992,11 +992,18 @@ archivist, module responsibilities). What matters designwise:
   `/usr/local/bin/tar-site-sync`: pull the website checkout at
   `/opt/archivist/website`, copy **all** of `archivist/*.py` to
   `/opt/archivist/`, restart the archivist (whose startup build republishes
-  the site). The manual path (scp the same files, restart) remains the
-  emergency fallback when CI is broken.
+  the site). **A second, independent door**: GitHub's own webhook on
+  `push` reaches `POST /api/hooks/github` on the archivist, which verifies
+  the HMAC (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`), ignores anything
+  but `refs/heads/main`, and runs that same script in a transient systemd
+  unit (so the restart it ends with cannot kill it); repeat pushes inside
+  20 s fold into the sync under way. It exists because Actions is not
+  always there: a backed-up queue, or a push that produces no run at all,
+  used to leave the VPS serving old code with nothing to notice it. The
+  manual path (scp the same files, restart) remains the last fallback.
 - **Secrets** (never committed): `/etc/archivist.env` on the VPS
   (`SUBMIT_KEY`, `DISCOURSE_*`, `SESSION_SECRET`, `SSO`, `DISCORD_WEBHOOK_URL`,
-  `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under
+  `GITHUB_HOOK_SECRET`, `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under
   `/opt/archivist/`; `ARCHIVE_ACTION_WRITE_SECRET` on the archive repo — a
   non-expiring fine-grained token (resource owner ToolAssisted-run, website
   repo only, Actions read-write; the org's 366-day maximum-lifetime policy

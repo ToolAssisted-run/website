@@ -51,6 +51,8 @@ from settings import (
     BOT_USER,
     BRANCH,
     DISCOURSE_HOOK_SECRET,
+    GITHUB_HOOK_SECRET,
+    SITE_SYNC_CMD,
     DISCOURSE_KEY,
     DISCOURSE_URL,
     DUMPS_DIR,
@@ -3382,6 +3384,71 @@ def editor_appoint():
                             'page, with your name and your reason.'})
 
 ANNUL_WORDS = ('annul', 'remove', 'revoke', 'yes')
+
+_sync_lock = threading.Lock()
+_sync_last = [0.0]
+
+def spawn_site_sync():
+    """Run the code deploy detached from this process.
+
+    The script ends in `systemctl restart archivist`, and a child living in
+    our own cgroup would be killed along with us, so as root the work goes
+    into a transient unit of its own. Returns how it was started."""
+    with _sync_lock:
+        now = time.monotonic()
+        if now - _sync_last[0] < 20:
+            return 'already syncing'
+        _sync_last[0] = now
+    try:
+        if os.geteuid() == 0:
+            subprocess.Popen(['systemd-run', '--collect', '--quiet',
+                              '--unit=tar-site-sync-' + secrets.token_hex(4),
+                              SITE_SYNC_CMD], start_new_session=True)
+            return 'systemd-run'
+        subprocess.Popen([SITE_SYNC_CMD], start_new_session=True)
+        return 'detached'
+    except (OSError, subprocess.SubprocessError) as exc:      # noqa: BLE001
+        LOG.warning('site sync could not start: %s', exc)
+        return 'failed'
+
+@app.post('/api/hooks/github')
+def github_hook():
+    """GitHub says main moved; the live origin pulls the code and restarts.
+
+    Site code reaches this machine through CI (deploy.yml, job sync-vps).
+    When Actions is backed up, or a push produces no run at all, that path
+    goes quiet and the VPS keeps serving yesterday's code. This is the
+    second, independent door: GitHub's own webhook, signature-checked,
+    `main` only, running the very script the CI key runs. Repeat calls
+    inside 20 seconds fold into the sync already under way.
+
+    Who: GitHub, proven by the HMAC in X-Hub-Signature-256
+    Reads: the raw JSON body and the X-GitHub-Event header
+    Answers: {ok, syncing, how} 202; {ok, ignored} for anything else
+    """
+    if not GITHUB_HOOK_SECRET:
+        return fail('github hooks are not configured on this server', 503)
+    raw = request.get_data()
+    expected_sig = 'sha256=' + hmac.new(GITHUB_HOOK_SECRET.encode(), raw,
+                                        hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(request.headers.get('X-Hub-Signature-256', ''),
+                               expected_sig):
+        return fail('bad hook signature', 403)
+    event = request.headers.get('X-GitHub-Event', '')
+    if event == 'ping':
+        return jsonify({'ok': True, 'pong': True})
+    if event != 'push':
+        return jsonify({'ok': True, 'ignored': f'not a push event ({event})'})
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        return fail('unreadable payload')
+    if payload.get('ref') != 'refs/heads/main':
+        return jsonify({'ok': True, 'ignored': f'not main ({payload.get("ref")})'})
+    head = (payload.get('after') or '')[:12]
+    how = spawn_site_sync()
+    LOG.info('github hook: main at %s, site sync %s', head, how)
+    return jsonify({'ok': True, 'syncing': head, 'how': how}), 202
 
 @app.post('/api/hooks/discourse')
 def discourse_hook():

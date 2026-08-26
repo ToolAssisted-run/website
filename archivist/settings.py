@@ -119,6 +119,11 @@ DISCORD_WEBHOOK = os.environ.get('DISCORD_WEBHOOK_URL', '')
 
 DISCOURSE_HOOK_SECRET = os.environ.get('DISCOURSE_HOOK_SECRET', '')
 
+# GitHub tells the live origin that main moved (the second door beside CI's
+# sync-vps key, for when Actions is backed up or a push produces no run).
+GITHUB_HOOK_SECRET = os.environ.get('GITHUB_HOOK_SECRET', '')
+SITE_SYNC_CMD = os.environ.get('SITE_SYNC_CMD', '/usr/local/bin/tar-site-sync')
+
 NOTIFY_LINK_WAIT = float(os.environ.get('NOTIFY_LINK_WAIT_SECONDS', '900'))
 
 RECONCILE_SECONDS = float(os.environ.get('ROLE_RECONCILE_SECONDS', '600'))

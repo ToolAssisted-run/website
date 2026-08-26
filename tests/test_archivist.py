@@ -473,6 +473,13 @@ def main():
             'My own notes about the pinball run.\n----\n[user:SomeJudge]: Accepting to Moons.\n')
         (dumps / 'submission-notes' / 'S810002.txt').write_text('Co-authored notes.\n')
 
+        # the code deploy the GitHub hook triggers: a marker script here, the
+        # real /usr/local/bin/tar-site-sync on the live origin
+        sync_marker = td / 'site-synced'
+        sync_script = td / 'fake-site-sync.sh'
+        sync_script.write_text(f'#!/bin/sh\necho synced > {sync_marker}\n')
+        sync_script.chmod(0o755)
+
         port = free_port()
         env = dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
                    GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='mock-key',
@@ -481,6 +488,7 @@ def main():
                    # at are never built here, and a poll would hit the real site
                    NOTIFY_LINK_WAIT_SECONDS='0',
                    DISCOURSE_HOOK_SECRET='hooksecret',
+                   GITHUB_HOOK_SECRET='ghhooksecret', SITE_SYNC_CMD=str(sync_script),
                    # read the roster fresh every time, so the staleness test is
                    # deterministic instead of racing a 20 second window
                    ARCHIVE_REFRESH_SECONDS='0', ROLE_RECONCILE_SECONDS='0',
@@ -984,6 +992,38 @@ def main():
             ck('withdrawn', c == 200, str(r)[:160])
             c, r, _ = call(U + '/api/submit', dict(wsub), {'movie': ('again.bk2', wbytes)})
             ck('after withdrawal the same movie submits again', c == 200, str(r)[:200])
+
+            # --- the GitHub webhook: the second door to a code deploy ---
+            def gh_hook(body, event='push', secret='ghhooksecret'):
+                payload = json.dumps(body).encode()
+                sig = 'sha256=' + hmac.new(secret.encode(), payload,
+                                           hashlib.sha256).hexdigest()
+                req_ = urllib.request.Request(
+                    U + '/api/hooks/github', payload,
+                    headers={'Content-Type': 'application/json',
+                             'X-GitHub-Event': event, 'X-Hub-Signature-256': sig})
+                try:
+                    with urllib.request.urlopen(req_) as resp_:
+                        return resp_.status, json.loads(resp_.read())
+                except urllib.error.HTTPError as e_:
+                    return e_.code, json.loads(e_.read() or b'{}')
+
+            c, r = gh_hook({'ref': 'refs/heads/main'}, secret='wrong-secret')
+            ck('a hook without the right signature is refused', c == 403, str(r)[:120])
+            c, r = gh_hook({'zen': 'hi'}, event='ping')
+            ck('a ping is answered, nothing deployed', c == 200 and r.get('pong'), str(r)[:120])
+            ck('and no deploy ran for it', not sync_marker.exists())
+            c, r = gh_hook({'ref': 'refs/heads/feature', 'after': 'a' * 40})
+            ck('a push to another branch deploys nothing',
+               c == 200 and 'ignored' in r and not sync_marker.exists(), str(r)[:140])
+            c, r = gh_hook({'ref': 'refs/heads/main', 'after': 'b' * 40})
+            ck('a signed push to main starts the code deploy',
+               c == 202 and r.get('syncing') == 'b' * 12, str(r)[:160])
+            for _ in range(50):
+                if sync_marker.exists():
+                    break
+                time.sleep(0.1)
+            ck('the deploy script actually ran', sync_marker.exists())
 
             # --- the pickers' search (#56): members and games, as typed ---
             c, r, _ = call(U + '/api/search?kind=members&q=testauth')
