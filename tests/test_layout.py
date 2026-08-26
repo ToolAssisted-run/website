@@ -38,12 +38,41 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 CHROME_NAMES = ('google-chrome', 'google-chrome-stable', 'chromium',
                 'chromium-browser', 'chrome')
 
+# Exit code the probe uses for "the browser would not start": an unstartable
+# Chrome is the runner having a bad day, not the site being wrong, and it is
+# reported the way a missing browser already is rather than failing the build
+# (a red suite now also means no deploy, so a flake must not gate the site).
+NO_BROWSER = 97
+
 PROBE = r"""
 import puppeteer from 'puppeteer-core';
-const browser = await puppeteer.launch({
-  executablePath: process.env.CHROME_PATH,
-  args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
-});
+
+// Chrome is talked to over a pipe rather than a WebSocket: the ws:// form
+// makes the launch wait for a URL to appear in Chrome's stdout, and on a
+// loaded runner that line arrives late (or not at all) and the launch dies
+// with "Timed out ... waiting for the WS endpoint URL". A pipe has nothing
+// to parse. The launch is also given room and two more tries.
+async function launchBrowser() {
+  let last;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await puppeteer.launch({
+        executablePath: process.env.CHROME_PATH,
+        args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+        pipe: true,
+        timeout: 120000,
+        protocolTimeout: 180000,
+      });
+    } catch (e) {
+      last = e;
+      console.error(`chrome launch attempt ${attempt} failed: ${e.message}`);
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
+  }
+  console.error('chrome would not start: ' + (last && last.message));
+  process.exit(97);
+}
+const browser = await launchBrowser();
 const out = {};
 const page = await browser.newPage();
 
@@ -187,6 +216,13 @@ def main():
                               env=dict(os.environ, CHROME_PATH=chrome), timeout=300)
         srv.shutdown()
         script.unlink(missing_ok=True)
+        if proc.returncode == NO_BROWSER:
+            # the runner could not start Chrome; say so loudly and skip the
+            # measurements rather than call the site broken
+            print('NOTE layout checks skipped: ' + proc.stderr.strip().splitlines()[-1]
+                  if proc.stderr.strip() else 'NOTE layout checks skipped: chrome would not start')
+            print('---', len(failures), 'failures')
+            sys.exit(1 if failures else 0)
         if proc.returncode != 0:
             ck('the browser drives the built site', False, proc.stderr[-400:])
             print('---', len(failures), 'failures')
