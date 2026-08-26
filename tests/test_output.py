@@ -855,6 +855,22 @@ def main():
         ck('the site-wide expert is a quiet count, never a chip (#65)',
            'authors/root' not in head_ and 'wider-scope' in head_
            and 'title="Root"' in head_, head_[-400:])
+        # ---------- Unclassified runs on cards (#75) ----------
+        # 'Pending' says a verification is owed; an Unclassified run is never
+        # verified, and what it does is worth the slot a category would take
+        home_ = all_html[out / 'index.html']
+        uncl_cards = [c for c in re.findall(r'<a class="card"[^>]*>.*?</a>', home_, re.S)
+                      if 'runs/M900103/' in c]
+        ck('the unclassified run has a card to check', uncl_cards, home_[:200])
+        if uncl_cards:
+            card_ = uncl_cards[0]
+            ck('an unclassified card says Unclassified, never Pending (#75)',
+               'unclsm">Unclassified' in card_ and 'pendsm' not in card_, card_[:300])
+            ck('and it shows what the run does, in the category slot',
+               'ccat cgoal' in card_ and 'quotes' in card_, card_[:300])
+            ck('the word Unclassified is not printed twice on one card',
+               card_.count('Unclassified') == 1, card_[:300])
+
         # ---------- you may also like ----------
         reel_page = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('a run page carries the also-like reel', 'alsolike' in reel_page

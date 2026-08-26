@@ -278,6 +278,10 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .versm{color:var(--accent-text);font-weight:700}
 .provsm{color:var(--accent-text)}
 .pendsm{color:#D97706;font-weight:700}
+.unclsm{color:var(--muted);font-weight:700}
+/* what an Unclassified run does, in the slot a category would take:
+   the author's own words, held to two lines so a card keeps its shape */
+.cgoal{font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cols{display:grid;grid-template-columns:1fr 290px;gap:24px;align-items:start}
 @media(max-width:900px){.cols{grid-template-columns:1fr}
   .herogrid{grid-template-columns:1fr}
