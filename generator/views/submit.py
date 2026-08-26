@@ -17,4 +17,5 @@ body = tpl('submit.html', ARCHIVE_RAW=ARCHIVE_RAW, ARCHIVIST=ARCHIVIST, gamedata
            authornames=authornames, provider_names=' · '.join(providers.names()),
            today=datetime.date.today().isoformat())
 (OUT / 'submit').mkdir(exist_ok=True)
-(OUT / 'submit' / 'index.html').write_text(page('Submit', body, '../', '', 'Submit', seo={'path': 'submit/', 'noindex': True}))
+(OUT / 'submit' / 'index.html').write_text(page('Submit', body, '../', '', 'Submit',
+    seo={'path': 'submit/', 'noindex': True}, scripts=['page-submit.js']))

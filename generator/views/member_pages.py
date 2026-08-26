@@ -64,7 +64,8 @@ for uname, a in authors.items():
                   'type': 'profile',
                   'ld': [{'@context': 'https://schema.org', '@type': 'Person',
                           'name': a['username'],
-                          'url': f'{SITE_URL}/authors/{profile_slug(uname)}/'}]}))
+                          'url': f'{SITE_URL}/authors/{profile_slug(uname)}/'}]},
+             scripts=['page-member.js']))
 
 # withdrawn runs still get a page: an honest tombstone, not a 404
 for r in withdrawn_runs:

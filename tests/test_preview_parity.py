@@ -119,16 +119,18 @@ def main():
            str([n for (n, _), s in zip(CORPUS, server) if not s.strip()]))
 
         # One renderer, not two (issue #30): the archivist previews with the
-        # shared wikitext module, the client only asks for it.
+        # shared wikitext module, the client only asks for it. The preview
+        # lives on the submit page's own module (page-submit.js); check
+        # every shipped client script, not just the shared app.js.
         sys.path.insert(0, str(REPO / 'archivist'))
         import wikitext
         for (name, text), s in zip(CORPUS, server):
             ns, nw = normalize(s), normalize(wikitext.wiki_html(text))
             ck(f'parity: {name}', ns == nw, f'site={ns[:110]!r} shared={nw[:110]!r}')
-        app_js = (out / 'assets' / 'app.js').read_text()
+        all_js = '\n'.join(p.read_text() for p in (out / 'assets').glob('*.js'))
         ck('the client carries no renderer of its own',
-           'function renderNotes' not in app_js and 'function inlineMd' not in app_js)
-        ck('the preview asks the archivist', "'/api/preview'" in app_js)
+           'function renderNotes' not in all_js and 'function inlineMd' not in all_js)
+        ck('the preview asks the archivist', "'/api/preview'" in all_js)
 
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)

@@ -39,12 +39,14 @@ member content cannot drown the signal.
 token on every page · beta banner present with `ARCHIVE_REF=staging` and
 absent on main · hostile author names and notes escaped · malformed markup
 still balanced · `[M#]` resolution (known and unknown) · content-warning chips
-and the 18+ gate · report anchors · `node --check` on the emitted app.js ·
+and the 18+ gate · report anchors · `node --check` (as an ES module) on every
+emitted client script, `app.js` and each `page-*.js` alike ·
 server/client element contract · zero em dashes or "Legacy" in generated
-chrome · every inline page script parses under `node --check` (app.js was the
-only script ever checked) · game groups (a page only for a group holding more
-than one game here, never a link to a group that has no page, hostile group
-title escaped, withdrawn runs absent, group-scoped experts named) · the three
+chrome · every inline page script parses under `node --check` too (the
+markup-embedded ones, distinct from the module files above) · game groups
+(a page only for a group holding more than one game here, never a link to a
+group that has no page, hostile group title escaped, withdrawn runs absent,
+group-scoped experts named) · the three
 views of the Games page (all three offered, exactly one visible without
 javascript, one card per group whose thumbnail is a collage of
 distinct games, no game links inside it, one list row per game, every game page

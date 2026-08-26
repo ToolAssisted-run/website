@@ -189,7 +189,8 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
     for low, canon in names.items():
         if low in outsiders:
             continue
-        (root / 'authors' / f'{low}.json').write_text(json.dumps(
+        safe_low = ''.join(c if c.isalnum() or c in '._-' else '_' for c in low)
+        (root / 'authors' / f'{safe_low}.json').write_text(json.dumps(
             {'username': canon, 'claimed': True}, indent=1) + '\n')
 
     seen_games = {}

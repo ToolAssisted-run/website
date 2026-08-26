@@ -32,6 +32,9 @@ if OUT.exists(): shutil.rmtree(OUT)
 ship_thumbnails()          # before any page is written: the pages point at them
 for asset in (pathlib.Path(__file__).resolve().parent / 'assets').glob('*'):
     shutil.copy2(asset, OUT / 'assets' / asset.name)
+# Frontend modules (assets/app.js, assets/page-*.js) live with the website
+# source rather than the generator scaffolding; shipped further down,
+# alongside the provider-name substitution they may need.
 # ship the HTTPS-redirect .htaccess with every deploy (site lives at the root).
 # Apache reads it; GitHub Pages ignores it and does HTTPS and HSTS itself. The
 # one thing Pages cannot do is a rewrite, so the /stage/ links that predate the
@@ -81,15 +84,22 @@ import views.home  # noqa: F401,E402  (renders its pages on import)
 import views.sitelog  # noqa: F401,E402  (renders its pages on import)
 
 # ---------------- shared assets ----------------
-# ---- shared client script ----
-# The client script is a real file (assets/app.js): the frontend lives
-# apart from the backend and meets it only through the archivist's JSON
-# API and the JSON blobs embedded in pages. Shipped verbatim, except the
-# accepted-platform substitutions, which come from the providers module.
-(OUT / 'assets' / 'app.js').write_text(
-    (REPO_ROOT / 'assets' / 'app.js').read_text()
-    .replace('ENCODE_HOSTS', '|'.join(providers.ALL_HOSTS))
-    .replace('ENCODE_NAMES', ' · '.join(providers.names())))
+# ---- shared client scripts ----
+# The client scripts are real files (assets/app.js, assets/page-*.js): the
+# frontend lives apart from the backend and meets it only through the
+# archivist's JSON API and the JSON blobs embedded in pages. Shipped
+# verbatim, except the accepted-platform substitutions (from the providers
+# module), which land wherever ENCODE_HOSTS/ENCODE_NAMES actually appear
+# (today, only the submit page's encode-link check).
+def _ship_script(name):
+    (OUT / 'assets' / name).write_text(
+        (REPO_ROOT / 'assets' / name).read_text()
+        .replace('ENCODE_HOSTS', '|'.join(providers.ALL_HOSTS))
+        .replace('ENCODE_NAMES', ' · '.join(providers.names())))
+
+
+for _script in (REPO_ROOT / 'assets').glob('*.js'):
+    _ship_script(_script.name)
 
 # ---- stylesheet ----
 # A real file (assets/style.css), shipped verbatim.

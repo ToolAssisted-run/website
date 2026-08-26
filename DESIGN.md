@@ -698,11 +698,22 @@ archivist, module responsibilities). What matters designwise:
   design: no dedup, lost on VPS loss, never committed.
 - **The generator** builds the whole site from the archive checkout
   (`generator/build.py <archive> <out>`; `ARCHIVE_REF` names the branch in
-  links). Frontend is real files
-  (`assets/app.js`, `assets/style.css`) shipped verbatim; pages embed JSON
-  blobs the script reads (always `.replace('<', '\\u003c')`-armoured). Run
-  arrival dates come from git history (`fetch-depth: 0` in CI), falling back
-  to `importedAt`/`submitted`.
+  links). Frontend is real files, shipped verbatim (except the
+  `ENCODE_HOSTS`/`ENCODE_NAMES` provider-name substitution, applied to
+  whichever script actually names them): `assets/app.js` is the **shared,
+  page-agnostic** ES module every page loads (nav, account menu, view-as,
+  the type-to-find picker, the busy/note/mark helpers, file rows, the
+  metrics editor) — every page-specific behavior it used to carry has
+  moved out into a real per-page module (`assets/page-home.js`,
+  `page-library.js`, `page-run.js`, `page-game-edit.js`, `page-submit.js`,
+  `page-create.js`, `page-panels.js`, `page-member.js`, `page-import.js`),
+  each declared through the page renderer's `scripts=` and each importing
+  the shared bindings it needs with an explicit `import … from './app.js'`
+  (all in `assets/`, so the import resolves the same regardless of how
+  deep the HTML page itself sits). Pages embed JSON blobs the client reads
+  (always `.replace('<', '\\u003c')`-armoured). Run arrival dates come from
+  git history (`fetch-depth: 0` in CI), falling back to
+  `importedAt`/`submitted`.
 - **The pipeline**: the archivist is the publisher. The moment its push
   lands, `archivist/sitebuild.py` rebuilds the whole site from the local
   checkout (~1 s), refuses any incomplete build (the same guard CI applies:
@@ -771,7 +782,8 @@ archivist, module responsibilities). What matters designwise:
 - **Pick, never type**: anything registered (game, member, group) is chosen
   through a type-to-find selector, never a bare text box or a static
   `<select>` of everything. On the panels (expert, Committee, Founder) the
-  member and game pickers are one shared widget (`armPicker` in app.js): it
+  member and game pickers are one shared widget (`armPicker` in the shared
+  client runtime): it
   asks the archivist as you type, debounced (`GET /api/search?kind=members|
   games&q=`, a page of matches from a 20 s in-memory index), so no page
   carries the whole member or game list (#56); the group chips pickers fill
@@ -1055,7 +1067,9 @@ rate limits); registration stays open by principle (§1.4).
   validator negatives, movie parsers, derivations, archivist end-to-end,
   security, robustness, preview parity, client runtime against real page
   DOM, layout in real Chrome, providers, news feed). `tests/mkarchive.py`
-  builds synthetic archives for exact-value assertions;
+  builds synthetic archives for exact-value assertions. Frontend syntax and
+  runtime checks cover the shared entrypoint and every page module emitted by
+  the generator.
   `mkarchive.prune_superseded` brings live-archive copies to the state the
   claim flow enforces. `TESTPLAN.md` is the map.
 - **Lessons encoded as practice**: a feature is not shipped until the

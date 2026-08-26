@@ -136,7 +136,8 @@ if live_groups:
                                  f'{plural(len(grunts), "run")}, leaderboards and records.'),
                  'image': (SITE_URL + thumb_url(gbest)) if gbest else None,
                  'ld': [breadcrumb_ld([('Games', 'games/'),
-                                       (gr['title'], f'groups/{gr["key"]}/')])]}))
+                                       (gr['title'], f'groups/{gr["key"]}/')])]},
+             scripts=['page-library.js']))
 
 # the list view: every game alphabetically, with the groups that hold it
 list_games = [(g, [gr for gr in groups_by_game.get(g['key'], []) if has_page(gr)])
@@ -151,7 +152,8 @@ body = tpl('games_index.html', by_sys=by_sys,
     seo={'path': 'games/',
          'description': (f'{len(games)} games across {len(by_sys)} systems with tool-assisted '
                          f'speedruns on toolAssisted.run, by system, by game group, and as a list.'),
-         'ld': [breadcrumb_ld([('Games', 'games/')])]}))
+         'ld': [breadcrumb_ld([('Games', 'games/')])]},
+     scripts=['page-library.js']))
 
 # The expert roster is not a page of its own: a role is a property of a
 # member, so it shows as a badge on the members list and as a history at the

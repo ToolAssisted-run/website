@@ -76,7 +76,9 @@ def main():
         home = (out / 'index.html').read_text()
         ck('panel declares the account it reads', 'data-handle="toolassisted.run"' in home)
         ck('panel starts with a loading note', 'Loading the latest posts' in home)
-        js = (out / 'assets' / 'app.js').read_text()
+        # the feed is page-home.js's alone;
+        # check every shipped client script, not just one of them
+        js = '\n'.join(p.read_text() for p in (out / 'assets').glob('*.js'))
         ck('no third-party script is loaded for the feed',
            'platform.twitter.com' not in js and 'widgets.js' not in js)
         ck('the feed is read from the public AT Protocol endpoint',

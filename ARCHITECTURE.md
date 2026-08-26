@@ -15,7 +15,7 @@ ToolAssisted-run/archive  (a plain git repo of facts: runs, games, roles…)
         ▲                        ▲
         │ pages + JSON blobs     │ JSON API (session or key)
         └──────── the browser ───┘
-              assets/app.js
+        assets/app.js + page modules
 ```
 
 The archive repository is the single source of truth. It stores **facts,
@@ -33,9 +33,18 @@ never derived state** (who verified what, when; never "this run is ranked").
   checkout that persists them.
 
 **View** — how it looks.
-- `assets/app.js`, `assets/style.css`: the frontend, real files, shipped
-  verbatim. The script reads embedded `application/json` blobs and talks to
-  the archivist's JSON API; it never scrapes pages.
+- `assets/app.js`, page-specific `assets/page-*.js`, and `assets/style.css`: the
+  frontend, real files, shipped verbatim (except the `ENCODE_HOSTS`/
+  `ENCODE_NAMES` provider substitution, applied to whichever script actually
+  names them). `app.js` is shared and page-agnostic only (nav, account menu,
+  view-as, the type-to-find picker, busy/note/mark, file rows, the metrics
+  editor); every page family's own behavior is a real ES module of its own
+  (`page-home.js`, `page-library.js`, `page-run.js`, `page-game-edit.js`,
+  `page-submit.js`, `page-create.js`, `page-panels.js`, `page-member.js`,
+  `page-import.js`), each with an explicit `import { … } from './app.js'` for
+  the shared bindings it uses and wired in by the generator's `scripts=` on
+  the templates that need it. Client code reads embedded `application/json`
+  blobs and talks to the archivist's JSON API; it never scrapes pages.
 - `generator/templates/*.html`: the markup, Jinja2, one template per page
   (plus `_*.html` macro files for shared fragments and `base.html` for the
   chrome). Autoescaping is on: `{{ x }}` is always text. The HTML helpers
@@ -64,10 +73,13 @@ meet, and they meet **only** through:
 1. the archivist's JSON API (`/archivist/api/...`, session-cookie or
    submitter-key authenticated, CORS-pinned to the site origin), and
 2. the JSON blobs the generator embeds in pages (`<script
-   type="application/json">`), which app.js reads.
+   type="application/json">`), which the shared runtime and page modules read.
 
 Neither Python program emits JavaScript; neither JavaScript file contains
-markup the generator depends on.
+markup the generator depends on. `render.page(..., scripts=[...])` declares
+page modules, `base.html` emits cache-busted module tags, and `build.py`
+ships every file in the frontend asset directory. Page modules import the
+shared entrypoint rather than relying on load-order globals.
 
 ## The three derivations that must agree
 
@@ -82,7 +94,9 @@ rename resolution (`identity.py::current_name`, `validate.py::canon`,
 `tests/` holds the hermetic suites (fixtures never copy live governance
 records; nothing pushes to GitHub; external services are faked). CI runs
 them on every push; a deploy only happens when they pass. `mkarchive.py`
-builds fully synthetic archives for exact-value assertions.
+builds fully synthetic archives for exact-value assertions. Client checks
+parse and execute the shared entrypoint together with the emitted page
+modules, so a template's script mapping cannot silently go stale.
 
 ## Code quality scanning
 

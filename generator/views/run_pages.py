@@ -199,5 +199,4 @@ for r in runs:
         page(seo_title, body, '../../', crumb, 'Runs', wide=True,
              seo={'path': f'runs/{r["id"]}/', 'description': seo_desc,
                   'image': (SITE_URL + tu) if tu else None, 'type': 'video.other' if enc else 'article',
-                  'ld': ld}))
-
+                  'ld': ld}, scripts=['page-run.js']))

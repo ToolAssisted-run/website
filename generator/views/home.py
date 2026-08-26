@@ -45,6 +45,7 @@ body = tpl('home.html',
                                      'query-input': 'required name=search_term_string'}},
                 {'@context': 'https://schema.org', '@type': 'Organization',
                  'name': 'toolAssisted.run', 'url': SITE_URL + '/',
-                 'logo': SITE_URL + '/assets/avatar-512-dark.png'}]}))
+                 'logo': SITE_URL + '/assets/avatar-512-dark.png'}]},
+     scripts=['page-home.js']))
 
 (OUT / '404.html').write_text(tpl('404.html'))

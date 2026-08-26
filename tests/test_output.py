@@ -124,12 +124,16 @@ def check_cache_busting(out, label):
     for page in pages(out):
         html = page.read_text()
         css = re.search(r'style\.css\?v=([^"]+)', html)
-        js = re.search(r'app\.js\?v=([^"]+)', html)
+        js = re.findall(r'<script type="module" src="([^"]+)"', html)
         if not (css and js):
             missing.append(page.name)
             continue
         tokens.add(css.group(1))
-        tokens.add(js.group(1))
+        versions = [re.search(r'\?v=([^"]+)$', src) for src in js]
+        if any(v is None for v in versions):
+            missing.append(page.name)
+            continue
+        tokens.update(v.group(1) for v in versions)
     ck(f'{label}: every page cache-busts css+js', not missing, str(missing[:3]))
     ck(f'{label}: one build token site-wide', len(tokens) == 1, str(sorted(tokens)[:3]))
 
@@ -529,13 +533,17 @@ def main():
             ck(f'the submit page names {name} as an accepted platform', name in subp)
         ck('the submit page no longer claims YouTube only',
            'Encode link (YouTube' not in subp)
+        # the encode-host check is the submit page's alone now (page-submit.js);
+        # check every shipped client script, not just the shared app.js
         js = (out / 'assets' / 'app.js').read_text()
+        client_js = '\n'.join(p.read_text() for p in (out / 'assets').glob('*.js'))
         ck('the client host list comes from the registry',
-           'nicovideo.jp' in js and 'bilibili.com' in js and 'youtu.be' in js)
+           'nicovideo.jp' in client_js and 'bilibili.com' in client_js
+           and 'youtu.be' in client_js)
         ck('the client asks the archivist to resolve an encode',
-           '/api/encode/check?url=' in js)
+           '/api/encode/check?url=' in client_js)
         ck('no page builds a YouTube thumbnail url by hand',
-           'img.youtube.com' not in js, 'app.js still hardcodes the youtube thumb host')
+           'img.youtube.com' not in client_js, 'a client script hardcodes the youtube thumb host')
         # every archivist-triggering button goes flat, grey and spinning while
         # the request runs, and cannot be pressed twice
         submit_ = all_html[out / 'submit' / 'index.html']
@@ -746,8 +754,7 @@ def main():
         ck('the feed has the news panel to itself',
            'actfeed' not in home and 'newslinks' not in home)
         ck('no third-party widget script is embedded',
-           'platform.twitter.com' not in home
-           and 'platform.twitter.com' not in (out / 'assets' / 'app.js').read_text())
+           'platform.twitter.com' not in home and 'platform.twitter.com' not in client_js)
         ck('statistics sit inside the welcome column',
            home.index('statstrip') < home.index('heronews'))
         ck('nav offers a menu button', 'id="navtoggle"' in home
@@ -1189,22 +1196,27 @@ def main():
         # ---------- client app ----------
         js = (out / 'assets' / 'app.js').read_text()
         node = shutil.which('node')
+        client_scripts = sorted((out / 'assets').glob('*.js'))
         if node:
             # a real parser: authoritative, and unlike the fallback below it
-            # understands regex literals containing quotes or braces
-            chk = subprocess.run([node, '--input-type=module', '--check'],
-                                 input=js, capture_output=True, text=True)
-            ck('app.js: node --check', chk.returncode == 0, chk.stderr[-300:])
+            # understands regex literals containing quotes or braces. Every
+            # real module ships now (app.js, shared-only, and each page's own
+            # page-*.js), not just the one file that used to hold everything.
+            for script in client_scripts:
+                chk = subprocess.run([node, '--input-type=module', '--check'],
+                                     input=script.read_text(), capture_output=True, text=True)
+                ck(f'{script.name}: node --check', chk.returncode == 0, chk.stderr[-300:])
         else:
             # crude fallback for machines without node: catches the failure
             # mode that actually happened (a Python escape collapsing inside
             # the emitted JS), at the cost of false alarms on regex literals
-            print('NOTE app.js: node not installed, using the heuristic check')
-            odd, brace, paren = js_integrity(js)
-            ck('app.js: no broken string literals (heuristic)',
-               not odd, f'lines {odd[:3]}')
-            ck('app.js: balanced braces', brace == 0, str(brace))
-            ck('app.js: balanced parens', paren == 0, str(paren))
+            print('NOTE client scripts: node not installed, using the heuristic check')
+            for script in client_scripts:
+                odd, brace, paren = js_integrity(script.read_text())
+                ck(f'{script.name}: no broken string literals (heuristic)',
+                   not odd, f'lines {odd[:3]}')
+                ck(f'{script.name}: balanced braces', brace == 0, str(brace))
+                ck(f'{script.name}: balanced parens', paren == 0, str(paren))
         css = (out / 'assets' / 'style.css').read_text()
         missing_contract = [i for i in CONTRACT if i not in joined and i not in css]
         ck('server/client element contract intact', not missing_contract,

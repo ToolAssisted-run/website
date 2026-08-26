@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the emitted client script the way a browser would.
+"""Run the emitted client scripts the way a browser would.
 
 Syntax checks and per-function tests both passed while the news feed was dead
 on the live site: `escapeHtml` (then `escH`) was declared inside the submit page's block, so on the
@@ -7,8 +7,11 @@ landing page the feed threw a ReferenceError, its error handler threw the same
 way, and the panel sat on "Loading the latest posts…" for ever. Nothing static
 catches that; only executing the script in a page context does.
 
-So this loads app.js under a small DOM stub, once per page context, and
-asserts it runs clean and does what that page needs.
+So this loads the real, emitted ES modules under a small DOM stub, once per
+page context — assets/app.js alone for a page with no module of its own,
+and the real assets/page-*.js the generator wired to that page otherwise, the
+same way a browser resolves its `import './app.js'` — and asserts each runs
+clean and does what that page needs.
 
 Needs node; skips without it.
 
@@ -103,7 +106,9 @@ const FEED = { feed: [ { post: {
 
 process.on('unhandledRejection', (e) => calls.errors.push('unhandledRejection: ' + e));
 try {
-  APP_JS_HERE
+  // the real, emitted module (app.js, or a page's own module importing it),
+  // resolved and executed exactly as a browser's <script type="module"> would
+  await import(MODULE_URL_HERE);
 } catch (e) {
   calls.errors.push('threw: ' + (e && e.stack ? e.stack.split('\n')[0] : e));
 }
@@ -121,9 +126,14 @@ def ck(name, cond, detail=''):
         failures.append(name)
 
 
-def run_page(node, js, td, label, ids):
+def module_url(assets_dir, module):
+    """A file:// URL for a real, emitted asset module (posix-safe on Windows)."""
+    return pathlib.Path(assets_dir, module).resolve().as_uri()
+
+
+def run_page(node, assets_dir, td, label, ids, module='app.js'):
     script = td / f'run-{label}.mjs'
-    script.write_text(STUB.replace('APP_JS_HERE', js))
+    script.write_text(STUB.replace('MODULE_URL_HERE', json.dumps(module_url(assets_dir, module))))
     r = subprocess.run([node, str(script), json.dumps(ids)],
                        capture_output=True, text=True, timeout=120)
     if r.returncode != 0:
@@ -226,7 +236,10 @@ global.URLSearchParams = URLSearchParams;
 
 process.on('unhandledRejection', (e) => calls.errors.push('unhandledRejection: ' + e));
 try {
-  APP_JS_HERE
+  // the real, emitted module the generator wired to this page (or app.js
+  // alone, for a page with none of its own), resolved and executed exactly
+  // as a browser's <script type="module"> would
+  await import(MODULE_URL_HERE);
 } catch (e) {
   calls.errors.push('threw: ' + (e && e.stack ? e.stack.split('\n')[0] : e));
 }
@@ -269,9 +282,9 @@ def dom_of(html):
     return out
 
 
-def run_real_page(node, js, td, label, html, session, events=()):
+def run_real_page(node, assets_dir, td, label, html, session, events=(), module='app.js'):
     script = td / f'page-{label}.mjs'
-    script.write_text(PAGE_STUB.replace('APP_JS_HERE', js))
+    script.write_text(PAGE_STUB.replace('MODULE_URL_HERE', json.dumps(module_url(assets_dir, module))))
     dom = td / f'dom-{label}.json'
     dom.write_text(json.dumps(dom_of(html)))
     r = subprocess.run([node, str(script), str(dom), json.dumps(session),
@@ -307,7 +320,7 @@ def main():
         ck('build succeeds', r.returncode == 0, r.stderr[-300:])
         if r.returncode:
             sys.exit(1)
-        js = (out / 'assets' / 'app.js').read_text()
+        assets_dir = out / 'assets'
 
         if not node:
             print('SKIP runtime checks (node not installed)')
@@ -315,8 +328,11 @@ def main():
             sys.exit(1 if failures else 0)
 
         # the landing page: nav, account probe, news feed. No submit form, no
-        # run page, no import page: exactly the context that broke.
-        home, err = run_page(node, js, td, 'home', ['navauth', 'navtoggle', 'navlinks', 'bskyfeed'])
+        # run page, no import page: exactly the context that broke. Its own
+        # module (page-home.js) is what the generator wires to home.py.
+        home, err = run_page(node, assets_dir, td, 'home',
+                              ['navauth', 'navtoggle', 'navlinks', 'bskyfeed'],
+                              module='page-home.js')
         ck('the script runs on the landing page', home is not None, err)
         if home:
             ck('no exception on the landing page', not home['errors'], str(home['errors'][:2]))
@@ -328,18 +344,21 @@ def main():
                rendered[:160])
             ck('the rendered post links back to Bluesky', 'bsky.app/profile/' in rendered)
 
-        # a bare page with nothing but the nav: nothing may throw
-        bare, err = run_page(node, js, td, 'bare', ['navauth'])
+        # a bare page with nothing but the nav: app.js alone (shared-only;
+        # no page module of its own), nothing may throw
+        bare, err = run_page(node, assets_dir, td, 'bare', ['navauth'])
         ck('the script runs on a page with only the nav', bare is not None, err)
         if bare:
             ck('no exception on a bare page', not bare['errors'], str(bare['errors'][:2]))
 
-        # the submit page, wired as a logged-in member sees it. Preview must
-        # be usable and Submit must be the button the encode check gates.
+        # the submit page, wired as a logged-in member sees it (page-submit.js,
+        # the module submit.py wires). Preview must be usable and Submit must
+        # be the button the encode check gates.
         sub_html = (out / 'submit' / 'index.html').read_text()
         session = {'ok': True, 'loggedIn': True, 'user': 'Ada', 'claimed': True,
                    'notifications': 0}
-        sub, err = run_real_page(node, js, td, 'submit', sub_html, session)
+        sub, err = run_real_page(node, assets_dir, td, 'submit', sub_html, session,
+                                  module='page-submit.js')
         ck('the script runs on the submit page', sub is not None, err)
         if sub:
             ck('no exception on the submit page', not sub['errors'], str(sub['errors'][:2]))
@@ -353,8 +372,8 @@ def main():
                st.get('submitform', {}).get('hidden') is False, str(st.get('submitform')))
 
         # and Preview actually renders something when pressed
-        pressed, err = run_real_page(node, js, td, 'preview', sub_html, session,
-                                     events=[('s-preview-btn', 'click')])
+        pressed, err = run_real_page(node, assets_dir, td, 'preview', sub_html, session,
+                                     events=[('s-preview-btn', 'click')], module='page-submit.js')
         ck('pressing Preview runs its handler', pressed is not None, err)
         if pressed:
             ck('pressing Preview raises no error', not pressed['errors'],
@@ -363,13 +382,15 @@ def main():
                pressed['state'].get('s-preview', {}).get('hidden') is False,
                str(pressed['state'].get('s-preview')))
 
-        # a run page seen by a member who may contribute: the acts are folded
-        # away so the discussion is reachable, but arming them must still
-        # reveal their wrapper, or the act is simply unavailable
+        # a run page seen by a member who may contribute (page-run.js, the
+        # module run_pages.py wires): the acts are folded away so the
+        # discussion is reachable, but arming them must still reveal their
+        # wrapper, or the act is simply unavailable
         run_html = (out / 'runs' / 'M900801' / 'index.html').read_text()
         member = {'ok': True, 'loggedIn': True, 'user': 'Zed', 'claimed': True,
                   'notifications': 0}
-        act, err = run_real_page(node, js, td, 'acts', run_html, member)
+        act, err = run_real_page(node, assets_dir, td, 'acts', run_html, member,
+                                  module='page-run.js')
         ck('the script runs on a run page for a member', act is not None, err)
         if act:
             ck('no exception arming the acts', not act['errors'], str(act['errors'][:2]))
@@ -383,7 +404,8 @@ def main():
         # an expert on a run page: the powers that only existed server-side
         expert_session = {'ok': True, 'loggedIn': True, 'user': 'Root',
                           'claimed': True, 'notifications': 0}
-        exp, err = run_real_page(node, js, td, 'expert', run_html, expert_session)
+        exp, err = run_real_page(node, assets_dir, td, 'expert', run_html, expert_session,
+                                  module='page-run.js')
         ck('the script runs for an expert', exp is not None, err)
         if exp:
             ck('no exception arming the expert powers', not exp['errors'],
@@ -402,7 +424,8 @@ def main():
         # view-as: a Committee seat borrowing lesser eyes (presentation only)
         demoted = dict(expert_session, __tar={'committee': ['root']},
                        __viewas='member')
-        dem, err = run_real_page(node, js, td, 'viewas-member', run_html, demoted)
+        dem, err = run_real_page(node, assets_dir, td, 'viewas-member', run_html, demoted,
+                                  module='page-run.js')
         ck('the script runs viewing as a plain member', dem is not None, err)
         if dem:
             ck('no exception under borrowed eyes', not dem['errors'],
@@ -413,14 +436,16 @@ def main():
         lifted = {'ok': True, 'loggedIn': True, 'user': 'Ada', 'claimed': True,
                   'notifications': 0, '__tar': {'committee': ['ada']},
                   '__viewas': 'expert'}
-        lif, err = run_real_page(node, js, td, 'viewas-expert', run_html, lifted)
+        lif, err = run_real_page(node, assets_dir, td, 'viewas-expert', run_html, lifted,
+                                  module='page-run.js')
         ck('the script runs viewing as a site-wide expert', lif is not None, err)
         if lif:
             ck('viewing as a site-wide expert opens the expert powers',
                lif['state'].get('f-invalidate-wrap', {}).get('hidden') is False,
                str(lif['state'].get('f-invalidate-wrap')))
         stale = dict(expert_session, __viewas='member')   # no Committee seat
-        stl, err = run_real_page(node, js, td, 'viewas-stale', run_html, stale)
+        stl, err = run_real_page(node, assets_dir, td, 'viewas-stale', run_html, stale,
+                                  module='page-run.js')
         ck('the script runs with a stale view-as key', stl is not None, err)
         if stl:
             ck('a view-as key on a non-Committee account changes nothing',
@@ -429,7 +454,8 @@ def main():
 
         # a blocked archivist: an empty nav is indistinguishable from a broken
         # page, and that is exactly how this was reported
-        blocked, err = run_real_page(node, js, td, 'blocked', run_html, {'__blocked': True})
+        blocked, err = run_real_page(node, assets_dir, td, 'blocked', run_html,
+                                      {'__blocked': True}, module='page-run.js')
         ck('the script survives an unreachable archivist', blocked is not None, err)
         if blocked:
             ck('no exception when the archivist cannot be reached',
@@ -446,7 +472,8 @@ def main():
         panel_html = (out / 'expert' / 'index.html').read_text()
         root_session = {'ok': True, 'loggedIn': True, 'user': 'Root', 'claimed': True,
                         'notifications': 0}
-        pan, err = run_real_page(node, js, td, 'panel', panel_html, root_session)
+        pan, err = run_real_page(node, assets_dir, td, 'panel', panel_html, root_session,
+                                  module='page-panels.js')
         ck('the script runs on the expert panel', pan is not None, err)
         if pan:
             ck('no exception on the panel', not pan['errors'], str(pan['errors'][:2]))
@@ -456,15 +483,17 @@ def main():
             ck('and the annul form waits for the Committee',
                st.get('panel-annul-wrap', {}).get('hidden') is not False,
                'Root is an expert but not on the Committee')
-        pan2, err = run_real_page(node, js, td, 'panel-plain', panel_html, member)
+        pan2, err = run_real_page(node, assets_dir, td, 'panel-plain', panel_html, member,
+                                   module='page-panels.js')
         ck('the script runs on the panel for a member', pan2 is not None, err)
         if pan2:
             ck('a member who holds no scope is kept out',
                pan2['state'].get('panel', {}).get('hidden') is not False,
                str(pan2['state'].get('panel')))
-        pan3, err = run_real_page(node, js, td, 'panel-committee', panel_html,
+        pan3, err = run_real_page(node, assets_dir, td, 'panel-committee', panel_html,
                                   {'ok': True, 'loggedIn': True, 'user': 'Ada',
-                                   'claimed': True, 'notifications': 0})
+                                   'claimed': True, 'notifications': 0},
+                                  module='page-panels.js')
         if pan3:
             # any single Committee member may appoint an expert (2.5.3), so a
             # committee seat opens the panel even with no expert scope
@@ -485,13 +514,15 @@ def main():
            and 'Record a Committee decision' in cpanel_html)
         comm_session = {'ok': True, 'loggedIn': True, 'user': 'Ada', 'claimed': True,
                         'notifications': 0}
-        mem, err = run_real_page(node, js, td, 'roles', cpanel_html, comm_session)
+        mem, err = run_real_page(node, assets_dir, td, 'roles', cpanel_html, comm_session,
+                                  module='page-panels.js')
         ck('the script runs on the committee panel', mem is not None, err)
         if mem:
             ck('a committee member is offered the panel, decision form included',
                mem['state'].get('cpanel', {}).get('hidden') is False,
                str(mem['state'].get('cpanel')))
-        out_, err = run_real_page(node, js, td, 'roles-plain', cpanel_html, member)
+        out_, err = run_real_page(node, assets_dir, td, 'roles-plain', cpanel_html, member,
+                                   module='page-panels.js')
         ck('the script runs on the committee panel for a member', out_ is not None, err)
         if out_:
             ck('everybody else sees no panel',
@@ -499,7 +530,8 @@ def main():
                str(out_['state'].get('cpanel')))
 
         # a member who is not an expert sees none of it
-        plain, err = run_real_page(node, js, td, 'plain', run_html, member)
+        plain, err = run_real_page(node, assets_dir, td, 'plain', run_html, member,
+                                    module='page-run.js')
         ck('the script runs for a plain member', plain is not None, err)
         if plain:
             for wrap in ('f-invalidate-wrap', 'f-resolve-wrap'):
@@ -507,8 +539,9 @@ def main():
                    plain['state'].get(wrap, {}).get('hidden') is True,
                    str(plain['state'].get(wrap)))
 
-        # a run page: act zone present, no feed
-        runpage, err = run_page(node, js, td, 'run',
+        # a run page: app.js alone (shared-only) never fetches the feed that
+        # is now page-home.js's alone to fetch
+        runpage, err = run_page(node, assets_dir, td, 'run',
                                 ['navauth', 'act-login', 'likebtn', 'likecount'])
         ck('the script runs on a run page', runpage is not None, err)
         if runpage:
