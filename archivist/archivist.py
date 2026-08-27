@@ -144,6 +144,7 @@ from forumapi import (
     member_email_masked,
     publish_group,
     publish_roles,
+    reserved_usernames,
     read_committee_poll,
     send_pm,
     sync_expert_group,
@@ -1037,6 +1038,50 @@ def _search_index():
                              games=sorted(games, key=lambda g: g['title'].lower()),
                              runs=sorted(run_rows, key=lambda x: x['key']))
     return _search_cache
+
+# ---- is a name free, taken, or held for somebody? ----
+_name_seen = {}          # name -> (answered at, state), a minute's memory
+
+@app.get('/api/name/status')
+def name_status():
+    """What stands between a visitor and the username they typed.
+
+    Discourse refuses a held name with the same words it uses for a name
+    somebody already registered, so the person whose name it is gets told to
+    try "Nymx1" instead of being told that the name is theirs to claim. This
+    says which of the two it is; the forum's signup form asks, and explains.
+
+    Who: anybody (the signup form has no session yet)
+    Reads: query arg name
+    Answers: {ok, name, state} where state is free, taken, held, or unknown
+        (the forum could not be asked, which is never read as free), plus
+        {claim} naming the page that starts a claim when the name is held
+    """
+    name = (request.args.get('name') or '').strip()
+    if not 1 <= len(name) <= 60:
+        return fail('a username is between 1 and 60 characters')
+    now = time.monotonic()
+    cached = _name_seen.get(name.lower())
+    if cached and now - cached[0] < 60:
+        state = cached[1]
+    else:
+        exists = forum_account_exists(name)
+        reserved = reserved_usernames()
+        if exists:
+            state = 'taken'
+        elif exists is None or reserved is None:
+            state = 'unknown'
+        else:
+            state = 'held' if name.lower() in reserved else 'free'
+        if len(_name_seen) > 4000:
+            _name_seen.clear()
+        _name_seen[name.lower()] = (now, state)
+    out = {'ok': True, 'name': name, 'state': state}
+    if state == 'held':
+        out['claim'] = SITE_ORIGIN + '/claim/'
+    resp = jsonify(out)
+    resp.headers['Cache-Control'] = 'public, max-age=60'
+    return resp
 
 @app.get('/api/search')
 def search():

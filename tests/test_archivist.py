@@ -343,11 +343,20 @@ def main():
                     if pid in polls:
                         return _json({'id': int(pid), 'polls': polls[pid]})
                     self.send_response(404); self.end_headers(); return
+                # the reserved list: held names, plus one of Discourse's own
+                # wildcard patterns, which is a policy block and not a name
+                # held for anybody
+                if path == '/admin/site_settings.json':
+                    return _json({'site_settings': [
+                        {'setting': 'title', 'value': 'mock'},
+                        {'setting': 'reserved_usernames',
+                         'value': 'HeldOne|HeldTwo|*admin*'}]})
                 # the mock forum knows its own members: /u/<name>.json
                 if path.startswith('/u/') and path.endswith('.json'):
                     name = path[3:-5]
                     body = json.dumps({'user': {'username': name}}).encode()
-                    if name.lower() in ('nosuchperson',):
+                    if name.lower() in ('nosuchperson', 'heldone', 'heldtwo',
+                                        'freshname', 'myadmin'):
                         self.send_response(404); self.end_headers(); return
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
@@ -2502,6 +2511,21 @@ def main():
             ck('anonymous movie inspection is refused', c == 403, str(r))
             c, r, _ = call(U + '/api/preview', {'notes': 'hi'})
             ck('anonymous preview is refused', c == 403, str(r))
+            # --- a held name is not a taken name (signup tells them apart) ---
+            c, r, _ = call(U + '/api/name/status?name=HeldOne', method='GET')
+            ck('a reserved name with no account behind it is held',
+               c == 200 and r['state'] == 'held' and r['claim'].endswith('/claim/'), str(r))
+            c, r, _ = call(U + '/api/name/status?name=TestAuthor', method='GET')
+            ck('a name somebody registered is taken, not held',
+               c == 200 and r['state'] == 'taken' and 'claim' not in r, str(r))
+            c, r, _ = call(U + '/api/name/status?name=FreshName', method='GET')
+            ck('a name nobody holds or uses is free', c == 200 and r['state'] == 'free', str(r))
+            c, r, _ = call(U + '/api/name/status?name=myadmin', method='GET')
+            ck('a wildcard reservation holds the name for nobody: it is not a claim',
+               c == 200 and r['state'] == 'free', str(r))
+            c, r, _ = call(U + '/api/name/status?name=', method='GET')
+            ck('an empty name is refused', c == 400, str(r))
+
             c, r, _ = call(U + '/api/encode/check?url=https://youtu.be/goodvid12345', method='GET')
             ck('anonymous encode checking is refused', c == 403, str(r))
 

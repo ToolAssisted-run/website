@@ -174,6 +174,37 @@ def unlock_forum_username(claimant, tv_user):
     except Exception as e:
         return f'rename failed ({e}); an admin can rename manually'
 
+# ---- the reserved list: names nobody but their owner may register ----
+# Every author name from the imported corpus is reserved in Discourse, which
+# then refuses it at signup with the same words it uses for a name somebody
+# already registered ("Not available. Try Nymx1?"). The list is what tells
+# the two apart, so the signup form can say which one it is.
+_reserved = {'at': 0.0, 'names': None}
+RESERVED_TTL = 600           # ten minutes; the list changes when a claim lands
+
+def reserved_usernames():
+    """The forum's reserved names, lowercased, cached.
+
+    None when the forum has never answered: not knowing is its own state and
+    must not be read as "free". Wildcard entries (Discourse's own patterns,
+    which carry a *) are kept as they are, so they match no plain name: a
+    name refused by a pattern is refused by policy, not held for anybody.
+    """
+    now = time.monotonic()
+    if _reserved['names'] is not None and now - _reserved['at'] < RESERVED_TTL:
+        return _reserved['names']
+    if not DISCOURSE_KEY:
+        return _reserved['names']
+    try:
+        settings = discourse_api('/admin/site_settings.json')
+    except Exception:                                          # noqa: BLE001
+        return _reserved['names']                  # a stale list beats a wrong answer
+    raw = next((s.get('value') or '' for s in settings.get('site_settings', [])
+                if s.get('setting') == 'reserved_usernames'), '')
+    _reserved.update({'at': now, 'names': {e.strip().lower()
+                                           for e in raw.split('|') if e.strip()}})
+    return _reserved['names']
+
 def forum_account_exists(username):
     """True, False, or None when the forum could not be asked.
 

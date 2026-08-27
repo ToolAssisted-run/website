@@ -1,0 +1,69 @@
+<script>
+// Signup: say when a name is HELD, not merely taken.
+//
+// Every author name from the imported corpus is reserved in Discourse, so
+// nobody can register it but its owner. Discourse refuses a reserved name
+// with the same words it uses for a name somebody already registered ("Not
+// available. Try Nymx1?"), which tells the one person whose name it is to
+// pick another one. The archivist knows which of the two it is
+// (/api/name/status), so this asks, and explains the held case.
+(function () {
+  var ARCHIVIST = '/archivist';       // nginx serves the archivist on this host too
+  var CLAIM = 'https://toolassisted.run/claim/';
+  var FIELD = '#new-account-username, input[name="username"].create-account__username';
+  var ID = 'tar-held-name';
+  var timer = null, asked = '';
+
+  function box(field) {
+    var note = document.getElementById(ID);
+    if (!note) {
+      note = document.createElement('div');
+      note.id = ID;
+      note.className = 'alert alert-info';
+      note.style.cssText = 'margin:8px 0;padding:10px 12px;line-height:1.45;font-size:.95em';
+      var host = field.closest('.input-group, .form-group, .create-account__username-wrapper')
+                 || field.parentNode;
+      host.parentNode.insertBefore(note, host.nextSibling);
+    }
+    return note;
+  }
+
+  function clear() {
+    var note = document.getElementById(ID);
+    if (note) note.parentNode.removeChild(note);
+  }
+
+  function explain(field, name) {
+    var safe = name.replace(/[&<>"]/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c];
+    });
+    box(field).innerHTML =
+      '<b>' + safe + ' is held, not taken.</b> It is reserved for its owner on another ' +
+      'tool-assisted speedrun site, and only they may register it. If that is you: ' +
+      'sign up under any other name, then <a href="' + CLAIM + '" target="_blank" ' +
+      'rel="noopener">claim this one</a>. A granted claim renames your account to it.';
+  }
+
+  function check(field) {
+    var name = (field.value || '').trim();
+    if (name.length < 2) { clear(); return; }
+    if (name === asked) return;
+    asked = name;
+    fetch(ARCHIVIST + '/api/name/status?name=' + encodeURIComponent(name),
+          {credentials: 'omit'})
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || (field.value || '').trim() !== name) return;
+        if (j.state === 'held') explain(field, name); else clear();
+      })
+      .catch(function () { /* the notice is a courtesy; silence beats noise */ });
+  }
+
+  document.addEventListener('input', function (e) {
+    var field = e.target.closest ? e.target.closest(FIELD) : null;
+    if (!field) return;
+    clearTimeout(timer);
+    timer = setTimeout(function () { check(field); }, 400);
+  }, true);
+})();
+</script>
