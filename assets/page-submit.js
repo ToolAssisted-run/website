@@ -3,7 +3,8 @@
 // inspector, the stated-metrics fields, the preview, and the archive
 // (or save) itself. Moved out of app.js: these ids exist only here.
 import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
-  fileRowsOf, note, noteHtml, runPageUrl, post, setLastBtn } from './app.js';
+  fileRowsOf, note, noteHtml, runPageUrl, post, setLastBtn,
+  armMultiPick, searchArchive } from './app.js';
 
   var authorNamesPromise = null;
   // the registered member names, fetched once and shared
