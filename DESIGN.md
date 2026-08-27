@@ -406,7 +406,14 @@ enforces this on both edit paths (`SCORING_FIELDS` / `REPRO_FIELDS` +
 `metric:*` in `void_acts_for`), logs it, and a dry run announces it
 (`would_void`), so the Edit run form asks "are you sure" before sending.
 The prefilled record sent back unchanged is never a change: only a real
-difference (sub-ms tolerance for times) is recorded or voids anything.
+difference is recorded or voids anything. Times are compared at the
+resolution the time picker can express: every value the picker is handed
+(the record, an import from the movie, an import from the encode, a
+restored draft) is rounded once to whole milliseconds, and the archivist
+compares the value it gets against that same rounding. A round trip is
+therefore silent even when the stored duration is finer than a
+millisecond, and a correction of one millisecond is still a correction.
+This is what keeps replacing a video link from touching the scoring.
 
 - **One "Edit run" panel serves authors and covering experts** (`/api/edit`):
   notes, emulator, completion date, goal description, encode, stated time
@@ -654,7 +661,10 @@ gaming). Imports award nothing.
 The **Contribute board** is the public worklist: needs-verification and
 needs-reproduction tables with rising bounties, recent contributions in the
 side rail (only work that actually scored), open cases, the contributor
-leaderboard. **No claiming, no assignment**: anyone may do anything anytime;
+leaderboard. A run page carries the board's ask ("This run needs help")
+only while the run is still waiting for the verification that would rank
+it; an Unclassified run ranks by likes, so it never asks. **No claiming,
+no assignment**: anyone may do anything anytime;
 first to finish earns. Anti-rubber-stamp posture: reward-first,
 punish-manually — points mint immediately, contradiction opens a case, a
 pattern of forgery is a human, logged, appealable matter, never automatic.
