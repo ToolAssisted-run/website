@@ -3016,13 +3016,29 @@ def run_record():
     game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
     game = json.loads((run_dir.parent.parent / 'game.json').read_text())
     categories = json.loads((run_dir.parent.parent / 'categories.json').read_text())
+    # the effective run time in seconds: stated duration wins; legacy runs
+    # that never stated one derive it from frames/fps, falling back to the
+    # system's fps when the movie file carries none
+    seconds = None
+    if run.get('duration'):
+        seconds = run['duration']
+    elif not run.get('videoOnly') and (run.get('movie') or {}).get('frames'):
+        fps = (run.get('movie') or {}).get('fps')
+        if not fps:
+            try:
+                fps = json.loads((ARCHIVE / 'systems.json').read_text()).get(
+                    game_key.split('/')[0], {}).get('fps')
+            except (OSError, ValueError):
+                fps = None
+        if fps:
+            seconds = run['movie']['frames'] / fps
     who = session_user()
-    low = (who or '').lower()
     may = {'author': bool(who) and current_name(who).lower() in run_authors_now(run),
            'expert': bool(who) and expert_covers(who, game_key),
            'editor': bool(who) and is_editor(who)}
     resp = jsonify({'ok': True, 'run': {k: v for k, v in run.items() if not k.startswith('_')},
-                    'notes': notes, 'game': {'key': game_key, 'title': game.get('title'), 'system': game_key.split('/')[0]},
+                    'notes': notes, 'seconds': seconds,
+                    'game': {'key': game_key, 'title': game.get('title'), 'system': game_key.split('/')[0]},
                     'categories': categories, 'may': may, 'user': who})
     resp.headers['Cache-Control'] = 'no-store'
     return resp

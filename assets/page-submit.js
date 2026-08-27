@@ -316,9 +316,11 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       // the form has actually seen (a parsed movie, a checked encode)
       var timeImportSel = document.getElementById('s-timeimport');
       var encodeSeconds = null;   // from /api/encode/check, when the platform says
+      var recordSeconds = null;   // from /api/run/record in edit mode (backend-computed)
       function importSources(){
         return {movie: (movieInfo && movieInfo.parsed && movieInfo.seconds) || null,
-                encode: encodeSeconds || null};
+                encode: encodeSeconds || null,
+                record: recordSeconds || null};
       }
       function paintTimeImport(){
         if (timeImportSel) {
@@ -329,8 +331,10 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
             var sec = src[o.value];
             o.disabled = !sec;
             o.hidden = !sec;   // a removed movie takes its option away entirely
-            o.textContent = (o.value === 'movie' ? 'the movie file' : 'the video encode')
-                          + (sec ? ' · ' + secClock(sec) : '');
+            var label = o.value === 'movie' ? 'the movie file'
+                      : o.value === 'encode' ? 'the video encode'
+                      : 'the archived record';
+            o.textContent = label + (sec ? ' · ' + secClock(sec) : '');
             if (sec) any = true;
           });
           timeImportSel.disabled = !any;
@@ -614,7 +618,13 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
             files.forEach(function(f){ rowsBox.querySelector('.addfile').click(); var rows = rowsBox.querySelectorAll('.filerow'); var row = rows[rows.length - 1]; row.querySelector('[name=file_name]').value = f.name || ''; row.querySelector('[name=file_sha1]').value = f.sha1 || ''; });
             if (!editMay.author) submitForm.querySelector('[name=attachments]').disabled = true;
             (run.contentWarnings || []).forEach(function(w){ var b = submitForm.querySelector('[name=content_warnings][value="' + w + '"]'); if (b) b.checked = true; });
-            submitForm.querySelector('[name=notes]').value = j.notes || '';
+            // pre-fill notes from backend raw text (the stored markup, not
+            // any rendered form); done before paintPanels opens the panels
+            var notesArea = submitForm.querySelector('[name=notes]');
+            if (notesArea) {
+              notesArea.value = j.notes || '';
+              notesArea.dispatchEvent(new Event('input', {bubbles: true}));
+            }
             if (run.goalDescription) submitForm.querySelector('[name=goal_description]').value = run.goalDescription;
             if (!editMay.author) { byIdS('s-why').hidden = false; submitForm.querySelector('[name=reason]').required = true; }
             if (!editMay.author && !editMay.expert) {
@@ -630,14 +640,24 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
             // every panel open: the record is complete by definition
             for (var i = 1; i <= 6; i++) revealed[i] = true;
             previewed = true;
-            editStatedTime(run);
+            editStatedTime(run, j.seconds);
+            // make the archived time importable from the dropdown too
+            if (j.seconds && timeImportSel) {
+              recordSeconds = j.seconds;
+              if (!timeImportSel.querySelector('[value=record]')) {
+                var recOpt = document.createElement('option');
+                recOpt.value = 'record';
+                timeImportSel.appendChild(recOpt);
+              }
+            }
             paintKind(); paintPanels();
           }).catch(function(){ byIdS('s-subtitle').textContent = 'could not reach the archivist'; });
       }
-      function editStatedTime(run){
-        // the record's time, back into h m s ms: the stated duration, or,
-        // for a legacy run that never stated one, the frames-derived value
-        var sec = run.duration;
+      function editStatedTime(run, sec){
+        // prefer the backend-computed seconds (includes system-fps fallback
+        // for legacy runs that never stored fps in their movie metadata);
+        // fall back to the run's own stated duration or frames-derived value
+        if (!sec && run.duration) sec = run.duration;
         if (!sec && run.movie && run.movie.frames && run.movie.fps) sec = run.movie.frames / run.movie.fps;
         if (!sec) return;
         setTime(sec);
