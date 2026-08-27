@@ -8,7 +8,7 @@ held, says so and points at the claim.
 
 Install (admin, once):
 
-1. `cd infra/discourse-theme && zip -r held-name.zip held-name`
+1. `cd infra/discourse-theme && python3 -c "import shutil; shutil.make_archive('held-name', 'zip', '.', 'held-name')"`
 2. Forum admin -> Customize -> Themes -> Install -> From your device,
    pick `held-name.zip`.
 3. Add the component to the active theme (Themes -> the site theme ->
