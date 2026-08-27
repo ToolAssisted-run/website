@@ -108,11 +108,17 @@ if live_groups:
                                 if e['scope'] == 'group:' + gr['key']})
         site_experts = sorted({e['user'] for e in experts_reg
                                if e['scope'] == 'site'}, key=str.lower)
-        # the move form lists every game not already here, with the group
-        # each would leave
+        group_permissions = sorted(
+            set(gexperts)
+            | set(group_experts)
+            | {e.lower() for e in site_experts})
+        # The permission list must include direct group and site scopes even
+        # when this group has no games from which to derive coverage.
+        # The move form lists every game not already here, with the group each
+        # would leave.
         placed_in = {k: grx['title'] for grx in live_groups
                      for k in grx.get('games', []) if grx['key'] != gr['key']}
-        gact_data = {'group': gr['key'], 'experts': gexperts,
+        gact_data = {'group': gr['key'], 'experts': group_permissions,
                      'editorZone': True,
                      'movable': [{'key': k, 'title': games[k]['title'],
                                   'group': placed_in.get(k, '')}

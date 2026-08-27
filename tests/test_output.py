@@ -420,6 +420,9 @@ def main():
         ck('and its page says what an empty group is',
            'No games in this group yet' in hollow and 'f-groupmove' in hollow,
            hollow[:200])
+        hollow_actions = hollow[hollow.index('id="groupactdata"'):]
+        ck('an empty group gives covering site experts the action zone',
+           '"experts": ["root"]' in hollow_actions, hollow_actions[:300])
 
         # ---------- a withdrawal that took the content down ----------
         gone = all_html.get(out / 'runs' / 'M900108' / 'index.html', '')
