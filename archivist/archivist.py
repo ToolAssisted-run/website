@@ -2878,8 +2878,10 @@ def edit_run():
             if not time_match:
                 return fail('this category ranks by time, so the run states it as [h:]mm:ss or [h:]mm:ss.mmm')
             hours, minutes, seconds, fraction = time_match.groups()
-            duration = (int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds)
-                   + (int(fraction.ljust(3, "0")) / 1000 if fraction else 0.0))
+            stated_ms = (int(hours or 0) * 3600000 + int(minutes) * 60000
+                         + int(seconds) * 1000
+                         + (int(fraction.ljust(3, '0')) if fraction else 0))
+            duration = stated_ms / 1000
             if duration <= 0:
                 return fail('a run that takes no time at all is not a run')
             # only a real change is a change: the form sends the record's own
@@ -2898,7 +2900,16 @@ def edit_run():
                         movie_fps = None
                 if movie_fps:
                     derived = run['movie']['frames'] / movie_fps
-            same_as_record = (abs(duration - run['duration']) < 0.0005 if run.get('duration') is not None
+            # The picker speaks in whole milliseconds and rounds half up, so
+            # the record comes back through it rounded. Comparing against the
+            # value the form WOULD show is what makes a round trip silent: a
+            # stored duration of sub-millisecond precision (a time imported
+            # from a movie or an encode) used to land a hair past a half-
+            # millisecond tolerance and read as a scoring change, which voided
+            # the verifications of somebody who only touched the encode.
+            def form_ms(value):
+                return int(value * 1000 + 0.5)      # as the picker rounds it
+            same_as_record = (stated_ms == form_ms(run['duration']) if run.get('duration') is not None
                               else derived is not None and abs(duration - derived) < 0.002)
             if not same_as_record:
                 befores['duration'] = str(run.get('duration'))

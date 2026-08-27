@@ -189,6 +189,27 @@ def main():
             'status': {'reproduced': 'none', 'verified': 'none'},
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF45'}],
             'submitted': '2026-08-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
+        # a verified run whose stated duration is finer than the picker can
+        # say (a time that came in from a movie or an encode, kept at full
+        # precision): the form can only send it back rounded, and that round
+        # trip must not read as a new statement of the time
+        rd2 = seed / 'games/nes/pinball/runs/M900013'
+        rd2.mkdir(parents=True)
+        (rd2 / 'M900013.bk2').write_bytes(b'test')
+        (rd2 / 'thumb.png').write_bytes(PNG)
+        (rd2 / 'run.json').write_text(json.dumps({
+            'id': 'M900013', 'game': 'nes/pinball', 'category': {'goal': '100k-glitched'},
+            'authors': [{'user': 'TestAuthor'}],
+            'duration': 205.4115,
+            'movie': {'file': 'M900013.bk2', 'format': 'bk2', 'frames': 12345,
+                      'rerecords': None, 'start': 'power-on'},
+            'thumbnail': 'thumb.png',
+            'contract': {'emulator': 'BizHawk 2.11'},
+            'status': {'reproduced': 'none', 'verified': 'provisional'},
+            'verifications': [{'user': 'watcher', 'date': '2026-08-20',
+                               'at': '2026-08-20T22:27:28Z'}],
+            'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF99'}],
+            'submitted': '2026-08-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
         subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=seed, check=True)
         subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t',
                         'add', '-A'], cwd=seed, check=True)
@@ -1107,6 +1128,24 @@ def main():
                                              'time': prefill_, 'dry_run': '1'})
             ck('an encode change with the prefilled derived time is encode alone',
                c == 200 and r['would_change'] == ['encode'] and r['would_void'] == [], str(r)[:200])
+
+            # the same guarantee for a stated duration finer than a
+            # millisecond: the picker rounds it, so the value that comes back
+            # is not the record to the last decimal, and reading that as a
+            # scoring change would void a verification over a changed encode
+            sub_ = json.loads((work / 'games/nes/pinball/runs/M900013/run.json').read_text())['duration']
+            rounded_ = '%d:%02d.%03d' % (sub_ // 60, int(sub_) % 60, round(sub_ * 1000) % 1000)
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900013',
+                                             'encode': 'https://youtu.be/goodvid12346',
+                                             'time': rounded_, 'dry_run': '1'})
+            ck('an encode change on a sub-millisecond time is encode alone',
+               c == 200 and r['would_change'] == ['encode'] and r['would_void'] == [], str(r)[:200])
+            # and a real correction of that time is still a scoring change
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900013',
+                                             'time': '3:25.413', 'dry_run': '1'})
+            ck('a one-millisecond correction still counts as stating a new time',
+               c == 200 and r['would_change'] == ['duration']
+               and r['would_void'] == ['verifications'], str(r)[:200])
 
             # designated "You may also like" picks live on /api/edit
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',

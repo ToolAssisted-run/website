@@ -134,11 +134,20 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
         var m = /^(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?$/.exec(String(v || '').trim());
         if (!m) return;
         var sec = (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+((m[4] || '').padEnd(3, '0')) / 1000 || 0);
-        byIdS('t-h').value = Math.floor(sec / 3600) || '';
-        byIdS('t-m').value = Math.floor(sec / 60) % 60;
-        byIdS('t-s').value = Math.floor(sec) % 60;
-        byIdS('t-ms').value = Math.round((sec % 1) * 1000);
+        setTime(sec);
       };
+      // A time reaches the picker in whole milliseconds, because that is all
+      // the picker can say: the record's own duration, an import from the
+      // movie, an import from the encode, a restored draft. Rounding the
+      // total (rather than the fraction on its own) keeps a value like
+      // 12.9996 s out of an impossible ".1000" the archivist would reject.
+      function setTime(sec){
+        var ms = Math.round(sec * 1000);
+        byIdS('t-h').value = Math.floor(ms / 3600000) || '';
+        byIdS('t-m').value = Math.floor(ms / 60000) % 60;
+        byIdS('t-s').value = Math.floor(ms / 1000) % 60;
+        byIdS('t-ms').value = ms % 1000;
+      }
       function pad2(n){ return (n < 10 ? '0' : '') + n; }
       function composeTime(){
         if (!timeField) return;
@@ -340,10 +349,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
         var sec = importSources()[timeImportSel.value];
         timeImportSel.value = '';
         if (!sec) return;
-        byIdS('t-h').value = Math.floor(sec / 3600) || '';
-        byIdS('t-m').value = Math.floor(sec / 60) % 60;
-        byIdS('t-s').value = Math.floor(sec) % 60;
-        byIdS('t-ms').value = Math.round((sec % 1) * 1000);
+        setTime(sec);
         composeTime();
         paintPanels();
       });
@@ -634,10 +640,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
         var sec = run.duration;
         if (!sec && run.movie && run.movie.frames && run.movie.fps) sec = run.movie.frames / run.movie.fps;
         if (!sec) return;
-        byIdS('t-h').value = Math.floor(sec / 3600) || '';
-        byIdS('t-m').value = Math.floor(sec / 60) % 60;
-        byIdS('t-s').value = Math.floor(sec) % 60;
-        byIdS('t-ms').value = Math.round((sec % 1) * 1000);
+        setTime(sec);
         composeTime();
       }
       function byIdS(id){ return document.getElementById(id); }
