@@ -243,7 +243,9 @@ Log in (top right) to reply from here.</p></section>
   </form></details>
   <p id="report-msg" class="actmsg" hidden></p>
   <script type="application/json" id="likedata">{{ json_blob(like_data) }}</script>
-  {% if not is_leg and not is_ranked(r) %}<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>{% endif %}
+  {# the ask is only honest when the run is actually on a worklist: the view
+     works out whether anything here is open at all (issue #76) #}
+  {% if not is_leg and needs_help %}<a class="btn quiet" href="../../contribute/">This run needs help: Contribute</a>{% endif %}
 </aside></div>
 {% if is_leg %}
 {# the import notice, at the very bottom: where it came from, who brought

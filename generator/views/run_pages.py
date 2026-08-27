@@ -156,6 +156,10 @@ for r in runs:
         'openReports': [{'id': x['id'], 'kind': x['kind'], 'by': x['by']}
                         for x in r.get('reports', []) if x['status'] == 'open'],
     }
+    # "This run needs help": the ask is for the verification that would rank
+    # the run. An Unclassified run ranks by likes, so no verification is
+    # missing from it and there is nothing to ask for (issue #76).
+    needs_help = not is_ranked(r) and not is_unclassified(r)
     like_data = {'run': r['id'],
                  'authors': [canon(a['user']) for a in r['authors']],
                  'likes': [l['user'].lower() for l in r.get('likes', [])]}
@@ -168,7 +172,7 @@ for r in runs:
                open_case=open_case, metric_rows=metric_rows, nrev=nrev, notes_src=notes_src,
                atts=r.get('attachments', []), today=datetime.date.today().isoformat(),
                n_open_reports=len(act_data['openReports']),
-               act_data=act_data, like_data=like_data)
+               act_data=act_data, like_data=like_data, needs_help=needs_help)
     crumb = tpl('run_pages_crumb.html', r=r, g=g).strip()
     (OUT / 'runs' / r['id']).mkdir(parents=True, exist_ok=True)
     who = ', '.join(a['user'] for a in r['authors'])
