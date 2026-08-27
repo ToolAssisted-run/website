@@ -85,7 +85,7 @@ a{color:inherit}
 .au{font-weight:600;text-decoration:none}.au:hover{color:var(--accent-text)}
 .au.unclaimed .udot{color:var(--imported);font-size:.7em;vertical-align:super;margin-left:2px}
 .udot{color:var(--imported)}
-.btn{display:inline-block;text-align:center;padding:10px 16px;border-radius:9px;background:var(--accent);color:#04140A;text-decoration:none;font-family:ui-monospace,monospace;font-size:.84rem;font-weight:700}
+.btn{display:inline-block;text-align:center;padding:10px 16px;border-radius:9px;background:var(--accent);color:#04140A;text-decoration:none;font-family:ui-monospace,monospace;font-size:.84rem;font-weight:700;font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0;letter-spacing:0}
 .btn.danger{background:#DC2626;color:#FEF2F2}
 /* every action button is the same black-over-green; only danger (red) and
    warn (amber) differ, because they mean something. The old page-colored
