@@ -502,7 +502,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       }
       function applyDraftFields(fields){
         // file rows first, so their inputs exist to be filled
-        var rowsBox = submitForm.querySelector('.filerows');
+        const rowsBox = submitForm.querySelector('.filerows');
         var names = [].concat(fields.file_name || []), shas = [].concat(fields.file_sha1 || []);
         if (rowsBox && names.length) {
           rowsBox.querySelectorAll('.filerow').forEach(function(r){ r.remove(); });
@@ -511,7 +511,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
         var seen = {};
         Array.prototype.forEach.call(submitForm.elements, function(e){
           if (!e.name || !(e.name in fields) || e.type === 'file') return;
-          var val = fields[e.name];
+          let val = fields[e.name];
           if (Array.isArray(val)) { var i = seen[e.name] || 0; seen[e.name] = i + 1; val = val[i]; if (val === undefined) return; }
           if (e.type === 'checkbox') e.checked = (val === e.value);
           else if (e.fill) e.fill(val);
