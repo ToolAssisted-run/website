@@ -16,10 +16,17 @@
 [hidden]{display:none!important}
 body{background:var(--ground);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5;min-height:100vh;display:flex;flex-direction:column}
 a{color:inherit}
-.nav{display:flex;align-items:center;gap:14px;padding:13px 26px;background:var(--bg);border-bottom:3px solid var(--hair);flex-wrap:wrap}
+.nav{display:flex;align-items:center;gap:14px;padding:13px 26px;background:var(--bg);border-bottom:3px solid var(--hair);flex-wrap:nowrap}
+/* only the open menu stacks; the closed bar is one row or it is folded */
+.nav.open{flex-wrap:wrap}
 .brand{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:500;text-decoration:none;display:inline-flex}
 .brand b{color:var(--accent-text);font-weight:700}
 .brandlogo{height:40px;display:block}
+/* on a narrow bar the logo is what gives way; the menu button and the
+   account cluster keep their size, or the bell and avatar stack */
+.brand{flex:0 1 auto;min-width:0}
+.navtoggle,#navauth{flex:none}
+@media(max-width:480px){.nav{padding:12px 14px;gap:10px}.brandlogo{height:32px}}
 .logo-dark{display:none}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .logo-light{display:none}
 :root:not([data-theme=light]) .logo-dark{display:block}}
@@ -32,7 +39,7 @@ a{color:inherit}
 .navsep{width:2px;height:20px;background:var(--hair);margin:0 6px;align-self:center}
 /* the archivist is unreachable: amber, like everything else here that is
    pending rather than broken, and quiet enough not to shout on every page */
-.navoff{border:2px solid rgba(217,119,6,.45);background:rgba(217,119,6,.1);color:#D97706;
+.navoff{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:2px solid rgba(217,119,6,.45);background:rgba(217,119,6,.1);color:#D97706;
  font-family:ui-monospace,monospace;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .navoff:hover{background:rgba(217,119,6,.2)}
 .pickbox{margin-bottom:6px}
@@ -40,14 +47,14 @@ a{color:inherit}
 .chipx{border:0;background:none;color:inherit;cursor:pointer;font-weight:700;padding:0 2px}
 .navoff::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
  background:#D97706;margin-right:6px;vertical-align:middle}
-.navsearch{margin-left:auto}
+.navsearch{margin-left:auto;flex:0 1 auto;min-width:0}
 .navtoggle{display:none;align-items:center;justify-content:center;margin-left:auto;
   width:40px;height:36px;border:2.5px solid var(--hair);border-radius:9px;
   background:var(--panel);color:var(--ink);cursor:pointer;padding:0}
 .navtoggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;
   stroke-linecap:round}
 .navtoggle:hover{border-color:var(--accent-text)}
-.navsearch input{padding:6px 12px;border:2.5px solid var(--hair);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:.84rem;width:170px}
+.navsearch input{padding:6px 12px;border:2.5px solid var(--hair);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:.84rem;width:170px;min-width:0;max-width:100%}
 .navsearch input:focus{outline:none;border-color:var(--accent-text)}
 .navuser{font-weight:700;color:var(--accent-text)}
 .wrap{flex:1;width:100%;max-width:1160px;margin:0 auto;padding:0 24px 60px}
@@ -286,8 +293,14 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 @media(max-width:900px){.cols{grid-template-columns:1fr}
   .herogrid{grid-template-columns:1fr}
   .heronews{order:2;height:auto;min-height:0}
-  .bskyfeed{max-height:340px}
-  /* the nav folds into a menu button instead of overflowing */
+  .bskyfeed{max-height:340px}}
+/* The bar folds into the menu button the moment the whole row stops fitting,
+   which is not where the page columns stack: brand, links, search and the
+   account cluster need about 1120px together, and below that the row used to
+   wrap, leaving the search, the bell and the avatar dangling on a second
+   line until 900px finally folded it. Measured, not guessed: raise this with
+   the widths in tests/test_layout.py if the links ever grow. */
+@media(max-width:1120px){
   .navtoggle{display:inline-flex}
   .nav .navlinks,.nav .navsearch{display:none}
   .nav.open .navlinks{display:flex;order:9;width:100%;flex-direction:column;gap:0;

@@ -101,10 +101,19 @@ async function look(url, width, view) {
     const collapsed = [...document.querySelectorAll('.card, .thumb, .tile, .grid, .policy, .implist')]
       .filter((el) => shown(el) && el.getBoundingClientRect().height === 0)
       .map((el) => el.className + '#' + (el.id || ''));
+    // the top bar: one row at every width, or it folded into the menu
+    // button. Wrapping into two is the failure this measures.
+    const navEl = document.querySelector('.nav');
+    const toggleEl = document.getElementById('navtoggle');
+    const nav = navEl ? {
+      h: Math.round(navEl.getBoundingClientRect().height),
+      folded: toggleEl ? getComputedStyle(toggleEl).display !== 'none' : false,
+      linksShown: shown(document.getElementById('navlinks')),
+    } : null;
     return {
       docWidth: document.documentElement.scrollWidth,
       viewport: window.innerWidth,
-      tiles, collages, collapsed,
+      tiles, collages, collapsed, nav,
       cards: [...document.querySelectorAll('.card')].filter(shown).length,
     };
   });
@@ -210,6 +219,12 @@ def main():
             # never saw the list. This is the page measured at the width that
             # broke.
             {'name': 'import', 'url': f'{base}/import/', 'width': 360, 'view': None},
+            # the top bar wrapped into two rows between 900px and about
+            # 1120px: the search, the bell and the avatar dangled under the
+            # links while the menu button waited for a breakpoint 200px away
+            {'name': 'nav-wide', 'url': f'{base}/', 'width': 1400, 'view': None},
+            {'name': 'nav-mid', 'url': f'{base}/', 'width': 1000, 'view': None},
+            {'name': 'nav-narrow', 'url': f'{base}/', 'width': 360, 'view': None},
         ]
         proc = subprocess.run([node, str(script), json.dumps(jobs)],
                               capture_output=True, text=True, cwd=str(pupp_root),
@@ -229,6 +244,20 @@ def main():
             sys.exit(1)
         data = json.loads(proc.stdout.strip().splitlines()[-1])
         ck('the browser drives the built site', True)
+
+        # the top bar: one row at every width, folding into the menu button
+        # exactly when the full row stops fitting
+        for name, folded_here in (('nav-wide', False), ('nav-mid', True),
+                                  ('nav-narrow', True)):
+            nav = data[name]['nav']
+            ck(f'{name}: the top bar is one row', nav and nav['h'] <= 80, str(nav))
+            ck(f'{name}: ' + ('folded into the menu button' if folded_here
+                              else 'shows the full row of links'),
+               nav and nav['folded'] == folded_here
+               and nav['linksShown'] == (not folded_here), str(nav))
+            ck(f'{name}: the page does not scroll sideways',
+               data[name]['docWidth'] <= data[name]['viewport'],
+               f"{data[name]['docWidth']} > {data[name]['viewport']}")
 
         groups = data['groups']
         ck('the groups view draws a card per group', groups['cards'] == 2, str(groups['cards']))
