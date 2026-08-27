@@ -3065,8 +3065,10 @@ def run_record():
     # that never stated one derive it from frames/fps, falling back to the
     # system's fps when the movie file carries none
     seconds = None
+    seconds_source = None
     if run.get('duration'):
         seconds = run['duration']
+        seconds_source = 'record'
     elif not run.get('videoOnly') and (run.get('movie') or {}).get('frames'):
         fps = (run.get('movie') or {}).get('fps')
         if not fps:
@@ -3077,12 +3079,13 @@ def run_record():
                 fps = None
         if fps:
             seconds = run['movie']['frames'] / fps
+            seconds_source = 'movie'
     who = session_user()
     may = {'author': bool(who) and current_name(who).lower() in run_authors_now(run),
            'expert': bool(who) and expert_covers(who, game_key),
            'editor': bool(who) and is_editor(who)}
     resp = jsonify({'ok': True, 'run': {k: v for k, v in run.items() if not k.startswith('_')},
-                    'notes': notes, 'seconds': seconds,
+                    'notes': notes, 'seconds': seconds, 'secondsSource': seconds_source,
                     'game': {'key': game_key, 'title': game.get('title'), 'system': game_key.split('/')[0]},
                     'categories': categories, 'may': may, 'user': who})
     resp.headers['Cache-Control'] = 'no-store'
@@ -4644,4 +4647,3 @@ if __name__ == '__main__':
     ctx = (cert, key) if cert and key else None
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '8100')),
             ssl_context=ctx, threaded=True)
-

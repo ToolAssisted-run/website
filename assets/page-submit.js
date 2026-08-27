@@ -317,6 +317,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       var timeImportSel = document.getElementById('s-timeimport');
       var encodeSeconds = null;   // from /api/encode/check, when the platform says
       var recordSeconds = null;   // from /api/run/record in edit mode (backend-computed)
+      var recordSecondsSource = null;
       function importSources(){
         return {movie: (movieInfo && movieInfo.parsed && movieInfo.seconds) || null,
                 encode: encodeSeconds || null,
@@ -333,6 +334,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
             o.hidden = !sec;   // a removed movie takes its option away entirely
             var label = o.value === 'movie' ? 'the movie file'
                       : o.value === 'encode' ? 'the video encode'
+                      : recordSecondsSource === 'movie' ? 'the archived movie'
                       : 'the archived record';
             o.textContent = label + (sec ? ' · ' + secClock(sec) : '');
             if (sec) any = true;
@@ -372,7 +374,9 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
           ? 'Unclassified runs rank by likes alone: nothing to score.'
           : (stated ? (n ? 'This category ranks by time, which you state, and by the values below.' : 'This category ranks by time, which you state.')
                     : 'This category ranks by the values below.');
-        composeTime();
+        // Segment inputs compose themselves on input. Do not compose here:
+        // category loading can run after edit mode restores the archived time,
+        // and an empty set of segments would otherwise erase that value.
       }
       paintKind();
       var goalCache = {};
@@ -644,6 +648,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
             // make the archived time importable from the dropdown too
             if (j.seconds && timeImportSel) {
               recordSeconds = j.seconds;
+              recordSecondsSource = j.secondsSource || null;
               if (!timeImportSel.querySelector('[value=record]')) {
                 var recOpt = document.createElement('option');
                 recOpt.value = 'record';
