@@ -609,7 +609,16 @@ A category defines what it ranks by.
   age).
 - **Held names**: every author name from the imported corpus (~1,284) is
   reserved in Discourse; nobody can register it but its owner. A name
-  credited to an author from ANY other TAS site is held for them.
+  credited to an author from ANY other TAS site is held for them. Discourse
+  refuses a held name in the same words it uses for a name somebody already
+  registered ("Not available. Try Nymx1?"), which turns away the one person
+  it is held for, so `/api/name/status` says which of the two it is (free,
+  taken, held, unknown; the forum unreachable is never read as free, and the
+  reserved list is read from the forum's own setting through a ten-minute
+  cache). The forum's signup form asks it as the name is typed and explains
+  the held case, through the theme component in
+  `infra/discourse-theme/held-name/`; the claim page carries the same
+  sentence for anyone who arrives there first.
 - **Claims**: `/api/claim/request` files one (one open claim per member);
   the **Steering Committee alone** decides (`/committee/` panel), seeing a
   **masked** form of the requester's forum email (`jo***oe@e****.com`),
