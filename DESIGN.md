@@ -215,10 +215,14 @@ picked and hashed locally, **the file never leaves the machine**, or typed;
 revisable from Edit run; the legacy single `contract.rom` on older records
 is shown as one row and never rewritten) · movie file, **optional**: a run
 without one is video-only (see below). Any extension is archived as it is;
-a supported format is parsed mechanically (`archivist/movieparse.py`: the
-TASVideos emulator formats, classic ones included (smv, zmv, fcm, fmv, vmv,
+a supported format is parsed mechanically (`archivist/movieparse.py`:
+Chimera's own `.chimeraProject`, the TASVideos emulator formats, classic
+ones included (smv, zmv, fcm, fmv, vmv,
 nmv, mmv, mcm, pjm, pxm, mc2, ymv, bkm, dof, rec), plus the game-specific
-tools the Tools page marks with a check; every parser validated against
+tools the Tools page marks with a check. A Chimera project IS the movie, so
+what it reports is the run's own length: the frame count stops at the last
+frame anything is pressed on, Chimera's own rule for its "Last input"
+marker, and idle frames left after it are warned about rather than counted; every parser validated against
 real movies from the TASVideos corpus. The Tools page carries three tables:
 current emulators, classic emulator formats (the retired rerecording
 emulators whose movies still parse in full), and game-specific tools, each
@@ -1118,8 +1122,6 @@ rate limits); registration stays open by principle (§1.4).
 ## 13. Open items
 
 - Contributor point weights are provisional; the community settles them.
-- Chimera's own movie format joins `movieparse.py` when it lands (the
-  miniHawk name is retired; the project lives at ToolAssisted-run/chimera).
 - Full-launch checklist: re-review policy drafts and point weights.
 - **v2, deferred by explicit decision**: automated client-side reproduction
   (browser/desktop Chimera replays locally, ROMs never leave the machine,

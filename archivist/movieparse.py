@@ -118,6 +118,104 @@ BK2_INVALID = ['greenzonesettings.txt', 'laglog', 'markers.txt',
 TASPROJ_INVALID = ['greenzone']
 
 
+# Chimera's own format: a project IS the movie (docs/project.md in
+# ToolAssisted-run/chimera). One JSON file holding the core pin, the file
+# manifest by SHA1, the settings, and the [Input] lump verbatim.
+#
+# The run's own markers (Run start, Last input, Run end) are DERIVED, never
+# stored: Chimera recomputes them on load, so this reads the frame the run
+# really ends on out of the input log by the rule Chimera itself uses, "the
+# last frame anything is pressed on". That is what the frame count reports,
+# because idle frames a TASer left after the last press are not part of the
+# run's time. When the project ever carries the frame outright, the field
+# below is preferred over the walk.
+CHIMERA_LAST_INPUT_KEYS = ('lastInputFrame', 'lastInput')
+
+
+def _chimera_neutral_axes(rows):
+    """The value each analog axis rests at, taken as the one it holds most.
+
+    A digital button says plainly whether it is pressed ('.' or a letter);
+    an axis does not, and its neutral belongs to the core package rather
+    than to the movie. The value an axis spends most of the run at is that
+    neutral in every real movie; a run that holds one axis off-centre for
+    most of its length is the case this cannot see, and it is warned about.
+    """
+    seen = {}
+    for row in rows:
+        for i, field in enumerate(row):
+            if field is None:
+                continue
+            seen.setdefault(i, {})
+            seen[i][field] = seen[i].get(field, 0) + 1
+    return {i: max(counts.items(), key=lambda kv: (kv[1], kv[0]))[0]
+            for i, counts in seen.items()}
+
+
+def _chimera_split(line):
+    """One input line as (masks, axes): the dot-masks and the numeric fields."""
+    masks, axes = [], []
+    for section in line.strip('|').split('|'):
+        if ',' in section or section.strip().lstrip('-').isdigit():
+            axes.extend(v.strip() for v in section.split(','))
+        else:
+            masks.append(section)
+    return masks, axes
+
+
+def parse_chimeraproject(data):
+    fmt = 'chimeraProject'
+    try:
+        doc = json.loads(data.decode('utf-8', 'replace'))
+    except ValueError:
+        return _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
+    if not isinstance(doc, dict) or 'input' not in doc:
+        return _err(fmt, 'Missing the input log, can not parse')
+    warnings = []
+
+    headers = doc.get('headers') if isinstance(doc.get('headers'), dict) else {}
+    lower = {str(k).lower(): v for k, v in headers.items()}
+    platform = str(lower.get('platform') or '').strip().lower()
+    system = BIZ_TO_TASV.get(platform, platform) or None
+    if not system:
+        warnings.append('the project names no platform; the game decides the frame rate')
+
+    rerecords = doc.get('rerecords')
+    if not isinstance(rerecords, int) or isinstance(rerecords, bool) or rerecords < 0:
+        rerecords = None
+        warnings.append('missing rerecord count')
+
+    lines = [l for l in re.split(r'\r\n|\r|\n', str(doc.get('input') or ''))
+             if l.startswith('|')]
+    if not lines:
+        return _err(fmt, 'The input log holds no frames, can not parse')
+
+    rows = [_chimera_split(l) for l in lines]
+    axis_count = max((len(a) for _, a in rows), default=0)
+    if axis_count:
+        warnings.append('analog axes: their resting value is read off the log, '
+                        'not off the core')
+    neutral = _chimera_neutral_axes([a for _, a in rows]) if axis_count else {}
+
+    def pressed(row):
+        masks, axes = row
+        if any(c not in '. ' for mask in masks for c in mask):
+            return True
+        return any(v != neutral.get(i) for i, v in enumerate(axes))
+
+    last_input = next((i for i in range(len(rows) - 1, -1, -1) if pressed(rows[i])), 0)
+    for key in CHIMERA_LAST_INPUT_KEYS:                # if the format ever says so itself
+        stated = doc.get(key)
+        if isinstance(stated, int) and not isinstance(stated, bool) and 0 <= stated < len(rows):
+            last_input = stated
+            break
+    idle = len(rows) - 1 - last_input
+    if idle > 0:
+        warnings.append(f'{idle} frame{"s" if idle != 1 else ""} after the last '
+                        f'input are not counted as run time')
+    return _ok(fmt, last_input + 1, rerecords, 'power-on', system, None, warnings)
+
+
 def parse_bk2(data, fmt='bk2'):
     invalid_entries = TASPROJ_INVALID if fmt == 'tasproj' else BK2_INVALID
     try:
@@ -1534,6 +1632,7 @@ def parse_rec(data):
 
 
 PARSERS = {
+    'chimeraproject': parse_chimeraproject,
 
     'bk2': lambda d: parse_bk2(d, 'bk2'),
     'tasproj': lambda d: parse_bk2(d, 'tasproj'),

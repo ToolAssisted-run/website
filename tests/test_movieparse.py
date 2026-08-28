@@ -365,7 +365,30 @@ def f_rec():
             + b'QWQUICK1'.ljust(16, b'\x00') + b'\x00' * (900 * 27)
             + struct.pack('<i', 0) + struct.pack('<i', 0x00492F75))
 
+def f_chimeraproject(idle=30, axes=False, last_input=None, rerecords=91):
+    """A Chimera project: the JSON wrapper and a BizHawk-shaped input lump.
+
+    Twelve frames of Down, twelve of Right, then `idle` frames of nothing:
+    the run ends on frame 23, whatever the log's length.
+    """
+    key = '#P1 Up|P1 Down|P1 Left|P1 Right|P1 A|P1 B|P1 Select|P1 Start|'
+    def row(mask, axis):
+        return ('|' + (f'{axis:5d},{axis:5d},|' if axes else '') + mask + '|')
+    lines = ([row('........', 128)]
+             + [row('.D......', 128)] * 12
+             + [row('...R....', 128)] * 11
+             + [row('........', 128)] * idle)
+    doc = {'title': 'gridWalker', 'core': {'name': 'Synth', 'version': '1',
+                                           'sha1': 'a' * 40},
+           'headers': {'MovieVersion': 'Chimera v1', 'Platform': 'NES'},
+           'rerecords': rerecords,
+           'input': '[Input]\nLogKey:' + key + '\n' + '\n'.join(lines) + '\n[/Input]'}
+    if last_input is not None:
+        doc['lastInputFrame'] = last_input
+    return json.dumps(doc).encode()
+
 FIXTURES = {
+    'chimeraproject': (f_chimeraproject(), 24, 'nes'),
     'bk2': (f_bk2(), 250, 'nes'),
     'tasproj': (f_bk2('tasproj'), 250, 'nes'),
     'gbmv': (f_bk2('gbmv'), 250, 'nes'),
@@ -417,7 +440,7 @@ FIXTURES = {
     'dof': (f_dof(), 9000, 'dos'),
     'rec': (f_rec(), 900, 'pc'),
 }
-RERECORDS = {'bk2': 1234, 'fm2': 4321, 'fm3': 77, 'dsm': 99, 'gmv': 555,
+RERECORDS = {'chimeraproject': 91, 'bk2': 1234, 'fm2': 4321, 'fm3': 77, 'dsm': 99, 'gmv': 555,
              'vbm': 42, 'dtm': 12, 'm64': 8, 'mar': 7, 'p2m2': 3, 'ctm': 15,
              'wtf': 21, 'gzm': 17, 'lsmv': 888, 'ltm': 64, 'jrsr': 55,
              'tas': 250, 'ctas': 31, 'fbm': 19, 'omr': 66, 'mctas': 77, 'smv': 777, 'zmv': 321, 'fcm': 88,
@@ -526,6 +549,37 @@ def main():
     ck('compressed bomb does not hang the parser', time.time() - t0 < 20,
        f'{time.time() - t0:.1f}s')
     ck('compressed bomb yields a result', isinstance(res, dict) and 'ok' in res)
+
+    # --- Chimera projects: the run ends where the input does ---
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject(idle=300))
+    ck('chimeraProject: idle frames after the last press are not run time',
+       res.get('frames') == 24, str(res))
+    ck('chimeraProject: the idle tail is said out loud',
+       any('not counted as run time' in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject(idle=0))
+    ck('chimeraProject: a run that ends on its last frame counts them all',
+       res.get('frames') == 24 and not any('not counted' in w for w in res['warnings']),
+       str(res))
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject(axes=True))
+    ck('chimeraProject: an axis resting at its usual value is not a press',
+       res.get('frames') == 24, str(res))
+    ck('chimeraProject: an inferred axis rest is admitted',
+       any('analog axes' in w for w in res.get('warnings', [])), str(res.get('warnings')))
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject(last_input=40))
+    ck('chimeraProject: a project that states the last input is believed',
+       res.get('frames') == 41, str(res))
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject(rerecords=None))
+    ck('chimeraProject: a missing rerecord count is a warning, not a failure',
+       res.get('ok') and res.get('rerecords') is None
+       and 'missing rerecord count' in res.get('warnings', []), str(res))
+    res = movieparse.parse('run.chimeraProject', json.dumps({'title': 'x'}).encode())
+    ck('chimeraProject: no input log, no parse', not res.get('ok'), str(res))
+    res = movieparse.parse('run.chimeraProject', b'{ this is not json')
+    ck('chimeraProject: a broken file fails cleanly', not res.get('ok'), str(res))
+    res = movieparse.parse('run.chimeraProject', FIXTURES['bk2'][0])
+    ck('chimeraProject: a bk2 under the wrong extension is refused',
+       not res.get('ok'), str(res))
 
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)
