@@ -655,6 +655,8 @@ footer a{color:var(--accent-text);text-decoration:none}
 /* the download comes first on the Tools page: the button, then the nightly
    note beside it (under it once the row stops fitting) */
 .chimeralede{margin:0 0 14px}
+/* the attribution stands under the section, said quietly */
+.chimeranote{font-size:.82rem;color:var(--faint);margin:14px 0 0}
 .chimeradl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 18px}
 .chimeradl .btn{flex:none}
 .chimeradl .statline{flex:1 1 260px;margin:0}
