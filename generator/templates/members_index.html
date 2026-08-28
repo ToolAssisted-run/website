@@ -4,7 +4,7 @@
 the stars their runs have earned. Click any column to re-sort.</p></div>
 </header>
 {# views are host state (absent on CI and the standby): the column appears only where they are known #}
-<table class="sortable"><thead><tr><th>Member</th><th class="num"><span class="starglyph">★</span> Author score</th>
+<table class="sortable"><thead><tr><th>Member</th><th class="num sort-desc"><span class="starglyph">★</span> Author score</th>
 {% if visits_known %}<th class="num" title="visits to all their runs">{{ EYE_ICON }} Views</th>{% endif %}
 <th class="num">Runs</th><th class="num">Contributor score</th></tr></thead>
 <tbody>{% for uname, a, st_ in members %}<tr onclick="if(!event.target.closest('a'))location='{{ profile_slug(uname) }}/'">

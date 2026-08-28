@@ -19,7 +19,7 @@
 {% endif %}
 <section><details class="secfold" open><summary><h2>Runs ({{ mine|length }})</h2></summary>
 {% set hw_any = mine|selectattr('_game.system', 'in', HW_SYSTEMS)|list|length > 0 %}
-<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th>{% if hw_any %}<th class="ctr">Console</th>{% endif %}</tr></thead>
+<table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th class="sort-desc">Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th>{% if hw_any %}<th class="ctr">Console</th>{% endif %}</tr></thead>
 <tbody>{% for r in mine %}{% set g = r._game %}{% set st2 = eff_state(r) %}
 <tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r.id }}/'"><td><a href="../../games/{{ g.key }}/">{{ g.title }}</a></td>
 <td>{{ cat_label(r) }}</td>
@@ -30,7 +30,7 @@
 {% endfor %}</tbody></table></details></section>
 <section><details class="secfold" open><summary><h2>Contributions · {{ cpts }} points{{ badge_chip(cpts) }}{{ medals(a.username) }}</h2></summary>
 {% if acts %}
-<table class="sortable"><thead><tr><th>Date</th><th>Act</th><th>Run</th><th class="num">Points earned</th></tr></thead>
+<table class="sortable"><thead><tr><th class="sort-desc">Date</th><th>Act</th><th>Run</th><th class="num">Points earned</th></tr></thead>
 <tbody>{% for d, desc, pts, r_ in acts %}
 <tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r_.id }}/'"><td>{{ moment(d) }}</td><td>{{ desc }}</td>
 <td><a href="../../runs/{{ r_.id }}/">{{ r_._game.title }} ({{ r_.id }})</a></td>

@@ -814,6 +814,12 @@ def main():
            'Nyx' not in members_page and 'Ada' in members_page,
            members_page[members_page.find('<tbody>'):][:200])
         ck('the member list keeps the claim path visible', 'claim/' in members_page)
+        ck('authors index table is marked sortable with initial author score sort',
+           '<table class="sortable">' in members_page
+           and 'class="num sort-desc"><span class="starglyph">★</span> Author score' in members_page)
+        ada_page = all_html[out / 'authors' / 'ada' / 'index.html']
+        ck('member profile tables are marked sortable',
+           '<table class="sortable">' in ada_page and '<th class="sort-desc">Date</th>' in ada_page)
         run_credits = all_html[out / 'runs' / 'M900101' / 'index.html']
         ck('a non-member is credited as plain text, linked nowhere',
            '<span class="au">Nyx</span>' in run_credits

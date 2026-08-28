@@ -554,6 +554,128 @@ def main():
             ck('a run page does not fetch the news feed',
                not any('bsky' in u for u in runpage['fetched']), str(runpage['fetched']))
 
+        # sortable table sorting under node
+        sort_test = td / 'test-sorting.mjs'
+        sort_test.write_text(r"""
+global.window = {
+  TAR: { api: 'https://forum.example/archivist', rel: '', v: 'test' },
+  location: { pathname: '/', href: 'https://toolassisted.run/', search: '' },
+  localStorage: { getItem: () => null, setItem(){}, removeItem(){} },
+  sessionStorage: { getItem: () => null, setItem(){}, removeItem(){} },
+  addEventListener(){},
+};
+global.localStorage = window.localStorage;
+global.sessionStorage = window.sessionStorage;
+global.document = {
+  documentElement: { dataset: {}, classList: { add(){}, remove(){} } },
+  head: { appendChild(){} },
+  body: { appendChild(){}, classList: { add(){}, remove(){} } },
+  getElementById: () => null,
+  querySelector: () => null,
+  querySelectorAll: () => [],
+  addEventListener(){},
+  cookie: '',
+};
+global.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, loggedIn: false }) });
+
+const { armSortableTable } = await import(""" + json.dumps(module_url(assets_dir, 'app.js')) + r""");
+
+function makeCell(text, isNum) {
+  return {
+    textContent: text,
+    dataset: {},
+    children: [],
+    classList: { contains: (c) => isNum && c === 'num' },
+    querySelector: () => null
+  };
+}
+
+const ths = [
+  { textContent: 'Member', dataset: {}, classes: new Set(), _attrs: {},
+    setAttribute(k, v){ this._attrs[k] = v; }, getAttribute(k){ return this._attrs[k] || null; },
+    classList: { add(...c){ c.forEach(x => ths[0].classes.add(x)); }, remove(...c){ c.forEach(x => ths[0].classes.delete(x)); }, contains(c){ return ths[0].classes.has(c); } },
+    _handlers: {}, addEventListener(t, f){ (this._handlers[t] = this._handlers[t] || []).push(f); },
+    click(){ (this._handlers['click'] || []).forEach(f => f({ preventDefault(){} })); }
+  },
+  { textContent: 'Author score', dataset: {}, classes: new Set(['num', 'sort-desc']), _attrs: {},
+    setAttribute(k, v){ this._attrs[k] = v; }, getAttribute(k){ return this._attrs[k] || null; },
+    classList: { add(...c){ c.forEach(x => ths[1].classes.add(x)); }, remove(...c){ c.forEach(x => ths[1].classes.delete(x)); }, contains(c){ return ths[1].classes.has(c); } },
+    _handlers: {}, addEventListener(t, f){ (this._handlers[t] = this._handlers[t] || []).push(f); },
+    click(){ (this._handlers['click'] || []).forEach(f => f({ preventDefault(){} })); }
+  },
+  { textContent: 'Runs', dataset: {}, classes: new Set(['num']), _attrs: {},
+    setAttribute(k, v){ this._attrs[k] = v; }, getAttribute(k){ return this._attrs[k] || null; },
+    classList: { add(...c){ c.forEach(x => ths[2].classes.add(x)); }, remove(...c){ c.forEach(x => ths[2].classes.delete(x)); }, contains(c){ return ths[2].classes.has(c); } },
+    _handlers: {}, addEventListener(t, f){ (this._handlers[t] = this._handlers[t] || []).push(f); },
+    click(){ (this._handlers['click'] || []).forEach(f => f({ preventDefault(){} })); }
+  }
+];
+
+const rows = [
+  { cells: [makeCell('Charlie', false), makeCell('★10', true), makeCell('2', true)], id: 'row-C' },
+  { cells: [makeCell('Alice', false), makeCell('★50', true), makeCell('5', true)], id: 'row-A' },
+  { cells: [makeCell('Bob', false), makeCell('★20', true), makeCell('1', true)], id: 'row-B' },
+  { cells: [makeCell('Dana', false), makeCell('—', true), makeCell('0', true)], id: 'row-D' },
+];
+
+const tbody = {
+  rows: [...rows],
+  appendChild(r){
+    const idx = this.rows.indexOf(r);
+    if (idx >= 0) this.rows.splice(idx, 1);
+    this.rows.push(r);
+  }
+};
+
+const table = {
+  dataset: {},
+  tHead: { querySelectorAll: () => ths },
+  tBodies: [tbody]
+};
+
+armSortableTable(table);
+
+const results = {};
+results.initArmed = ths[0].classes.has('sorth') && ths[1].classes.has('sorth');
+results.initAria = ths[1]._attrs['aria-sort'] === 'descending';
+
+ths[0].click();
+results.memberAsc = tbody.rows.map(r => r.id).join(',');
+results.memberAscClass = ths[0].classes.has('sort-asc') && !ths[1].classes.has('sort-desc');
+
+ths[0].click();
+results.memberDesc = tbody.rows.map(r => r.id).join(',');
+results.memberDescClass = ths[0].classes.has('sort-desc');
+
+ths[1].click();
+results.scoreDesc = tbody.rows.map(r => r.id).join(',');
+results.scoreDescClass = ths[1].classes.has('sort-desc');
+
+ths[1].click();
+results.scoreAsc = tbody.rows.map(r => r.id).join(',');
+results.scoreAscClass = ths[1].classes.has('sort-asc');
+
+console.log(JSON.stringify(results));
+""")
+        sr = subprocess.run([node, str(sort_test)], capture_output=True, text=True, timeout=30)
+        ck('table sorting script runs under node', sr.returncode == 0, sr.stderr[-300:])
+        if sr.returncode == 0:
+            sres = json.loads(sr.stdout.strip().splitlines()[-1])
+            ck('sortable table headers are armed with sorth and aria-sort',
+               sres.get('initArmed') and sres.get('initAria'), str(sres))
+            ck('clicking text column sorts ascending A to Z',
+               sres.get('memberAsc') == 'row-A,row-B,row-C,row-D' and sres.get('memberAscClass'),
+               str(sres))
+            ck('clicking text column again sorts descending Z to A',
+               sres.get('memberDesc') == 'row-D,row-C,row-B,row-A' and sres.get('memberDescClass'),
+               str(sres))
+            ck('clicking numeric column sorts descending with missing values last',
+               sres.get('scoreDesc') == 'row-A,row-B,row-C,row-D' and sres.get('scoreDescClass'),
+               str(sres))
+            ck('clicking numeric column again sorts ascending with missing values last',
+               sres.get('scoreAsc') == 'row-C,row-B,row-A,row-D' and sres.get('scoreAscClass'),
+               str(sres))
+
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)
 

@@ -718,3 +718,118 @@ window.TARApp = window.TARApp || {};
       }
     });
   }
+
+  // ---- sortable tables: click any column header to re-sort ----
+  function cellValue(td){
+    if (!td) return { type: 'empty', val: null };
+    if (td.dataset && td.dataset.sort !== undefined) {
+      var sv = td.dataset.sort;
+      var num = Number(sv);
+      return isNaN(num) ? { type: 'text', val: sv.toLowerCase() } : { type: 'num', val: num };
+    }
+    var raw = td.textContent.trim();
+    if (raw === '' || raw === '—' || raw === '·' || raw === '-') {
+      return { type: 'empty', val: null };
+    }
+    var mainChild = td.querySelector ? td.querySelector('b, a') : null;
+    var primaryText = (mainChild && td.children && td.children[0] === mainChild) ? mainChild.textContent.trim() : raw;
+
+    var timeMatch = raw.match(/^(?:(\d+):)?(\d{1,2}):(\d{2}(?:\.\d+)?)$/);
+    if (timeMatch) {
+      var h = timeMatch[1] ? parseFloat(timeMatch[1]) : 0;
+      var m = parseFloat(timeMatch[2]);
+      var s = parseFloat(timeMatch[3]);
+      return { type: 'num', val: h * 3600 + m * 60 + s };
+    }
+    var numStr = raw.replace(/[★+,\s]/g, '').replace(/f$/i, '');
+    if (/^-?\d+(?:\.\d+)?$/.test(numStr)) {
+      return { type: 'num', val: parseFloat(numStr) };
+    }
+    return { type: 'text', val: primaryText.toLowerCase() };
+  }
+
+  function compareCells(aTd, bTd, asc){
+    var a = cellValue(aTd);
+    var b = cellValue(bTd);
+
+    if (a.type === 'empty' && b.type === 'empty') return 0;
+    if (a.type === 'empty') return 1;
+    if (b.type === 'empty') return -1;
+
+    var res = 0;
+    if (a.type === 'num' && b.type === 'num') {
+      res = a.val - b.val;
+    } else {
+      var aStr = a.val !== null ? String(a.val) : '';
+      var bStr = b.val !== null ? String(b.val) : '';
+      res = aStr.localeCompare(bStr, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    return asc ? res : -res;
+  }
+
+  export function armSortableTable(table){
+    if (!table || table.dataset.sortArmed) return;
+    table.dataset.sortArmed = '1';
+    var thead = table.tHead || table.querySelector('thead');
+    if (!thead) return;
+    var ths = Array.prototype.slice.call(thead.querySelectorAll('th'));
+    if (!ths.length) return;
+    var tbody = table.tBodies && table.tBodies[0] ? table.tBodies[0] : table.querySelector('tbody');
+    if (!tbody) return;
+
+    ths.forEach(function(th, colIdx){
+      th.classList.add('sorth');
+      if (!th.getAttribute('role')) th.setAttribute('role', 'columnheader');
+      if (!th.getAttribute('tabindex')) th.setAttribute('tabindex', '0');
+
+      var isAsc = th.classList.contains('sort-asc');
+      var isDesc = th.classList.contains('sort-desc');
+      if (isAsc) th.setAttribute('aria-sort', 'ascending');
+      else if (isDesc) th.setAttribute('aria-sort', 'descending');
+      else th.setAttribute('aria-sort', 'none');
+
+      function sortCol(){
+        var asc;
+        if (th.classList.contains('sort-desc')) {
+          asc = true;
+        } else if (th.classList.contains('sort-asc')) {
+          asc = false;
+        } else {
+          asc = !th.classList.contains('num') && th.dataset.type !== 'num';
+        }
+
+        ths.forEach(function(otherTh){
+          otherTh.classList.remove('sort-asc');
+          otherTh.classList.remove('sort-desc');
+          otherTh.setAttribute('aria-sort', 'none');
+        });
+        th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+        th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+
+        var rows = Array.prototype.slice.call(tbody.rows);
+        rows.sort(function(rowA, rowB){
+          return compareCells(rowA.cells[colIdx], rowB.cells[colIdx], asc);
+        });
+        rows.forEach(function(row){ tbody.appendChild(row); });
+      }
+
+      th.addEventListener('click', sortCol);
+      th.addEventListener('keydown', function(ev){
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          sortCol();
+        }
+      });
+    });
+  }
+
+  export function initSortableTables(){
+    document.querySelectorAll('table.sortable').forEach(armSortableTable);
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSortableTables);
+    } else {
+      initSortableTables();
+    }
+  }
