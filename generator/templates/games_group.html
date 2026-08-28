@@ -8,8 +8,8 @@
 <h1>{{ gr['title'] }}</h1>
 
 <p class="authline">{% if synthetic %}These games are not part of any group yet. Every game belongs to one, so they wait here until an expert places them in the group they belong to.{% else %}A game group: one family of games, across every system it appeared on. Experts may hold a scope over a whole group.{% endif %}</p>
-{% if not synthetic and (gexperts or site_experts) %}
-<p class="authline">{% if gexperts %}Group experts: {% for u in gexperts %}{{ member_chip(authors.get(u, {}).get('username', u), '../../') }}{% if not loop.last %} · {% endif %}{% endfor %}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}{% else %}<span class="actmeta">No expert holds this group's own scope; <span class="scopetail" title="{{ site_experts|join(', ') }}">{{ site_experts|length }} site-wide expert{{ 's' if site_experts|length != 1 }}</span> cover{{ '' if site_experts|length != 1 else 's' }} it.</span>{% endif %}</p>
+{% if not synthetic and gexperts %}
+<p class="authline authline-experts"><span class="exp-label">Experts:</span><span class="scopegrid">{{ scope_badge('Group', gexperts, '../../') }}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}</span></p>
 {% endif %}
 </div></header>
 {% if ggames %}

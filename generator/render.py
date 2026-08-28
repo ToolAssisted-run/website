@@ -89,12 +89,23 @@ def group_chip(game_key, rel='../../'):
                       for gr in mine)
     return f'<p class="grpline">Part of {links}</p>'
 
+def scope_badge(label, users, rel):
+    """A segmented pill badge for an expert tier: scope label prefix in one
+    color segment, list of experts in a second segment."""
+    dot = '<span class="u-sep">·</span>'
+    chips = ''.join(
+        f'<span class="u-item">{member_chip(u, rel)}{dot if i < len(users) - 1 else ""}</span>'
+        for i, u in enumerate(users))
+    return (f'<span class="scopebadge">'
+            f'<span class="scopetag">{esc(label)}</span>'
+            f'<span class="scopeusers">{chips}</span>'
+            f'</span>')
+
 def expert_line(game_key, rel):
-    """Who speaks for this game, closest scope first (#65): its own experts,
-    then its group's, marked so, then a quiet count of the wider scopes
-    (system and whole-site) whose names, covering everything, say nothing
-    about this game in particular. The count carries the names in its
-    tooltip; no line renders when nobody holds a game or group scope."""
+    """Who speaks for this game, closest scope first: its own experts (Game),
+    then its group's (Group), then its system's (System), followed by a quiet
+    count of site-wide experts. No line renders when nobody holds a game, group,
+    or system scope."""
     own = sorted({e['user'] for e in experts_reg if e['scope'] == game_key},
                  key=str.lower)
     group_scopes = {'group:' + gr['key'] for gr in groups
@@ -103,20 +114,27 @@ def expert_line(game_key, rel):
     grp = sorted({e['user'] for e in experts_reg if e['scope'] in group_scopes
                   and e['user'].lower() not in shown}, key=str.lower)
     shown |= {u.lower() for u in grp}
-    wider = sorted({e['user'] for e in experts_reg
-                    if e['scope'] in ('site', game_key.split('/')[0])
-                    and e['user'].lower() not in shown}, key=str.lower)
-    if not own and not grp:
+    sys_scope = game_key.split('/')[0]
+    sysexp = sorted({e['user'] for e in experts_reg if e['scope'] == sys_scope
+                     and e['user'].lower() not in shown}, key=str.lower)
+    shown |= {u.lower() for u in sysexp}
+    site = sorted({e['user'] for e in experts_reg if e['scope'] == 'site'
+                   and e['user'].lower() not in shown}, key=str.lower)
+    if not own and not grp and not sysexp:
         return ''
     parts = []
     if own:
-        parts.append(' · '.join(member_chip(u, rel) for u in own))
+        parts.append(scope_badge('Game', own, rel))
     if grp:
-        parts.append(' · '.join(member_chip(u, rel) for u in grp)
-                     + ' <span class="actmeta">(group scope)</span>')
-    tail = (f' <span class="actmeta scopetail" title="{esc(", ".join(wider))}">'
-            f'+{len(wider)} wider-scope</span>' if wider else '')
-    return '<p class="authline">Experts: ' + ' · '.join(parts) + tail + '</p>'
+        parts.append(scope_badge('Group', grp, rel))
+    if sysexp:
+        parts.append(scope_badge('System', sysexp, rel))
+    tail = (f' <span class="actmeta scopetail" title="{esc(", ".join(site))}">'
+            f'+{len(site)} site-wide</span>' if site else '')
+    return (f'<p class="authline authline-experts">'
+            f'<span class="exp-label">Experts:</span>'
+            f'<span class="scopegrid">{" ".join(parts)}{tail}</span>'
+            f'</p>')
 
 def esc(s): return html.escape(str(s), quote=True)
 
@@ -611,7 +629,7 @@ def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
 TEMPLATES = pathlib.Path(__file__).resolve().parent / 'templates'
 
 _HTML_HELPERS = (
-    'role_badges group_chip expert_line card_views chip_views md_html run_date_cell '
+    'role_badges group_chip expert_line scope_badge card_views chip_views md_html run_date_cell '
     'frames_html wiki_html inline author_chip member_chip thumb_html console_tick '
     'tick console_chip state_chip badge_chip medals dl_members dl_heldnames dl_games '
     'primary_metric_html seo_head fmt_metric').split()

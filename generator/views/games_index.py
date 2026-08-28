@@ -79,7 +79,12 @@ for skey in sorted(by_sys):
     sgames = sorted(by_sys[skey], key=lambda g: g['title'].lower())
     sruns = runs_of(sgames)
     sname = systems[skey]['name']
+    sysexperts = sorted({e['user'] for e in experts_reg if e['scope'] == skey}, key=str.lower)
+    shown_sys = {u.lower() for u in sysexperts}
+    site_experts_sys = sorted({e['user'] for e in experts_reg if e['scope'] == 'site'
+                               and e['user'].lower() not in shown_sys}, key=str.lower)
     sbody = tpl('games_system.html', sname=sname, sgames=sgames, sruns=sruns,
+                sysexperts=sysexperts, site_experts=site_experts_sys,
                 srows=ranked_rows(sruns), **HELPERS)
     sdir = OUT / 'systems' / skey
     sdir.mkdir(parents=True, exist_ok=True)
@@ -104,13 +109,15 @@ if live_groups:
         # name, the site-wide ones as a quiet count; child-game experts stay
         # on their game pages. Permissions (gact_data) keep the full union.
         gexperts = sorted({u for g in ggames for u in covering_experts(g['key'])})
-        group_experts = sorted({e['user'].lower() for e in experts_reg
-                                if e['scope'] == 'group:' + gr['key']})
+        group_experts = sorted({e['user'] for e in experts_reg
+                                if e['scope'] == 'group:' + gr['key']}, key=str.lower)
+        shown_grp = {u.lower() for u in group_experts}
         site_experts = sorted({e['user'] for e in experts_reg
-                               if e['scope'] == 'site'}, key=str.lower)
+                               if e['scope'] == 'site'
+                               and e['user'].lower() not in shown_grp}, key=str.lower)
         group_permissions = sorted(
             set(gexperts)
-            | set(group_experts)
+            | {u.lower() for u in group_experts}
             | {e.lower() for e in site_experts})
         # The permission list must include direct group and site scopes even
         # when this group has no games from which to derive coverage.

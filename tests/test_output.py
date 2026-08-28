@@ -291,7 +291,10 @@ def main():
                                          'rta': 'https://www.speedrun.com/tg',
                                          'rules': 'No **game-breaking** glitches, game-wide.'}},
             experts=[{'user': 'Root', 'scope': 'site'},
-                     {'user': 'Grp', 'scope': 'group:test-family'}],
+                     {'user': 'Grp', 'scope': 'group:test-family'},
+                     {'user': 'SysExp', 'scope': 'nes'}] + [
+                         {'user': f'Exp{i:02d}', 'scope': 'nes/testgame'} for i in range(1, 13)
+                     ],
             groups=[{'key': 'test-family', 'title': 'Test <b>Family</b>',
                      'games': ['nes/testgame', 'dos/hardgame']},
                     {'key': 'lonely', 'title': 'Lonely',
@@ -304,9 +307,24 @@ def main():
                      'games': [], 'established': True,
                      'ratifiedBy': 'Root', 'ratifiedAt': '2026-02-10'}],
             ratified={'dos/hardgame': {'ratifiedBy': 'Grp', 'ratifiedAt': '2026-02-09'}},
-            role_events=[{'user': 'Ada', 'role': 'committee', 'action': 'granted',
-                          'by': 'founder', 'date': '2026-02-01',
-                          'reason': 'fixture: a sitting committee member'}],
+            role_events=[
+                {'user': 'Ada', 'role': 'committee', 'action': 'granted',
+                 'by': 'founder', 'date': '2026-02-01',
+                 'reason': 'fixture: a sitting committee member'},
+                {'user': 'CommUser1', 'role': 'committee', 'action': 'granted',
+                 'by': 'founder', 'date': '2026-02-01',
+                 'reason': 'fixture: a sitting committee member'},
+                {'user': 'CommUser2', 'role': 'committee', 'action': 'granted',
+                 'by': 'founder', 'date': '2026-02-01',
+                 'reason': 'fixture: a sitting committee member'},
+                {'user': 'EditorUser', 'role': 'editor', 'action': 'granted',
+                 'by': 'committee', 'date': '2026-02-02',
+                 'reason': 'fixture: an editor'},
+                {'user': 'Bob', 'role': 'editor', 'action': 'granted',
+                 'by': 'committee', 'date': '2026-02-02',
+                 'reason': 'fixture: an editor'},
+            ],
+            authors_extra=['EditorUser', 'Bob', 'CommUser1', 'CommUser2'],
             empty_games=['nes/runless-one'],
             claims=[{'member': 'Rep', 'identity': 'SomeHeldName',
                      'evidence': 'I posted from that account, fixture-style.',
@@ -475,9 +493,11 @@ def main():
         ck('the expert badge does not try to name a scope',
            'the whole site' not in rows_html and 'Expert ·' not in rows_html,
            rows_html[:200])
-        # the Committee wears its chip; Founder and Moderator stay in the role log
+        # the Committee and Editor wear their chips; Founder and Moderator stay in the role log
         ck('the Steering Committee is a badge',
            'rolechip role-committee">Steering Committee' in rows_html, rows_html[:200])
+        ck('the Editor is a badge',
+           'rolechip role-editor">Editor' in rows_html, rows_html[:200])
         ck('founder and moderator are not badges',
            'role-founder' not in rows_html and 'role-moderator' not in rows_html,
            rows_html[:200])
@@ -709,13 +729,9 @@ def main():
            'games/nes/orphan/' in uncl and 'games/dos/hardgame/' not in uncl)
         ck('it does not pretend to be a series',
            'Records across the group' not in uncl and 'Group experts' not in uncl)
-        ck('every game belongs to a group',
-           all('grpline' in h for pth, h in all_html.items()
-               if pth.parent.parent.parent.name == 'games'),
-           str([pth.parent.name for pth, h in all_html.items()
-                if pth.parent.parent.parent.name == 'games' and 'grpline' not in h]))
-        ck('an unclaimed game says so on its own page',
-           'groups/uncategorized/' in all_html[out / 'games' / 'nes' / 'orphan' / 'index.html'])
+        orphan_html = all_html[out / 'games' / 'nes' / 'orphan' / 'index.html']
+        ck('an unclaimed game shows no part-of group line',
+           'grpline' not in orphan_html and 'groups/uncategorized/' not in orphan_html)
         syspage_ = all_html[out / 'systems' / 'nes' / 'index.html']
         ck('library pages sort by release date and can hide unofficial games',
            'data-mode="released"' in syspage_ and 'id="hide-unofficial"' in syspage_
@@ -859,10 +875,17 @@ def main():
         # every title says nothing about any of them.
         gp = all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
         head_ = gp[:gp.find('</header>')]
-        ck('a game page names its group expert', 'Grp' in head_
-           and '(group scope)' in head_, head_[-400:])
+        ck('a game page names its game, group, and system experts with segmented scope badges',
+           all(f'Exp{i:02d}' in head_ for i in range(1, 13))
+           and 'class="scopetag">Game</span>' in head_
+           and 'Grp' in head_ and 'class="scopetag">Group</span>' in head_
+           and 'SysExp' in head_ and 'class="scopetag">System</span>' in head_
+           and 'class="scopebadge"' in head_
+           and '<span class="u-sep">·</span>' in head_, head_[-1000:])
+        ck('a large list of game experts renders cleanly separated by u-sep',
+           head_.count('<span class="u-sep">·</span>') >= 11)
         ck('the site-wide expert is a quiet count, never a chip (#65)',
-           'authors/root' not in head_ and 'wider-scope' in head_
+           'authors/root' not in head_ and 'site-wide' in head_
            and 'title="Root"' in head_, head_[-400:])
         # ---------- Unclassified runs on cards (#75) ----------
         # 'Pending' says a verification is owed; an Unclassified run is never
@@ -887,11 +910,23 @@ def main():
         ck('the reel cards link a sibling run relative to the page',
            re.search(r'class="card" href="\.\./M\d+/"', reel_page) is not None)
         grp_page = all_html[out / 'groups' / 'test-family' / 'index.html']
-        ck('a group page names only its own group experts (#65)',
-           'Group experts:' in grp_page and 'authors/grp' in grp_page
+        ck('a group page names only its own group experts with a segmented Group badge',
+           'Experts:' in grp_page and 'authors/grp' in grp_page
+           and 'class="scopetag">Group</span>' in grp_page
+           and 'class="scopebadge"' in grp_page
            and 'Group experts and above' not in grp_page, grp_page[:300])
         ck('site-wide experts roll up on the group page too',
            'site-wide' in grp_page and 'title="Root"' in grp_page, grp_page[:300])
+        nes_sys = all_html[out / 'systems' / 'nes' / 'index.html']
+        ck('a system page names its system experts with a segmented System badge',
+           'Experts:' in nes_sys and 'authors/sysexp' in nes_sys
+           and 'class="scopetag">System</span>' in nes_sys
+           and 'class="scopebadge"' in nes_sys, nes_sys[:400])
+        ck('site-wide experts roll up on the system page too',
+           'site-wide' in nes_sys and 'title="Root"' in nes_sys, nes_sys[:400])
+        dos_sys = all_html[out / 'systems' / 'dos' / 'index.html']
+        ck('a system with no scoped expert shows no expert line',
+           'Experts:' not in dos_sys, dos_sys[:400])
 
         # ---------- acts on the page they are about ----------
         # Each zone starts hidden and opens only for the people who may use it.

@@ -502,12 +502,12 @@ and afterwards by a covering expert or an editor through the game editor,
 one logged edit per field; an empty value clears the field.
 
 **Who speaks for a game shows closest scope first** (#65): the game page's
-expert line names the game's own experts, then its group's marked "(group
-scope)", and rolls the wider scopes (system, whole-site) into a quiet
-"+N wider-scope" count whose tooltip carries the names; nothing renders
-when nobody holds a game or group scope. Group pages likewise name only
-the group's own experts with a "+N site-wide" rollup (child-game experts
-stay on their game pages); the permission data the action zones read keeps
+expert line names the game's own experts (marked with a muted `Game` pill badge),
+then its group's (marked `Group`), then its system's (marked `System`), and rolls
+site-wide experts into a quiet "+N site-wide" count whose tooltip carries the
+names; nothing renders when nobody holds a game, group, or system scope. Group
+and system pages likewise name their own experts (marked `Group` or `System`)
+with a "+N site-wide" rollup; the permission data the action zones read keeps
 the full covering union.
 
 The game page

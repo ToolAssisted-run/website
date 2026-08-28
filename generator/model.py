@@ -198,13 +198,8 @@ def unclassified_shown():
 
 def groups_of(game_key):
     """The groups a game's page should link to: the group it belongs to, or
-    Uncategorized if no group has claimed it."""
-    mine = [gr for gr in groups_by_game.get(game_key, []) if has_page(gr)]
-    if mine:
-        return mine
-    return ([unclassified_group()]
-            if unclassified_shown() and game_key in unclassified_group()['games']
-            else [])
+    empty if no group has claimed it."""
+    return [gr for gr in groups_by_game.get(game_key, []) if has_page(gr)]
 
 def scopes_over(game_key):
     """Every expert scope that reaches this game, from widest to narrowest."""

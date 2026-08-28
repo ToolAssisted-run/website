@@ -6,7 +6,10 @@
 <span class="chip starchip"><span class="starglyph">★</span> {{ stars_of(sruns) }}</span>{{ chip_views(views_of(sruns)) }}</div>
 <h1>{{ sname }}</h1>
 <p class="authline">Every {{ sname }} game in the library, whatever
-group each belongs to.</p></div></header>
+group each belongs to.</p>
+{% if sysexperts %}
+<p class="authline authline-experts"><span class="exp-label">Experts:</span><span class="scopegrid">{{ scope_badge('System', sysexperts, '../../') }}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}</span></p>
+{% endif %}</div></header>
 {{ library_controls() }}
 <div class="grid">{% for g in sgames %}{{ game_card(g, '../../games/') }}{% endfor %}</div>
 
