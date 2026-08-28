@@ -590,6 +590,17 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(vs).encode())
     ck('chimeraProject: a stated vsync is the rate',
        res.get('fps') and abs(res['fps'] - 59.94005994) < 1e-6, str(res.get('fps')))
+    empty = json.loads(f_chimeraproject().decode())
+    empty['input'] = '[Input]\nLogKey:#P1 A|\n' + '|.|\n' * 40 + '[/Input]'
+    res = movieparse.parse('run.chimeraProject', json.dumps(empty).encode())
+    ck('chimeraProject: a project with no input at all is its log, not one frame',
+       res.get('frames') == 40
+       and any('nothing is pressed' in w for w in res['warnings']), str(res))
+    only_first = json.loads(f_chimeraproject().decode())
+    only_first['input'] = '[Input]\nLogKey:#P1 A|\n|A|\n' + '|.|\n' * 39 + '[/Input]'
+    res = movieparse.parse('run.chimeraProject', json.dumps(only_first).encode())
+    ck('chimeraProject: a run whose only press is frame zero is one frame',
+       res.get('frames') == 1, str(res))
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(rerecords=None))
     ck('chimeraProject: a missing rerecord count is a warning, not a failure',
        res.get('ok') and res.get('rerecords') is None

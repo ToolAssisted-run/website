@@ -233,6 +233,15 @@ def parse_chimeraproject(data):
         if 0 <= frame < len(rows):
             last_input = frame
             break
+    # Frame zero is where "the last input" sits both when the run's only
+    # press is on it and when the run has no press at all, and neither the
+    # header nor the walk can tell those apart. The log can: if frame zero
+    # is neutral too, nothing is pressed anywhere, and the honest length of
+    # a movie whose input never starts is the log's own.
+    if last_input == 0 and not pressed(rows[0]):
+        warnings.append('nothing is pressed anywhere in this project: the '
+                        'length is the input log, not the run')
+        return _ok(fmt, len(rows), rerecords, 'power-on', system, fps, warnings)
     idle = len(rows) - 1 - last_input
     if idle > 0:
         warnings.append(f'{idle} frame{"s" if idle != 1 else ""} after the last '
