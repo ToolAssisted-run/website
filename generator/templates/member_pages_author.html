@@ -3,7 +3,7 @@
 <p class="statline newsline" data-date="{{ e.date }}"><span class="newsico {{ e.kind }}">{{ NEWS_ICON[e.kind] }}</span> {{ member_chip(e.actor, '../../') }} {{ e.kind }} <a href="../../runs/{{ e.run }}/">{{ e.title }} ({{ e.run }})</a><span class="actmeta"> {{ moment(e.get('at') or e.date) }}</span></p>
 {% endmacro %}
 <header class="ghead"><div>
-<h1>{{ a.username }} {{ '🇨🇭' if a.get('country') == 'CH' else '' }}</h1>{{ role_badges(a.username) }}</div><div class="hbtns"><a class="btn" id="selfimport" hidden data-author="{{ a.username }}" href="../../import/">Import runs</a></div></header>
+<h1>{{ a.username }} {{ '🇨🇭' if a.get('country') == 'CH' else '' }}</h1>{% if role_badges(a.username) %}<div class="chips rolechips">{{ role_badges(a.username) }}</div>{% endif %}</div><div class="hbtns"><a class="btn" id="selfimport" hidden data-author="{{ a.username }}" href="../../import/">Import runs</a></div></header>
 <div class="statstrip">
 <div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
 <div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>

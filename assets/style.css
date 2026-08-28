@@ -15,6 +15,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 body{background:var(--ground);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5;min-height:100vh;display:flex;flex-direction:column}
+select{appearance:none;-webkit-appearance:none;background-color:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:12px 12px;padding-right:36px;cursor:pointer}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:12px 12px}}
+:root[data-theme=dark] select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:12px 12px}
 a{color:inherit}
 .nav{display:flex;align-items:center;gap:14px;padding:13px 26px;background:var(--bg);border-bottom:3px solid var(--hair);flex-wrap:nowrap}
 /* only the open menu stacks; the closed bar is one row or it is folded */
@@ -363,8 +366,8 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .actforms{display:flex;flex-direction:column;gap:14px}
 .actform{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
 .actform h3{font-size:1rem;margin-bottom:4px}
-.actform label{display:block;margin:10px 0 4px;font-size:.8rem;color:var(--muted)}
-.actform input,.actform textarea,.actform select{width:100%;padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
+.actform input,.actform textarea{width:100%;padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
+.actform select{width:100%;padding:9px 36px 9px 12px;border:2.5px solid var(--hair);border-radius:9px;background-color:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
 .actform input:focus,.actform textarea:focus,.actform select:focus{outline:none;border-color:var(--accent-text)}
 .actform input[readonly]{background:var(--ground);color:var(--muted);cursor:default}
 .actform .btn{margin-top:12px;border:0;cursor:pointer}
@@ -404,7 +407,9 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .scopeusers .u-sep{margin:0 2.5px;color:var(--hairs);font-weight:400;display:inline-block}
 /* committee and moderator are not badged here (see BADGED_ROLES); the
    styles stay so flipping that switch back is one word, not a redesign */
-.rolechip{display:inline-block;font-family:ui-monospace,monospace;font-size:.70rem;font-weight:600;padding:2px 7px;border:1.5px solid;border-radius:6px;margin-left:6px;vertical-align:middle;line-height:1.2}
+.rolechips{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.rolechip{display:inline-flex;align-items:center;white-space:nowrap;width:fit-content;max-width:fit-content;font-family:ui-monospace,monospace;font-size:.70rem;font-weight:600;padding:2px 7px;border:1.5px solid;border-radius:6px;margin-left:6px;vertical-align:middle;line-height:1.2;flex:0 0 auto}
+.rolechips .rolechip{margin-left:0}
 .role-committee{border-color:#2ecc71;color:#2ecc71;background:rgba(46,204,113,.12)}
 .role-moderator{border-color:var(--imported);color:var(--imported);background:rgba(124,58,237,.10)}
 .role-expert{border-color:#e67e22;color:#e67e22;background:rgba(230,126,34,.12)}
@@ -566,17 +571,18 @@ input.bad{border-color:#DC2626!important}
 .am-theme button.on{border-color:var(--accent-text);color:var(--ink);font-weight:700;background:rgba(34,197,94,.1)}
 .bounty{color:var(--accent-text);font-family:ui-monospace,monospace}
 .dimsel{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.dimsel .dimname{min-width:76px}
 .dimrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .gcontrols{margin:14px 0 16px;justify-content:flex-end}
-.dimsub{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:18px}
+.dimsub{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:28px}
 .dimsub.nogap{margin-left:0}
-.dimname{font-family:ui-monospace,monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);min-width:60px}
+.dimname{font-family:ui-monospace,monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-right:2px}
 .dimopt{padding:7px 14px;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--muted);font:inherit;font-size:.86rem;cursor:pointer}
 .dimopt:hover{border-color:var(--accent-text);color:var(--ink)}
 .dimopt.on{background:rgba(34,197,94,.1);border-color:var(--accent-text);color:var(--ink);font-weight:700}
 .filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.filters input,.filters select{padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
-.filters input{flex:1;min-width:200px}
+.filters input{padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit;font-size:.88rem;flex:1;min-width:200px}
+.filters select{padding:9px 36px 9px 12px;border:2.5px solid var(--hair);border-radius:9px;background-color:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
 .filters input:focus,.filters select:focus{outline:none;border-color:var(--accent-text)}
 .bcount{font-family:ui-monospace,monospace;font-size:.8rem;color:var(--faint);margin-left:auto}
 .btable td b{display:block}
@@ -801,7 +807,7 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .medhint{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:760px){.medhint{white-space:normal}}
 .medtitle{margin:0 0 4px;font-size:.9rem}
-.dimrow select.dimdd,.dimrow select.subdd{padding:8px 12px;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
+.dimrow select.dimdd,.dimrow select.subdd{padding:8px 36px 8px 12px;border:2.5px solid var(--hairs);border-radius:8px;background-color:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
 .selchoice{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 12px}
 .selchoice .dimname{font-family:ui-monospace,monospace;font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
 .selchoice label.check{margin:0}
