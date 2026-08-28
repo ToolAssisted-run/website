@@ -386,6 +386,38 @@ def main():
         ck('arrival order follows the commits, not the publication dates',
            order[:2] == ['M900371', 'M900372'], str(order))
 
+        # ---------------- Random picks: the overlooked shelf ----------------
+        # Twenty runs, one of them starred: twelve fill Freshly archived, the
+        # starred one fills Most liked, and what is left is exactly the pool
+        # the reader's browser shuffles. A run that already has attention is
+        # never in it while a quiet one is still waiting.
+        pick_runs = [mkarchive.run_spec(f'M9004{40 + i}', frames=5000 + i,
+                                        authors=['Ada'], submitted=d(30 - i))
+                     for i in range(20)]
+        pick_runs[19]['likes'] = [{'user': 'Fan', 'date': d(1)}]
+        arch10 = mkarchive.make_archive(td / 'a10', pick_runs)
+        out10 = td / 'o10'
+        build(arch10, out10)
+        home10 = (out10 / 'index.html').read_text()
+        def shelf_ids(page, title):
+            return list(dict.fromkeys(re.findall(
+                r'runs/(M\d+)/', page.split(title)[1].split('<section')[0])))
+        fresh10 = shelf_ids(home10, 'Freshly archived')
+        liked10 = shelf_ids(home10, 'Most liked')
+        picks10 = shelf_ids(home10, 'Random picks')
+        ck('the picks shelf holds what the other shelves left behind',
+           picks10 and not (set(picks10) & (set(fresh10) | set(liked10))),
+           f'picks {picks10} fresh {fresh10} liked {liked10}')
+        ck('every run the shelves missed gets its chance',
+           set(picks10) == {r['id'] for r in pick_runs} - set(fresh10) - set(liked10),
+           str(sorted(picks10)))
+        ck('the shelf tells the browser how many of the pool survive',
+           'data-shuffle="12"' in home10, home10.split('Random picks')[1][:120])
+        out10b = td / 'o10b'
+        build(arch10, out10b)
+        ck('the pool is ordered by the archive, not by chance: builds match',
+           (out10b / 'index.html').read_text() == home10, 'the home page moved between builds')
+
         # ---------------- author news + json shapes ----------------
         news_runs = [
             mkarchive.run_spec('M900341', frames=5000, authors=['Ada', 'Bo'],
