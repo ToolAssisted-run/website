@@ -123,12 +123,18 @@ TASPROJ_INVALID = ['greenzone']
 # manifest by SHA1, the settings, and the [Input] lump verbatim.
 #
 # The run's own markers (Run start, Last input, Run end) are DERIVED, never
-# stored: Chimera recomputes them on load, so this reads the frame the run
-# really ends on out of the input log by the rule Chimera itself uses, "the
-# last frame anything is pressed on". That is what the frame count reports,
-# because idle frames a TASer left after the last press are not part of the
-# run's time. When the project ever carries the frame outright, the field
-# below is preferred over the walk.
+# stored: Chimera recomputes them on load. Since 2026-08-28 a save writes
+# the answer down as the LastInputFrame header, and the rate it actually
+# ran at as VsyncNumerator / VsyncDenominator, so a project written by a
+# current build is read exactly. Older ones are walked instead, by the rule
+# Chimera itself uses: "the last frame anything is pressed on". Either way
+# that is what the frame count reports, because idle frames a TASer left
+# after the last press are not part of the run's time.
+#
+# A project saved before that date may hold ORDINARY markers named "Run
+# start", "Last input" and "Run end" (a round-trip bug in Chimera, fixed
+# there): they are stale snapshots of an old save, so nothing here reads a
+# marker.
 CHIMERA_LAST_INPUT_KEYS = ('lastInputFrame', 'lastInput')
 
 
@@ -180,6 +186,21 @@ def parse_chimeraproject(data):
     if not system:
         warnings.append('the project names no platform; the game decides the frame rate')
 
+    # Chimera carries no per-system rate table of its own (its
+    # PlatformFrameRates answers a flat 50 or 60), and the project pins no
+    # vsync, so the rate is left to the game's system here, which is the
+    # exact one. A PAL project on an NTSC system would be rated wrongly, so
+    # it says so; and when the format grows the numbers, they win.
+    fps = None
+    num, den = lower.get('vsyncnumerator'), lower.get('vsyncdenominator')
+    try:
+        if num and den and float(den):
+            fps = float(num) / float(den)
+    except (TypeError, ValueError):
+        fps = None
+    if fps is None and str(lower.get('pal') or '').strip().lower() in ('1', 'true', 'yes'):
+        warnings.append('the project says PAL: the rate applied is the system\'s own')
+
     rerecords = doc.get('rerecords')
     if not isinstance(rerecords, int) or isinstance(rerecords, bool) or rerecords < 0:
         rerecords = None
@@ -204,16 +225,19 @@ def parse_chimeraproject(data):
         return any(v != neutral.get(i) for i, v in enumerate(axes))
 
     last_input = next((i for i in range(len(rows) - 1, -1, -1) if pressed(rows[i])), 0)
-    for key in CHIMERA_LAST_INPUT_KEYS:                # if the format ever says so itself
-        stated = doc.get(key)
-        if isinstance(stated, int) and not isinstance(stated, bool) and 0 <= stated < len(rows):
-            last_input = stated
+    for stated in [lower.get('lastinputframe')] + [doc.get(k) for k in CHIMERA_LAST_INPUT_KEYS]:
+        try:                                   # the project's own answer, when it has one
+            frame = int(str(stated).strip())
+        except (TypeError, ValueError):
+            continue
+        if 0 <= frame < len(rows):
+            last_input = frame
             break
     idle = len(rows) - 1 - last_input
     if idle > 0:
         warnings.append(f'{idle} frame{"s" if idle != 1 else ""} after the last '
                         f'input are not counted as run time')
-    return _ok(fmt, last_input + 1, rerecords, 'power-on', system, None, warnings)
+    return _ok(fmt, last_input + 1, rerecords, 'power-on', system, fps, warnings)
 
 
 def parse_bk2(data, fmt='bk2'):

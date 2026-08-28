@@ -384,7 +384,7 @@ def f_chimeraproject(idle=30, axes=False, last_input=None, rerecords=91):
            'rerecords': rerecords,
            'input': '[Input]\nLogKey:' + key + '\n' + '\n'.join(lines) + '\n[/Input]'}
     if last_input is not None:
-        doc['lastInputFrame'] = last_input
+        doc['headers']['LastInputFrame'] = str(last_input)
     return json.dumps(doc).encode()
 
 FIXTURES = {
@@ -569,6 +569,27 @@ def main():
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(last_input=40))
     ck('chimeraProject: a project that states the last input is believed',
        res.get('frames') == 41, str(res))
+    legacy = json.loads(f_chimeraproject().decode())
+    legacy['lastInputFrame'] = 40                 # the shape first proposed
+    res = movieparse.parse('run.chimeraProject', json.dumps(legacy).encode())
+    ck('chimeraProject: a top-level last input is read too',
+       res.get('frames') == 41, str(res))
+    stale = json.loads(f_chimeraproject().decode())
+    stale['markers'] = [{'frame': 900, 'text': 'Last input'},
+                        {'frame': 950, 'text': 'Run end'}]
+    res = movieparse.parse('run.chimeraProject', json.dumps(stale).encode())
+    ck('chimeraProject: a stale "Last input" marker is not believed',
+       res.get('frames') == 24, str(res))
+    pal = json.loads(f_chimeraproject().decode())
+    pal['headers']['PAL'] = '1'
+    res = movieparse.parse('run.chimeraProject', json.dumps(pal).encode())
+    ck('chimeraProject: a PAL project admits the rate is the system\'s own',
+       any('PAL' in w for w in res.get('warnings', [])), str(res.get('warnings')))
+    vs = json.loads(f_chimeraproject().decode())
+    vs['headers'].update({'VsyncNumerator': '60000', 'VsyncDenominator': '1001'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(vs).encode())
+    ck('chimeraProject: a stated vsync is the rate',
+       res.get('fps') and abs(res['fps'] - 59.94005994) < 1e-6, str(res.get('fps')))
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(rerecords=None))
     ck('chimeraProject: a missing rerecord count is a warning, not a failure',
        res.get('ok') and res.get('rerecords') is None
