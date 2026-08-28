@@ -41,7 +41,7 @@ BizHawk, searching inputs from inside the emulator itself, by toca.
 attach their movie files to your submission as supplementary data beside your run video; for
 most of these formats we extract the relevant information (time, frames, rerecords) directly
 from the file.</p>
-<table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
+<div class="tblwrap"><table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
 <th class="num">Parsed</th></tr></thead>
 <tbody>
 {% for e in emulators %}
@@ -49,11 +49,11 @@ from the file.</p>
 <td class="num"><code>{{ e.formats }}</code></td>
 <td class="num"><span class="tick-yes">✓</span></td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 <section><h2>Classic emulator formats</h2>
 <p class="rules fullw">The rerecording emulators of an earlier era. Their movies are read in
 full (time, frames, rerecords), so a historical work arrives here with its record intact.</p>
-<table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
+<div class="tblwrap"><table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
 <th class="num">Parsed</th></tr></thead>
 <tbody>
 {% for e in historical %}
@@ -61,13 +61,13 @@ full (time, frames, rerecords), so a historical work arrives here with its recor
 <td class="num"><code>{{ e.formats }}</code></td>
 <td class="num"><span class="tick-yes">✓</span></td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 <section><h2>Game-specific TAS tools</h2>
 <p class="rules fullw">These tools create tool-assisted runs inside one game or engine, with no
 emulator involved. You can attach their input or replay files to your submission as
 supplementary data beside your run video; for some of these formats we extract the relevant
 information (time, frames, rerecords) directly from the file, marked below.</p>
-<table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
+<div class="tblwrap"><table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
 <th class="num">Parsed</th></tr></thead>
 <tbody>
 {% for t in game_tools %}
@@ -75,4 +75,4 @@ information (time, frames, rerecords) directly from the file, marked below.</p>
 <td><code>{{ t.format }}</code></td>
 <td class="num">{% if t.parsed %}<span class=tick-yes>✓</span>{% else %}<span class=tick-no>—</span>{% endif %}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>

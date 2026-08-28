@@ -214,6 +214,15 @@ def main():
             {'name': 'phone', 'url': f'{base}/games/', 'width': 360, 'view': 'groups'},
             {'name': 'home', 'url': f'{base}/', 'width': 360, 'view': None},
             {'name': 'run', 'url': f'{base}/runs/M900901/', 'width': 360, 'view': None},
+            {'name': 'group', 'url': f'{base}/groups/four/', 'width': 360, 'view': None},
+            {'name': 'game', 'url': f'{base}/games/nes/testgame/', 'width': 360, 'view': None},
+            {'name': 'games-list', 'url': f'{base}/games/', 'width': 360, 'view': 'list'},
+            {'name': 'authors', 'url': f'{base}/authors/', 'width': 360, 'view': None},
+            {'name': 'author', 'url': f'{base}/authors/ada/', 'width': 360, 'view': None},
+            {'name': 'contribute', 'url': f'{base}/contribute/', 'width': 360, 'view': None},
+            {'name': 'tools', 'url': f'{base}/tools/', 'width': 360, 'view': None},
+            {'name': 'browse', 'url': f'{base}/browse/', 'width': 360, 'view': None},
+            {'name': 'sitelog', 'url': f'{base}/policy/site-log/', 'width': 360, 'view': None},
             # the import page's disclaimer block wore the responsive text-swap
             # class as a layout class and vanished whole under 560px; a phone
             # never saw the list. This is the page measured at the width that
@@ -278,7 +287,9 @@ def main():
         ck('nothing on the systems view collapsed to zero height',
            not data['systems']['collapsed'], str(data['systems']['collapsed'][:3]))
 
-        for name in ('phone', 'home', 'run', 'import'):
+        for name in ('phone', 'home', 'run', 'group', 'game', 'games-list',
+                     'authors', 'author', 'contribute', 'tools', 'browse',
+                     'sitelog', 'import'):
             page = data[name]
             ck(f'{name} at 360px does not scroll sideways',
                page['docWidth'] <= page['viewport'] + 1,

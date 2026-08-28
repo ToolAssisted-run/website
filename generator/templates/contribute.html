@@ -121,12 +121,12 @@ verified them on hardware.</p>
 </div>
 <div class="factbox"><h4>Contributor board</h4>
 {% if top %}
-<table><thead><tr><th>#</th><th>Member</th><th class="num">Points</th></tr></thead><tbody>
+<div class="tblwrap"><table><thead><tr><th>#</th><th>Member</th><th class="num">Points</th></tr></thead><tbody>
 {% for p in top %}
 <tr><td class="rank">{{ loop.index }}</td><td>{{ member_chip(p['user'], '../') }}{{ medals(p['user']) }}</td>
 <td class="num">{{ p['points'] }}</td></tr>
 {% endfor %}
-</tbody></table>
+</tbody></table></div>
 {% else %}
 <p class="emptynote">Nobody has earned contributor points yet. The board is wide open.</p>
 {% endif %}

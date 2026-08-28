@@ -66,9 +66,15 @@ a{color:inherit}
 .implist .improw.done{display:block;margin:4px 0;opacity:.65}
 .implist input{margin-right:8px}
 .implog{font-family:ui-monospace,monospace;font-size:.78rem;line-height:1.6;border:2.5px solid var(--hair);border-radius:8px;padding:10px 14px;max-height:320px;overflow:auto;margin-top:12px;white-space:pre-wrap}
-.ghead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:18px 0 16px;border-bottom:3px solid var(--hair);margin-bottom:20px}
-.ghead>div:first-child{flex:1 1 540px;min-width:0}
+.ghead{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:18px 0 16px;border-bottom:3px solid var(--hair);margin-bottom:20px}
+.ghead>div:first-child,.ghead-main{flex:1 1 540px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.gident{display:flex;gap:20px;align-items:center;width:100%}
+.gtitle{min-width:0;flex:1 1 auto}
 .ghead h1{font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.02em}
+.gface{aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:2.5px solid var(--hair);background:#000;display:block}
+.gface.gface-desk{max-height:84px;width:auto;max-width:160px;margin-bottom:2px}
+.gface.gface-mob{display:none}
+.ghead .authline-experts{margin-top:2px;width:100%}
 .ghead .hbtns{margin-left:auto;flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 .srclink{font-size:.76rem;color:var(--faint);text-decoration:none}.srclink:hover{color:var(--accent-text)}
@@ -90,17 +96,15 @@ a{color:inherit}
 .notes-embed{aspect-ratio:16/9;margin:10px 0;border-radius:10px;overflow:hidden;border:2.5px solid var(--hair)}
 .notes-embed iframe{width:100%;height:100%;border:0}
 .authline{margin-top:6px;color:var(--muted);line-height:1.75}
+.authline + .authline-experts{margin-top:14px}
 .au{font-weight:600;text-decoration:none}.au:hover{color:var(--accent-text)}
 .au.unclaimed .udot{color:var(--imported);font-size:.7em;vertical-align:super;margin-left:2px}
 .udot{color:var(--imported)}
 .btn{display:inline-block;text-align:center;padding:10px 16px;border-radius:9px;background:var(--accent);color:#04140A;text-decoration:none;font-family:ui-monospace,monospace;font-size:.84rem;font-weight:700;font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0;letter-spacing:0}
 .btn.danger{background:#DC2626;color:#FEF2F2}
-/* every action button is the same black-over-green; only danger (red) and
-   warn (amber) differ, because they mean something. The old page-colored
-   "quiet" variant was barely visible in dark mode. */
 .btn.quiet{background:var(--accent);color:#04140A;text-align:center}
 .btn:hover{filter:brightness(1.06)}
-.gface{max-height:84px;border-radius:10px;border:2.5px solid var(--hair);display:block}
+.gface{max-height:96px;width:auto;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:2.5px solid var(--hair);background:#000;display:block}
 /* Client cropper styles */
 .thumb-guidance{max-width:58rem;margin:8px 0;color:var(--muted)}
 .thumb-edit-preview{margin:10px 0 4px;max-width:360px}
@@ -240,7 +244,8 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .num.muted,.muted{color:var(--faint)}
 .ctr{text-align:center}
 .legend{margin-top:12px;font-size:.78rem;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:15px;margin-bottom:34px}
+.grid + h2,.emptynote + h2{margin-top:32px}
 /* a shelf: one row, dragged sideways; the scrollbar stays hidden and the
    faint arrows carry the affordance (right first, left once scrolled) */
 .hwrap{position:relative}
@@ -290,8 +295,8 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 /* what an Unclassified run does, in the slot a category would take:
    the author's own words, held to two lines so a card keeps its shape */
 .cgoal{font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.cols{display:grid;grid-template-columns:1fr 290px;gap:24px;align-items:start}
-@media(max-width:900px){.cols{grid-template-columns:1fr}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}
   .herogrid{grid-template-columns:1fr}
   .heronews{order:2;height:auto;min-height:0}
   .bskyfeed{max-height:340px}}
@@ -324,7 +329,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .codebox{background:var(--panel);border:2.5px solid var(--hair);border-radius:9px;padding:12px 14px;margin:10px 0;overflow-x:auto;font-size:.82rem;line-height:1.45}
 .wquote{border-left:5px solid var(--hairs);background:var(--panel);border-radius:0 9px 9px 0;padding:10px 14px;margin:10px 0;color:var(--muted)}
 .qwho{font-weight:700;margin-bottom:4px}
-.tblwrap{overflow-x:auto;margin:10px 0}
+.tblwrap{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;margin:10px 0;overscroll-behavior-x:contain}
 .policy{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);font-size:.94rem;max-width:82ch}
 .policy h2{margin-top:18px}.policy h2:first-child{margin-top:0}
 .policy ul{margin:8px 0 8px 22px}.policy li{margin:7px 0}
@@ -332,6 +337,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .policy p{margin:0 0 16px}.policy p:last-child{margin-bottom:0}
 .policy.wide{max-width:none}
 .impstart{margin:26px 0 10px}
+.main{min-width:0}
 .main h2{margin-top:24px}
 /* the first section under the page header hugs the divider instead of
    stacking three margins into a blank line */
@@ -386,7 +392,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .relchip{color:var(--ink)}
 .libctl{margin:0 0 12px}
 .libhide{font-size:.8rem;color:var(--muted);cursor:pointer;gap:6px}
-.authline-experts{display:inline-flex;align-items:center;gap:10px;margin-top:8px;color:var(--muted);vertical-align:middle;max-width:100%}
+.authline-experts{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;color:var(--muted);vertical-align:middle;width:100%;max-width:100%}
 .exp-label{font-weight:400;color:var(--muted);flex-shrink:0;align-self:center}
 .scopegrid{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 .scopebadge{display:inline-flex;align-items:center;border-radius:6px;border:2px solid var(--hairs);overflow:hidden;font-size:.72rem;line-height:1.2;background:var(--bg);max-width:100%;width:fit-content}
@@ -419,8 +425,8 @@ input.bad{border-color:#DC2626!important}
    header row stays pinned while they do, and the scrollbar keeps quiet
    until the pointer is over the list */
 .nrgap{margin-top:14px}
-.contscroll{max-height:640px;overflow-y:auto;border-radius:10px;
- scrollbar-width:thin;scrollbar-color:transparent transparent}
+.contscroll{max-height:640px;overflow-y:auto;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;border-radius:10px;
+ scrollbar-width:thin;scrollbar-color:transparent transparent;overscroll-behavior:contain}
 .contscroll:hover{scrollbar-color:var(--hairs) transparent}
 .contscroll::-webkit-scrollbar{width:8px}
 .contscroll::-webkit-scrollbar-track{background:transparent}
@@ -489,12 +495,25 @@ input.bad{border-color:#DC2626!important}
 @media(max-width:560px){.cwrow{grid-template-columns:1fr}
   /* the hero buttons and the statistics have to fit a phone, not wrap */
   .wide{display:none}.narrow{display:inline}
-  /* View and Sort become two full-width rows instead of ragged right-aligned
-     ones that wrap mid-row on a phone */
-  .ghead .hbtns{margin-left:0;width:100%;align-items:stretch}
+  .gface.gface-desk{display:none}
+  .gface.gface-mob{display:block;max-height:56px;max-width:96px;flex-shrink:0;align-self:center}
+  .gident{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;width:100%}
+  .gtitle{flex:1;min-width:0}
+  .ghead-main{flex:none;width:100%;gap:6px}
+  .ghead .authline-experts{margin-top:4px}
+  .ghead .hbtns{margin-left:0;width:100%;align-items:flex-start;gap:8px;margin-top:6px}
+  .ghead .btnrow{justify-content:flex-start;gap:6px;width:100%}
   .ghead .dimrow{justify-content:flex-start}
   .ghead .dimopt{padding:7px 11px;font-size:.8rem}
+  .dimopt{padding:7px 10px;font-size:.82rem}
   .wrap{padding:0 16px 48px}
+  .filters input,.filters select{width:100%;min-width:0}
+  .rulesbox{padding:16px 18px}
+  .chimeraicon{height:36px}
+  .chimeratype{height:22px}
+  .authline-experts{flex-wrap:wrap}
+  .btn{padding:8px 12px;font-size:.8rem}
+  .btn.ext{font-size:.76rem;padding:6px 10px}
   /* wrapping is still allowed as a last resort: on a very narrow phone a
      second row beats overflowing the viewport */
   .herobtns{gap:7px}
@@ -549,7 +568,7 @@ input.bad{border-color:#DC2626!important}
 .dimsel{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
 .dimrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .gcontrols{margin:14px 0 16px;justify-content:flex-end}
-.dimsub{display:inline-flex;gap:8px;align-items:center;margin-left:18px}
+.dimsub{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:18px}
 .dimsub.nogap{margin-left:0}
 .dimname{font-family:ui-monospace,monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);min-width:60px}
 .dimopt{padding:7px 14px;border:2.5px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--muted);font:inherit;font-size:.86rem;cursor:pointer}
@@ -579,7 +598,7 @@ input.bad{border-color:#DC2626!important}
    inside a ROM name) widens it past the box; long values wrap anywhere (#45) */
 .factbox dd{font-family:ui-monospace,monospace;font-size:.84rem;text-align:right;min-width:0;overflow-wrap:anywhere}
 .factbox dd.big{font-size:1.1rem;font-weight:700}
-.statline{font-size:.84rem;display:flex;gap:8px;align-items:center;margin:6px 0}
+.statline{font-size:.84rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
 .factbox .statline{display:block}
 .homefoot .statline{font-size:.86rem;color:var(--muted)}
 .homefoot a{color:var(--accent-text)}

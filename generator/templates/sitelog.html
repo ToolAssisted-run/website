@@ -33,7 +33,7 @@ attestations</a> · <a href="#claims">Name claims</a> ·
 <p class="authline">Every grant and every removal, with the reason given at the time. Roles
 are not a status somebody has always had, and this is the only record of them: the forum's
 groups are printed from it.</p>
-<table><thead><tr><th>Date</th><th>Member</th><th>Change</th><th>By</th><th>Reason</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Member</th><th>Change</th><th>By</th><th>Reason</th></tr></thead>
 <tbody>
 {% for ev in role_events %}
 <tr><td>{{ moment(ev.get('at') or ev.date) }}</td><td>{{ member_chip(ev.user, '../../') }}</td>
@@ -41,7 +41,7 @@ groups are printed from it.</p>
 <td>{% if ev.by == 'founder' %}the founder{% elif ev.by == 'committee' %}a Committee vote{% else %}{{ member_chip(ev.by, '../../') }}{% endif %}</td>
 <td>{{ inline(ev.reason, '../../') }}{% if ev.get('proof') %} · <a href="{{ ev.get('proof') }}">where it was decided</a>{% endif %}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="roles"><h2>Role changes</h2><p class="emptynote">No roles have changed hands yet.</p></section>
 {% endif %}
@@ -52,14 +52,14 @@ groups are printed from it.</p>
 Steering Committee member vouches for the identity, because a proof that depends on another
 site's permissions leaves out the people most likely to need it. Each entry names who vouched
 and the method, and can be challenged.</p>
-<table><thead><tr><th>Date</th><th>Committee member</th><th>Action</th><th>Method</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Committee member</th><th>Action</th><th>Method</th></tr></thead>
 <tbody>
 {% for d, by, name, who, how in attestations %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, '../../') }}</td>
 <td>Attested that {{ member_chip(who, '../../') }} is <b>{{ name }}</b></td>
 <td>{{ inline(how, '../../') }}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="attestations"><h2>Identity attestations</h2><p class="emptynote">Nobody has needed one yet.</p></section>
 {% endif %}
@@ -70,7 +70,7 @@ and the method, and can be challenged.</p>
 Committee agrees it is theirs. The asking and the answer are both here. What the Committee
 saw of the claimant's email address is not, and never was: they see a masked form of it,
 worked out when they look, written into neither this archive nor anywhere else.</p>
-<table><thead><tr><th>Date</th><th>Member</th><th>Name and evidence</th><th>Answer</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Member</th><th>Name and evidence</th><th>Answer</th></tr></thead>
 <tbody>
 {% for r in claim_reqs %}
 <tr><td>{{ moment(r.get('at') or r.date) }}</td><td>{{ member_chip(r.member, '../../') }}</td>
@@ -78,7 +78,7 @@ worked out when they look, written into neither this archive nor anywhere else.<
 <td>{{ answer(r, CLAIM_CHIPS) }}
 </td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="claims"><h2>Name claims</h2><p class="emptynote">Nobody has filed one yet.</p></section>
 {% endif %}
@@ -108,14 +108,14 @@ worked out when they look, written into neither this archive nor anywhere else.<
 here for games and groups being real, distinct things. Creations are real on arrival now,
 and a mistaken one is deleted on the record; these acts remain the record of who vouched
 for what.</p>
-<table><thead><tr><th>Date</th><th>Expert</th><th>Game</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Game</th></tr></thead>
 <tbody>
 {% for when, by, title, href, what, why in decisions %}
 <tr><td>{{ moment(when) }}</td><td>{{ member_chip(by, '../../') }}</td>
 <td>{{ thing(title, href) }}
 <span class="actmeta"> {{ what }}</span>{% if why %}<p class="actnote">{{ inline(why, '../../') }}</p>{% endif %}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="ratifications"><h2>Game and group decisions</h2>
 <p class="emptynote">Nothing has been ratified here yet. Games and group from the
@@ -127,7 +127,7 @@ seeding import arrived established and were ratified by nobody on this site.</p>
 <p class="authline">An expert never deletes a game or a group: they ask, and a site-wide
 expert answers. A granted removal takes the thing out of the index and leaves every page and
 every run exactly where it was, because the runs inside were never what was in question.</p>
-<table><thead><tr><th>Date</th><th>Asked by</th><th>What</th><th>Answer</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Asked by</th><th>What</th><th>Answer</th></tr></thead>
 <tbody>
 {% for r, title, href, kind in all_removals %}
 <tr><td>{{ moment(r.get('at') or r.date) }}</td><td>{{ member_chip(r.by, '../../') }}</td>
@@ -135,7 +135,7 @@ every run exactly where it was, because the runs inside were never what was in q
 <p class="actnote">{{ inline(r.reason, '../../') }}</p></td>
 <td>{{ answer(r, REMOVAL_CHIPS) }}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="removals"><h2>Removal requests</h2>
 <p class="emptynote">Nobody has asked for anything to be removed.</p></section>
@@ -146,7 +146,7 @@ every run exactly where it was, because the runs inside were never what was in q
 <p class="authline">Authors revise their own runs; experts may correct anything inside their
 jurisdiction, member content included, and answer for it. Every revision says who, what it
 was, what it became, and why. Git history carries the exact diff and the way back.</p>
-<table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in edit_events %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, '../../') }}</td>
@@ -154,7 +154,7 @@ was, what it became, and why. Git history carries the exact diff and the way bac
 <p class="actnote">{{ e.get('from') or '(empty)' }} → {{ e.get('to') or '(empty)' }}</p></td>
 <td>{{ inline(e.reason, '../../') }}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="edits"><h2>Edits</h2><p class="emptynote">Nothing has been revised.</p></section>
 {% endif %}
@@ -164,7 +164,7 @@ was, what it became, and why. Git history carries the exact diff and the way bac
 <p class="authline">Deleted outright by an expert (runs, games, groups) or the Steering
 Committee (members): tests, spam, mistakes, things that were never really works. The thing
 is gone; who deleted it and why is not, and never will be.</p>
-<table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>What</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in del_events %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, '../../') }}</td>
@@ -172,7 +172,7 @@ is gone; who deleted it and why is not, and never will be.</p>
 {%- if e.get('movedTo') %}<span class="actmeta"> · its runs moved to {{ e.get('movedTo') }}</span>{% endif %}</td>
 <td>{{ inline(e.reason, '../../') }}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="deletions"><h2>Deletions</h2><p class="emptynote">Nothing has been deleted outright.</p></section>
 {% endif %}
@@ -182,7 +182,7 @@ is gone; who deleted it and why is not, and never will be.</p>
 <p class="authline">A withdrawn run keeps its page as a tombstone, because a hole in the
 record is worse than an honest gap. Where every author asked for it, the movie file itself
 was permanently erased, and that is marked here.</p>
-<table><thead><tr><th>Date</th><th>By</th><th>Run</th><th>Reason</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Run</th><th>Reason</th></tr></thead>
 <tbody>
 {% for r_ in withdrawn_runs %}
 {% set w = r_.withdrawn %}
@@ -193,7 +193,7 @@ was permanently erased, and that is marked here.</p>
 <span class="actmeta"> as {{ w.get('role') or 'author' }}</span></td>
 <td>{{ inline(w.get('reason') or '', '../../') }}</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="withdrawn"><h2>Withdrawals and erasures</h2><p class="emptynote">Nothing has been withdrawn.</p></section>
 {% endif %}
@@ -202,7 +202,7 @@ was permanently erased, and that is marked here.</p>
 <section id="cases"><h2>Open cases</h2>
 <p class="authline">A contradiction never removes anybody's word by itself; it opens a case
 and asks the people who spoke to say so again.</p>
-<table><thead><tr><th>Opened</th><th>Run</th><th>State</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>Opened</th><th>Run</th><th>State</th></tr></thead>
 <tbody>
 {% for r_, c in open_cases %}
 <tr><td>{{ c.get('opened') or '' }}</td>
@@ -210,7 +210,7 @@ and asks the people who spoke to say so again.</p>
 <td>case {{ c.id }} · {{ c.get('reaffirmations', [])|length }} of {{ c.verifiers|length }} verifiers
 have stood by their word</td></tr>
 {% endfor %}
-</tbody></table></section>
+</tbody></table></div></section>
 {% else %}
 <section id="cases"><h2>Open cases</h2><p class="emptynote">No case is open.</p></section>
 {% endif %}
@@ -219,14 +219,14 @@ have stood by their word</td></tr>
 <p class="authline">Moderation in moderation: every action is justified, states its reason,
 is appealable, and is logged here, in the open, permanently.</p>
 {% if mod_entries %}
-<table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason, r_ in mod_entries %}
 <tr><td>{{ moment(d) }}</td><td>{{ by }}</td>
 <td>Invalidated a {{ kind }} by {{ target }} on
 {{ run_link(r_) }}</td>
 <td>{{ reason }}</td></tr>
 {% endfor %}
-</tbody></table>
+</tbody></table></div>
 {% else %}
 <p class="emptynote">No moderation actions have been taken.</p>
 {% endif %}

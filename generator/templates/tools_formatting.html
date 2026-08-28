@@ -2,12 +2,12 @@
 <header class="ghead"><div><h1>Formatting guide</h1>
 <p class="authline">The markup accepted in run notes, on submission and on later edits.
 Plain paragraphs need no markup at all; blank lines separate them.</p></div></header>
-<table><thead><tr><th>You write</th><th>You get</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>You write</th><th>You get</th></tr></thead>
 <tbody>
 {% for ex in examples %}
 <tr><td><code>{{ ex.src }}</code></td><td>{{ ex.what }}</td></tr>
 {% endfor %}
-</tbody></table>
+</tbody></table></div>
 <section><h2>Notes</h2><div class="policy"><ul>
 <li>Anything not listed above renders as plain text; nothing breaks, it just is not special.</li>
 <li>This dialect is compatible with the notes of imported runs, so imported write-ups render as intended.</li>

@@ -4,12 +4,12 @@
 the stars their runs have earned. Click any column to re-sort.</p></div>
 </header>
 {# views are host state (absent on CI and the standby): the column appears only where they are known #}
-<table class="sortable"><thead><tr><th>Member</th><th class="num sort-desc"><span class="starglyph">★</span> Author score</th>
+<div class="tblwrap"><table class="sortable"><thead><tr><th>Member</th><th class="num sort-desc"><span class="starglyph">★</span> Author score</th>
 {% if visits_known %}<th class="num" title="visits to all their runs">{{ EYE_ICON }} Views</th>{% endif %}
 <th class="num">Runs</th><th class="num">Contributor score</th></tr></thead>
 <tbody>{% for uname, a, st_ in members %}<tr onclick="if(!event.target.closest('a'))location='{{ profile_slug(uname) }}/'">
 <td><b>{{ a['username'] }}</b>{{ role_badges(a['username']) }}</td>
 <td class="num"><span class="starglyph">★</span>{{ st_['author'] }}</td>
 {% if visits_known %}<td class="num">{{ '{:,}'.format(st_['views']) }}</td>{% endif %}
-<td class="num">{{ st_['runs'] }}</td><td class="num">{{ st_['contrib'] }}</td></tr>{% endfor %}</tbody></table>
+<td class="num">{{ st_['runs'] }}</td><td class="num">{{ st_['contrib'] }}</td></tr>{% endfor %}</tbody></table></div>
 <p class="legend">Do you come from another community? <a href="../claim/">Claim your name</a></p>

@@ -25,7 +25,7 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
 {% endif %}
 <div class="gview" id="v-systems"><div class="grid">{% for skey in sys_keys %}{{ system_card(skey, by_sys[skey]) }}{% endfor %}</div>
 <p class="authline">{{ by_sys|length }} systems; every game lives on one.</p></div>
-<div class="gview" id="v-list" hidden><table class="rtab"><thead><tr>
+<div class="gview" id="v-list" hidden><div class="tblwrap"><table class="rtab"><thead><tr>
 <th data-key="title" class="sorted" data-dir="▲">Game</th>
 <th data-key="sys">System</th><th data-key="grp">Group</th>
 <th class="num" data-key="runs" data-type="num">Runs</th>
@@ -43,7 +43,7 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
 <td class="num"><span class="starglyph">★</span>{{ stars_of(g['runs']) }}</td>
 {% if visits_known %}<td class="num">{{ card_views(views_of(g['runs'])) }}</td>{% endif %}</tr>
 {% endfor %}
-</tbody></table></div>
+</tbody></table></div></div>
 <script>
 (function(){
   var sortMode = 'stars', view = 'systems';
