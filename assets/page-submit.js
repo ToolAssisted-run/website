@@ -586,7 +586,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
             submitForm.querySelector('[name=encode]').dispatchEvent(new Event('input'));
             var pick = submitForm.querySelector('.authpick');
             if (pick && pick.setAuthors) pick.setAuthors(run.authors.map(function(a){ return a.user; }));
-            if (!editMay.author) { pick.querySelector('.authsearch').disabled = true; pick.querySelectorAll('.authx').forEach(function(x){ x.disabled = true; }); }
+            if (!editMay.author && !editMay.expert) { pick.querySelector('.authsearch').disabled = true; pick.querySelectorAll('.authx').forEach(function(x){ x.disabled = true; }); }
             submitForm.querySelector('[name=completed]').value = run.completed || '';
             
             // the designated "You may also like" picks: search-as-you-type
