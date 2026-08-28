@@ -4,6 +4,9 @@ from render import page, tpl
 
 # ---- tools page ----
 EMULATORS = [
+    ('Chimera', 'https://github.com/ToolAssisted-run/chimera',
+     'multi-system (NES, SNES, Genesis, Dreamcast, PS2, PSP, 3DO, Atari 2600, DOS, …)',
+     '.chimeraProject'),
     ('BizHawk', 'https://github.com/TASEmulators/BizHawk',
      'multi-system (NES, SNES, Genesis, GB/GBA, N64, PSX, Saturn, …)', '.bk2, .tasproj'),
     ('FCEUX', 'https://github.com/TASEmulators/fceux', 'NES / Famicom', '.fm2, .fm3'),

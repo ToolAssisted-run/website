@@ -652,6 +652,11 @@ footer a{color:var(--accent-text);text-decoration:none}
 .alsolike{margin-bottom:34px}
 .sumdone{margin-left:10px;color:var(--accent-text);font:700 .8rem/1 ui-monospace,monospace}
 .chimerahead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+/* the download comes first on the Tools page: the button, then the nightly
+   note beside it (under it once the row stops fitting) */
+.chimeradl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 18px}
+.chimeradl .btn{flex:none}
+.chimeradl .statline{flex:1 1 260px;margin:0}
 .chimeraicon{height:44px;width:auto}
 .chimeratype{height:26px;width:auto}
 .timerow{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
