@@ -426,19 +426,8 @@ input.bad{border-color:#DC2626!important}
 .newsmore:hover{color:var(--accent-text)}
 .rtab th[data-key]{cursor:pointer;user-select:none;white-space:nowrap}
 .rtab th[data-key]:hover{color:var(--accent-text)}
-/* the contribute worklists: room for ~15 rows, then they scroll; the
-   header row stays pinned while they do, and the scrollbar keeps quiet
-   until the pointer is over the list */
 .nrgap{margin-top:14px}
-.contscroll{max-height:640px;overflow-y:auto;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;border-radius:10px;
- scrollbar-width:thin;scrollbar-color:transparent transparent;overscroll-behavior:contain}
-.contscroll:hover{scrollbar-color:var(--hairs) transparent}
-.contscroll::-webkit-scrollbar{width:8px}
-.contscroll::-webkit-scrollbar-track{background:transparent}
-.contscroll::-webkit-scrollbar-thumb{background:transparent;border-radius:4px}
-.contscroll:hover::-webkit-scrollbar-thumb{background:var(--hairs)}
-.contscroll thead th{position:sticky;top:0;z-index:1;background:var(--panel);
- box-shadow:0 2px 0 var(--hair)}
+.contscroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;border-radius:10px;overscroll-behavior-x:contain;margin:10px 0}
 .tick-yes{color:var(--accent-text);font-weight:700}
 .tick-no{color:var(--faint)}
 .rtab th.sorted::after{content:" " attr(data-dir);font-size:.7em;color:var(--accent-text)}
