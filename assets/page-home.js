@@ -3,6 +3,23 @@
 // these ids (.hwrap, #bskyfeed) exist only on the home page.
 import { escapeHtml } from './app.js';
 
+  // ---- Random picks: the reader rolls the dice ----
+  // A static build cannot deal a different hand to each visitor, so the page
+  // ships a pool of overlooked runs in a fixed order and the browser
+  // shuffles it here, keeping data-shuffle of them. Runs at this before the
+  // shelves are wired, so the arrows measure the row that is actually shown.
+  document.querySelectorAll('.hrow[data-shuffle]').forEach(function(row){
+    var cards = Array.prototype.slice.call(row.children);
+    for (var i = cards.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var swap = cards[i]; cards[i] = cards[j]; cards[j] = swap;
+    }
+    var keep = parseInt(row.dataset.shuffle, 10) || cards.length;
+    cards.forEach(function(card, idx){
+      if (idx < keep) row.appendChild(card); else card.remove();
+    });
+  });
+
   // ---- shelves: one row, dragged sideways (home page) ----
   // native touch panning is left alone; the mouse gets click-hold-drag,
   // and the faint arrows appear only on the side with more to see
