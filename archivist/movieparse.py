@@ -199,15 +199,19 @@ def parse_chimeraproject(data):
             fps = float(num) / float(den)
     except (TypeError, ValueError):
         fps = None
-    # A core that declares a flat 60 or 50 is stating a placeholder, not a
-    # measurement: two of Chimera's do (3DO, Atari 2600), and an Atari 2600
-    # really runs at 59.9228, which costs three quarters of a second over ten
-    # minutes. Where the machine's rate is a round number the archive's own
-    # figure says the same thing, so deferring to it loses nothing and gains
-    # the systems whose cores have not measured theirs yet.
+    # A round 60 or 50 is a NOMINAL rate, not a measured one, and the archive
+    # times every run of a system the same way or it cannot rank them against
+    # each other. So a round rate defers to the archive's figure for the
+    # system; anything else is the machine's own and wins.
+    #
+    # The honest case is the Atari 2600, which has no fixed rate at all: the
+    # cartridge decides how long a frame is by when it strobes VSYNC, so the
+    # core says 60 rather than pretend, and the archive's 59.9227510135505 is
+    # the 262-line convention every 2600 run here is timed by. Neither is
+    # wrong; the convention is what makes two runs of one game comparable.
     if fps is not None and abs(fps - round(fps)) < 1e-9 and round(fps) in (50, 60):
-        warnings.append(f'the project states a flat {round(fps)} fps, which is a '
-                        f'placeholder rate: the system\'s own is used instead')
+        warnings.append(f'the project states a nominal {round(fps)} fps: the '
+                        f'archive times this system at its own rate instead')
         fps = None
     if fps is None and str(lower.get('pal') or '').strip().lower() in ('1', 'true', 'yes'):
         warnings.append('the project says PAL: the rate applied is the system\'s own')

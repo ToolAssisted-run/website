@@ -605,9 +605,9 @@ def main():
     flat['headers'].update({'Platform': 'A26', 'VsyncNumerator': '60',
                             'VsyncDenominator': '1'})
     res = movieparse.parse('run.chimeraProject', json.dumps(flat).encode())
-    ck('chimeraProject: a flat 60 is a placeholder, not a measured rate',
+    ck('chimeraProject: a nominal 60 defers to the system rate the archive keeps',
        res.get('fps') is None and res.get('system') == 'a2600'
-       and any('placeholder' in w for w in res['warnings']), str(res))
+       and any('nominal' in w for w in res['warnings']), str(res))
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(rerecords=None))
     ck('chimeraProject: a missing rerecord count is a warning, not a failure',
        res.get('ok') and res.get('rerecords') is None
