@@ -63,6 +63,16 @@ group  (groups.json)                      a game family ACROSS systems
                                           belongs to at most one group
 ```
 
+**A system is added from a panel** (`/api/system/create`, on the expert panel
+for a whole-site expert and on the Committee's for its members): a key of one
+lowercase word (2 to 16 letters or digits, the first part of every game
+address under it, never renamed), the name as people write it, the exact
+frame rate that times every movie filed there, and the two flags (hard to
+reproduce, plays back on original hardware). **Removing one is the Steering
+Committee's alone** (`/api/system/delete`), refused while any game is filed
+under it or any expert holds scope over it, and it asks for a public reason.
+
+
 - **Groups** gather one family of games across every system it appeared on.
   A game sits in at most one group (validator-enforced). Games no group has
   claimed belong to **Uncategorized**, which is *derived, never stored*: the

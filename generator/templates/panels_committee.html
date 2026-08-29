@@ -59,6 +59,40 @@ much.</p>
   <button class="btn danger">Delete</button>
 </form>
 <p class="msg" id="memberdelete-msg" hidden></p></details></section>
+<section><details class="secfold menufold"><summary><h2>Add a system</h2></summary>
+<form id="f-system" class="actform">
+  <p class="rules">A system is the one piece of the library with no page of its own to be
+  corrected on: its key opens every game address under it and never changes, and its frame
+  rate times every movie filed there. Get the rate as exact as you have it, from the
+  emulator that runs the machine rather than from a round number.</p>
+  <label>Key <input name="system" required pattern="[a-z0-9]{2,16}" maxlength="16"
+    placeholder="one word, lowercase: nes, segacd, ps2"></label>
+  <label>Name <input name="name" required minlength="2" maxlength="40"
+    placeholder="as people write it: Sega Dreamcast"></label>
+  <label>Frames a second <input name="fps" required inputmode="decimal"
+    pattern="[0-9]+(\.[0-9]+)?" placeholder="60.0988138974405, not 60"></label>
+  <label class="check"><input type="checkbox" name="hard" value="1"> <span><b>Hard to
+    reproduce</b> <span class="checkhint">· every reproduction on it pays the bonus</span></span></label>
+  <label class="check"><input type="checkbox" name="hardware" value="1"> <span><b>Plays back
+    on original hardware</b> <span class="checkhint">· a replay device exists, so console
+    verification applies</span></span></label>
+  <button class="btn">Add the system</button>
+</form>
+<p class="msg" id="system-msg" hidden></p></details></section>
+<section><details class="secfold menufold"><summary><h2>Remove a system</h2></summary>
+<form id="f-systemdelete" class="actform">
+  <p class="rules">The Committee's alone, and only for a system nothing stands on: it is
+  refused while any game is filed under it or any expert holds scope over it, because both
+  would be left pointing at a machine the archive no longer knows. Only empty systems are
+  offered below.</p>
+  <label>System <input name="system" list="dl-emptysystems" required
+    placeholder="type to find an empty system"></label>
+  <datalist id="dl-emptysystems">{% for k, name in empty_systems %}<option value="{{ k }}" label="{{ name }}"></option>{% endfor %}</datalist>
+  <label>Why <input name="reason" required minlength="8" maxlength="500"
+    placeholder="added in error, a duplicate of another key, …"></label>
+  <button class="btn danger">Remove</button>
+</form>
+<p class="msg" id="systemdelete-msg" hidden></p></details></section>
 <section><details class="secfold menufold"><summary><h2>Record a Committee decision</h2></summary>
 <p class="rules">The Committee votes on the forum; this writes the result into the
 archive, which is the only place a role is recorded. Point it at the post carrying the

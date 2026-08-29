@@ -113,6 +113,30 @@ import { api, rel, mePromise, viewAsActive, el, note, noteBuilt, actionBtn,
     });
   }
 
+  // ---- systems: added from either panel, removed only from the Committee's ----
+  // The same form serves both pages, so it is armed here rather than inside
+  // either gate; who may SEE it is each panel's own business.
+  function armSystemForm(formId, msgId, path, done){
+    var form = document.getElementById(formId);
+    if (!form) return;
+    var msg = document.getElementById(msgId);
+    form.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      post(path, new FormData(form), actionBtn(form)).then(function(res){
+        if (res.ok && res.j.ok) {
+          noteBuilt(msg, done(res.j), res.j.serial);
+          form.reset();
+        } else note(msg, res.j.error || 'something went wrong', false);
+      });
+    });
+  }
+  armSystemForm('f-system', 'system-msg', '/api/system/create', function(j){
+    return j.system.name + ' is a system here now, as ' + j.key + '. ' + (j.note || '');
+  });
+  armSystemForm('f-systemdelete', 'systemdelete-msg', '/api/system/delete', function(j){
+    return j.name + ' is gone. Nothing was filed under it.';
+  });
+
   // ---- steering committee panel ----
   var committeePanelEl = document.getElementById('cpaneldata');
   if (committeePanelEl) {
@@ -272,6 +296,12 @@ import { api, rel, mePromise, viewAsActive, el, note, noteBuilt, actionBtn,
       }
       gate.hidden = true;
       document.getElementById('panel').hidden = false;
+      // adding a system is the whole site's business, so only the whole-site
+      // scope (and the Committee, which may do anything an expert may) sees it
+      var sysWrap = document.getElementById('sys-create-wrap');
+      if (sysWrap && (amCommittee || myRoster.some(function(e){ return e.scope === 'site'; }))) {
+        sysWrap.hidden = false;
+      }
       var msg = document.getElementById('panel-msg');
 
       // what you hold, and where it applies

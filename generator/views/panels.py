@@ -81,4 +81,10 @@ cpanel_data = {
     'siteExperts': sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'}),
     'founders': founder_now,
 }
-write_panel('committee', 'Steering Committee', tpl('panels_committee.html', cpanel_data=cpanel_data))
+# a system with no game filed under it is the only kind that can be removed,
+# so the picker offers those and nothing else
+empty_systems = sorted((k, sy['name']) for k, sy in systems.items()
+                       if not any(g['system'] == k for g in games.values()))
+write_panel('committee', 'Steering Committee', tpl('panels_committee.html',
+                                                   cpanel_data=cpanel_data,
+                                                   empty_systems=empty_systems))

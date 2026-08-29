@@ -1884,6 +1884,73 @@ def main():
             ck('an expert granted outside the archivist is honoured at once',
                c == 200 and r.get('dry_run'), str(r))
 
+            # --- systems: added by the Committee or the whole site, removed
+            # by the Committee alone, and only where nothing stands on one ---
+            sysreq = {'key': KEY, 'expert': 'SiteOnly', 'system': 'fixturebox',
+                      'name': 'Fixture Box', 'fps': '29.97002997002997', 'hard': '1'}
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, dry_run='1'))
+            ck('a dry run shows the system that would be added',
+               c == 200 and r['would_create']['fixturebox']['name'] == 'Fixture Box'
+               and r['would_create']['fixturebox']['hardToReproduce'] is True, str(r)[:200])
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, expert='TestAuthor'))
+            ck('an ordinary member does not add a system', c == 403, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, expert='groupexpert'))
+            ck('nor does an expert for one system', c == 403, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, system='Fixture Box!'))
+            ck('a system key is one lowercase word', c == 400 and 'key' in r.get('error', ''),
+               str(r)[:140])
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, name='x'))
+            ck('a system needs a name people would write', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, fps='sixty'))
+            ck('the frame rate is a number', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create', dict(sysreq, fps='0'))
+            ck('and a plausible one', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create', sysreq)
+            ck('a whole-site expert adds a system',
+               c == 200 and r['system']['fps'] == 29.97002997002997
+               and r['system'].get('hardwareVerifiable') is None, str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            sysdoc = json.loads((work / 'systems.json').read_text())
+            ck('and it lands in the archive as written',
+               sysdoc.get('fixturebox', {}).get('name') == 'Fixture Box'
+               and sysdoc['fixturebox'].get('hardToReproduce') is True, str(sysdoc.get('fixturebox')))
+            c, r, _ = call(U + '/api/system/create', sysreq)
+            ck('a system key is claimed once', c == 409, str(r)[:140])
+            c, r, _ = call(U + '/api/system/create',
+                           dict(sysreq, system='fixturebox2', name='fixture  box'))
+            ck('and so is its name', c == 409, str(r)[:140])
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'SiteOnly', 'system': 'fixturebox',
+                            'reason': 'the whole site is not the Committee'})
+            ck('a whole-site expert does not remove one', c == 403, str(r)[:120])
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'eien86', 'system': 'nes',
+                            'reason': 'it holds the fixture games'})
+            ck('a system holding games is not removed', c == 409
+               and 'game' in r.get('error', ''), str(r)[:160])
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'eien86', 'system': 'fixturebox',
+                            'reason': 'nope'})
+            ck('removing one says why, in a sentence', c == 400, str(r)[:120])
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'eien86', 'system': 'fixturebox',
+                            'reason': 'added here only to be taken away again',
+                            'dry_run': '1'})
+            ck('the dry run names the system that would go',
+               c == 200 and 'fixturebox' in r.get('would_delete', {}), str(r)[:160])
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'eien86', 'system': 'fixturebox',
+                            'reason': 'added here only to be taken away again'})
+            ck('the Committee removes an empty system',
+               c == 200 and r.get('name') == 'Fixture Box', str(r)[:160])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            ck('and the archive no longer knows it',
+               'fixturebox' not in json.loads((work / 'systems.json').read_text()))
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'eien86', 'system': 'fixturebox',
+                            'reason': 'it is already gone from the archive'})
+            ck('removing a system twice is a 404', c == 404, str(r)[:120])
+
             # --- an expert creating inside their own scope needs nobody ---
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'eien86', 'group': 'founder-series',

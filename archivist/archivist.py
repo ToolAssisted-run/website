@@ -2513,6 +2513,158 @@ def game_create():
                     'group': group_key or None,
                     'note': 'It has no runs yet, so it shows as an empty game until '
                             'somebody archives one.'})
+# ---- systems: the machines a run can be on ----
+# A system is the one piece of library structure with no page of its own to
+# be corrected on: every game key starts with it, every ranking rate comes
+# from it, and a run cannot move between systems. So creating one is a
+# Committee or whole-site matter, and deleting one is the Committee's alone.
+SYSTEM_KEY = re.compile(r'[a-z0-9]{2,16}')
+SYSTEM_FPS_MIN, SYSTEM_FPS_MAX = 1.0, 1000.0
+
+
+def load_systems():
+    return json.loads((ARCHIVE / 'systems.json').read_text())
+
+
+@app.post('/api/system/create')
+def system_create():
+    """Add a system runs may be submitted on.
+
+    Who: the Steering Committee, or a whole-site expert
+    Reads: form fields system (its key), name, fps, hard (hard to
+        reproduce), hardware (playable back on original hardware), dry_run
+    Answers: {ok, key, system}; dry_run: {ok, dry_run, would_create};
+        409 when the key is taken
+    """
+    system_form = request.form
+    dry_run = system_form.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        auth_error = auth_precheck(system_form)
+        if auth_error:
+            return auth_error
+        actor, error = request_identity(system_form, 'expert')
+        if error:
+            return error
+        if not (is_committee(actor) or is_site_expert(actor)):
+            return fail('a system is added by the Steering Committee or by a '
+                        'whole-site expert', 403)
+        paced = pace_gate(system_form, actor, 'create')
+        if paced:
+            return paced
+        key = (system_form.get('system') or '').strip().lower()
+        name = ' '.join((system_form.get('name') or '').split())
+        if not SYSTEM_KEY.fullmatch(key):
+            return fail('a system key is one word of 2 to 16 lowercase letters '
+                        'or digits: nes, segacd, ps2. It is the first part of '
+                        'every game address on that system and never changes')
+        if not 2 <= len(name) <= 40:
+            return fail('a system needs its name as people write it, up to 40 characters')
+        try:
+            fps = float((system_form.get('fps') or '').strip())
+        except ValueError:
+            return fail('the frame rate is a number, as exact as you have it: '
+                        '60.0988138974405, not 60')
+        if not (SYSTEM_FPS_MIN <= fps <= SYSTEM_FPS_MAX) or fps != fps:
+            return fail(f'the frame rate must be between {SYSTEM_FPS_MIN:g} and '
+                        f'{SYSTEM_FPS_MAX:g} frames a second')
+        systems_doc = load_systems()
+        if key in systems_doc:
+            return fail(f'{key!r} is already a system here: {systems_doc[key]["name"]}', 409)
+        clash = next((k for k, v in systems_doc.items()
+                      if v.get('name', '').lower() == name.lower()), None)
+        if clash:
+            return fail(f'{name} is already here under the key {clash!r}', 409)
+        entry = {'name': name, 'fps': fps}
+        if system_form.get('hard') in ('1', 'true', 'yes', 'on'):
+            entry['hardToReproduce'] = True
+        if system_form.get('hardware') in ('1', 'true', 'yes', 'on'):
+            entry['hardwareVerifiable'] = True
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_create': {key: entry}})
+        checkout_branch()
+        systems_doc = load_systems()
+        if key in systems_doc:
+            return fail(f'{key!r} is already a system here', 409)
+        systems_doc[key] = entry
+        (ARCHIVE / 'systems.json').write_text(json.dumps(systems_doc, indent=1) + '\n')
+        ensure_member(actor)
+        commit_push(f'System {key}: created by {actor}\n\n'
+                    f'Name: {name}\nFrame rate: {fps}\n'
+                    f'Hard to reproduce: {"yes" if entry.get("hardToReproduce") else "no"}\n'
+                    f'Hardware verifiable: {"yes" if entry.get("hardwareVerifiable") else "no"}\n'
+                    f'By: {actor}\nVia: archivist')
+        notify_discord(f'\U0001f579\ufe0f **{member_md(actor)}** added the system '
+                       f'**{name}**: runs on it can be submitted now')
+    return jsonify({'ok': True, 'key': key, 'system': entry,
+                    'note': 'Games can be created on it now. The rate is what '
+                            'times every movie filed under it.'})
+
+
+@app.post('/api/system/delete')
+def system_delete():
+    """Remove a system nothing stands on.
+
+    Refused while any game is filed under it, and while any role names it as
+    a scope: both would be left pointing at a machine the archive no longer
+    knows. Emptying it first is somebody's deliberate work, not a side effect
+    of this.
+
+    Who: the Steering Committee
+    Reads: form fields system (its key), reason, dry_run
+    Answers: {ok, key, name}; dry_run: {ok, dry_run, would_delete}
+    """
+    system_form = request.form
+    dry_run = system_form.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        auth_error = auth_precheck(system_form)
+        if auth_error:
+            return auth_error
+        actor, error = request_identity(system_form, 'expert')
+        if error:
+            return error
+        if not is_committee(actor):
+            return fail('a system is removed by the Steering Committee', 403)
+        paced = pace_gate(system_form, actor, 'create')
+        if paced:
+            return paced
+        key = (system_form.get('system') or '').strip().lower()
+        reason = (system_form.get('reason') or '').strip()
+        systems_doc = load_systems()
+        if key not in systems_doc:
+            return fail(f'no such system: {key!r}', 404)
+        if not 8 <= len(reason) <= 500:
+            return fail('say why, in a sentence: it is public and permanent')
+        games_dir = ARCHIVE / 'games' / key
+        held = sorted(g.name for g in games_dir.glob('*') if (g / 'game.json').is_file()) \
+            if games_dir.is_dir() else []
+        if held:
+            return fail(f'{key} still holds {len(held)} game'
+                        f'{"s" if len(held) != 1 else ""} ({", ".join(held[:3])}'
+                        f'{", ..." if len(held) > 3 else ""}); a system is only '
+                        f'removed once nothing is filed under it', 409)
+        scoped = sorted({e['user'] for e in load_experts() if e['scope'] == key})
+        if scoped:
+            return fail(f'{", ".join(scoped)} hold{"s" if len(scoped) == 1 else ""} '
+                        f'expert scope over {key}; take the scope back first', 409)
+        name = systems_doc[key]['name']
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_delete': {key: systems_doc[key]}})
+        checkout_branch()
+        systems_doc = load_systems()
+        if key not in systems_doc:
+            return fail(f'no such system: {key!r}', 404)
+        systems_doc.pop(key)
+        (ARCHIVE / 'systems.json').write_text(json.dumps(systems_doc, indent=1) + '\n')
+        ensure_member(actor)
+        commit_push(f'System {key}: removed by {actor}\n\n'
+                    f'Name: {name}\nReason: {reason}\nBy: {actor}\nVia: archivist')
+        notify_discord(f'\U0001f5d1\ufe0f **{member_md(actor)}** removed the empty '
+                       f'system **{name}**: {reason}')
+    return jsonify({'ok': True, 'key': key, 'name': name})
+
+
 @app.post('/api/group/create')
 def group_create():
     """Create a group, real on arrival, exactly like a
