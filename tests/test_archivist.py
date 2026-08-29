@@ -1892,10 +1892,18 @@ def main():
             ck('a dry run shows the system that would be added',
                c == 200 and r['would_create']['fixturebox']['name'] == 'Fixture Box'
                and r['would_create']['fixturebox']['hardToReproduce'] is True, str(r)[:200])
-            c, r, _ = call(U + '/api/system/create', dict(sysreq, expert='TestAuthor'))
-            ck('an ordinary member does not add a system', c == 403, str(r)[:120])
-            c, r, _ = call(U + '/api/system/create', dict(sysreq, expert='groupexpert'))
-            ck('nor does an expert for one system', c == 403, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create',
+                           {'key': KEY, 'expert': 'TestAuthor', 'name': 'Bandai Whatsit'})
+            ck('a submitter adds a system by name alone, key made from it',
+               c == 200 and r['key'] == 'bandai-whatsit'
+               and r['system']['fps'] == 60.0, str(r)[:200])
+            c, r, _ = call(U + '/api/system/delete',
+                           {'key': KEY, 'expert': 'eien86', 'system': 'bandai-whatsit',
+                            'reason': 'the fixture only needed it for a moment'})
+            ck('and the Committee can take it away again', c == 200, str(r)[:120])
+            c, r, _ = call(U + '/api/system/create',
+                           {'key': KEY, 'expert': 'TestAuthor', 'name': '!!'})
+            ck('a name of nothing but symbols makes no key', c == 400, str(r)[:140])
             c, r, _ = call(U + '/api/system/create', dict(sysreq, system='Fixture Box!'))
             ck('a system key is one lowercase word', c == 400 and 'key' in r.get('error', ''),
                str(r)[:140])
@@ -1919,6 +1927,34 @@ def main():
             c, r, _ = call(U + '/api/system/create',
                            dict(sysreq, system='fixturebox2', name='fixture  box'))
             ck('and so is its name', c == 409, str(r)[:140])
+            c, r, _ = call(U + '/api/system/edit',
+                           {'key': KEY, 'expert': 'TestAuthor', 'system': 'fixturebox',
+                            'fps': '30'})
+            ck('an ordinary member does not correct a system', c == 403, str(r)[:120])
+            c, r, _ = call(U + '/api/system/edit',
+                           {'key': KEY, 'expert': 'SiteOnly', 'system': 'fixturebox',
+                            'fps': '59.94005994005994', 'hard': '0', 'hardware': '1'})
+            ck('a whole-site expert sets the rate and the flags',
+               c == 200 and set(r['changed']) == {'fps', 'hardToReproduce', 'hardwareVerifiable'},
+               str(r)[:220])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            sysdoc = json.loads((work / 'systems.json').read_text())
+            ck('and the archive carries the correction',
+               sysdoc['fixturebox']['fps'] == 59.94005994005994
+               and 'hardToReproduce' not in sysdoc['fixturebox']
+               and sysdoc['fixturebox']['hardwareVerifiable'] is True, str(sysdoc['fixturebox']))
+            ck('the correction is in the edit log',
+               any(e['kind'] == 'system' and e['key'] == 'fixturebox' and e['field'] == 'fps'
+                   for e in json.loads((work / 'edits.json').read_text())['events']),
+               'no system edit logged')
+            c, r, _ = call(U + '/api/system/edit',
+                           {'key': KEY, 'expert': 'SiteOnly', 'system': 'fixturebox',
+                            'fps': '59.94005994005994'})
+            ck('sending the record back changes nothing', c == 400, str(r)[:140])
+            c, r, _ = call(U + '/api/system/edit',
+                           {'key': KEY, 'expert': 'SiteOnly', 'system': 'nosuchbox',
+                            'fps': '60'})
+            ck('correcting a system that is not there is a 404', c == 404, str(r)[:120])
             c, r, _ = call(U + '/api/system/delete',
                            {'key': KEY, 'expert': 'SiteOnly', 'system': 'fixturebox',
                             'reason': 'the whole site is not the Committee'})

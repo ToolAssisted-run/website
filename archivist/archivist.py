@@ -2518,8 +2518,19 @@ def game_create():
 # be corrected on: every game key starts with it, every ranking rate comes
 # from it, and a run cannot move between systems. So creating one is a
 # Committee or whole-site matter, and deleting one is the Committee's alone.
-SYSTEM_KEY = re.compile(r'[a-z0-9]{2,16}')
+SYSTEM_KEY = re.compile(r'[a-z0-9]+(-[a-z0-9]+)*')
+SYSTEM_KEY_MAX = 24
 SYSTEM_FPS_MIN, SYSTEM_FPS_MAX = 1.0, 1000.0
+SYSTEM_FPS_DEFAULT = 60.0     # what a submitter's system starts at, until an
+                              # expert sets the rate the machine really runs at
+
+
+def system_key_for(name):
+    """The key a system name becomes: lowercase, spaces to hyphens, the rest
+    dropped. "Bandai Terebikko" is terebikko's neighbour bandai-terebikko, and
+    a submitter never has to think about it."""
+    key = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return key[:SYSTEM_KEY_MAX].rstrip('-')
 
 
 def load_systems():
@@ -2530,11 +2541,21 @@ def load_systems():
 def system_create():
     """Add a system runs may be submitted on.
 
-    Who: the Steering Committee, or a whole-site expert
-    Reads: form fields system (its key), name, fps, hard (hard to
-        reproduce), hardware (playable back on original hardware), dry_run
+    A submitter meets this at the top of the submit form and gives a name
+    alone: the key is made from the name and the rate starts at 60 until a
+    whole-site expert sets the real one, because a run on a machine nobody
+    listed yet is a run the archive wants, and a wrong rate is a correction
+    rather than a lost submission. A panel gives the key, the rate and the
+    flags outright.
+
+    Who: any member (name alone); the key, rate and flags are anybody's to
+        send, and a whole-site expert or the Committee corrects them later
+        through /api/system/edit
+    Reads: form fields name, system (its key, made from the name when
+        absent), fps (60 when absent), hard (hard to reproduce), hardware
+        (playable back on original hardware), dry_run
     Answers: {ok, key, system}; dry_run: {ok, dry_run, would_create};
-        409 when the key is taken
+        409 when the key or the name is taken
     """
     system_form = request.form
     dry_run = system_form.get('dry_run') in ('1', 'true', 'yes')
@@ -2546,22 +2567,20 @@ def system_create():
         actor, error = request_identity(system_form, 'expert')
         if error:
             return error
-        if not (is_committee(actor) or is_site_expert(actor)):
-            return fail('a system is added by the Steering Committee or by a '
-                        'whole-site expert', 403)
         paced = pace_gate(system_form, actor, 'create')
         if paced:
             return paced
-        key = (system_form.get('system') or '').strip().lower()
         name = ' '.join((system_form.get('name') or '').split())
-        if not SYSTEM_KEY.fullmatch(key):
-            return fail('a system key is one word of 2 to 16 lowercase letters '
-                        'or digits: nes, segacd, ps2. It is the first part of '
-                        'every game address on that system and never changes')
         if not 2 <= len(name) <= 40:
             return fail('a system needs its name as people write it, up to 40 characters')
+        key = (system_form.get('system') or '').strip().lower() or system_key_for(name)
+        if not SYSTEM_KEY.fullmatch(key) or not 2 <= len(key) <= SYSTEM_KEY_MAX:
+            return fail(f'a system key is lowercase words joined by hyphens, 2 to '
+                        f'{SYSTEM_KEY_MAX} characters: nes, segacd, bandai-terebikko. '
+                        f'It is the first part of every game address on that system '
+                        f'and never changes')
         try:
-            fps = float((system_form.get('fps') or '').strip())
+            fps = float((system_form.get('fps') or SYSTEM_FPS_DEFAULT))
         except ValueError:
             return fail('the frame rate is a number, as exact as you have it: '
                         '60.0988138974405, not 60')
@@ -2597,8 +2616,101 @@ def system_create():
         notify_discord(f'\U0001f579\ufe0f **{member_md(actor)}** added the system '
                        f'**{name}**: runs on it can be submitted now')
     return jsonify({'ok': True, 'key': key, 'system': entry,
-                    'note': 'Games can be created on it now. The rate is what '
-                            'times every movie filed under it.'})
+                    'note': 'Games can be created on it now. Its frame rate '
+                            'times every movie filed under it, and a whole-site '
+                            'expert sets it from the expert panel.'})
+
+
+@app.post('/api/system/edit')
+def system_edit():
+    """Correct a system: its name, its frame rate, its two flags.
+
+    The key is never among them. It opens every game address filed under the
+    system, and a run cannot move between systems, so a renamed key would
+    break every address it ever had.
+
+    Who: a whole-site expert, or the Steering Committee
+    Reads: form fields system (its key), name, fps, hard, hardware (each
+        optional; only what is sent changes), dry_run
+    Answers: {ok, key, system, changed}; dry_run: {ok, dry_run, would_change}
+    """
+    system_form = request.form
+    dry_run = system_form.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        auth_error = auth_precheck(system_form)
+        if auth_error:
+            return auth_error
+        actor, error = request_identity(system_form, 'expert')
+        if error:
+            return error
+        if not (is_committee(actor) or is_site_expert(actor)):
+            return fail('a system is corrected by a whole-site expert or by the '
+                        'Steering Committee', 403)
+        paced = pace_gate(system_form, actor, 'create')
+        if paced:
+            return paced
+        key = (system_form.get('system') or '').strip().lower()
+        systems_doc = load_systems()
+        if key not in systems_doc:
+            return fail(f'no such system: {key!r}', 404)
+        entry = dict(systems_doc[key])
+        changed, befores = [], {}
+        if 'name' in system_form:
+            name = ' '.join((system_form.get('name') or '').split())
+            if not 2 <= len(name) <= 40:
+                return fail('a system needs its name as people write it, up to 40 characters')
+            clash = next((k for k, v in systems_doc.items()
+                          if k != key and v.get('name', '').lower() == name.lower()), None)
+            if clash:
+                return fail(f'{name} is already here under the key {clash!r}', 409)
+            if name != entry['name']:
+                befores['name'] = entry['name']
+                entry['name'] = name
+                changed.append('name')
+        if (system_form.get('fps') or '').strip():
+            try:
+                fps = float(system_form['fps'].strip())
+            except ValueError:
+                return fail('the frame rate is a number, as exact as you have it')
+            if not SYSTEM_FPS_MIN <= fps <= SYSTEM_FPS_MAX:
+                return fail(f'the frame rate must be between {SYSTEM_FPS_MIN:g} and '
+                            f'{SYSTEM_FPS_MAX:g} frames a second')
+            if fps != entry['fps']:
+                befores['fps'] = str(entry['fps'])
+                entry['fps'] = fps
+                changed.append('fps')
+        for field, flag in (('hard', 'hardToReproduce'), ('hardware', 'hardwareVerifiable')):
+            if not (system_form.get(field) or '').strip():
+                continue                       # empty says "leave it as it is"
+            want = system_form.get(field) in ('1', 'true', 'yes', 'on')
+            if want == bool(entry.get(flag)):
+                continue
+            befores[flag] = str(bool(entry.get(flag)))
+            if want:
+                entry[flag] = True
+            else:
+                entry.pop(flag, None)
+            changed.append(flag)
+        if not changed:
+            return fail('nothing sent differs from the record')
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'would_change': changed,
+                            'would_be': {key: entry}})
+        checkout_branch()
+        systems_doc = load_systems()
+        if key not in systems_doc:
+            return fail(f'no such system: {key!r}', 404)
+        systems_doc[key] = entry
+        (ARCHIVE / 'systems.json').write_text(json.dumps(systems_doc, indent=1) + '\n')
+        for field in changed:
+            log_edit('system', key, field, befores[field], str(entry.get(field)), actor,
+                     (system_form.get('reason') or '').strip() or 'correcting the system record')
+        ensure_member(actor)
+        commit_push(f'System {key}: {", ".join(changed)} by {actor}\n\n'
+                    + ''.join(f'{f}: {befores[f]} -> {entry.get(f)}\n' for f in changed)
+                    + f'By: {actor}\nVia: archivist')
+    return jsonify({'ok': True, 'key': key, 'system': entry, 'changed': changed})
 
 
 @app.post('/api/system/delete')

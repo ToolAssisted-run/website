@@ -112,6 +112,29 @@ already cover, never wider than your own.</p></section>
   <button class="btn">Add the system</button>
 </form>
 <p class="msg" id="system-msg" hidden></p></details></section>
+<section id="sys-edit-wrap" hidden><details class="secfold menufold"><summary><h2>Correct a system</h2></summary>
+<form id="f-systemedit" class="actform">
+  <p class="rules">A system added from the submit form arrives with its name alone and a
+  rate of 60: this is where the rate the machine really runs at is set, from the emulator
+  that runs it. The key is not here and never changes, because it opens every game address
+  filed under the system. Leave a field empty to leave it alone.</p>
+  <label>System <input name="system" list="dl-allsystems" required
+    placeholder="type to find the system"></label>
+  <datalist id="dl-allsystems">{% for k, name in all_systems %}<option value="{{ k }}" label="{{ name }}"></option>{% endfor %}</datalist>
+  <label>Name <input name="name" maxlength="40" placeholder="leave empty to keep it"></label>
+  <label>Frames a second <input name="fps" inputmode="decimal" pattern="[0-9]+(\.[0-9]+)?"
+    placeholder="60.0988138974405, not 60"></label>
+  <label>Hard to reproduce <select name="hard">
+    <option value="">leave as it is</option>
+    <option value="1">yes, every reproduction on it pays the bonus</option>
+    <option value="0">no</option></select></label>
+  <label>Plays back on original hardware <select name="hardware">
+    <option value="">leave as it is</option>
+    <option value="1">yes, console verification applies</option>
+    <option value="0">no</option></select></label>
+  <button class="btn">Correct it</button>
+</form>
+<p class="msg" id="systemedit-msg" hidden></p></details></section>
 <datalist id="panel-scopelist"></datalist>
 <p class="msg" id="panel-msg" hidden></p>
 </div>

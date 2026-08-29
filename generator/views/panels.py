@@ -59,7 +59,14 @@ panel_data = {
     # shows them to nobody else, but the request itself is public on the page
     # it is about and in the site log.
 }
-write_panel('expert', 'Expert panel', tpl('panels_expert.html', panel_data=panel_data))
+# systems: every one for the correction form, and the empty ones alone for
+# the Committee's removal form, since a system holding a game is not removable
+empty_systems = sorted((k, sy['name']) for k, sy in systems.items()
+                       if not any(g['system'] == k for g in games.values()))
+all_systems = sorted(((k, sy['name']) for k, sy in systems.items()),
+                     key=lambda kv: kv[1].lower())
+write_panel('expert', 'Expert panel', tpl('panels_expert.html', panel_data=panel_data,
+                                         all_systems=all_systems))
 
 # ---- founder panel ----
 founder_now = sorted({ev['user'].lower() for (u, role, sc), ev in ROLES_NOW.items()
@@ -83,8 +90,7 @@ cpanel_data = {
 }
 # a system with no game filed under it is the only kind that can be removed,
 # so the picker offers those and nothing else
-empty_systems = sorted((k, sy['name']) for k, sy in systems.items()
-                       if not any(g['system'] == k for g in games.values()))
 write_panel('committee', 'Steering Committee', tpl('panels_committee.html',
                                                    cpanel_data=cpanel_data,
-                                                   empty_systems=empty_systems))
+                                                   empty_systems=empty_systems,
+                                                   all_systems=all_systems))

@@ -13,7 +13,13 @@ gamedata = {key: f'{systems[g["system"]]["name"]} · {g["title"]}'
                                  key=lambda kv: (kv[1]['system'], kv[1]['title']))}
 authornames = sorted({**credited, **{k: a['username'] for k, a in authors.items()}}.values(),
                      key=str.lower)
+# the system selector's own list: every system, whether or not it holds a
+# game yet, because a machine added a moment ago is exactly the one a
+# submitter is here about
+systemdata = {k: sy['name'] for k, sy in sorted(systems.items(),
+                                                key=lambda kv: kv[1]['name'].lower())}
 body = tpl('submit.html', ARCHIVE_RAW=ARCHIVE_RAW, ARCHIVIST=ARCHIVIST, gamedata=gamedata,
+           systemdata=systemdata,
            authornames=authornames, provider_names=' · '.join(providers.names()),
            today=datetime.date.today().isoformat())
 (OUT / 'submit').mkdir(exist_ok=True)

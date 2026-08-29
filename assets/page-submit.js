@@ -996,25 +996,109 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
       var gameList = gamePick.querySelector('.gamelist');
       var gameLocked = document.getElementById('s-gamelocked');
       var gameKeys = Object.keys(gameTitles);
+
+      // ---- the system comes first, and narrows the games below it ----
+      // A game key IS system/slug, so the filter needs nothing the page does
+      // not already carry. Empty means every system, which is what somebody
+      // who knows the game's name wants.
+      var systemNames = {};
+      try { systemNames = JSON.parse(document.getElementById('systemdata').textContent); }
+      catch (e) { systemNames = {}; }
+      var systemSelect = document.getElementById('s-system');
+      function fillSystems(selected){
+        if (!systemSelect) return;
+        var keys = Object.keys(systemNames).sort(function(a, b){
+          return systemNames[a].toLowerCase() < systemNames[b].toLowerCase() ? -1 : 1;
+        });
+        systemSelect.innerHTML = '';
+        var every = document.createElement('option');
+        every.value = ''; every.textContent = 'Every system';
+        systemSelect.appendChild(every);
+        keys.forEach(function(k){
+          var o = document.createElement('option');
+          o.value = k; o.textContent = systemNames[k];
+          systemSelect.appendChild(o);
+        });
+        systemSelect.value = selected || '';
+      }
+      fillSystems('');
+      function systemOf(key){ return String(key).split('/')[0]; }
       function pickGame(key){
         gameSelect.value = key;
         gameSearch.value = gameTitles[key];
         gameList.hidden = true;
+        if (systemSelect && gameTitles[key]) systemSelect.value = systemOf(key);
         loadGoals();
       }
       function fillGameList(){
         var q = gameSearch.value.trim().toLowerCase();
+        var sys = systemSelect ? systemSelect.value : '';
         gameList.innerHTML = '';
-        if (q) {
-          gameKeys.filter(function(k){
-            return gameTitles[k].toLowerCase().indexOf(q) >= 0 || k.indexOf(q) >= 0;
-          }).slice(0, 12).forEach(function(k){
-            var row = el('div', 'authopt', gameTitles[k]);
-            row.addEventListener('mousedown', function(ev){ ev.preventDefault(); pickGame(k); });
-            gameList.appendChild(row);
-          });
+        var pool = gameKeys.filter(function(k){ return !sys || systemOf(k) === sys; });
+        // with a system chosen the list is worth showing unprompted: it is
+        // short, and it is the answer to "what is already here?"
+        var rows = (q ? pool.filter(function(k){
+          return gameTitles[k].toLowerCase().indexOf(q) >= 0 || k.indexOf(q) >= 0;
+        }) : (sys ? pool : []));
+        rows.slice(0, 12).forEach(function(k){
+          var row = el('div', 'authopt', gameTitles[k]);
+          row.addEventListener('mousedown', function(ev){ ev.preventDefault(); pickGame(k); });
+          gameList.appendChild(row);
+        });
+        if (sys && !rows.length) {
+          gameList.appendChild(el('div', 'authopt authnone',
+            q ? 'no game of that name on this system yet'
+              : 'no games on this system yet: create the game first'));
         }
         gameList.hidden = false;
+      }
+      if (systemSelect) systemSelect.addEventListener('change', function(){
+        // a game from another system is no longer the one being submitted
+        if (gameSelect.value && systemSelect.value
+            && systemOf(gameSelect.value) !== systemSelect.value) {
+          gameSelect.value = '';
+          gameSearch.value = '';
+          fillGoals([]);
+        }
+        paintPanels();
+      });
+
+      // ---- a machine nobody has listed yet, added from here ----
+      var addSystemBtn = document.getElementById('s-addsystem');
+      if (addSystemBtn) {
+        var newBox = document.getElementById('s-newsystem');
+        var newName = document.getElementById('s-newsystem-name');
+        var newKey = document.getElementById('s-newsystem-key');
+        var newMsg = document.getElementById('s-newsystem-msg');
+        var newGo = document.getElementById('s-newsystem-go');
+        function keyFor(name){
+          return name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+                     .replace(/^-+|-+$/g, '').slice(0, 24).replace(/-+$/, '');
+        }
+        addSystemBtn.addEventListener('click', function(){
+          newBox.hidden = !newBox.hidden;
+          if (!newBox.hidden) newName.focus();
+        });
+        newName.addEventListener('input', function(){
+          newKey.textContent = keyFor(newName.value) || 'the-system-name';
+        });
+        newGo.addEventListener('click', function(){
+          var name = newName.value.trim();
+          if (name.length < 2) { note(newMsg, 'the name, as people write it', false); return; }
+          var fd = new FormData();
+          fd.append('name', name);
+          post('/api/system/create', fd, newGo).then(function(res){
+            if (res.ok && res.j.ok) {
+              systemNames[res.j.key] = res.j.system.name;
+              fillSystems(res.j.key);
+              note(newMsg, res.j.system.name + ' is a system here now, as ' + res.j.key +
+                           '. Create the game on it, then come back.', true);
+              newName.value = '';
+              fillGameList();
+              paintPanels();
+            } else note(newMsg, res.j.error || 'something went wrong', false);
+          });
+        });
       }
       gameSearch.addEventListener('input', fillGameList);
       gameSearch.addEventListener('focus', fillGameList);

@@ -63,12 +63,20 @@ group  (groups.json)                      a game family ACROSS systems
                                           belongs to at most one group
 ```
 
-**A system is added from a panel** (`/api/system/create`, on the expert panel
-for a whole-site expert and on the Committee's for its members): a key of one
-lowercase word (2 to 16 letters or digits, the first part of every game
-address under it, never renamed), the name as people write it, the exact
-frame rate that times every movie filed there, and the two flags (hard to
-reproduce, plays back on original hardware). **Removing one is the Steering
+**A system is created like a game: by whoever needs it** (`/api/system/create`).
+The submit form asks for the system first, as the substep before the game, and
+it narrows the game list; a machine nobody has listed yet is added right there
+from **its name alone**, the key made from the name (lowercase, spaces to
+hyphens, everything else dropped: "Bandai Terebikko" becomes
+`bandai-terebikko`) and the frame rate starting at 60. A run on an unlisted
+machine is a run the archive wants, and a rate is a correction rather than a
+reason to turn somebody away. The panels send the key, rate and flags outright.
+
+**A whole-site expert or the Committee corrects one** (`/api/system/edit`, on
+both panels): name, frame rate, and the two flags (hard to reproduce, plays
+back on original hardware), each logged in `edits.json` like any expert edit.
+The key is never among them: it opens every game address filed under the
+system, and a run cannot move between systems. **Removing one is the Steering
 Committee's alone** (`/api/system/delete`), refused while any game is filed
 under it or any expert holds scope over it, and it asks for a public reason.
 

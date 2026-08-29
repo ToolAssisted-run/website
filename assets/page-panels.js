@@ -133,6 +133,9 @@ import { api, rel, mePromise, viewAsActive, el, note, noteBuilt, actionBtn,
   armSystemForm('f-system', 'system-msg', '/api/system/create', function(j){
     return j.system.name + ' is a system here now, as ' + j.key + '. ' + (j.note || '');
   });
+  armSystemForm('f-systemedit', 'systemedit-msg', '/api/system/edit', function(j){
+    return j.system.name + ': ' + j.changed.join(', ') + ' put right.';
+  });
   armSystemForm('f-systemdelete', 'systemdelete-msg', '/api/system/delete', function(j){
     return j.name + ' is gone. Nothing was filed under it.';
   });
@@ -298,10 +301,11 @@ import { api, rel, mePromise, viewAsActive, el, note, noteBuilt, actionBtn,
       document.getElementById('panel').hidden = false;
       // adding a system is the whole site's business, so only the whole-site
       // scope (and the Committee, which may do anything an expert may) sees it
-      var sysWrap = document.getElementById('sys-create-wrap');
-      if (sysWrap && (amCommittee || myRoster.some(function(e){ return e.scope === 'site'; }))) {
-        sysWrap.hidden = false;
-      }
+      var wholeSite = amCommittee || myRoster.some(function(e){ return e.scope === 'site'; });
+      ['sys-create-wrap', 'sys-edit-wrap'].forEach(function(id){
+        var box = document.getElementById(id);
+        if (box && wholeSite) box.hidden = false;
+      });
       var msg = document.getElementById('panel-msg');
 
       // what you hold, and where it applies
