@@ -50,7 +50,7 @@ EXACT_FPS = {
     'n64': 60.0, 'psx': 59.29286256195557,
     # the three Chimera brought: the rate each core declares for its machine
     # (waterbox.config vsync), which is the rate a movie of it really ran at
-    'ps2': 59.94005994005994, 'psp': 59.9400599400599,
+    'ps2': 59.94005994005994, 'psp': 59.94005994005994,
     'dreamcast': 59.94005994005994,
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}

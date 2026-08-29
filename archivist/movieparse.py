@@ -199,6 +199,16 @@ def parse_chimeraproject(data):
             fps = float(num) / float(den)
     except (TypeError, ValueError):
         fps = None
+    # A core that declares a flat 60 or 50 is stating a placeholder, not a
+    # measurement: two of Chimera's do (3DO, Atari 2600), and an Atari 2600
+    # really runs at 59.9228, which costs three quarters of a second over ten
+    # minutes. Where the machine's rate is a round number the archive's own
+    # figure says the same thing, so deferring to it loses nothing and gains
+    # the systems whose cores have not measured theirs yet.
+    if fps is not None and abs(fps - round(fps)) < 1e-9 and round(fps) in (50, 60):
+        warnings.append(f'the project states a flat {round(fps)} fps, which is a '
+                        f'placeholder rate: the system\'s own is used instead')
+        fps = None
     if fps is None and str(lower.get('pal') or '').strip().lower() in ('1', 'true', 'yes'):
         warnings.append('the project says PAL: the rate applied is the system\'s own')
 

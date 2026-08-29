@@ -601,6 +601,13 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(only_first).encode())
     ck('chimeraProject: a run whose only press is frame zero is one frame',
        res.get('frames') == 1, str(res))
+    flat = json.loads(f_chimeraproject().decode())
+    flat['headers'].update({'Platform': 'A26', 'VsyncNumerator': '60',
+                            'VsyncDenominator': '1'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(flat).encode())
+    ck('chimeraProject: a flat 60 is a placeholder, not a measured rate',
+       res.get('fps') is None and res.get('system') == 'a2600'
+       and any('placeholder' in w for w in res['warnings']), str(res))
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(rerecords=None))
     ck('chimeraProject: a missing rerecord count is a warning, not a failure',
        res.get('ok') and res.get('rerecords') is None
