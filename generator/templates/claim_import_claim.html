@@ -39,8 +39,10 @@ responsibility (<a href="https://github.com/ToolAssisted-run#4-terms-of-use">Ter
   <h3>Claim a name</h3>
   <p class="rules">One open claim at a time. While it is open the Committee sees a masked
   form of your forum email address, as above.</p>
-  <label>Name you are claiming</label><input name="identity" list="dl-heldnames" required
-         placeholder="type to find the held name">
+  {# no list here, ever: the held names are the names of people who have not
+     come here, and a page that offers them hands over that roll #}
+  <label>Name you are claiming</label><input name="identity" required
+         placeholder="the name as it is written at the source site">
   <label>What shows it is yours (public)</label>
   <textarea name="evidence" rows="3" required
             placeholder="e.g. I posted this request from that account at the source site"></textarea>
@@ -60,8 +62,8 @@ claim a name</a></p>
   challenged.</p>
   <label>Forum account</label><input name="member" list="dl-members" required
          placeholder="type to find a member">
-  <label>Name being claimed</label><input name="identity" list="dl-heldnames" required
-         placeholder="type to find the held name">
+  <label>Name being claimed</label><input name="identity" required
+         placeholder="the name as it is written at the source site">
   <label>How you verified it (required, public)</label>
   <textarea name="method" rows="3" required
             placeholder="e.g. posted the request from the account that name belongs to"></textarea>
@@ -69,4 +71,3 @@ claim a name</a></p>
 </form>
 <p id="attest-msg" class="actmsg" hidden></p></div>
 {{ dl_members() }}
-{{ dl_heldnames() }}

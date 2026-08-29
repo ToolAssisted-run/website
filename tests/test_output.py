@@ -1004,13 +1004,17 @@ def main():
         # exists is asked for, the input carries a list you can type into
         panel = all_html[out / 'expert' / 'index.html']
         claimp_ = all_html[out / 'claim' / 'index.html']
-        ck('the claim page offers the held names as a list',
-           'id="dl-heldnames"' in claimp_ and 'list="dl-heldnames"' in claimp_,
-           claimp_[:200])
+        # The one place the pattern is deliberately broken: a held name
+        # belongs to somebody who has not come here, and the list of them is
+        # the roll of people who have not. The claimant types their own name;
+        # nothing on the site hands the others out.
+        ck('the claim page offers no list of held names',
+           'dl-heldnames' not in claimp_, claimp_[:200])
         ck('and it offers the members as a list for attestation',
            'id="dl-members"' in claimp_ and 'list="dl-members"' in claimp_)
-        ck('a held name in the list is one nobody claimed',
-           'value="Nyx"' in claimp_, 'Nyx is credited on a run and not a member')
+        ck('no page anywhere carries the held names',
+           not any('dl-heldnames' in page_html for page_html in all_html.values()),
+           str([str(k) for k, v in all_html.items() if 'dl-heldnames' in v][:3]))
         fpanel_ = all_html[out / 'founder' / 'index.html']
         # the pickers search the archivist as you type (#56): no page carries
         # the member list, and the page knows who is seated so the seat

@@ -624,6 +624,10 @@ A category defines what it ranks by.
   `infra/discourse-theme/held-name/`; the claim page carries the same
   sentence for anyone who arrives there first.
 - **Claims**: `/api/claim/request` files one (one open claim per member);
+  the claimant TYPES the name, and no page anywhere offers the held ones
+  as a list: that list is the roll of people who have not come here, and
+  handing it out is not ours to do. Every other registered thing is still
+  picked rather than typed;
   the **Steering Committee alone** decides (`/committee/` panel), seeing a
   **masked** form of the requester's forum email (`jo***oe@e****.com`),
   computed live, shown only to those entitled, **never stored**: the

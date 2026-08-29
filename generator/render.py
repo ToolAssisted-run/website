@@ -549,12 +549,6 @@ def dl_members(exclude=()):
                    if a['username'].lower() not in low)
     return f'<datalist id="dl-members">{opts}</datalist>'
 
-def dl_heldnames():
-    """Credited names nobody has claimed: what the claim page offers."""
-    held = sorted((v for k, v in credited.items() if k not in authors), key=str.lower)
-    opts = ''.join(f'<option value="{esc(n)}"></option>' for n in held)
-    return f'<datalist id="dl-heldnames">{opts}</datalist>'
-
 def dl_games():
     """Games a new group could take: ungrouped, and neither refused nor
     removed. A game already in a group would be refused (a game belongs to
@@ -631,7 +625,7 @@ TEMPLATES = pathlib.Path(__file__).resolve().parent / 'templates'
 _HTML_HELPERS = (
     'role_badges group_chip expert_line scope_badge card_views chip_views md_html run_date_cell '
     'frames_html wiki_html inline author_chip member_chip thumb_html console_tick '
-    'tick console_chip state_chip badge_chip medals dl_members dl_heldnames dl_games '
+    'tick console_chip state_chip badge_chip medals dl_members dl_games '
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
     'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
