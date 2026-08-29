@@ -7,8 +7,8 @@
 <header class="ghead"><div><h1 id="s-title">Submit a run</h1>
 <p class="authline"><span id="s-subtitle">Your run is archived instantly and appears immediately, as pending.
 Honest attribution of every author is the one hard rule. Never upload ROMs.</span>
-{# the span is what edit mode rewrites; the policy link stays in both modes #}
-Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" target="_blank" rel="noopener">run submission policy</a> first.</p></div>
+{# edit and move modes rewrite the span; move mode hides the policy link #}
+<span id="s-policy"> Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" target="_blank" rel="noopener">run submission policy</a> first.</span></p></div>
 <div class="hbtns" id="s-editback" hidden><a class="btn quiet" id="s-editback-link" href="../">Back to the run</a></div></header>
 <script type="application/json" id="gamedata">{{ json_blob({'raw': ARCHIVE_RAW, 'games': gamedata}) }}</script>
 <script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
@@ -16,19 +16,19 @@ Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" 
 <form id="submitform" class="bigform" hidden>
   {# the draft: everything typed is kept in this browser as you go (never the
      movie file, which browsers refuse to restore); Clear empties it all #}
-  <div class="draftbar"><p class="draftnote" id="s-draftnote" hidden></p>
+  <div class="draftbar" id="s-draftbar"><p class="draftnote" id="s-draftnote" hidden></p>
   <button type="button" class="btn shade" id="s-clear">Clear the form</button></div>
   {# Six panels that unfold one after the other as the previous one is
      complete (app.js decides from field validity, and from a restored draft
      the same way). One form all along: the archivist takes one POST. #}
   <section class="panel actform" id="p-game" data-step="1">
-  <h2 class="ptitle"><span class="pnum">1</span> Game and category</h2>
+  <h2 class="ptitle" id="p-game-title"><span class="pnum">1</span> Game and category</h2>
   <div class="pbody">
   <label>Game</label>
   <div class="pickrow">
   <div class="gamepick" id="s-gamepick">
     <input class="gamesearch" id="s-gamesearch" placeholder="Type to find the game…" autocomplete="off">
-    <div class="gamelist" hidden></div>
+    <div class="gamelist" id="s-gamelist" hidden></div>
     <input type="hidden" name="game" id="s-game">
   </div>
   <span class="createq">Game not there? <a class="btn quiet" href="../create-game/" target="_blank">Create it</a></span>
@@ -51,6 +51,7 @@ Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" 
     <label>What does this run do? (shown in the ranking)</label>
     <input name="goal_description" maxlength="200" placeholder="e.g. beats the game using only the credits sequence">
   </div>
+  <p class="rules fullw" id="s-moverefresh" hidden>After creating a new game or category in another tab, refresh this page to include it in these selectors.</p>
   </div></section>
 
   <section class="panel actform folded" id="p-run" data-step="2">
@@ -156,8 +157,8 @@ Read the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" 
   </div></section>
 
   <section class="panel actform folded" id="p-agree" data-step="6">
-  <h2 class="ptitle"><span class="pnum">6</span> Agreement</h2>
-  <p class="pwaits">After you have previewed your notes.</p>
+  <h2 class="ptitle" id="p-agree-title"><span class="pnum">6</span> Agreement</h2>
+  <p class="pwaits" id="p-agree-waits">After you have previewed your notes.</p>
   <div class="pbody">
   <label class="cwlab consent"><input type="checkbox" name="consent" value="yes" required>
   <span>I license this submission under <b>CC BY 4.0</b>, I have read and agree with the

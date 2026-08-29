@@ -2,7 +2,7 @@
 // same form editing a run in place): the author picker, the movie
 // inspector, the stated-metrics fields, the preview, and the archive
 // (or save) itself. Moved out of app.js: these ids exist only here.
-import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
+import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
   fileRowsOf, note, noteHtml, runPageUrl, post, setLastBtn,
   armMultiPick, searchArchive } from './app.js';
 
@@ -88,9 +88,223 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
 
   // ---- submit page ----
   var submitForm = document.getElementById('submitform');
-  // the same page edits a run: /submit/?edit=M1234
+  // the same page edits or moves a run: /submit/?edit=M1234 or ?move=M1234
   var editRunId = null;
-  try { var _e = new URLSearchParams(location.search).get('edit'); if (_e && /^M\d+$/.test(_e)) editRunId = _e; } catch (e) {}
+  var moveRunId = null;
+  try {
+    var _params = new URLSearchParams(location.search);
+    var _e = _params.get('edit'), _m = _params.get('move');
+    if (_e && /^M\d+$/.test(_e)) editRunId = _e;
+    if (!editRunId && _m && /^M\d+$/.test(_m)) moveRunId = _m;
+  } catch (e) {}
+
+  function enterMoveMode(gameData, form){
+    var msg = document.getElementById('s-msg');
+    var title = document.getElementById('s-title');
+    var subtitle = document.getElementById('s-subtitle');
+    var back = document.getElementById('s-editback');
+    var backLink = document.getElementById('s-editback-link');
+    var gamePanel = document.getElementById('p-game');
+    var agreePanel = document.getElementById('p-agree');
+    var submitBtn = document.getElementById('s-submit');
+    title.textContent = 'Move the run to a different game';
+    subtitle.textContent = 'Loading ' + moveRunId + '\u2026';
+    document.getElementById('s-policy').hidden = true;
+    document.getElementById('s-moverefresh').hidden = false;
+    back.hidden = false;
+    backLink.href = '../runs/' + moveRunId + '/';
+    ['p-run', 'p-repro', 'p-score', 'p-notes'].forEach(function(id){
+      var panel = document.getElementById(id);
+      panel.hidden = true;
+      panel.querySelectorAll('input, select, textarea, button').forEach(function(control){
+        control.disabled = true;
+      });
+    });
+    document.getElementById('s-draftbar').hidden = true;
+    document.getElementById('s-uncldesc').hidden = true;
+    document.getElementById('p-game-title').innerHTML =
+      '<span class="pnum">1</span> Game and category';
+    agreePanel.dataset.step = '2';
+    document.getElementById('p-agree-title').innerHTML =
+      '<span class="pnum">2</span> Agreement';
+    document.getElementById('p-agree-waits').textContent =
+      'After you pick a different game and its category.';
+    var consent = form.querySelector('[name=consent]');
+    var consentLabel = consent.closest('label');
+    if (consentLabel) consentLabel.hidden = true;
+    consent.checked = true;
+    var why = form.querySelector('[name=reason]');
+    document.getElementById('s-why').hidden = false;
+    why.required = true;
+    submitBtn.textContent = 'Move';
+    submitBtn.disabled = true;
+
+    fetch(api + '/api/run/record?run=' + encodeURIComponent(moveRunId),
+          {credentials: 'include'})
+      .then(function(response){ return response.json(); })
+      .then(function(record){
+        if (!record.ok) {
+          subtitle.textContent = record.error || 'could not load the run';
+          form.hidden = true;
+          return;
+        }
+        if (!record.may.expert) {
+          subtitle.textContent = 'Only an expert covering ' + record.game.title +
+            ' may move this run to a different game.';
+          form.hidden = true;
+          return;
+        }
+        var run = record.run;
+        subtitle.textContent = moveRunId + ' \u00b7 ' + record.game.title + ' \u00b7 by ' +
+          run.authors.map(function(author){ return author.user; }).join(', ') +
+          ' \u00b7 expert mode';
+
+        var gameTitles = gameData.games;
+        var gameKeys = Object.keys(gameTitles);
+        var gameField = document.getElementById('s-game');
+        var gameSearch = document.getElementById('s-gamesearch');
+        var gameList = document.getElementById('s-gamelist');
+        var goal = document.getElementById('s-goal');
+        var sub = document.getElementById('s-sub');
+        var subWrap = document.getElementById('s-subwrap');
+        var createCategory = document.getElementById('s-createcat');
+        var goalCache = {};
+
+        function destinationReady(){
+          return !!gameField.value && gameField.value !== record.game.key &&
+            !!goal.value && (subWrap.hidden || !!sub.value);
+        }
+        function paint(){
+          var ready = destinationReady();
+          gamePanel.classList.toggle('done', ready);
+          agreePanel.classList.toggle('folded', !ready);
+          agreePanel.classList.toggle('done', ready && why.value.trim().length >= 8);
+          submitBtn.disabled = !(ready && why.value.trim().length >= 8);
+        }
+        function fillGoals(items){
+          goal.innerHTML = '';
+          (items || []).forEach(function(item){
+            var option = document.createElement('option');
+            option.value = item.key;
+            option.textContent = item.label;
+            goal.appendChild(option);
+          });
+          var uncl = document.createElement('option');
+          uncl.value = 'unclassified';
+          uncl.textContent = 'Unclassified (no goal; ranked by likes)';
+          goal.appendChild(uncl);
+          paintCategory();
+        }
+        function paintCategory(){
+          var picked = (goalCache[gameField.value] || []).filter(function(item){
+            return item.key === goal.value;
+          })[0];
+          var subs = (picked && picked.subcategories) || [];
+          sub.innerHTML = '';
+          subs.forEach(function(item){
+            var option = document.createElement('option');
+            option.value = item.key;
+            option.textContent = item.label;
+            sub.appendChild(option);
+          });
+          subWrap.hidden = !subs.length;
+          sub.disabled = !subs.length;
+          paint();
+        }
+        function loadGoals(){
+          createCategory.href = '../create-category/?game=' +
+            encodeURIComponent(gameField.value);
+          createCategory.removeAttribute('aria-disabled');
+          var key = gameField.value;
+          goal.innerHTML = '';
+          subWrap.hidden = true;
+          fetch(api + '/api/categories?game=' + encodeURIComponent(key))
+            .then(function(response){
+              if (response.ok) return response.json();
+              return fetch(gameData.raw + '/games/' + key + '/categories.json')
+                .then(function(raw){ return raw.ok ? raw.json() : null; });
+            })
+            .then(function(categories){
+              if (!categories || gameField.value !== key) return;
+              var items = [];
+              (categories.dimensions || []).forEach(function(dimension){
+                (dimension.options || []).forEach(function(option){
+                  items.push({key: option.key, label: option.label,
+                              subcategories: option.subcategories || []});
+                });
+              });
+              goalCache[key] = items;
+              fillGoals(items);
+            })
+            .catch(function(){ note(msg, 'Could not load that game\u2019s categories.', false); });
+        }
+        function pickGame(key){
+          gameField.value = key;
+          gameSearch.value = gameTitles[key];
+          gameList.hidden = true;
+          loadGoals();
+        }
+        function fillGameList(){
+          var query = gameSearch.value.trim().toLowerCase();
+          gameList.innerHTML = '';
+          gameKeys.filter(function(key){
+            return key !== record.game.key && query &&
+              (gameTitles[key].toLowerCase().indexOf(query) >= 0 ||
+               key.indexOf(query) >= 0);
+          }).slice(0, 12).forEach(function(key){
+            var row = el('div', 'authopt', gameTitles[key]);
+            row.addEventListener('mousedown', function(event){
+              event.preventDefault();
+              pickGame(key);
+            });
+            gameList.appendChild(row);
+          });
+          gameList.hidden = false;
+        }
+        gameSearch.addEventListener('input', function(){
+          gameField.value = '';
+          fillGameList();
+          paint();
+        });
+        gameSearch.addEventListener('focus', fillGameList);
+        gameSearch.addEventListener('blur', function(){
+          setTimeout(function(){ gameList.hidden = true; }, 150);
+        });
+        goal.addEventListener('change', paintCategory);
+        sub.addEventListener('change', paint);
+        why.addEventListener('input', paint);
+        fillGoals([]);
+
+        form.addEventListener('submit', function(event){
+          event.preventDefault();
+          if (submitBtn.disabled) return;
+          var fd = new FormData();
+          fd.append('run', moveRunId);
+          fd.append('game', gameField.value);
+          fd.append('goal', goal.value);
+          if (!subWrap.hidden) fd.append('sub', sub.value);
+          fd.append('reason', why.value.trim());
+          post('/api/run/move', fd, submitBtn).then(function(result){
+            if (!result.ok || !result.j.ok) {
+              note(msg, result.j.error || 'something went wrong', false);
+              return;
+            }
+            setMark(submitBtn, 'spin', 'Moved. Publishing to the site\u2026');
+            waitBuilt(result.j.serial, function(){
+              form.hidden = true;
+              location.href = runPageUrl(moveRunId);
+            });
+          });
+        });
+        form.hidden = false;
+        paint();
+      })
+      .catch(function(){
+        subtitle.textContent = 'could not reach the archivist';
+        form.hidden = true;
+      });
+  }
+
   if (submitForm) {
     var gameData = JSON.parse(document.getElementById('gamedata').textContent);
     var gameTitles = gameData.games;
@@ -98,6 +312,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       var msg = document.getElementById('s-msg');
       if (d.unreachable) { note(msg, 'The archivist is not reachable right now; try again later.', false); return; }
       if (!d.loggedIn) { document.getElementById('s-login').hidden = false; return; }
+      if (moveRunId) { enterMoveMode(gameData, submitForm); return; }
       submitForm.hidden = false;
       // half-written submissions are easy to lose to a stray click: once
       // anything in the form changes, leaving asks the standard are-you-sure
@@ -170,7 +385,6 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       var gameSelect = document.getElementById('s-game'), goalSelect = document.getElementById('s-goal');
       // the category's stated metrics: fields appear on category pick, in
       // the dashed box; every value is the author's to state, time included
-      var metricsBox = document.getElementById('s-metrics');
       var metricFields = document.getElementById('s-mfields');
       var curMetrics = null;   // null = classic (real time, lower is better)
       function wantsTime(){
@@ -554,7 +768,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       // fixed, category and subcategory the expert's alone, Save instead of
       // Submit, the voiding rules asked before sending ----
       var editRecord = null, editMay = null;
-      function enterEditMode(d){
+      function enterEditMode(){
         byIdS('s-title').textContent = 'Edit run';
         byIdS('s-subtitle').textContent = 'Loading ' + editRunId + '…';
         byIdS('s-editback').hidden = false;
@@ -697,8 +911,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
         if (step === 1) {
           if (!gameSelect.value || !goalSelect.value) return false;
           if (!subWrap.hidden && !subSelect.value) return false;
-          if (goalSelect.value === 'unclassified' && !submitForm.querySelector('[name=goal_description]').value.trim()) return false;
-          return true;
+          return !(goalSelect.value === 'unclassified' 
+              && !submitForm.querySelector('[name=goal_description]').value.trim());
         }
         if (step === 2) {
           return document.getElementById('enc-status').className === 'enc-good'
@@ -827,7 +1041,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark,
       }
       if (!restored && !presetGame && !editRunId) fillGoals([]);
       paintPanels();
-      if (editRunId) setTimeout(function(){ enterEditMode(d); }, 0);   // once every handler below is wired
+      if (editRunId) setTimeout(function(){ enterEditMode(); }, 0);   // once every handler below is wired
 
       // live encode check: the thumbnail is derived from the encode, so the
       // link is validated as it is typed — preview frame + green check

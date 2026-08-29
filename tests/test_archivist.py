@@ -147,6 +147,9 @@ def main():
         ex['events'].append({'user': 'groupexpert', 'role': 'expert', 'scope': 'nes',
                              'action': 'granted', 'by': 'eien86', 'date': '2026-08-17',
                              'reason': 'fixture: a system-scoped expert to test against'})
+        ex['events'].append({'user': 'pinexpert', 'role': 'expert', 'scope': 'nes/pinball',
+                             'action': 'granted', 'by': 'eien86', 'date': '2026-08-17',
+                             'reason': 'fixture: a game-only expert to test move boundaries'})
         # A Committee of four in the archive. The mock forum deliberately
         # reports a different number for its group, because the size of the
         # Committee is a fact of the archive and nothing else may set it.
@@ -186,7 +189,9 @@ def main():
                       'rerecords': None, 'start': 'power-on'},
             'thumbnail': 'thumb.png',
             'contract': {'emulator': 'BizHawk 2.11'},
-            'status': {'reproduced': 'none', 'verified': 'none'},
+            'status': {'reproduced': 'none', 'verified': 'provisional'},
+            'verifications': [{'user': 'watcher', 'date': '2026-07-31',
+                               'at': '2026-07-31T12:00:00Z'}],
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF45'}],
             'submitted': '2026-08-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
         # a verified run whose stated duration is finer than the picker can
@@ -669,6 +674,84 @@ def main():
             ck('any member creates a game, first category born with it',
                c == 200 and r['game'] == 'nes/solomons-key'
                and r['category'] == 'fastest-completion', str(r))
+            # A wrong-game correction is one logged commit: the whole run folder
+            # relocates and only run.json's structural home changes.
+            c, r, _ = call(U + '/api/category/add',
+                          {'key': KEY, 'user': 'TestAuthor',
+                           'game': 'nes/solomons-key', 'label': 'High score',
+                           'rule': 'Earn as many points as possible.',
+                           'metrics': json.dumps([{'key': 'score', 'label': 'Score',
+                                                  'type': 'number',
+                                                  'better': 'higher'}])})
+            ck('the move-test destination has an incompatible scored category',
+               c == 200 and r['key'] == 'high-score', str(r))
+            source_categories_before = (work / 'games/nes/pinball/categories.json').read_bytes()
+            target_categories_before = (work / 'games/nes/solomons-key/categories.json').read_bytes()
+            c, r, _ = call(U + '/api/run/move',
+                          {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
+                           'game': 'nes/solomons-key', 'goal': 'missing',
+                           'reason': 'testing an unknown destination category'})
+            ck('a cross-game move rejects an unknown destination category',
+               c == 400 and 'not a goal' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/run/move',
+                           {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
+                            'game': 'nes/solomons-key', 'goal': 'high-score',
+                            'reason': 'testing missing destination scoring values'})
+            ck('a move cannot invent scoring required by the destination',
+               c == 400 and 'Score' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/run/move',
+                          {'key': KEY, 'expert': 'pinexpert', 'run': 'M900010',
+                           'game': 'nes/solomons-key', 'goal': 'fastest-completion',
+                           'reason': 'moving this run to its actual game'})
+            ck('the expert must cover the destination game too',
+               c == 403 and 'solomons-key' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/run/move',
+                          {'key': KEY, 'expert': 'Shelver', 'run': 'M900010',
+                           'game': 'nes/solomons-key', 'goal': 'fastest-completion',
+                           'reason': 'an editor cannot move member work between games'})
+            ck('an editor cannot move a run between games', c == 403, str(r))
+            c, r, _ = call(U + '/api/run/move',
+                          {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
+                           'game': 'nes/solomons-key', 'goal': 'fastest-completion',
+                           'reason': 'moving this run to its actual game'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            moved_dir = work / 'games/nes/solomons-key/runs/M900010'
+            moved_doc = json.loads((moved_dir / 'run.json').read_text())
+            ck('a covering expert moves the complete run folder between games',
+               c == 200 and not (work / 'games/nes/pinball/runs/M900010').exists()
+               and (moved_dir / 'M900010.bk2').exists()
+               and (moved_dir / 'thumb.png').exists(), str(r))
+            ck('the moved run names its new game and category',
+               moved_doc['game'] == 'nes/solomons-key'
+               and moved_doc['category'] == {'goal': 'fastest-completion'}
+               and r.get('voided') == ['verifications']
+               and moved_doc['status']['verified'] == 'none'
+               and moved_doc['verifications'][0].get('invalidated'), str(moved_doc))
+            changed_paths = subprocess.run(
+               ['git', 'diff', '--name-only', 'HEAD^', 'HEAD'], cwd=work,
+               check=True, capture_output=True, text=True).stdout.splitlines()
+            ck('the move leaves both category definition files byte-for-byte alone',
+               (work / 'games/nes/pinball/categories.json').read_bytes() == source_categories_before
+               and (work / 'games/nes/solomons-key/categories.json').read_bytes() == target_categories_before
+               and not any(path.endswith('categories.json') for path in changed_paths),
+               str(changed_paths))
+            move_events = json.loads((work / 'edits.json').read_text())['events']
+            ck('the move is logged with both homes and the public reason',
+               any(event['kind'] == 'run' and event['key'] == 'M900010'
+                  and event['field'] == 'game/category'
+                  and event['from'] == 'nes/pinball:100k-glitched'
+                  and event['to'] == 'nes/solomons-key:fastest-completion'
+                  and event['reason'] == 'moving this run to its actual game'
+                  for event in move_events), str(move_events[-2:]))
+            # Restore this long-lived fixture run for the endpoint tests below.
+            c, r, _ = call(U + '/api/run/move',
+                          {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
+                           'game': 'nes/pinball', 'goal': '100k-glitched',
+                           'reason': 'restoring the fixture after the move test'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            ck('a second move restores the fixture without losing its files',
+               c == 200 and (work / 'games/nes/pinball/runs/M900010/M900010.bk2').exists(),
+               str(r))
             c, r, _ = call(U + '/api/game/create',
                            {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
                             'title': "Solomon's Key Hack", 'released': '1990',

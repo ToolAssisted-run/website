@@ -657,6 +657,11 @@ def main():
            'Old Game (USA).nes' in rlegacy_ and rlegacy_.count('class="filefact"') == 1)
         ck('the run page links the edit mode of the submit form',
            'href="../../submit/?edit=M900101"' in rfiles_ and 'id="f-edit"' not in rfiles_)
+        ck('the run Expert menu links cross-game move mode in the current tab',
+           'id="f-movegame-wrap"' in rfiles_
+           and 'href="../../submit/?move=M900101"' in rfiles_
+           and 'Move the run to a different game' in rfiles_
+           and 'href="../../submit/?move=M900101" target=' not in rfiles_)
         ck('the submit form carries the file rows widget', 'class="filerows"' in all_html[out / 'submit' / 'index.html'])
         # the page-level 18+ gate on a sexual-content flag: declaration, yes,
         # and a no that leads home; absent elsewhere
@@ -670,6 +675,10 @@ def main():
         submit_ = all_html[out / 'submit' / 'index.html']
         ck('the submit page carries edit mode (title, back link, why field)',
            'id="s-title"' in submit_ and 'id="s-editback"' in submit_ and 'id="s-why"' in submit_)
+        ck('the submit shell carries move-mode hooks without a second form',
+           submit_.count('id="submitform"') == 1
+           and 'id="s-policy"' in submit_
+           and 'id="s-moverefresh" hidden' in submit_)
         gedit_ = all_html[out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html']
         ck('the editor offers every property',
            all(f'id="ge-{f}"' in gedit_ for f in ('title', 'thumb', 'released', 'unofficial', 'discord', 'website', 'rta', 'rules')))

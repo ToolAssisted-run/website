@@ -393,14 +393,19 @@ concerns use **contact@toolassisted.run** (§10).
   the archive write; deleting a game deletes every run in
   it, one logged entry per run beside the game's own, because the use case
   is content that should never have been archived (rule violations, spam).
-  A genuine work in a wrong game record is moved by an expert edit, never
-  deleted with the record.
+  A genuine work in a wrong game record is moved by an expert through
+  `/submit/?move=M1234`, never deleted with the record. The expert must cover
+  both games; `/api/run/move` relocates the intact run folder, changes
+  `run.json`'s game/category and invalidates verifications bound to the old
+  goal, records who/from/to/why in `edits.json`, and commits the whole
+  correction once. A move is refused when the run lacks values required by
+  the destination category; structural correction never invents scoring.
 
 ### Edits (the record can be corrected; the history always shows)
 
 **The general voiding rule: an edit voids exactly the acts that attested
-what it changed.** A change to the run's **scoring** (its stated time or
-any metric value) invalidates every live verification (the run leaves the
+what it changed.** A change to the run's **goal or scoring** (its category,
+stated time or any metric value) invalidates every live verification (the run leaves the
 ranking until verified again). A change to its **reproduction
 information** (the movie file, the tool it plays in, the files it was
 made against) invalidates every live reproduction and console
@@ -435,6 +440,12 @@ This is what keeps replacing a video link from touching the scoring.
   and thumbnail (validated image ≤256 KB, shown on the page and preferred by
   the game card); a category option's label, rule or metrics (target
   `sys/slug:option`); a group's title and composition.
+- **Moving a run between games** uses the submit form in a separate expert-only
+  move mode (`/submit/?move=M1234`, reached from the run's Expert menu). It
+  keeps only two panels: destination game/category/subcategory, then the public
+  reason and Move. Newly created games or categories require refreshing this
+  already-open form. Editors cannot use this path; an expert must cover both
+  the source and destination game.
 - Every edit, both kinds, is an event in `edits.json` (who/from/to/why;
   author revisions auto-reason "The author's own revision.") and reversible
   through git. Run pages carry a small "change history · N revisions" link to
@@ -869,6 +880,10 @@ archivist, module responsibilities). What matters designwise:
   changes" asks the archivist first (dry run) and warns before an edit that
   voids the run's acts. No draft is kept in edit mode; "Discard changes"
   reloads.
+  **Moving a run reuses the same submit shell** at
+  `/submit/?move=M1234`: its subtitle identifies the run, game, authors and
+  expert mode; the submission-policy prompt is hidden; Back to the run remains;
+  and only the destination and agreement panels remain.
   The submit form is one form in six panels that unfold in sequence as
   the previous one is complete: 1 game, category, subcategory; 2 the run:
   encode (checked live), authors, completion date; 3 reproduction

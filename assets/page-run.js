@@ -143,6 +143,11 @@ import { api, mePromise, viewAsCoverage, el, fileRowsOf, note, noteBuilt,
         }
       }
       if (isExpert) {
+        var moveGameWrap = document.getElementById('f-movegame-wrap');
+        if (moveGameWrap) {
+          moveGameWrap.hidden = false;
+          document.getElementById('expertmenu').hidden = false;
+        }
         arm('f-rundelete', '/api/run/delete');
         var deleteForm = document.getElementById('f-rundelete');
         if (deleteForm) deleteForm.addEventListener('submit', function(ev){

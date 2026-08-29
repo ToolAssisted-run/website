@@ -209,7 +209,8 @@ global.document = {
 global.window = {
   TAR: Object.assign({ api: 'https://forum.example/archivist', rel: '../', v: 'test' },
                      (session && session.__tar) || {}),
-  location: { pathname: '/submit/', href: 'https://toolassisted.run/submit/', search: '' },
+  location: { pathname: '/submit/', href: 'https://toolassisted.run/submit/',
+              search: (session && session.__search) || '' },
   matchMedia: () => ({ matches: false, addEventListener(){} }),
   innerWidth: 1280, addEventListener(){},
   localStorage: { getItem: () => null, setItem(){}, removeItem(){} },
@@ -228,6 +229,9 @@ Object.defineProperty(global, 'crypto', {
 global.fetch = (url) => {
   calls.fetched.push(String(url));
   if (session && session.__blocked) return Promise.reject(new Error('blocked'));
+  if (session && session.__runRecord && String(url).includes('/api/run/record'))
+    return Promise.resolve({ ok: true, status: 200,
+      json: () => Promise.resolve(session.__runRecord) });
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(session) });
 };
 const realTimeout = setTimeout;
@@ -252,7 +256,9 @@ realTimeout(() => {                     // the page wires itself after the sessi
   };
   JSON.parse(process.argv[4] || '[]').forEach(([id, type]) => fire(id, type));
   calls.state = {};
-  for (const e of els) if (e.id) calls.state[e.id] = { disabled: e.disabled, hidden: e.hidden };
+  for (const e of els) if (e.id) calls.state[e.id] = {
+    disabled: e.disabled, hidden: e.hidden, textContent: e.textContent
+  };
   console.log(JSON.stringify(calls));
 }, 200);
 """
@@ -375,6 +381,38 @@ def main():
                st.get('s-submit', {}).get('disabled') is True, str(st.get('s-submit')))
             ck('the form is shown to a logged-in member',
                st.get('submitform', {}).get('hidden') is False, str(st.get('submitform')))
+
+        move_session = dict(session, __search='?move=M900801',
+                            __runRecord={
+                                'ok': True,
+                                'run': {'id': 'M900801',
+                                        'authors': [{'user': 'Ada'}],
+                                        'category': {'goal': 'fastest'}},
+                                'game': {'key': 'nes/testgame',
+                                         'title': 'Testgame', 'system': 'nes'},
+                                'may': {'author': True, 'expert': True,
+                                        'editor': False}})
+        moving, err = run_real_page(node, assets_dir, td, 'move', sub_html,
+                                    move_session, module='page-submit.js')
+        ck('the script runs in submit move mode', moving is not None, err)
+        if moving:
+            ck('move mode initializes without an exception',
+               not moving['errors'], str(moving['errors'][:2]))
+            mst = moving['state']
+            ck('move mode shows the reused form and Back to the run',
+               mst.get('submitform', {}).get('hidden') is False
+               and mst.get('s-editback', {}).get('hidden') is False,
+               str({k: mst.get(k) for k in ('submitform', 's-editback')}))
+            ck('move mode shows its refresh hint and waits to enable Move',
+               mst.get('s-moverefresh', {}).get('hidden') is False
+               and mst.get('s-submit', {}).get('disabled') is True,
+               str({k: mst.get(k) for k in ('s-moverefresh', 's-submit')}))
+            ck('move mode uses the required heading and run context subtitle',
+               mst.get('s-title', {}).get('textContent') ==
+               'Move the run to a different game'
+               and 'M900801 \u00b7 Testgame \u00b7 by Ada \u00b7 expert mode'
+               in mst.get('s-subtitle', {}).get('textContent', ''),
+               str({k: mst.get(k) for k in ('s-title', 's-subtitle')}))
 
         # and Preview actually renders something when pressed
         pressed, err = run_real_page(node, assets_dir, td, 'preview', sub_html, session,

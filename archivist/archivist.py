@@ -128,7 +128,6 @@ from records import (
     save_groups,
     scope_covers,
     scope_exists,
-    scopes_over,
     sync_status,
 )
 from forumapi import (
@@ -1413,18 +1412,18 @@ def place_subcategory(categories, category, raw_sub):
         category.pop('sub', None)
     return None
 
-# The general voiding rule: a change to the run's SCORING (its time or any
-# metric) invalidates the verifications, which attested those values from
-# the encode; a change to its REPRODUCTION INFORMATION (the movie file, the
+# The general voiding rule: a change to the run's GOAL OR SCORING (its goal,
+# time or any metric) invalidates the verifications, which attested those
+# facts from the encode; a change to its REPRODUCTION INFORMATION (the movie file, the
 # tool it plays in, the files it was made against) invalidates the
 # reproductions and the console verifications, which synced the old setup.
 # Nothing else voids anything.
-SCORING_FIELDS = {'duration'}                      # plus every metric:<key>
+SCORING_FIELDS = {'duration', 'goal'}              # plus every metric:<key>
 REPRO_FIELDS = {'movie', 'emulator', 'files'}
 
 def void_acts_for(run, changed, by):
     """What an edit does to the acts already on the run, by the general
-    rule: a scoring change (time or any metric) invalidates the live
+    rule: a goal/scoring change (goal, time or any metric) invalidates the live
     verifications, which attested those values, and the run leaves the
     ranking until somebody verifies it again; a reproduction-information
     change (the movie file, the tool, the files it was made against)
@@ -1436,7 +1435,10 @@ def void_acts_for(run, changed, by):
     if any(c in SCORING_FIELDS or c.startswith('metric:') for c in changed):
         for v in run.get('verifications', []):
             if not v.get('invalidated'):
-                v['invalidated'] = dict(stamp, reason='the scoring changed after this verification')
+                v['invalidated'] = dict(
+                    stamp,
+                    reason=('the goal changed after this verification' if 'goal' in changed
+                            else 'the scoring changed after this verification'))
                 if 'verifications' not in voided: voided.append('verifications')
     if any(c in REPRO_FIELDS for c in changed):
         what = 'the movie file' if 'movie' in changed else 'the reproduction information'
@@ -2013,6 +2015,122 @@ def expert_edit():
                     f'By: {actor}\nReason: {reason}\nVia: archivist')
     return jsonify({'ok': True, 'kind': kind, 'key': target, 'field': field,
                     'from': old_value, 'to': value})
+
+@app.post('/api/run/move')
+def run_move():
+    """Move a run recorded under the wrong game into its real game.
+
+    Who: an expert covering both the source and destination games
+    Reads: run, game, goal, sub (when required), reason (8 to 500 chars)
+    Writes: the relocated run folder, its run.json game/category, and edits.json,
+        all in one archive commit
+    Answers: {ok, run, from, to}
+    """
+    move_form = request.form
+    refresh_archive()
+    with lock:
+        auth_error = auth_precheck(move_form)
+        if auth_error:
+            return auth_error
+        actor, error = request_identity(move_form, 'expert')
+        if error:
+            return error
+        run_id = (move_form.get('run') or '').strip()
+        target_game = (move_form.get('game') or '').strip()
+        goal = (move_form.get('goal') or '').strip()
+        raw_sub = (move_form.get('sub') or '').strip()
+        reason = (move_form.get('reason') or '').strip()
+        if not re.fullmatch(r'M[0-9]+', run_id):
+            return fail('run must be a run id like M100001')
+        if not re.fullmatch(r'[a-z0-9-]+/[a-z0-9-]+', target_game):
+            return fail('game must be system/slug')
+        if not (8 <= len(reason) <= 500):
+            return fail('say why, publicly: the edit log carries your reason')
+
+        checkout_branch()
+        run_dir = find_run(run_id)
+        if not run_dir:
+            return fail(f'unknown run {run_id}', 404)
+        source_game = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
+        if source_game == target_game:
+            return fail('pick a different game; category-only moves use Edit run')
+        if not expert_covers(actor, source_game):
+            return fail(f'{actor!r} is not an expert covering {source_game}', 403)
+        if not expert_covers(actor, target_game):
+            return fail(f'{actor!r} is not an expert covering {target_game}', 403)
+        target_game_doc, categories = load_game(*target_game.split('/'))
+        if not target_game_doc or categories is None:
+            return fail(f'unknown game {target_game}', 404)
+
+        valid_goals = {o['key'] for d in categories.get('dimensions', [])
+                       for o in d.get('options', [])}
+        valid_goals.add('unclassified')
+        if goal not in valid_goals:
+            return fail(f'{goal!r} is not a goal {target_game} defines')
+        new_category = {'goal': goal}
+        run = json.loads((run_dir / 'run.json').read_text())
+        if goal == 'unclassified':
+            if any(not verification.get('invalidated')
+                   for verification in run.get('verifications', [])):
+                return fail('this run holds live verifications bound to a defined goal; '
+                            'it cannot be moved to Unclassified')
+            if not run.get('goalDescription'):
+                return fail('an Unclassified run must already state what it does')
+        else:
+            sub_error = place_subcategory(categories, new_category, raw_sub)
+            if sub_error:
+                return fail(sub_error)
+
+        target_option = option_in(categories, goal)
+        metric_defs = (target_option or {}).get('metrics')
+        wants_time = metric_defs is None or any(
+            metric_def['key'] == 'time' for metric_def in metric_defs)
+        missing_metrics = [
+            metric_def['label'] for metric_def in (metric_defs or [])
+            if metric_def['key'] != 'time'
+            and not isinstance((run.get('metrics') or {}).get(metric_def['key']),
+                               (int, float))
+        ]
+        if missing_metrics:
+            return fail('the destination category requires scoring values this run '
+                        'does not carry: ' + ', '.join(missing_metrics))
+        needs_stated_time = (run.get('videoOnly')
+                             or not (run.get('movie') or {}).get('frames'))
+        if goal != 'unclassified' and wants_time and needs_stated_time \
+                and not run.get('duration'):
+            return fail('the destination category ranks by time, but this run has '
+                        'no stated duration')
+        if not wants_time and run.get('videoOnly') and run.get('duration'):
+            return fail('the destination category does not rank by time, but this '
+                        'video-only run carries a stated duration')
+
+        target_dir = ARCHIVE / 'games' / target_game / 'runs' / run_id
+        if target_dir.exists():
+            return fail(f'{run_id} already has a folder in {target_game}', 409)
+        old_category = run.get('category') or {}
+        old_place = source_game + ':' + old_category.get('goal', '')
+        if old_category.get('sub'):
+            old_place += '/' + old_category['sub']
+        new_place = target_game + ':' + goal + (
+            '/' + new_category['sub'] if new_category.get('sub') else '')
+
+        run['game'] = target_game
+        run['category'] = new_category
+        voided = void_acts_for(run, ['goal'], actor)
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1) + '\n')
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(run_dir), str(target_dir))
+        log_edit('run', run_id, 'game/category', old_place, new_place, actor, reason)
+        if voided:
+            log_edit('run', run_id, 'acts voided', ', '.join(voided),
+                     'by the change of game/category', actor, reason)
+        ensure_member(actor)
+        commit_push(f'Move {run_id}: {source_game} to {target_game} by expert {actor}\n\n'
+                    f'From: {old_place}\nTo: {new_place}\n'
+                    f'Reason: {reason}\nVia: archivist')
+    return jsonify({'ok': True, 'run': run_id, 'from': old_place, 'to': new_place,
+                    'voided': voided})
 
 @app.post('/api/run/delete')
 def run_delete():
