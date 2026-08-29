@@ -10,7 +10,8 @@ site_experts = sorted({ev['user'].lower() for (u, role, sc), ev in ROLES_NOW.ite
                        if role == 'committee'})
 body = tpl('claim_import_claim.html', site_experts=site_experts)
 (OUT / 'claim').mkdir(exist_ok=True)
-(OUT / 'claim' / 'index.html').write_text(page('Claim your identity', body, '../', seo={'path': 'claim/', 'noindex': True}))
+(OUT / 'claim' / 'index.html').write_text(page('Claim your identity', body, '../',
+    seo={'path': 'claim/', 'noindex': True}, scripts=['page-claim.js']))
 
 # ---- self-service import page ----
 body = tpl('claim_import_import.html')

@@ -1277,6 +1277,24 @@ def main():
                    not odd, f'lines {odd[:3]}')
                 ck(f'{script.name}: balanced braces', brace == 0, str(brace))
                 ck(f'{script.name}: balanced parens', paren == 0, str(paren))
+        # Every page that offers something to do must load the module that
+        # arms it. The claim page shipped for three days with its form and
+        # its login prompt both hidden and no page-*.js to unhide either,
+        # because the ES-module split left its wiring behind in app.js:
+        # a page with an id nothing on it reads is a dead page.
+        for html_file in sorted(out.rglob('index.html')):
+            markup = html_file.read_text()
+            ids = set(re.findall(r'id="(f-[a-z0-9-]+)"', markup))
+            if not ids:
+                continue
+            mods = re.findall(r'<script type="module" src="[^"]*?(page-[a-z-]+\.js)', markup)
+            code = ''.join((out / 'assets' / m).read_text()
+                           for m in mods if (out / 'assets' / m).exists()) + js
+            where = html_file.relative_to(out).parent.as_posix() or '/'
+            ck(f'{where}: its forms are wired to a module',
+               any(i in code for i in ids) or "'-wrap'" in code,
+               f'ids {sorted(ids)[:4]} unknown to {mods or "no module"}')
+
         css = (out / 'assets' / 'style.css').read_text()
         missing_contract = [i for i in CONTRACT if i not in joined and i not in css]
         ck('server/client element contract intact', not missing_contract,
