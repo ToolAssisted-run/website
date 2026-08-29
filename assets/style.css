@@ -562,6 +562,19 @@ input.bad{border-color:#DC2626!important}
 .dimsel{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
 .dimsel .dimname{min-width:76px}
 .dimrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* the worklist's system filter, folded to one line until it is wanted, and
+   the "Show more" under a capped worklist */
+.dimfold{margin:0 0 10px}
+.dimfold>summary{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;
+  color:var(--muted);font-size:.86rem;list-style:none}
+.dimfold>summary::-webkit-details-marker{display:none}
+.dimfold>summary::before{content:'\203a';display:inline-block;font-size:1.1rem;line-height:1;
+  transition:none;color:var(--faint)}
+.dimfold[open]>summary::before{content:'\2039'}
+.dimfold .dimcount{color:var(--faint)}
+.dimfold .dimrow{padding:4px 0 2px}
+.dimfold .dimopt{padding:5px 10px;font-size:.8rem}
+.capmore{margin:10px 0 0;text-align:center}
 .gcontrols{margin:14px 0 16px;justify-content:flex-end}
 .dimsub{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:28px}
 .dimsub.nogap{margin-left:0}

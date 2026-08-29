@@ -32,10 +32,17 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 {# the filter serves the reproduction list alone: verifying only takes
    watching a video, so what systems you can RUN is irrelevant there #}
 {% macro system_filter(fid, key, label, syslist, scroll) %}
-{# a remembered system filter over one worklist: the buttons toggle, the
-   choice lives in localStorage under `key`, rows carry data-sys #}
-<div class="dimrow" id="{{ fid }}"><span class="dimname">{{ label }}</span>
+{# A remembered system filter over one worklist: the buttons toggle, the
+   choice lives in localStorage under `key`, rows carry data-sys. Thirty-two
+   system buttons is a wall above a list, so it folds to one line that says
+   what is chosen; a narrowed choice opens it, because a filter nobody can
+   see is a list that looks broken. Which rows are hidden is the cap's to
+   say (see `capped`): this only marks them. #}
+<details class="dimfold" id="{{ fid }}-fold">
+<summary><span class="dimname">{{ label }}</span><span class="dimcount" id="{{ fid }}-count"></span></summary>
+<div class="dimrow" id="{{ fid }}">
 {% for s in syslist %}<button class="dimopt sysopt" data-sys="{{ s }}">{{ systems[s]['name'] }}</button>{% endfor %}</div>
+</details>
 <script>
 (function(){
   var KEY = '{{ key }}';
@@ -48,8 +55,16 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
       b.classList.toggle('on', active === null || active.indexOf(b.dataset.sys) >= 0);
     });
     document.querySelectorAll('#{{ scroll }} tr[data-sys]').forEach(function(tr){
-      tr.style.display = (active === null || active.indexOf(tr.dataset.sys) >= 0) ? '' : 'none';
+      var mine_ = active === null || active.indexOf(tr.dataset.sys) >= 0;
+      if (mine_) delete tr.dataset.filtered; else tr.dataset.filtered = '1';
     });
+    var count = document.getElementById('{{ fid }}-count');
+    if (count) count.textContent = active === null
+      ? 'all ' + btns.length
+      : active.length + ' of ' + btns.length;
+    var fold = document.getElementById('{{ fid }}-fold');
+    if (fold && active !== null) fold.open = true;
+    (window.tarRecap || []).forEach(function(f){ f(); });
   }
   btns.forEach(function(b){
     b.addEventListener('click', function(){
@@ -71,6 +86,39 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 })();
 </script>
 {% endmacro %}
+{% macro capped(scroll, cap) %}
+{# Twenty rows, then "Show more": two hundred waiting runs is a scroll
+   nobody reaches the end of, and the ones below are the same work as the
+   ones above. The cap owns every row's display, filter included, so the
+   twenty shown are twenty the reader can actually act on. #}
+<p class="capmore" hidden><button class="btn quiet" type="button" id="{{ scroll }}-more"></button></p>
+<script>
+(function(){
+  var CAP = {{ cap }}, shown = CAP;
+  var box = document.getElementById('{{ scroll }}');
+  var btn = document.getElementById('{{ scroll }}-more');
+  if (!box || !btn) return;
+  function paint(){
+    var rows = Array.prototype.filter.call(
+      box.querySelectorAll('tr[data-sys]'),
+      function(tr){ return tr.dataset.filtered !== '1'; });
+    Array.prototype.forEach.call(box.querySelectorAll('tr[data-sys]'), function(tr){
+      tr.style.display = 'none';
+    });
+    rows.forEach(function(tr, i){ if (i < shown) tr.style.display = ''; });
+    var left = rows.length - shown;
+    btn.parentNode.hidden = left <= 0;
+    btn.textContent = left > CAP ? 'Show ' + CAP + ' more (' + left + ' left)'
+                                 : 'Show the last ' + left;
+  }
+  btn.addEventListener('click', function(){ shown += CAP; paint(); });
+  window.tarRecap = window.tarRecap || [];
+  window.tarRecap.push(function(){ shown = CAP; paint(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
+  else paint();
+})();
+</script>
+{% endmacro %}
 {% if worklist_systems %}{{ system_filter('sysfilter', 'tar-my-systems', 'Systems I can run', worklist_systems, 'nr-scroll') }}{% endif %}
 {% if need_repro %}
 <div class="contscroll nrgap" id="nr-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th>Waiting</th><th class="num">Bounty</th></tr></thead><tbody>
@@ -81,6 +129,7 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 <td class="num"><b class="bounty">{{ repro_bounty(r) }}</b> pts</td></tr>
 {% endfor %}
 </tbody></table></div>
+{{ capped('nr-scroll', 20) }}
 {% else %}
 <p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>
 {% endif %}
@@ -102,6 +151,7 @@ verified them on hardware.</p>
 <td class="num"><b class="bounty">{{ PT_CONSOLE }}</b> pts</td></tr>
 {% endfor %}
 </tbody></table></div>
+{{ capped('hw-scroll', 20) }}
 {% else %}
 <p class="emptynote">Nothing waiting: every run with an input movie has been played back on hardware.</p>
 {% endif %}
