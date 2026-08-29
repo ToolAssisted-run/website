@@ -189,9 +189,7 @@ def main():
                       'rerecords': None, 'start': 'power-on'},
             'thumbnail': 'thumb.png',
             'contract': {'emulator': 'BizHawk 2.11'},
-            'status': {'reproduced': 'none', 'verified': 'provisional'},
-            'verifications': [{'user': 'watcher', 'date': '2026-07-31',
-                               'at': '2026-07-31T12:00:00Z'}],
+            'status': {'reproduced': 'none', 'verified': 'none'},
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF45'}],
             'submitted': '2026-08-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
         # a verified run whose stated duration is finer than the picker can
@@ -685,6 +683,10 @@ def main():
                                                   'better': 'higher'}])})
             ck('the move-test destination has an incompatible scored category',
                c == 200 and r['key'] == 'high-score', str(r))
+            c, r, _ = call(U + '/api/verify',
+                           {'key': KEY, 'user': 'moveverifier', 'run': 'M900010'})
+            ck('the move fixture has a live old-goal verification',
+               c == 200 and r['status']['verified'] == 'provisional', str(r))
             source_categories_before = (work / 'games/nes/pinball/categories.json').read_bytes()
             target_categories_before = (work / 'games/nes/solomons-key/categories.json').read_bytes()
             c, r, _ = call(U + '/api/run/move',
