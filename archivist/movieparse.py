@@ -109,7 +109,8 @@ def _pipe_header_and_frames(text):
 BIZ_TO_TASV = {'gen': 'genesis', 'sat': 'saturn', 'dgb': 'gb', 'gb3x': 'gb',
                'gb4x': 'gb', 'gbl': 'gb', 'gbal': 'gba', 'a26': 'a2600',
                'a78': 'a7800', 'uze': 'uzebox', 'vb': 'vboy',
-               'zxspectrum': 'zxs', 'nds': 'ds'}
+               'zxspectrum': 'zxs', 'nds': 'ds',
+               'dc': 'dreamcast'}      # Chimera writes the Dreamcast as DC
 CYCLE_BASED_CORES = {'subgbhawk': 4194304, 'gambatte': 2097152}
 VALID_CLOCK_RATES = {'4194304', '2097152', '5369318.18181818', '5320342.5',
                      '33868800', '21477272.7272727', '21281370', '16777216'}

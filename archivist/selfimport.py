@@ -27,7 +27,8 @@ SYSTEM_NAMES = {
     'GB': 'Game Boy', 'GBC': 'Game Boy Color', 'GBA': 'Game Boy Advance',
     'DS': 'Nintendo DS', 'Genesis': 'Sega Genesis', 'SMS': 'Sega Master System',
     'GG': 'Sega Game Gear', 'Saturn': 'Sega Saturn', 'PSX': 'PlayStation',
-    'PSP': 'PlayStation Portable', 'C64': 'Commodore 64', 'DOS': 'DOS',
+    'PSP': 'PlayStation Portable', 'PS2': 'PlayStation 2',
+    'C64': 'Commodore 64', 'DOS': 'DOS',
     'PC': 'PC', 'Amiga': 'Amiga', '3DO': '3DO', 'Arcade': 'Arcade',
     'MSX': 'MSX', 'PCE': 'PC Engine / TurboGrafx-16', 'WSWAN': 'WonderSwan',
     'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'VBoy': 'Virtual Boy',
@@ -47,10 +48,15 @@ EXACT_FPS = {
     'gbc': 59.7275005696058, 'gba': 59.7275005696058,
     'gg': 59.922751013551, 'sms': 59.922751013551,
     'n64': 60.0, 'psx': 59.29286256195557,
+    # the three Chimera brought: the rate each core declares for its machine
+    # (waterbox.config vsync), which is the rate a movie of it really ran at
+    'ps2': 59.94005994005994, 'psp': 59.9400599400599,
+    'dreamcast': 59.94005994005994,
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
+                'ps2', 'psp',
                 'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
 
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}
