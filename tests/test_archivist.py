@@ -2567,6 +2567,12 @@ def main():
                discord_saw('by [TestAuthor](<https://toolassisted.run/authors/'
                            'testauthor/>)'),
                str(DISCORD_MSGS[-3:]))
+            # a verification judges one category's goal, so the notice names it
+            ck('and the notice says which category was verified',
+               discord_saw('verified [[NES] Pinball') and any(
+                   'verified [[NES] Pinball' in m and m.rstrip().endswith('100000 points, glitched')
+                   for m in DISCORD_MSGS),
+               str([m for m in DISCORD_MSGS if 'verified' in m][-2:]))
             ghost = dict(sub, game='nes/solomons-key', goal='fastest-completion',
                          authors='TestAuthor, GhostGuy')
             del ghost['dry_run']

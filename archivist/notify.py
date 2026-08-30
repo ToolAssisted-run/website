@@ -66,6 +66,34 @@ def member_md(name):
     return f'[{name}](<{SITE_URL}/authors/{profile_slug(rec.get("username") or name)}/>)'
 
 
+def category_label(r):
+    """What the ranking calls the run's category, as the site says it: the
+    option's label, each dimension joined by a cross, and the subcategory
+    after a middle dot. Falls back to the stored key, because a notice with
+    a rough name beats a notice with none."""
+    category = r.get('category') or {}
+    if category.get('goal') == 'unclassified':
+        return 'Unclassified'
+    system, slug = r['game'].split('/')
+    try:
+        dimensions = json.loads(
+            (ARCHIVE / 'games' / system / slug / 'categories.json').read_text())['dimensions']
+    except (OSError, ValueError, KeyError):
+        return category.get('goal', '')
+    labels, option = [], None
+    for dimension in dimensions:
+        chosen = category.get(dimension['key'])
+        found = next((o for o in dimension['options'] if o['key'] == chosen), None)
+        if found:
+            labels.append(found['label'])
+            if dimension['key'] == 'goal':
+                option = found
+    label = ' \u00d7 '.join(labels) or category.get('goal', '')
+    sub = next((s for s in (option or {}).get('subcategories', [])
+                if s['key'] == category.get('sub')), None)
+    return f'{label} \u00b7 {sub["label"]}' if sub else label
+
+
 def movie_md(r, title=None):
     """The run as people say it: [SNES] Prince of Persia by a, b — the
     name carrying the link. Discord keeps nested brackets in a link label

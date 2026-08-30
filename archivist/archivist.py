@@ -101,6 +101,7 @@ from notify import (
     movie_md,
     member_md,
     notify_discord,
+    category_label,
     replay_spool,
 )
 from records import (
@@ -4757,9 +4758,12 @@ def verify():
             {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Verify {run["id"]}: by {user}\n\nVia: archivist')
-        notify_discord(f'\u2713 **{member_md(user)}** verified'
-                       + ' '
-                       + movie_md(run),
+        # a verification is about one category's goal being met, so it names
+        # the category (and its subcategory): "verified [PS2] Athens 2004 by
+        # toca, Pole Vault" says what was judged
+        notify_discord(f'\u2713 **{member_md(user)}** verified '
+                       + movie_md(run)
+                       + (f', {category_label(run)}' if category_label(run) else ''),
                        wait_for=f'{SITE_URL}/runs/{run["id"]}/')
     return jsonify({'ok': True, 'run': run['id'], 'status': run['status'],
                     'verifications': len([a for a in run['verifications'] if not a.get('invalidated')])})
