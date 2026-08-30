@@ -257,8 +257,9 @@ Log in (top right) to reply from here.</p></section>
    their ids and their behavior are unchanged, only the housing moved #}
 <div id="expertmenu" class="expertmenu" hidden><h2>Expert menu</h2>
 <p class="rules">Only experts whose scope covers this game see this box; every action here is logged in the open.</p>
-<p id="f-movegame-wrap" class="statline" hidden><a class="btn" href="../../submit/?move={{ r['id'] }}">Move the run to a different game</a></p>
-<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this run</summary>
+<details class="actform actforms" open><summary style="display:none"></summary>
+<div id="f-movegame-wrap" hidden><a class="actbtn-link" href="../../submit/?move={{ r['id'] }}">Move the run to a different game</a></div>
+<div id="f-rundelete-wrap" hidden><details class="actbtn"><summary>Delete this run</summary>
 <form id="f-rundelete">
   <p class="rules">Outright and permanent: for tests, spam, things that are not tool-assisted
   runs, and mistakes. A genuine work is withdrawn or erased through its own procedures, never
@@ -268,7 +269,7 @@ Log in (top right) to reply from here.</p></section>
             placeholder="e.g. a test submission, not a real run"></textarea>
   <button class="btn danger">Delete</button>
 </form></details></div>
-<div id="f-invalidate-wrap" hidden><details class="actform"><summary>Invalidate a contribution</summary>
+<div id="f-invalidate-wrap" hidden><details class="actbtn"><summary>Invalidate a contribution</summary>
 <form id="f-invalidate">
   <p class="rules">For a reproduction, verification or console verification that does not
   hold up. The act stays on the record, marked invalidated, with your reason next to it.
@@ -282,7 +283,7 @@ Log in (top right) to reply from here.</p></section>
             placeholder="e.g. the screenshot is from a different run"></textarea>
   <button class="btn">Invalidate</button>
 </form></details></div>
-<div id="f-resolve-wrap" hidden><details class="actform"><summary>Close a report</summary>
+<div id="f-resolve-wrap" hidden><details class="actbtn"><summary>Close a report</summary>
 <form id="f-resolve">
   <p class="rules">Resolve it if something was done, dismiss it if nothing needed doing.
   Either way your text is published with the report in the site log.</p>
@@ -297,4 +298,5 @@ Log in (top right) to reply from here.</p></section>
   <textarea name="resolution" rows="3" required></textarea>
   <button class="btn">Close</button>
 </form></details></div>
+</details>
 <p id="expert-msg" class="actmsg" hidden></p></div>
