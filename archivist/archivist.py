@@ -768,6 +768,21 @@ def visit():
             LOG.warning('visits file not writable: %s', exc)
     return jsonify({'ok': True, 'run': run_id, 'visits': count})
 
+def notify_edit(who, what, fields, voided=(), reason='', link=None):
+    """Say on Discord that the record changed: who, what, which fields, and
+    what it cost. Every edit is already in edits.json and in git; this is
+    the same fact where people are, and it is one line like every other
+    notice. A reason is quoted when there is one (an author revising their
+    own work owes none)."""
+    line = (f'\u270e **{member_md(who)}** edited {what}: '
+            + ', '.join(fields))
+    if voided:
+        line += ' (' + ' and '.join(voided) + ' invalidated)'
+    if reason:
+        line += f' \u00b7 {" ".join(reason.split())[:160]}'
+    notify_discord(line, wait_for=link)
+
+
 def in_category(run):
     """", <the category>" for a Discord line, or nothing when the archive
     cannot name it. Every act notice ends this way: what somebody did, to
@@ -2029,6 +2044,20 @@ def expert_edit():
         commit_push(f'Expert edit {kind} {target}: {field}\n\n'
                     f'From: {str(old_value)[:120]}\nTo: {value[:120]}\n'
                     f'By: {actor}\nReason: {reason}\nVia: archivist')
+        # a run is said the way runs are said; anything else names its kind
+        if kind == 'run':
+            edited_run = json.loads((run_dir / 'run.json').read_text())
+            what, where = (movie_md(edited_run) + in_category(edited_run),
+                           f'{SITE_URL}/runs/{target}/')
+        elif kind == 'game':
+            what, where = (f'the game [{target}](<{SITE_URL}/games/{target}/>)',
+                           f'{SITE_URL}/games/{target}/')
+        elif kind == 'group':
+            what, where = (f'the group [{target}](<{SITE_URL}/groups/{target}/>)', None)
+        else:
+            what, where = (f'the category {target}', None)
+        notify_edit(actor, what, [field], voided if kind == 'run' else (), reason,
+                    link=where)
     return jsonify({'ok': True, 'kind': kind, 'key': target, 'field': field,
                     'from': old_value, 'to': value})
 
@@ -2145,6 +2174,11 @@ def run_move():
         commit_push(f'Move {run_id}: {source_game} to {target_game} by expert {actor}\n\n'
                     f'From: {old_place}\nTo: {new_place}\n'
                     f'Reason: {reason}\nVia: archivist')
+        notify_discord(f'\u27a1\ufe0f **{member_md(actor)}** moved '
+                       + movie_md(run) + f' to {new_place}'
+                       + (' (' + ' and '.join(voided) + ' invalidated)' if voided else '')
+                       + f' \u00b7 {" ".join(reason.split())[:160]}',
+                       wait_for=f'{SITE_URL}/runs/{run_id}/')
     return jsonify({'ok': True, 'run': run_id, 'from': old_place, 'to': new_place,
                     'voided': voided})
 
@@ -2726,6 +2760,8 @@ def system_edit():
         commit_push(f'System {key}: {", ".join(changed)} by {actor}\n\n'
                     + ''.join(f'{f}: {befores[f]} -> {entry.get(f)}\n' for f in changed)
                     + f'By: {actor}\nVia: archivist')
+        notify_edit(actor, f'the system **{entry["name"]}**', changed,
+                    reason=(system_form.get('reason') or '').strip())
     return jsonify({'ok': True, 'key': key, 'system': entry, 'changed': changed})
 
 
@@ -3466,6 +3502,9 @@ def edit_run():
                      user, "The author's own revision." if is_author else reason)
         commit_push(f'Edit {run_id}: {", ".join(changed)} by '
                     f'{"author" if is_author else "expert"} {user}\n\nVia: archivist')
+        notify_edit(user, movie_md(run) + in_category(run), changed, voided,
+                    '' if is_author else reason,
+                    link=f'{SITE_URL}/runs/{run_id}/')
     return jsonify({'ok': True, 'run': run_id, 'changed': changed, 'voided': voided})
 
 def split_notes_header(text):

@@ -826,7 +826,13 @@ archivist, module responsibilities). What matters designwise:
   disabled, sent only after the archive write landed, and
   **held until the page they link answers 200** (up to
   `NOTIFY_LINK_WAIT_SECONDS`). New-movie lines carry the run thumbnail as an
-  embed. Imports notify once per batch. Forum posts relay through a
+  embed. Imports notify once per batch. **Every act names the category it
+  was about** (verification, reproduction, hardware playback), since that is
+  what was judged or synced. **Every edit is announced too**: a run revision,
+  an expert edit of a run, game, category or group, a cross-game move, and a
+  system correction, each naming the fields that changed, what the change
+  invalidated, and the public reason where one was owed (an author revising
+  their own work owes none). Forum posts relay through a
   HMAC-verified Discourse webhook, skipping PMs and the bot's own posts.
 - **Static-first is a commitment**: no server search endpoints, no
   server-rendered pages. Pages carry small indexes; per-game payloads are

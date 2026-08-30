@@ -2568,6 +2568,25 @@ def main():
                            'testauthor/>)'),
                str(DISCORD_MSGS[-3:]))
             # a verification judges one category's goal, so the notice names it
+            # an edit is a change to the record, so it is said where the acts
+            # are said: who, what, which fields, and what it cost
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900011', 'notes': 'a revised note'})
+            ck('an author revision reaches Discord', c == 200 and discord_saw(
+               '** edited [[NES] Pinball'), str([m for m in DISCORD_MSGS if 'edited' in m][-2:]))
+            ck('and it names the field that changed',
+               any('edited [[NES] Pinball' in m and m.rstrip().endswith('notes')
+                   for m in DISCORD_MSGS),
+               str([m for m in DISCORD_MSGS if 'edited' in m][-2:]))
+            # the expert edits this suite made earlier were announced too,
+            # each carrying the public reason its author had to give
+            ck('an expert edit of a game reaches Discord too',
+               any('edited the game [nes/pinball]' in m for m in DISCORD_MSGS),
+               str([m for m in DISCORD_MSGS if 'edited' in m][-2:]))
+            ck('and it quotes the public reason',
+               any('edited the game [nes/pinball]' in m and ' \u00b7 ' in m
+                   for m in DISCORD_MSGS),
+               str([m for m in DISCORD_MSGS if 'edited the game' in m][-2:]))
             ck('a reproduction notice names the category too',
                any('reproduced [[NES] Pinball' in m and m.rstrip().endswith('100000 points, glitched')
                    for m in DISCORD_MSGS),
