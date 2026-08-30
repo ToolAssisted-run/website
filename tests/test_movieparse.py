@@ -580,6 +580,24 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(stale).encode())
     ck('chimeraProject: a stale "Last input" marker is not believed',
        res.get('frames') == 24, str(res))
+    # the real thing: two projects Chimera wrote and replayed itself
+    chimera_dir = pathlib.Path(__file__).resolve().parent / 'fixtures' / 'chimera'
+    for fixture_name, want in (('last-input-early.chimeraProject', 25),
+                               ('input-to-the-end.chimeraProject', 70)):
+        real = chimera_dir / fixture_name
+        res = movieparse.parse(real.name, real.read_bytes())
+        ck(f'chimeraProject: {fixture_name} reads as {want} frames',
+           res.get('ok') and res.get('frames') == want, str(res)[:200])
+        ck(f'chimeraProject: {fixture_name} says whether input idles at the end',
+           any('not counted as run time' in w for w in res.get('warnings', []))
+           == (want != 70), str(res.get('warnings')))
+
+    presents = json.loads(f_chimeraproject(idle=0).decode())
+    presents['core']['name'] = 'PCSX2'
+    res = movieparse.parse('run.chimeraProject', json.dumps(presents).encode())
+    ck('chimeraProject: a presenting core makes the time a lower bound, and says so',
+       any('lower bound' in w for w in res.get('warnings', [])), str(res.get('warnings')))
+
     cyc = json.loads(f_chimeraproject(idle=0).decode())
     cyc['headers'].update({'CycleCount': '1000000', 'ClockRate': '1000000',
                            'VsyncNumerator': '60', 'VsyncDenominator': '1'})

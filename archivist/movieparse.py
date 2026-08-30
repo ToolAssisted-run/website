@@ -236,6 +236,16 @@ def parse_chimeraproject(data):
         fps = None
     if fps is None and str(lower.get('pal') or '').strip().lower() in ('1', 'true', 'yes'):
         warnings.append('the project says PAL: the rate applied is the system\'s own')
+    # Two of Chimera's cores end a frame when the machine PRESENTS a picture
+    # rather than at a vblank, so a game that renders slowly spans more than
+    # one vblank in a frame. Frames over the rate then understate the elapsed
+    # time by however much the game dropped: a lower bound, not a wrong
+    # number, and the author states the time anyway.
+    core_name = ((doc.get('core') or {}).get('name') or '') if isinstance(doc.get('core'), dict) else ''
+    if str(core_name).strip().lower() in ('pcsx2', 'flycast'):
+        warnings.append(f'{core_name} ends a frame when the machine presents a '
+                        f'picture, so a game that drops frames makes this time a '
+                        f'lower bound')
 
     rows = [_chimera_split(l) for l in lines]
     axis_count = max((len(a) for _, a in rows), default=0)

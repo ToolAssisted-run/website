@@ -240,7 +240,14 @@ nmv, mmv, mcm, pjm, pxm, mc2, ymv, bkm, dof, rec), plus the game-specific
 tools the Tools page marks with a check. A Chimera project IS the movie, so
 what it reports is the run's own length: the frame count stops at the last
 frame anything is pressed on, Chimera's own rule for its "Last input"
-marker, and idle frames left after it are warned about rather than counted; every parser validated against
+marker, and idle frames left after it are warned about rather than counted.
+Its rate is read the way Chimera reads it: the cycle count over the clock
+rate first (measured), then the recorded vsync, then the archive's figure
+for the system, with a round 50 or 60 treated as nominal and deferred. Two
+of Chimera's cores (PCSX2, Flycast) end a frame when the machine presents a
+picture rather than at a vblank, so a game that drops frames makes a
+frames-over-rate time a lower bound; the form says so, and the author states
+the time regardless; every parser validated against
 real movies from the TASVideos corpus. The Tools page carries three tables:
 current emulators, classic emulator formats (the retired rerecording
 emulators whose movies still parse in full), and game-specific tools, each

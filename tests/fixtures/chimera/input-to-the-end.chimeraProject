@@ -1,0 +1,22 @@
+{
+ "title": "gridWalker sample, input to the last frame",
+ "description": "A second parser fixture: every frame of this log carries input, so the frame count and the log length are the same number. The machine is Chimera's own test core; nothing here is copyrighted.",
+ "core": {
+  "name": "Synth",
+  "version": "sample",
+  "sha1": "F1D82E4F177D8AF2D0BA7C1FA498299414233F5F"
+ },
+ "rerecords": 7,
+ "files": [
+  {
+   "name": "gridWalker.testrom",
+   "sha1": "7A0A842FA0246F76224EA13C2AC05785DCF8EF29",
+   "slot": "rom"
+  }
+ ],
+ "settings": {},
+ "firmware": [],
+ "input": "[Input]\nLogKey:#Up|Down|Left|Right|A|B|Start|Select|\n|.R......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|.D......|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|...R....|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n|.R......|\n",
+ "markers": [],
+ "branches": []
+}
