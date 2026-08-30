@@ -187,35 +187,6 @@ def parse_chimeraproject(data):
     if not system:
         warnings.append('the project names no platform; the game decides the frame rate')
 
-    # Chimera carries no per-system rate table of its own (its
-    # PlatformFrameRates answers a flat 50 or 60), and the project pins no
-    # vsync, so the rate is left to the game's system here, which is the
-    # exact one. A PAL project on an NTSC system would be rated wrongly, so
-    # it says so; and when the format grows the numbers, they win.
-    fps = None
-    num, den = lower.get('vsyncnumerator'), lower.get('vsyncdenominator')
-    try:
-        if num and den and float(den):
-            fps = float(num) / float(den)
-    except (TypeError, ValueError):
-        fps = None
-    # A round 60 or 50 is a NOMINAL rate, not a measured one, and the archive
-    # times every run of a system the same way or it cannot rank them against
-    # each other. So a round rate defers to the archive's figure for the
-    # system; anything else is the machine's own and wins.
-    #
-    # The honest case is the Atari 2600, which has no fixed rate at all: the
-    # cartridge decides how long a frame is by when it strobes VSYNC, so the
-    # core says 60 rather than pretend, and the archive's 59.9227510135505 is
-    # the 262-line convention every 2600 run here is timed by. Neither is
-    # wrong; the convention is what makes two runs of one game comparable.
-    if fps is not None and abs(fps - round(fps)) < 1e-9 and round(fps) in (50, 60):
-        warnings.append(f'the project states a nominal {round(fps)} fps: the '
-                        f'archive times this system at its own rate instead')
-        fps = None
-    if fps is None and str(lower.get('pal') or '').strip().lower() in ('1', 'true', 'yes'):
-        warnings.append('the project says PAL: the rate applied is the system\'s own')
-
     rerecords = doc.get('rerecords')
     if not isinstance(rerecords, int) or isinstance(rerecords, bool) or rerecords < 0:
         rerecords = None
@@ -225,6 +196,46 @@ def parse_chimeraproject(data):
              if l.startswith('|')]
     if not lines:
         return _err(fmt, 'The input log holds no frames, can not parse')
+
+    # How long the run took, in the order Chimera itself answers it
+    # (BasicMovieInfo.TimeLength): the cycle count over the clock rate is the
+    # machine's own elapsed time and beats every rate, because it is measured
+    # rather than nominal; the recorded vsync is next; a round rate is nominal
+    # and defers to the archive's figure for the system.
+    #
+    # Cycles count the WHOLE log, so they give a rate rather than a duration
+    # here: the run's own time is the frames up to the last input over that
+    # rate, and the two only agree when nothing idles at the end.
+    fps = None
+    cycles, clock = lower.get('cyclecount'), lower.get('clockrate')
+    try:
+        if cycles and clock:
+            elapsed = float(str(cycles).strip()) / float(str(clock).strip().replace(',', '.'))
+            if elapsed > 0:
+                fps = len(lines) / elapsed
+    except (TypeError, ValueError, ZeroDivisionError):
+        fps = None
+    if fps is None:
+        num, den = lower.get('vsyncnumerator'), lower.get('vsyncdenominator')
+        try:
+            if num and den and float(den):
+                fps = float(num) / float(den)
+        except (TypeError, ValueError):
+            fps = None
+    # The honest case for a round rate is the Atari 2600, which has no fixed
+    # rate at all: the cartridge decides how long a frame is by when it
+    # strobes VSYNC, so the core says 60 rather than pretend, and the
+    # archive's 59.9227510135505 is the 262-line convention every 2600 run
+    # here is timed by. Neither is wrong; the convention is what makes two
+    # runs of one game comparable. A cycle-derived rate is measured, so it is
+    # kept even when it lands on a round number.
+    if (fps is not None and not (cycles and clock)
+            and abs(fps - round(fps)) < 1e-9 and round(fps) in (50, 60)):
+        warnings.append(f'the project states a nominal {round(fps)} fps: the '
+                        f'archive times this system at its own rate instead')
+        fps = None
+    if fps is None and str(lower.get('pal') or '').strip().lower() in ('1', 'true', 'yes'):
+        warnings.append('the project says PAL: the rate applied is the system\'s own')
 
     rows = [_chimera_split(l) for l in lines]
     axis_count = max((len(a) for _, a in rows), default=0)

@@ -1691,8 +1691,6 @@ def expert_edit():
                 elif notes_file.exists():
                     notes_file.unlink()
             elif field == 'movie':
-                if run.get('videoOnly'):
-                    return fail('a video-only run has no movie file to replace')
                 new_movie_upload = request.files.get('movie')
                 if not new_movie_upload or not new_movie_upload.filename:
                     return fail('attach the replacement movie file')
@@ -1705,12 +1703,14 @@ def expert_edit():
                 parsed_movie = movieparse.parse(new_movie_upload.filename, movie_bytes)
                 if not parsed_movie['ok']:
                     parsed_movie = {'ok': False, 'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
-                old_value = f"{run['movie']['file']} (sha1 {run['movie'].get('sha1', '?')[:12]})"
+                old_value = (f"{run['movie']['file']} (sha1 {run['movie'].get('sha1', '?')[:12]})"
+                             if run.get('movie') else 'none: the run was video-only')
                 value = f"{run['id']}.{movie_ext} (sha1 {hashlib.sha1(movie_bytes).hexdigest()[:12]})"
                 if dry_run:
                     return jsonify({'ok': True, 'dry_run': True, 'field': field,
                                     'from': old_value, 'to': value})
-                (run_dir / run['movie']['file']).unlink(missing_ok=True)
+                if run.get('movie'):
+                    (run_dir / run['movie']['file']).unlink(missing_ok=True)
                 (run_dir / f"{run['id']}.{movie_ext}").write_bytes(movie_bytes)
                 run['movie'] = {'file': f"{run['id']}.{movie_ext}", 'format': movie_ext,
                               'sha1': hashlib.sha1(movie_bytes).hexdigest(),
@@ -1718,6 +1718,12 @@ def expert_edit():
                               'rerecords': parsed_movie['rerecords'],
                               'start': parsed_movie['start'],
                               **({'fps': parsed_movie['fps']} if parsed_movie.get('fps') else {})}
+                # a run that gains its first movie stops being video-only, and
+                # what was not applicable to it becomes merely undone
+                run.pop('videoOnly', None)
+                for gate in ('reproduced', 'console'):
+                    if run.get('status', {}).get(gate) == 'not-applicable':
+                        run['status'][gate] = 'none'
             would_void = []
             if (field in SCORING_FIELDS or field.startswith('metric:')) and live_acts(run)['verifications']: would_void.append('verifications')
             if field in REPRO_FIELDS:
@@ -3072,6 +3078,38 @@ def report_resolve():
                     f'Resolution: {resolution}\nVia: archivist')
     return jsonify({'ok': True, 'report': f'R{report_id}', 'status': outcome})
 
+def attach_movie(run, run_dir, upload):
+    """Put a movie file on a run that has none, and stop it being video-only.
+
+    A run is video-only because no movie file came with it, which is a
+    statement about the submission and not a permanent property of the work:
+    a file that failed to reach us (a form that would not send it, an author
+    who had not exported it yet) can still arrive. Reproduction and console
+    verification stop being not-applicable the moment one does.
+
+    Returns (description, error): the error is a Flask response.
+    """
+    ext = upload.filename.rsplit('.', 1)[-1].lower()
+    movie_bytes = upload.read()
+    if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
+        return None, fail(f'movie must be non-empty and under {MOVIE_MAX >> 20} MB')
+    parsed = movieparse.parse(upload.filename, movie_bytes)
+    if not parsed['ok']:                 # any extension is archived as it is
+        parsed = {'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
+    (run_dir / f"{run['id']}.{ext}").write_bytes(movie_bytes)
+    run['movie'] = {'file': f"{run['id']}.{ext}", 'format': ext,
+                    'sha1': hashlib.sha1(movie_bytes).hexdigest(),
+                    'frames': parsed['frames'], 'rerecords': parsed['rerecords'],
+                    'start': parsed['start'],
+                    **({'fps': parsed['fps']} if parsed.get('fps') else {})}
+    run.pop('videoOnly', None)
+    for gate in ('reproduced', 'console'):
+        if run.get('status', {}).get(gate) == 'not-applicable':
+            run['status'][gate] = 'none'
+    return (f"{run['id']}.{ext} (sha1 {run['movie']['sha1'][:12]}, "
+            f"{parsed['frames'] or 'unknown'} frames)"), None
+
+
 @app.post('/api/edit')
 def edit_run():
     """The run's authors revise their own work freely; a covering expert may
@@ -3281,6 +3319,22 @@ def edit_run():
                 else:
                     run.pop('goalDescription', None)
                 changed.append('goalDescription')
+        # the movie a video-only run never carried: its author (or a covering
+        # expert) may still hand it over, and the run stops being video-only.
+        # Replacing a movie that IS there stays the expert path's, because
+        # then it is the record of somebody's reproduction that changes.
+        movie_upload = request.files.get('movie')
+        if movie_upload and movie_upload.filename:
+            if run.get('movie'):
+                return fail('this run already has a movie file; replacing one is an '
+                            'expert edit, so that the reproductions it voids are '
+                            'answered for')
+            if not dry_run:
+                value, movie_error = attach_movie(run, run_dir, movie_upload)
+                if movie_error:
+                    return movie_error
+            befores['movie'] = 'none: the run was video-only'
+            changed.append('movie')
         if 'encode' in edit_form:
             encode_url = (edit_form.get('encode') or '').strip()
             if encode_url:

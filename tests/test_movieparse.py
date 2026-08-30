@@ -580,6 +580,12 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(stale).encode())
     ck('chimeraProject: a stale "Last input" marker is not believed',
        res.get('frames') == 24, str(res))
+    cyc = json.loads(f_chimeraproject(idle=0).decode())
+    cyc['headers'].update({'CycleCount': '1000000', 'ClockRate': '1000000',
+                           'VsyncNumerator': '60', 'VsyncDenominator': '1'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(cyc).encode())
+    ck('chimeraProject: the cycle count over the clock rate beats every rate',
+       res.get('fps') and abs(res['fps'] - 24.0) < 1e-9, str(res.get('fps')))
     pal = json.loads(f_chimeraproject().decode())
     pal['headers']['PAL'] = '1'
     res = movieparse.parse('run.chimeraProject', json.dumps(pal).encode())

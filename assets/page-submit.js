@@ -337,6 +337,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
       // the movie file is optional; without one the run is video-only
 
       var movieWrap = document.getElementById('s-moviewrap');
+      var movieLabel = document.getElementById('s-movielabel');
       var timeWrap = document.getElementById('s-timewrap');
       // the stated time is four number boxes (h m s ms): a format mistake is
       // impossible, and the canonical [h:]mm:ss.mmm value is composed here
@@ -575,10 +576,15 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         paintPanels();
       });
       function paintKind(){
-        // in edit mode the movie stays as it is: only experts see the picker,
-        // to replace it; a video-only run has nothing to replace
-        movieWrap.hidden = !!(editRunId && (!(editMay && (editMay.expert || editMay.editor))
-                                            || (editRecord && editRecord.run.videoOnly)));
+        // In edit mode the movie stays as it is: replacing one is an expert's,
+        // because it is somebody's reproduction that stops being about the
+        // file they synced. A run with NO movie is the other case: its author
+        // may still hand over the file that never arrived, and the run stops
+        // being video-only (chimera#12).
+        var hasMovie = !!(editRecord && editRecord.run && editRecord.run.movie);
+        var mayReplace = !!(editMay && (editMay.expert || editMay.editor));
+        movieWrap.hidden = !!(editRunId && (hasMovie ? !mayReplace
+                                                     : !(mayReplace || (editMay && editMay.author))));
         var stated = timeStatedNeeded();
         timeWrap.hidden = !stated;
         var secs = document.getElementById('t-s');
@@ -919,9 +925,13 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             && !!submitForm.querySelector('[name=authors]').value;
         }
         if (step === 3) {
-          // everything here is optional; a picked movie only counts once the
-          // archivist has looked at it (even an unreadable one is kept)
-          if (movieInput.files && movieInput.files[0]) return !!(movieInfo && !movieInfo.error);
+          // Everything here is optional, and an unreadable file is a warning
+          // and never a refusal: the archive keeps it exactly as it is. So
+          // this waits for the archivist to have LOOKED at the movie, not for
+          // it to have liked it. Requiring the latter is what sent a Chimera
+          // project's author away with a video-only run (chimera#12): the
+          // form would not send the very file they came to file.
+          if (movieInput.files && movieInput.files[0]) return movieInfo !== null;
           return true;
         }
         if (step === 4) {
@@ -1252,13 +1262,19 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           submitForm.querySelectorAll('[name=file_sha1]').forEach(function(i){ fd.append('file_sha1', i.value); });
           submitForm.querySelectorAll('input[name^=metric_]').forEach(function(h){ fd.append(h.name, h.value); });
           if (timeStatedNeeded()) fd.append('time', byIdS('s-time').value);
+          if (authorAddsMovie) fd.append('movie', pickedMovie);
           var att = submitForm.querySelector('[name=attachments]');
           if (editMay.author && att.files) Array.prototype.forEach.call(att.files, function(f){ fd.append('attachments', f); });
           var why = submitForm.querySelector('[name=reason]').value.trim();
           if (why) fd.append('reason', why);
           return fd;
         }
-        var newMovie = expertish && movieInput.files && movieInput.files[0];
+        var pickedMovie = movieInput.files && movieInput.files[0];
+        // a run with no movie takes one through the ordinary revision, which
+        // its author may make; replacing one that is there stays the expert
+        // path's, because a reproduction stops being about the file it synced
+        var authorAddsMovie = pickedMovie && !run.movie && !expertish && editMay.author;
+        var newMovie = expertish && pickedMovie;
         var newGoal = expertish ? goalSelect.value + (subWrap.hidden ? '' : '/' + subSelect.value) : null;
         var oldGoal = run.category.goal + (run.category.sub ? '/' + run.category.sub : '');
         var moveGoal = newGoal && newGoal !== oldGoal ? newGoal : null;

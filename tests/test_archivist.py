@@ -72,6 +72,17 @@ def free_port():
     return p
 
 
+# A Chimera project, the shape its own repository writes: one JSON object,
+# never a zip, with the Bk2-style input lump inside a string. Twelve frames of
+# Down, twelve of Right, then idle: the run ends on frame 23.
+CHIMERA_PROJECT = json.dumps({
+    'title': 'gridWalker', 'core': {'name': 'Synth', 'version': '1', 'sha1': 'a' * 40},
+    'headers': {'Platform': 'NES'}, 'rerecords': 12,
+    'input': '[Input]\nLogKey:#P1 Up|P1 Down|P1 Left|P1 Right|P1 A|P1 B|P1 Select|P1 Start|\n'
+             + '|........|\n' + '|.D......|\n' * 12 + '|...R....|\n' * 11
+             + '|........|\n' * 30 + '[/Input]'}).encode()
+
+
 def call(url, data=None, files=None, cookie=None, method=None, headers=None):
     """multipart/form POST helper; returns (status, json)."""
     if files or data:
@@ -1203,6 +1214,43 @@ def main():
                                                'run': vo_id})
             ck('one verification still ranks a video-only run', c == 200
                and r['status']['verified'] == 'provisional', str(r))
+            # the movie a video-only run never carried: its author hands it
+            # over afterwards and the run stops being video-only (chimera#12,
+            # where a form that would not send the file archived the run
+            # without it)
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': vo_id, 'dry_run': '1'},
+                           {'movie': ('late.chimeraProject', CHIMERA_PROJECT)})
+            ck('the dry run announces the movie a video-only run would gain',
+               c == 200 and 'movie' in r.get('would_change', []), str(r)[:200])
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': vo_id},
+                           {'movie': ('late.chimeraProject', CHIMERA_PROJECT)})
+            ck('an author hands over the movie that never arrived',
+               c == 200 and 'movie' in r.get('changed', []), str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            vo2 = json.loads(next(iter(work.glob(f'games/*/*/runs/{vo_id}/run.json'))).read_text())
+            ck('the run stops being video-only, and carries the parsed movie',
+               not vo2.get('videoOnly') and vo2['movie']['format'] == 'chimeraproject'
+               and vo2['movie']['frames'] == 24, str(vo2.get('movie'))[:200])
+            ck('and what was not applicable to it is merely undone',
+               vo2['status']['reproduced'] == 'none'
+               and vo2['status']['console'] == 'none', str(vo2['status']))
+            ck('the file itself is in the archive',
+               (work / f'games/nes/pinball/runs/{vo_id}/{vo_id}.chimeraproject').exists()
+               or any(p_.name.lower().endswith('.chimeraproject')
+                      for p_ in (work / 'games/nes/pinball/runs' / vo_id).glob('*')),
+               str(sorted(p_.name for p_ in (work / 'games/nes/pinball/runs' / vo_id).glob('*'))))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': vo_id},
+                           {'movie': ('again.bk2', BK2)})
+            ck('replacing a movie that is there is not the author revision',
+               c == 400 and 'expert' in r.get('error', ''), str(r)[:200])
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'},
+                           {'movie': ('p.chimeraProject', CHIMERA_PROJECT)})
+            ck('the form reads a Chimera project like any other movie',
+               c == 200 and r.get('parsed') and r.get('frames') == 24, str(r)[:200])
+
             c, r, _ = call(U + '/api/submit', dict(vsub, time='1:23.456',
                                                    submitter='newuser',
                                                    authors='newuser'), files={})
