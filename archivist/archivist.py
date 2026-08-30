@@ -768,6 +768,14 @@ def visit():
             LOG.warning('visits file not writable: %s', exc)
     return jsonify({'ok': True, 'run': run_id, 'visits': count})
 
+def in_category(run):
+    """", <the category>" for a Discord line, or nothing when the archive
+    cannot name it. Every act notice ends this way: what somebody did, to
+    which run, in which category."""
+    label = category_label(run)
+    return f', {label}' if label else ''
+
+
 @app.post('/api/reproduce')
 def reproduce():
     """Record a community reproduction: mandatory ending screenshot as proof.
@@ -831,7 +839,8 @@ def reproduce():
             {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Reproduce {run["id"]}: by {user}\n\nVia: archivist')
-        notify_discord(f'\u21bb **{member_md(user)}** reproduced ' + movie_md(run),
+        notify_discord(f'\u21bb **{member_md(user)}** reproduced '
+                       + movie_md(run) + in_category(run),
                        wait_for=f'{SITE_URL}/runs/{run["id"]}/')
     return jsonify({'ok': True, 'run': run['id'], 'status': run['status'],
                     'reproductions': len([a for a in run['reproductions'] if not a.get('invalidated')])})
@@ -4758,12 +4767,11 @@ def verify():
             {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         ensure_member(user)
         commit_push(f'Verify {run["id"]}: by {user}\n\nVia: archivist')
-        # a verification is about one category's goal being met, so it names
-        # the category (and its subcategory): "verified [PS2] Athens 2004 by
-        # toca, Pole Vault" says what was judged
+        # every act is about a run in a category, and the category closes the
+        # line: "verified [PS2] Athens 2004 by toca, Pole Vault" says what
+        # was judged, and the reproduction and hardware notices say the same
         notify_discord(f'\u2713 **{member_md(user)}** verified '
-                       + movie_md(run)
-                       + (f', {category_label(run)}' if category_label(run) else ''),
+                       + movie_md(run) + in_category(run),
                        wait_for=f'{SITE_URL}/runs/{run["id"]}/')
     return jsonify({'ok': True, 'run': run['id'], 'status': run['status'],
                     'verifications': len([a for a in run['verifications'] if not a.get('invalidated')])})
@@ -4898,7 +4906,7 @@ def console_verify():
         ensure_member(user)
         commit_push(f'Console-verify {run["id"]}: by {user}\n\nProof: {proof}\nVia: archivist')
         notify_discord(f'\U0001f579\ufe0f **{member_md(user)}** played ' + movie_md(run)
-                       + ' back on original hardware',
+                       + ' back on original hardware' + in_category(run),
                        wait_for=f'{SITE_URL}/runs/{run["id"]}/')
     return jsonify({'ok': True, 'run': run['id'], 'proof': proof,
                     'consoleVerifications': len([a for a in run['consoleVerifications']

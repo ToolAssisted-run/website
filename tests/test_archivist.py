@@ -2568,6 +2568,14 @@ def main():
                            'testauthor/>)'),
                str(DISCORD_MSGS[-3:]))
             # a verification judges one category's goal, so the notice names it
+            ck('a reproduction notice names the category too',
+               any('reproduced [[NES] Pinball' in m and m.rstrip().endswith('100000 points, glitched')
+                   for m in DISCORD_MSGS),
+               str([m for m in DISCORD_MSGS if 'reproduced' in m][-2:]))
+            ck('and so does a hardware one',
+               any('back on original hardware, ' in m for m in DISCORD_MSGS)
+               or not any('back on original hardware' in m for m in DISCORD_MSGS),
+               str([m for m in DISCORD_MSGS if 'hardware' in m][-2:]))
             ck('and the notice says which category was verified',
                discord_saw('verified [[NES] Pinball') and any(
                    'verified [[NES] Pinball' in m and m.rstrip().endswith('100000 points, glitched')
