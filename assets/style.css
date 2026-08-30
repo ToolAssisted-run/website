@@ -43,7 +43,7 @@ a{color:inherit}
 /* the archivist is unreachable: amber, like everything else here that is
    pending rather than broken, and quiet enough not to shout on every page */
 .navoff{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:2px solid rgba(217,119,6,.45);background:rgba(217,119,6,.1);color:#D97706;
- font-family:ui-monospace,monospace;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap}
+ font-family:ui-monospace,monospace;font-size:.72rem;font-weight:700;cursor:pointer}
 .navoff:hover{background:rgba(217,119,6,.2)}
 .pickbox{margin-bottom:6px}
 .picked .chip{margin:2px 6px 2px 0}
@@ -649,6 +649,7 @@ footer a{color:var(--accent-text);text-decoration:none}
 /* the category's own metrics: a dashed box below the video-only mark */
 .metricsbox{border:2.5px dashed var(--hairs);border-radius:10px;padding:12px 16px 16px;margin:10px 0}
 .metricsbox input[type=number]{max-width:220px}
+.metricsbox.metriced{min-height:170px}
 /* the metrics editor on the creation pages */
 .metriced .mrow{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
 .metriced .mrow input,.metriced .mrow select{margin:0}
@@ -816,7 +817,7 @@ input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;curso
 .gecard.deleted{opacity:.6;border-style:dashed}
 .savebar{margin-top:16px}
 .savebar .btn{margin-top:12px}
-.medhint{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.medhint{font-size:.8rem;line-height:1.45;white-space:normal;overflow:visible;text-overflow:clip}
 @media (max-width:760px){.medhint{white-space:normal}}
 .medtitle{margin:0 0 4px;font-size:.9rem}
 .dimrow select.dimdd,.dimrow select.subdd{padding:8px 36px 8px 12px;border:2.5px solid var(--hairs);border-radius:8px;background-color:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
