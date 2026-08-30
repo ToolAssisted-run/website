@@ -98,7 +98,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <details class="actform actforms" open><summary style="display:none"></summary>
 {# an expert or editor moves the run to another category, or subcategory
    (#43); its own logged edit, shown to them alone (app.js) #}
-<div id="f-move-wrap" hidden><details class="actbtn"><summary>Move to another category</summary>
+<div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category</summary>
 <form id="f-move">
   <p class="rules">The run keeps everything else. Moving it out of its category to Unclassified
   is refused while it holds live verifications; a category with subcategories wants one named.</p>
@@ -112,7 +112,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <input name="reason" required minlength="8" maxlength="500" placeholder="published in the site log beside your name"></label>
   <button class="btn">Move</button>
 </form></details></div>
-<div id="f-withdraw-wrap" hidden><details class="actbtn"><summary>Withdraw</summary>
+<div id="f-withdraw-wrap" hidden><details class="actform"><summary>Withdraw</summary>
 <form id="f-withdraw">
   <p class="rules">Your own voluntary act as an author. For a mistake: a duplicate,
   the wrong file, a submission that should not have been made. The run leaves the
@@ -122,7 +122,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <button class="btn warn">Withdraw</button>
 </form></details></div>
 {% if not is_leg %}
-<div id="f-repro-wrap" hidden><details class="actbtn"><summary>I reproduced this run</summary>
+<div id="f-repro-wrap" hidden><details class="actform"><summary>I reproduced this run</summary>
 <form id="f-repro">
   <p class="rules">You loaded the movie file on your own setup and it synced to the end.
   An ending screenshot is required as proof.</p>
@@ -132,14 +132,14 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <label>Notes for the next reproducer (optional)</label><textarea name="notes" rows="3"></textarea>
   <button class="btn">Record</button>
 </form></details></div>
-<div id="f-verify-wrap" hidden><details class="actbtn"><summary>I verified this run</summary>
+<div id="f-verify-wrap" hidden><details class="actform"><summary>I verified this run</summary>
 <form id="f-verify">
   <p class="rules">You watched the encode and confirm the run achieves its stated category goal.</p>
   <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
   <button class="btn">Record</button>
 </form></details></div>
 {% if hw %}
-<div id="f-console-wrap" hidden><details class="actbtn"><summary>I played this run back on original hardware</summary>
+<div id="f-console-wrap" hidden><details class="actform"><summary>I played this run back on original hardware</summary>
 <form id="f-console">
   <p class="rules">Optional and never required for ranking, and the most expensive act
   here: you replayed the movie on the real console and recorded it. Link the recording.</p>
@@ -152,14 +152,14 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
   <button class="btn">Record</button>
 </form></details></div>
 {% endif %}
-<form id="f-vote" class="actbtn" hidden>
+<form id="f-vote" class="actform" hidden>
   <h3>This run is under dispute, and you are one of its verifiers</h3>
   <p class="rules">Recheck your verification. Reaffirming stands by it; withdrawing retracts it.</p>
   <label>Notes (optional)</label><textarea name="notes" rows="2"></textarea>
   <div class="votebtns"><button class="btn" data-reaffirm="1">Reaffirm</button>
   <button class="btn warn" data-reaffirm="0">Withdraw</button></div>
 </form>
-<div id="f-case-wrap" hidden><details class="actbtn"><summary>Dispute this run</summary>
+<div id="f-case-wrap" hidden><details class="actform"><summary>Dispute this run</summary>
 <form id="f-case">
   <p class="rules">A dispute opens a case; it never auto-disqualifies. The run's verifiers
   will be asked to reaffirm; a majority closes the case.</p>
@@ -259,7 +259,7 @@ Log in (top right) to reply from here.</p></section>
 <p class="rules">Only experts whose scope covers this game see this box; every action here is logged in the open.</p>
 <details class="actform actforms" open><summary style="display:none"></summary>
 <div id="f-movegame-wrap" hidden><a class="actbtn-link" href="../../submit/?move={{ r['id'] }}">Move the run to a different game</a></div>
-<div id="f-rundelete-wrap" hidden><details class="actbtn"><summary>Delete this run</summary>
+<div id="f-rundelete-wrap" hidden><details class="actform"><summary>Delete this run</summary>
 <form id="f-rundelete">
   <p class="rules">Outright and permanent: for tests, spam, things that are not tool-assisted
   runs, and mistakes. A genuine work is withdrawn or erased through its own procedures, never
@@ -269,7 +269,7 @@ Log in (top right) to reply from here.</p></section>
             placeholder="e.g. a test submission, not a real run"></textarea>
   <button class="btn danger">Delete</button>
 </form></details></div>
-<div id="f-invalidate-wrap" hidden><details class="actbtn"><summary>Invalidate a contribution</summary>
+<div id="f-invalidate-wrap" hidden><details class="actform"><summary>Invalidate a contribution</summary>
 <form id="f-invalidate">
   <p class="rules">For a reproduction, verification or console verification that does not
   hold up. The act stays on the record, marked invalidated, with your reason next to it.
@@ -283,7 +283,7 @@ Log in (top right) to reply from here.</p></section>
             placeholder="e.g. the screenshot is from a different run"></textarea>
   <button class="btn">Invalidate</button>
 </form></details></div>
-<div id="f-resolve-wrap" hidden><details class="actbtn"><summary>Close a report</summary>
+<div id="f-resolve-wrap" hidden><details class="actform"><summary>Close a report</summary>
 <form id="f-resolve">
   <p class="rules">Resolve it if something was done, dismiss it if nothing needed doing.
   Either way your text is published with the report in the site log.</p>

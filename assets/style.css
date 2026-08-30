@@ -368,7 +368,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .actforms{display:flex;flex-direction:column;gap:16px}
 .actforms > summary:first-child{display:none}
 .actforms > div{margin:0}
-.actforms > div > details.actform, .actforms > div > details.actbtn{margin:0}
+.actforms details.actform, .actforms details.actbtn{margin:0;background:transparent;border:0;padding:0;box-shadow:none}
 .actform{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
 .actform h3{font-size:1rem;margin-bottom:4px}
 .actform input,.actform textarea{width:100%;padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
