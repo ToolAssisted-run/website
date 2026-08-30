@@ -280,6 +280,8 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .poster img{max-width:100%;max-height:100%}
 .cbody{padding:11px 13px;display:flex;flex-direction:column;gap:4px;flex:1}
 .cbody b{font-size:.94rem}
+/* the system a card's run is on: above the title, and not competing with it */
+.csys{font-size:.7rem;color:var(--faint);letter-spacing:.02em;margin-bottom:-2px}
 .ccat{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--accent-text)}
 .csys{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--faint)}
 .grpline{margin-top:7px;margin-bottom:8px;color:var(--muted);font-size:.9rem}

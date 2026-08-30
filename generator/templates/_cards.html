@@ -9,7 +9,9 @@
 {{ thumb_html(r, dur) }}
 {# an Unclassified run has no category to name: what it does is the thing
    worth reading, so its own description takes the slot (#75) #}
-<span class="cbody"><b>{{ g['title'] }}</b>{% if is_unclassified(r) %}{% if r.get('goalDescription') %}<span class="ccat cgoal">{{ r['goalDescription'] }}</span>{% endif %}{% else %}<span class="ccat">{{ cat_label(r) }}</span>{% endif %}
+{# the machine, above the title and quietly: a shelf mixes systems, and the
+   same game exists on several of them #}
+<span class="cbody"><span class="csys">{{ systems[g['system']]['name'] }}</span><b>{{ g['title'] }}</b>{% if is_unclassified(r) %}{% if r.get('goalDescription') %}<span class="ccat cgoal">{{ r['goalDescription'] }}</span>{% endif %}{% else %}<span class="ccat">{{ cat_label(r) }}</span>{% endif %}
 <span class="cauth">{{ r['authors']|map(attribute='user')|join(', ') }}</span>
 <span class="cfoot"><span>{% if r.get('videoOnly') or not r['movie'].get('frames') %}{{ run_clock(r) }}{% else %}{{ '{:,}'.format(r['movie']['frames']) }}f{% endif %}</span><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
 {% endmacro %}
