@@ -365,9 +365,10 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .refcard img{width:230px;aspect-ratio:16/9;object-fit:cover;border-radius:9px;border:2.5px solid var(--hairs);box-shadow:var(--shadow);display:block;background:#000}
 .emptynote{font-size:.88rem;color:var(--faint);background:var(--bg);border:2.5px dashed var(--hairs);border-radius:10px;padding:14px 16px}
 .actzone{margin-top:26px}
-.actforms{display:flex;flex-direction:column;gap:14px}
+.actforms{display:flex;flex-direction:column;gap:16px}
+.actforms > summary:first-child{display:none}
 .actforms > div{margin:0}
-.actforms > div > details.actform{margin:0}
+.actforms > div > details.actform, .actforms > div > details.actbtn{margin:0}
 .actform{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
 .actform h3{font-size:1rem;margin-bottom:4px}
 .actform input,.actform textarea{width:100%;padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
@@ -378,16 +379,17 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .factlist{margin:0;padding-left:18px;font-size:.88rem;color:var(--muted)}
 .factlist li{margin:5px 0}
 .factlist b{color:var(--ink)}
-.actform summary{font-weight:700;cursor:pointer;font-size:.84rem;font-family:ui-monospace,monospace}
+.actform summary, .actbtn summary{font-weight:700;cursor:pointer;font-size:.84rem;font-family:ui-monospace,monospace}
 /* a folded act reads as a button to press, never as stray text */
-.actform>summary{list-style:none;display:inline-flex;align-items:center;gap:9px;
+.actform>summary, .actbtn>summary, .actform details>summary{list-style:none;display:inline-flex;align-items:center;gap:9px;
   padding:9px 16px;border:2.5px solid var(--hairs);border-radius:9px;background:var(--bg)}
-.actform>summary:hover{border-color:var(--accent);color:var(--accent-text)}
-.actform[open]>summary{border-color:var(--accent)}
-.actform>summary::-webkit-details-marker{display:none}
-.actform>summary::before{content:'+';font-family:ui-monospace,monospace;font-weight:700;color:var(--accent);width:1ch}
-.actform[open]>summary::before{content:'−'}
-.actform[open]>summary{margin-bottom:0}
+.actform>summary:hover, .actbtn>summary:hover, .actform details>summary:hover{border-color:var(--accent);color:var(--accent-text)}
+.actform[open]>summary, .actbtn[open]>summary, .actform details[open]>summary{border-color:var(--accent)}
+.actform>summary::-webkit-details-marker, .actbtn>summary::-webkit-details-marker, .actform details>summary::-webkit-details-marker{display:none}
+.actform>summary::before, .actbtn>summary::before, .actform details>summary::before{content:'+';font-family:ui-monospace,monospace;font-weight:700;color:var(--accent);width:1ch}
+.actform[open]>summary::before, .actbtn[open]>summary::before, .actform details[open]>summary::before{content:'−'}
+.actform[open]>summary, .actbtn[open]>summary, .actform details[open]>summary{margin-bottom:0}
+.actbtn form{margin-top:12px}
 .bigform{max-width:640px}
 /* the submit form is the page's whole job, so it gets the page's whole width;
    the notes box and the preview under it are what benefit most */
