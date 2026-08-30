@@ -796,10 +796,22 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             gameTitles[j.game.key] = gameTitles[j.game.key] || j.game.title;
             pendingDraft = {game: j.game.key, goal: run.category.goal, sub: run.category.sub || '', fields: {}};
             pickGame(j.game.key);
-            gamePick.hidden = true; gameLocked.hidden = false;
-            byIdS('s-gamelockname').textContent = j.game.title;
-            gameLocked.innerHTML = 'Game: <b>' + j.game.title + '</b> (a run never changes game)';
+            // A run filed under the wrong game is moved rather than resubmitted,
+            // and the game is picked here like it was at submission. It carries
+            // its own consequence: another game means another category, and a
+            // category change invalidates the verifications, which judged the
+            // old goal. Everyone else sees the game and cannot change it.
             document.querySelectorAll('#p-game .createq').forEach(function(e){ e.hidden = true; });
+            // moving a run between games is an EXPERT's: an editor shapes the
+            // library and may move it between categories, but member work
+            // moves under an expert's name
+            if (!editMay.expert) {
+              gamePick.hidden = true; gameLocked.hidden = false;
+              byIdS('s-gamelockname').textContent = j.game.title;
+              gameLocked.innerHTML = 'Game: <b>' + j.game.title + '</b> '
+                + '(an expert covering both games moves a run to another one)';
+              if (systemSelect) systemSelect.disabled = true;
+            }
             if (!expertish) { goalSelect.disabled = true; subSelect.disabled = true; }
             // panel 2 and on: the record
             submitForm.querySelector('[name=encode]').value = ((run.encodes || [])[0] || {}).url || '';
@@ -831,8 +843,12 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             
             // the movie file stays; an expert may replace it
             movieInput.required = false;
-            if (run.videoOnly) { movieWrap.hidden = true; }
-            else if (expertish) { byIdS('s-movielabel').textContent = 'Replace the movie file (optional; the current one stays unless you pick another)'; }
+            if (!run.movie) {
+              byIdS('s-movielabel').textContent = 'The movie file, if this run has one after '
+                + 'all (optional; adding it stops the run being video-only)';
+            } else if (expertish) {
+              byIdS('s-movielabel').textContent = 'Replace the movie file (optional; the current one stays unless you pick another)';
+            }
             else { movieWrap.hidden = true; }
             movieInfo = run.videoOnly ? null : {parsed: !!(run.movie && run.movie.frames), frames: (run.movie || {}).frames,
               seconds: (run.movie && run.movie.frames && run.movie.fps) ? run.movie.frames / run.movie.fps : null,
@@ -1277,7 +1293,13 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         var newMovie = expertish && pickedMovie;
         var newGoal = expertish ? goalSelect.value + (subWrap.hidden ? '' : '/' + subSelect.value) : null;
         var oldGoal = run.category.goal + (run.category.sub ? '/' + run.category.sub : '');
-        var moveGoal = newGoal && newGoal !== oldGoal ? newGoal : null;
+        // another GAME is a relocation, not a field edit: the run folder moves
+        // and its category is chosen from the new game's own. It carries the
+        // category change with it, so it voids what a category change voids.
+        var moveGame = editMay.expert && gameSelect.value && gameSelect.value !== run.game
+                       ? gameSelect.value : null;
+        var moveGoal = !moveGame && newGoal && newGoal !== oldGoal ? newGoal : null;
+        var liveVerifications = (run.verifications || []).filter(function(v){ return !v.invalidated; }).length;
         // an editor may only move the run: /api/edit is not theirs, so the
         // revision step is skipped and the move goes straight to expert/edit
         var mayRevise = editMay.author || editMay.expert;
@@ -1288,6 +1310,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           var nothing = !res.ok && /nothing to change/.test(res.j.error || '');
           if (!(res.ok && res.j.ok) && !nothing) { note(msg, res.j.error || 'something went wrong', false); return; }
           if (newMovie) wv = wv.concat(['reproductions', 'consoleVerifications']);
+          if ((moveGame || moveGoal) && liveVerifications) wv = wv.concat(['verifications']);
           var text = '';
           if (wv.indexOf('verifications') >= 0) text = 'This run is verified. Changing its scoring invalidates the verifications: it leaves the ranking until somebody verifies it again.';
           if (wv.indexOf('reproductions') >= 0) text += (text ? ' ' : '') + 'Changing its reproduction information invalidates the reproductions: they synced the old setup.';
@@ -1300,6 +1323,15 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             var fd = new FormData(); fd.append('kind', 'run'); fd.append('target', editRunId); fd.append('field', 'movie');
             fd.append('movie', newMovie); fd.append('reason', submitForm.querySelector('[name=reason]').value.trim() || 'Replaced the movie file.');
             return post('/api/expert/edit', fd, submitBtn);
+          });
+          if (moveGame) steps.push(function(){
+            var fd = new FormData();
+            fd.append('run', editRunId); fd.append('game', moveGame);
+            fd.append('goal', goalSelect.value);
+            if (!subWrap.hidden && subSelect.value) fd.append('sub', subSelect.value);
+            fd.append('reason', submitForm.querySelector('[name=reason]').value.trim()
+                                || 'Moved to the game it belongs to.');
+            return post('/api/run/move', fd, submitBtn);
           });
           if (moveGoal) steps.push(function(){
             var fd = new FormData(); fd.append('kind', 'run'); fd.append('target', editRunId); fd.append('field', 'goal');
