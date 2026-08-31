@@ -99,7 +99,7 @@ for r in runs:
     is_leg = rs == 'imported'
     reps = sorted(r.get('reproductions', []), key=lambda a: a.get('date') or '')
     vers = sorted(r.get('verifications', []), key=lambda a: a.get('date') or '')
-    cons = sorted(live(r.get('consoleVerifications', [])), key=lambda a: a.get('date') or '')
+    cons = sorted(r.get('consoleVerifications', []), key=lambda a: a.get('date') or '')
     # each case with the verifiers who have not voted on it yet
     cases = []
     for c in sorted(r.get('cases', []), key=lambda c: c['id']):
@@ -107,7 +107,7 @@ for r in runs:
         cases.append((c, [u for u in c['verifiers'] if u.lower() not in voted]))
     forum = r.get('forum') or {}
     nrep, nver = len(live(r.get('reproductions', []))), len(live(r.get('verifications', [])))
-    ncons = len(cons)
+    ncons = len(live(cons))
     open_case = next((c for c in r.get('cases', []) if c['status'] == 'open'), None)
     # the secondary metrics of the run's category, with the stated value of each
     metric_rows = [(m, metric_value(r, m)) for m in run_metric_defs(r) if m['key'] != 'time']

@@ -169,6 +169,10 @@ CI derives from the rosters. Self-acts, duplicate acts, and acts on Imported
 runs are rejected. The archivist never judges — it records.
 """
 
+MOVIE_TOO_LARGE = f'movie exceeds {MOVIE_MAX >> 20} MB'
+MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX = (
+    f'movie must be non-empty and under {MOVIE_MAX >> 20} MB'
+)
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
@@ -426,7 +430,9 @@ def read_attachments(existing=None):
         data = upload.read()
         if suffix.lstrip('.') in MOVIE_EXTS:
             if len(data) > MOVIE_MAX:
-                return None, fail(f'movie attachment {name!r} exceeds 16 MB')
+                return None, fail(
+                    f'movie attachment {name!r} exceeds {MOVIE_MAX >> 20} MB'
+                )
             movie_atts += 1
         elif suffix in ATTACH_EXTS:
             total += len(data)
@@ -567,7 +573,7 @@ def submit():
         ext = movie_upload.filename.rsplit('.', 1)[-1].lower()
         movie_bytes = movie_upload.read()
         if len(movie_bytes) > MOVIE_MAX:
-            return fail('movie exceeds 16 MB')
+            return fail(MOVIE_TOO_LARGE)
         if not movie_bytes:
             return fail('movie file is empty')
         # any extension is archived as it is: an author may work in a tool
@@ -1722,7 +1728,7 @@ def expert_edit():
                 movie_ext = new_movie_upload.filename.rsplit('.', 1)[-1].lower()
                 movie_bytes = new_movie_upload.read()
                 if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
-                    return fail('movie must be non-empty and under 16 MB')
+                    return fail(MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX)
                 # the same door as submission: any extension, and a parse
                 # failure keeps the file with frames unknown
                 parsed_movie = movieparse.parse(new_movie_upload.filename, movie_bytes)
@@ -3138,7 +3144,7 @@ def attach_movie(run, run_dir, upload):
     ext = upload.filename.rsplit('.', 1)[-1].lower()
     movie_bytes = upload.read()
     if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
-        return None, fail(f'movie must be non-empty and under {MOVIE_MAX >> 20} MB')
+        return None, fail(MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX)
     parsed = movieparse.parse(upload.filename, movie_bytes)
     if not parsed['ok']:                 # any extension is archived as it is
         parsed = {'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
@@ -3365,21 +3371,27 @@ def edit_run():
                 else:
                     run.pop('goalDescription', None)
                 changed.append('goalDescription')
-        # the movie a video-only run never carried: its author (or a covering
-        # expert) may still hand it over, and the run stops being video-only.
-        # Replacing a movie that IS there stays the expert path's, because
-        # then it is the record of somebody's reproduction that changes.
+        # Authors and covering experts may replace the movie one item at a time.
+        # The reproduction and console rosters remain historical, while
+        # void_acts_for marks their records obsolete because they synced the old file.
         movie_upload = request.files.get('movie')
         if movie_upload and movie_upload.filename:
-            if run.get('movie'):
-                return fail('this run already has a movie file; replacing one is an '
-                            'expert edit, so that the reproductions it voids are '
-                            'answered for')
+            old_movie = run.get('movie')
+            old_value = (f"{old_movie['file']} (sha1 {old_movie.get('sha1', '?')[:12]})"
+                         if old_movie else 'none: the run was video-only')
             if not dry_run:
+                if old_movie:
+                    (run_dir / old_movie['file']).unlink(missing_ok=True)
                 value, movie_error = attach_movie(run, run_dir, movie_upload)
                 if movie_error:
                     return movie_error
-            befores['movie'] = 'none: the run was video-only'
+            else:
+                ext = movie_upload.filename.rsplit('.', 1)[-1].lower()
+                movie_bytes = movie_upload.read()
+                if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
+                    return fail(MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX)
+                value = f"{run['id']}.{ext} (sha1 {hashlib.sha1(movie_bytes).hexdigest()[:12]})"
+            befores['movie'] = old_value
             changed.append('movie')
         if 'encode' in edit_form:
             encode_url = (edit_form.get('encode') or '').strip()
@@ -3609,7 +3621,7 @@ def movie_inspect():
     if not movie_bytes:
         return fail('movie file is empty')
     if len(movie_bytes) > MOVIE_MAX:
-        return fail('movie exceeds 16 MB')
+        return fail(MOVIE_TOO_LARGE)
     known = ext in MOVIE_EXTS
     parsed = movieparse.parse(movie_upload.filename, movie_bytes) if known else {'ok': False, 'error': f'.{ext} is not a format the archive can read'}
     fps = parsed.get('fps') if parsed.get('ok') else None

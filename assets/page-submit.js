@@ -576,13 +576,11 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         paintPanels();
       });
       function paintKind(){
-        // In edit mode the movie stays as it is: replacing one is an expert's,
-        // because it is somebody's reproduction that stops being about the
-        // file they synced. A run with NO movie is the other case: its author
-        // may still hand over the file that never arrived, and the run stops
-        // being video-only (chimera#12).
+        // In edit mode authors and covering experts may replace the movie. Existing
+        // reproductions remain historical but become obsolete because they synced
+        // the old file. A run with NO movie may also receive its first file.
         var hasMovie = !!(editRecord && editRecord.run && editRecord.run.movie);
-        var mayReplace = !!(editMay && (editMay.expert || editMay.editor));
+        var mayReplace = !!(editMay && (editMay.expert || editMay.author));
         movieWrap.hidden = !!(editRunId && (hasMovie ? !mayReplace
                                                      : !(mayReplace || (editMay && editMay.author))));
         var stated = timeStatedNeeded();
@@ -789,7 +787,10 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             editRecord = j; editMay = j.may;
             var run = j.run;
             var mayEdit = editMay.author || editMay.expert || editMay.editor;
-            if (!mayEdit) { byIdS('s-subtitle').textContent = 'Only the authors of ' + editRunId + ', the experts covering ' + j.game.title + ' and editors may edit it.'; submitForm.hidden = true; return; }
+            if (!mayEdit) {
+              byIdS('s-subtitle').textContent = 'Only the authors of ' + editRunId + ', the experts covering ' + j.game.title + ' and editors may edit it.'; submitForm.hidden = true;
+              return;
+            }
             byIdS('s-subtitle').textContent = editRunId + ' · ' + j.game.title + ' · by ' + run.authors.map(function(a){ return a.user; }).join(', ') + (editMay.author ? '' : ' · expert mode');
             // panel 1: the game is fixed; category and subcategory only for experts and editors
             var expertish = editMay.expert || editMay.editor;
@@ -820,7 +821,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             if (pick && pick.setAuthors) pick.setAuthors(run.authors.map(function(a){ return a.user; }));
             if (!editMay.author && !editMay.expert) { pick.querySelector('.authsearch').disabled = true; pick.querySelectorAll('.authx').forEach(function(x){ x.disabled = true; }); }
             submitForm.querySelector('[name=completed]').value = run.completed || '';
-            
+
             // the designated "You may also like" picks: search-as-you-type
             byIdS('s-relatedwrap').hidden = false;
             var relatedSeen = [];
@@ -840,8 +841,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
                 }); });
             (run.related || []).forEach(function(v){ if (relatedSeen.indexOf(v) < 0) relatedSeen.push(v); });
             if (relatedPick) relatedPick.set(run.related || []);
-            
-            // the movie file stays; an expert may replace it
+
+            // the movie file stays unless an author or covering expert replaces it
             movieInput.required = false;
             if (!run.movie) {
               byIdS('s-movielabel').textContent = 'The movie file, if this run has one after '
@@ -933,7 +934,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         if (step === 1) {
           if (!gameSelect.value || !goalSelect.value) return false;
           if (!subWrap.hidden && !subSelect.value) return false;
-          return !(goalSelect.value === 'unclassified' 
+          return !(goalSelect.value === 'unclassified'
               && !submitForm.querySelector('[name=goal_description]').value.trim());
         }
         if (step === 2) {
@@ -944,9 +945,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           // Everything here is optional, and an unreadable file is a warning
           // and never a refusal: the archive keeps it exactly as it is. So
           // this waits for the archivist to have LOOKED at the movie, not for
-          // it to have liked it. Requiring the latter is what sent a Chimera
-          // project's author away with a video-only run (chimera#12): the
-          // form would not send the very file they came to file.
+          // it to have parsed every detail. An unreadable movie is retained as
+          // submitted, while a readable one can supply checked timing data.
           if (movieInput.files && movieInput.files[0]) return movieInfo !== null;
           return true;
         }
@@ -1258,8 +1258,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
       });
 
       var submitting = false;
-      // ---- saving an edit: the revision through /api/edit; an expert's
-      // movie replacement and category move are their own logged edits ----
+      // ---- saving an edit: the revision through /api/edit; category moves
+      // remain their own expert-only logged edits ----
       function saveEdit(){
         var submitBtn = document.getElementById('s-submit');
         var run = editRecord.run, expertish = editMay.expert || editMay.editor;
@@ -1278,7 +1278,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           submitForm.querySelectorAll('[name=file_sha1]').forEach(function(i){ fd.append('file_sha1', i.value); });
           submitForm.querySelectorAll('input[name^=metric_]').forEach(function(h){ fd.append(h.name, h.value); });
           if (timeStatedNeeded()) fd.append('time', byIdS('s-time').value);
-          if (authorAddsMovie) fd.append('movie', pickedMovie);
+          if (pickedMovie && (editMay.author || editMay.expert)) fd.append('movie', pickedMovie);
           var att = submitForm.querySelector('[name=attachments]');
           if (editMay.author && att.files) Array.prototype.forEach.call(att.files, function(f){ fd.append('attachments', f); });
           var why = submitForm.querySelector('[name=reason]').value.trim();
@@ -1286,11 +1286,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           return fd;
         }
         var pickedMovie = movieInput.files && movieInput.files[0];
-        // a run with no movie takes one through the ordinary revision, which
-        // its author may make; replacing one that is there stays the expert
-        // path's, because a reproduction stops being about the file it synced
-        var authorAddsMovie = pickedMovie && !run.movie && !expertish && editMay.author;
-        var newMovie = expertish && pickedMovie;
+        // Authors and covering experts submit movie additions or replacements through
+        // the ordinary revision; editors remain limited to category moves.
         var newGoal = expertish ? goalSelect.value + (subWrap.hidden ? '' : '/' + subSelect.value) : null;
         var oldGoal = run.category.goal + (run.category.sub ? '/' + run.category.sub : '');
         // another GAME is a relocation, not a field edit: the run folder moves
@@ -1309,7 +1306,6 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           var wv = (res.ok && res.j.ok) ? (res.j.would_void || []) : [];
           var nothing = !res.ok && /nothing to change/.test(res.j.error || '');
           if (!(res.ok && res.j.ok) && !nothing) { note(msg, res.j.error || 'something went wrong', false); return; }
-          if (newMovie) wv = wv.concat(['reproductions', 'consoleVerifications']);
           if ((moveGame || moveGoal) && liveVerifications) wv = wv.concat(['verifications']);
           var text = '';
           if (wv.indexOf('verifications') >= 0) text = 'This run is verified. Changing its scoring invalidates the verifications: it leaves the ranking until somebody verifies it again.';
@@ -1319,11 +1315,6 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           submitting = true;
           var steps = [];
           if (!nothing) steps.push(function(){ return post('/api/edit', revision(false), submitBtn); });
-          if (newMovie) steps.push(function(){
-            var fd = new FormData(); fd.append('kind', 'run'); fd.append('target', editRunId); fd.append('field', 'movie');
-            fd.append('movie', newMovie); fd.append('reason', submitForm.querySelector('[name=reason]').value.trim() || 'Replaced the movie file.');
-            return post('/api/expert/edit', fd, submitBtn);
-          });
           if (moveGame) steps.push(function(){
             var fd = new FormData();
             fd.append('run', editRunId); fd.append('game', moveGame);

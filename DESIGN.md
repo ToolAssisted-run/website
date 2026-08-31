@@ -451,17 +451,21 @@ This is what keeps replacing a video link from touching the scoring.
 
 - **One "Edit run" panel serves authors and covering experts** (`/api/edit`):
   notes, emulator, completion date, goal description, encode, stated time
-  (whenever the category ranks by it), metric values. Authors alone may also revise the author list
-  (refused if it would credit somebody who already acted on the run) and
-  upload **supplementary files** (same validation and caps as submission's
-  attachments, counted together; stored under `attachments/` with role
-  `supplementary`; a taken name is refused). An expert using the panel must
-  state a public reason (8–500 chars) and can never touch the author list or
-  the uploads; their changes log exactly like `/api/expert/edit` ones.
+  (whenever the category ranks by it), metric values, and the movie file. Authors
+  alone may also revise the author list (refused if it would credit somebody
+  who already acted on the run) and upload **supplementary files** (same
+  validation and caps as submission's attachments, counted together; stored
+  under `attachments/` with role `supplementary`; a taken name is refused).
+  An expert using the panel must state a public reason (8–500 chars) and can
+  never touch the author list or the uploads; their changes log exactly like
+  `/api/expert/edit` ones. Replacing a movie invalidates the live reproductions
+  and console verifications that synced the old file, but keeps those historical
+  acts in their rosters marked **Obsoleted**; the run then needs reproduction
+  again.
 - **Experts** additionally correct structural facts through
   `/api/expert/edit` (API; the old per-field run form is retired from the
   page): a run's goal (existing options; unclassified refused while live
-  verifications exist), movie file (re-parsed, sha1 logged); a game's title
+  verifications exist); a game's title
   and thumbnail (validated image ≤256 KB, shown on the page and preferred by
   the game card); a category option's label, rule or metrics (target
   `sys/slug:option`); a group's title and composition.

@@ -84,7 +84,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <div class="roster">{% if vers %}{{ roster_acts(r, vers, 'verify') }}{% elif enc %}<p class="emptynote">No verifications yet. Watch the encode and confirm the run achieves its stated goal.</p>{% else %}<p class="emptynote">No verifications yet, and no encode is linked, so verification is not possible until one is added.</p>{% endif %}</div>
 {% endif %}
 {% if hw or cons %}
-<h2>Console verifications ({{ cons|length }})</h2>
+<h2>Console verifications ({{ live(cons)|length }})</h2>
 <div class="roster">{% if cons %}{{ roster_acts(r, cons, 'console') }}{% else %}<p class="emptynote">Not yet played back on original hardware. This is optional and never required for ranking, and it pays <b>{{ PT_CONSOLE }} contributor points</b>.</p>{% endif %}</div>
 {% endif %}
 {% if cases %}

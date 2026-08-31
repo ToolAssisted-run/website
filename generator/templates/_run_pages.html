@@ -14,8 +14,8 @@
 {% macro act_row(r, act, kind) %}
 {% set inv = act.get('invalidated') %}
 <div class="act{% if inv %} invalid{% endif %}"><div class="acthead">{{ member_chip(act['user'], '../../') }}<span class="actmeta">
-{%- if kind == 'repro' %}{{ [act.get('date') or '', act.get('emulator') or '']|select|join(' · ') }}
-{%- elif kind == 'console' %}{{ act.get('date') or '' }} · {% if act.get('hardware') %}{{ act['hardware'] }} · {% endif %}<a href="{{ act['proof'] }}">recording</a>
+{%- if kind == 'repro' %}{{ [act.get('date') or '', act.get('emulator') or '']|select|join(' · ') }}{% if inv and inv.get('cause') == 'edit' %} · <b>Obsoleted</b>{% endif %}
+{%- elif kind == 'console' %}{{ act.get('date') or '' }}{% if inv and inv.get('cause') == 'edit' %} · <b>Obsoleted</b>{% endif %} · {% if act.get('hardware') %}{{ act['hardware'] }} · {% endif %}<a href="{{ act['proof'] }}">recording</a>
 {%- else %}{{ act.get('date') or '' }}{% endif %}</span></div>
 {% if act.get('notes') %}
 {% if kind == 'repro' %}
