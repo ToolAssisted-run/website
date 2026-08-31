@@ -525,32 +525,31 @@ def main():
         sync_script.chmod(0o755)
 
         port = free_port()
-        env = dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
-                   GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='mock-key',
-                   DISCORD_WEBHOOK_URL=f'http://127.0.0.1:{hport}/discord-hook',
-                   # no held messages in the suite: the pages the links point
-                   # at are never built here, and a poll would hit the real site
-                   NOTIFY_LINK_WAIT_SECONDS='0',
-                   DISCOURSE_HOOK_SECRET='hooksecret',
-                   GITHUB_HOOK_SECRET='ghhooksecret', SITE_SYNC_CMD=str(sync_script),
-                   # read the roster fresh every time, so the staleness test is
-                   # deterministic instead of racing a 20 second window
-                   ARCHIVE_REFRESH_SECONDS='0', ROLE_RECONCILE_SECONDS='0',
-                   # the mock stands in for the forum, so account lookups are real
-                   DISCOURSE_URL=f'http://127.0.0.1:{hport}',
-                   CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
-                   THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
-                   PROVIDER_MOCK_BASE=f'http://127.0.0.1:{hport}/p/',
-                   DUMPS_DIR=str(dumps),
-                   # the publisher: build with the real generator from this
-                   # repo, into the sandbox — hermetic, like everything here
-                   WEBSITE_DIR=str(REPO), SITE_DIR=str(td / 'site'),
-                   DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET='testsessionsecret',
-                   SELF_URL=f'http://127.0.0.1:{port}', SITE_ORIGIN='https://toolassisted.run',
-                   PATH='/usr/bin:/bin', HOME=str(td))
         import os
-        if 'PYTHONPATH' in os.environ:
-            env['PYTHONPATH'] = os.environ['PYTHONPATH']
+        env = dict(os.environ)
+        env.update(dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
+                        GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='mock-key',
+                        DISCORD_WEBHOOK_URL=f'http://127.0.0.1:{hport}/discord-hook',
+                        # no held messages in the suite: the pages the links point
+                        # at are never built here, and a poll would hit the real site
+                        NOTIFY_LINK_WAIT_SECONDS='0',
+                        DISCOURSE_HOOK_SECRET='hooksecret',
+                        GITHUB_HOOK_SECRET='ghhooksecret', SITE_SYNC_CMD=str(sync_script),
+                        # read the roster fresh every time, so the staleness test is
+                        # deterministic instead of racing a 20 second window
+                        ARCHIVE_REFRESH_SECONDS='0', ROLE_RECONCILE_SECONDS='0',
+                        # the mock stands in for the forum, so account lookups are real
+                        DISCOURSE_URL=f'http://127.0.0.1:{hport}',
+                        CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
+                        THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
+                        PROVIDER_MOCK_BASE=f'http://127.0.0.1:{hport}/p/',
+                        DUMPS_DIR=str(dumps),
+                        # the publisher: build with the real generator from this
+                        # repo, into the sandbox - hermetic, like everything here
+                        WEBSITE_DIR=str(REPO), SITE_DIR=str(td / 'site'),
+                        DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET='testsessionsecret',
+                        SELF_URL=f'http://127.0.0.1:{port}', SITE_ORIGIN='https://toolassisted.run',
+                        HOME=str(td)))
         proc = subprocess.Popen([sys.executable, str(REPO / 'archivist/archivist.py')],
                                 env=env, stdout=(td / 'log').open('w'), stderr=subprocess.STDOUT)
         U = f'http://127.0.0.1:{port}'
@@ -1244,8 +1243,8 @@ def main():
             c, r, _ = call(U + '/api/edit',
                            {'key': KEY, 'user': 'TestAuthor', 'run': vo_id},
                            {'movie': ('again.bk2', BK2)})
-            ck('replacing a movie that is there is not the author revision',
-               c == 400 and 'expert' in r.get('error', ''), str(r)[:200])
+            ck('an author may replace a movie through the shared edit path',
+               c == 200 and r.get('changed') == ['movie'], str(r)[:200])
             c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'},
                            {'movie': ('p.chimeraProject', CHIMERA_PROJECT)})
             ck('the form reads a Chimera project like any other movie',

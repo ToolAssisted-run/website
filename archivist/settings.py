@@ -30,12 +30,25 @@ DISCOURSE_URL = os.environ.get('DISCOURSE_URL', 'https://forum.toolassisted.run'
 
 # Every outgoing request names the archivist. The forum sits behind Cloudflare
 # since 2026-08-22, whose bot protection answers urllib's default agent
-# ("Python-urllib/3.x") with 403; a named agent passes. Installed once here,
+# ("Python-urllib/3.x") with 403; a named agent passes. Install once here,
 # so every urlopen in every module carries it without each call site knowing.
 USER_AGENT = 'toolAssisted.run archivist (+https://toolassisted.run)'
-_opener = urllib.request.build_opener()
-_opener.addheaders = [('User-Agent', USER_AGENT)]
-urllib.request.install_opener(_opener)
+_urlopen = urllib.request.urlopen
+
+def _urlopen_with_user_agent(url, *args, **kwargs):
+    """Inject our User-Agent without building urllib openers at import time."""
+    if isinstance(url, urllib.request.Request):
+        if not url.has_header('User-Agent'):
+            url.add_unredirected_header('User-Agent', USER_AGENT)
+        return _urlopen(url, *args, **kwargs)
+    data = kwargs.pop('data', None)
+    rest = list(args)
+    if data is None and rest:
+        data = rest.pop(0)
+    req = urllib.request.Request(url, data=data, headers={'User-Agent': USER_AGENT})
+    return _urlopen(req, *rest, **kwargs)
+
+urllib.request.urlopen = _urlopen_with_user_agent
 
 DISCOURSE_KEY = os.environ.get('DISCOURSE_KEY', '')
 
