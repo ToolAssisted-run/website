@@ -666,7 +666,7 @@ footer a{color:var(--accent-text);text-decoration:none}
 .pickrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .pickrow .gamepick,.pickrow select{flex:1;min-width:min(320px,100%)}
 .createq{font-size:.85rem;color:var(--faint);white-space:nowrap;display:flex;align-items:center;gap:8px}
-.createq .btn{padding:6px 12px;font-size:.8rem}
+.createq .btn{padding:6px 12px;font-size:.8rem;line-height:1;margin-top:-2px}
 .createq [aria-disabled=true]{opacity:.45;pointer-events:none}
 
 /* stated-time picker: four boxes, a mistake is not possible */
