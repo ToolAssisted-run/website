@@ -26,6 +26,7 @@ from settings import (
     SESSION_SECRET,
     SESSION_TTL,
     SITE_ORIGIN,
+    SITE_ORIGINS,
     SSO_SECRET,
 )
 
@@ -97,7 +98,7 @@ def origin_ok():
     our own origins. Requests without an Origin header (curl, scripts) pass;
     they carry no ambient cookie authority worth forging."""
     origin = request.headers.get('Origin')
-    return origin is None or origin in (SITE_ORIGIN, DISCOURSE_URL)
+    return origin is None or origin in SITE_ORIGINS or origin == DISCOURSE_URL
 
 def mask_email(addr):
     """jo***oe@e****.com

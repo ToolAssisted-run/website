@@ -823,6 +823,14 @@ archivist, module responsibilities). What matters designwise:
   are **printed projections** of `roles.json`, one-way, reconciled
   periodically; joining a forum group grants nothing. Private messages are
   never relayed anywhere.
+- **The site answers on the apex and on www**, and the archivist treats both
+  as its own origin (`SITE_ORIGINS`, the apex plus its www form, plus
+  anything in `SITE_ORIGINS_EXTRA`): a credentialed response may name exactly
+  one origin, so the caller's is echoed when it is ours and the apex is named
+  otherwise. The CSRF guard on cookie writes accepts the same set. The apex
+  stays canonical (pages link to it, and a redirect in front of the service
+  is the tidier fix); this only stops a reader who typed www from being told
+  the archivist is unreachable.
 - **Discord notifications** (`DISCORD_WEBHOOK_URL`): one line per event,
   links inside representative words (`<>` suppresses the preview); a movie
   is named the way people say it, the name carrying the link:

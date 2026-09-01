@@ -68,6 +68,7 @@ from settings import (
     SHOT_MAX_EACH,
     SHOT_MAX_TOTAL,
     SITE_ORIGIN,
+    SITE_ORIGINS,
     SITE_URL,
     SSO_SECRET,
     SUBMIT_KEY,
@@ -191,7 +192,11 @@ def cors(resp):
     Answers: the same response, with Access-Control-* and Vary headers added
     """
     if request.path.startswith('/api/') or request.path in ('/login', '/logout'):
-        resp.headers['Access-Control-Allow-Origin'] = SITE_ORIGIN
+        # the caller's own origin when we know it, since a credentialed
+        # request cannot be answered with a list or a wildcard
+        asked = request.headers.get('Origin')
+        resp.headers['Access-Control-Allow-Origin'] = (
+            asked if asked in SITE_ORIGINS else SITE_ORIGIN)
         resp.headers['Access-Control-Allow-Credentials'] = 'true'
         resp.headers['Vary'] = 'Origin'
     return resp

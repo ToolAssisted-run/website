@@ -261,6 +261,23 @@ def main():
             code, _, h = call(U + '/api/me', method='GET', cookie=cookie)
             ck('CORS allows only our origin',
                h.get('Access-Control-Allow-Origin') == SITE_ORIGIN, str(h.get('Access-Control-Allow-Origin')))
+            # the site answers on www too, and a browser there is on another
+            # origin: it is ours, and it is echoed back rather than listed,
+            # because a credentialed response may name exactly one
+            code, _, h = call(U + '/api/me', method='GET', cookie=cookie,
+                              origin='https://www.toolassisted.run')
+            ck('CORS answers the www origin as its own',
+               h.get('Access-Control-Allow-Origin') == 'https://www.toolassisted.run',
+               str(h.get('Access-Control-Allow-Origin')))
+            code, _, h = call(U + '/api/me', method='GET', cookie=cookie,
+                              origin='https://toolassisted.run.evil.example')
+            ck('and a lookalike origin is answered with ours, never its own',
+               h.get('Access-Control-Allow-Origin') == SITE_ORIGIN,
+               str(h.get('Access-Control-Allow-Origin')))
+            code, r, _ = call(U + '/api/like', {'run': 'M900401', 'dry_run': '1'},
+                              cookie=cookie, origin='https://www.toolassisted.run')
+            ck('a write from www is not cross-origin',
+               not (code == 403 and 'cross-origin' in str(r.get('error', ''))), str(r)[:120])
             ck('CORS allows credentials', h.get('Access-Control-Allow-Credentials') == 'true')
 
             # ---------------- SSO negatives ----------------

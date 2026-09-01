@@ -78,6 +78,15 @@ SESSION_SECRET = os.environ.get('SESSION_SECRET', '')
 SELF_URL = os.environ.get('SELF_URL', 'https://forum.toolassisted.run:8100')
 
 SITE_ORIGIN = os.environ.get('SITE_ORIGIN', 'https://toolassisted.run')
+# The site answers on www as well as on the apex, and a browser there is on a
+# different ORIGIN: its calls to this service were refused by CORS, so every
+# page on www said the archivist was unreachable. The canonical host is still
+# the apex (a redirect belongs in front of this), but a reader who typed www
+# is a reader, not a forgery.
+SITE_ORIGINS = tuple(dict.fromkeys(
+    [SITE_ORIGIN]
+    + ([SITE_ORIGIN.replace('://', '://www.', 1)] if '://www.' not in SITE_ORIGIN else [])
+    + [o.strip() for o in os.environ.get('SITE_ORIGINS_EXTRA', '').split(',') if o.strip()]))
 
 SESSION_TTL = 14 * 24 * 3600
 
