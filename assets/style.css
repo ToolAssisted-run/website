@@ -351,7 +351,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .roster{display:flex;flex-direction:column;gap:10px}
 .act{background:var(--bg);border:2.5px solid var(--hair);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
 .act.invalid{opacity:.6}
-.act.invalid .acthead,.act.invalid .actnote{text-decoration:line-through}
+.act.invalid .obsolete{color:var(--accent-text)}
 .acthead{display:flex;gap:10px;align-items:baseline}
 .actmeta{font-size:.78rem;color:var(--faint);font-family:ui-monospace,monospace}
 .actnote{font-size:.86rem;color:var(--muted);margin-top:4px}
