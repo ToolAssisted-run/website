@@ -365,9 +365,10 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .refcard img{width:230px;aspect-ratio:16/9;object-fit:cover;border-radius:9px;border:2.5px solid var(--hairs);box-shadow:var(--shadow);display:block;background:#000}
 .emptynote{font-size:.88rem;color:var(--faint);background:var(--bg);border:2.5px dashed var(--hairs);border-radius:10px;padding:14px 16px}
 .actzone{margin-top:26px}
-.actforms{display:flex;flex-direction:column;gap:16px}
+.actforms{display:flex;flex-direction:column;align-items:flex-start}
 .actforms > summary:first-child{display:none}
-.actforms > div{margin:0}
+.actforms > div, .actforms > form{margin:0}
+.actforms > * + *{margin-top:16px}
 .actforms details.actform, .actforms details.actbtn{margin:0;background:transparent;border:0;padding:0;box-shadow:none}
 .actform{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
 .actform h3{font-size:1rem;margin-bottom:4px}
