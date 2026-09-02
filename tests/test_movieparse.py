@@ -20,6 +20,7 @@ import json
 import math
 import pathlib
 import random
+import re
 import struct
 import sys
 import tarfile
@@ -29,6 +30,8 @@ import zlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
 import movieparse  # noqa: E402
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
 
 failures = []
 
@@ -643,6 +646,28 @@ def main():
     res = movieparse.parse('run.chimeraProject', FIXTURES['bk2'][0])
     ck('chimeraProject: a bk2 under the wrong extension is refused',
        not res.get('ok'), str(res))
+
+    # --- the archive must accept every format intake does ---
+    # An author may attach a second movie file, and the archivist takes any
+    # format movieparse knows. The archive's own validator carries a copy of
+    # that roster, and the two drifting is not a theory: a .chimeraProject
+    # attachment archived cleanly and then failed the archive (M100053).
+    # the checkout wherever it is: named on the command line, beside the
+    # website in CI's workspace, or in the usual place on a working machine
+    candidates = ([pathlib.Path(sys.argv[1])] if len(sys.argv) > 1 else []) + [
+        pathlib.Path('archive'), REPO.parent / 'archive',
+        pathlib.Path.home() / 'ToolAssisted-archive']
+    validator = next((c / 'validate.py' for c in candidates
+                      if (c / 'validate.py').exists()), pathlib.Path('nowhere'))
+    if validator.exists():
+        declared = set(re.findall(r"'(\.[a-z0-9]+)'",
+                                  validator.read_text().split('MOVIE_ATTACH_EXT = {')[1]
+                                  .split('}')[0]))
+        ours = {'.' + e for e in set(movieparse.PARSERS) | set(movieparse.KNOWN_UNPARSED)}
+        ck('the archive accepts every movie format intake does',
+           not (ours - declared), str(sorted(ours - declared)[:6]))
+    else:
+        print('SKIP archive attachment roster: no archive checkout')
 
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)
