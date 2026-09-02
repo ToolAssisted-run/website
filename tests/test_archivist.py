@@ -2974,7 +2974,47 @@ def main():
                and json.loads(sub_author.read_text())['claimed'] is True)
             v = subprocess.run([sys.executable, str(check / 'validate.py')],
                                capture_output=True, text=True)
-            ck('pushed archive validates', v.returncode == 0, v.stdout[-500:])
+            # A reference archive may carry the older validator that still
+            # treats an edit-obsoleted act plus its replacement as a duplicate.
+            # The pairs are deliberately created above by "a member whose
+            # verification was obsoleted can verify again" and "a member whose
+            # reproduction was obsoleted can reproduce again".
+            # Accept only errors whose records satisfy the new rule: one live
+            # act, with every earlier same-user act obsoleted by an edit.
+            # Every unrelated validator failure remains a failure.
+            problems = [line for line in v.stdout.splitlines() if '\u2717' in line]
+
+            def permitted_edit_retry(problem):
+                normalized = problem.replace('\\', '/')
+                match = re.search(
+                    r'/runs/(M\d+): duplicate '
+                    r'(reproduction|verification|consoleVerification) by \'([^\']+)\'',
+                    normalized)
+                if not match:
+                    return False
+                run_id, kind, username = match.groups()
+                roster = {
+                    'reproduction': 'reproductions',
+                    'verification': 'verifications',
+                    'consoleVerification': 'consoleVerifications',
+                }[kind]
+                run_files = list(check.glob(f'games/*/*/runs/{run_id}/run.json'))
+                if len(run_files) != 1:
+                    return False
+                acts = [act for act in json.loads(run_files[0].read_text()).get(roster, [])
+                        if act['user'].lower() == username.lower()]
+                live = [act for act in acts if not act.get('invalidated')]
+                obsolete = [act for act in acts if act.get('invalidated')]
+                return (len(live) == 1 and bool(obsolete)
+                        and all(act['invalidated'].get('cause') == 'edit'
+                                for act in obsolete))
+
+            old_validator_retry_errors = (
+                bool(problems) and all(permitted_edit_retry(problem)
+                                       for problem in problems)
+            )
+            ck('pushed archive validates',
+               v.returncode == 0 or old_validator_retry_errors, v.stdout[-500:])
 
             # --- deletion: the fast lane for things that were never works ---
             # Runs LAST: it eats fixtures every earlier test leans on.
