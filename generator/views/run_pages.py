@@ -121,9 +121,12 @@ for r in runs:
         'imported': is_leg,
         'authors': [canon(a['user']) for a in r['authors']],
         'authorsDisplay': [a['user'] for a in r['authors']],
-        'reproduced': [a['user'].lower() for a in r.get('reproductions', [])],
-        'verified': [a['user'].lower() for a in r.get('verifications', [])],
-        'consoled': [a['user'].lower() for a in r.get('consoleVerifications', [])],
+        'reproduced': [a['user'].lower() for a in r.get('reproductions', [])
+                       if not a.get('invalidated') or a['invalidated'].get('cause') != 'edit'],
+        'verified': [a['user'].lower() for a in r.get('verifications', [])
+                     if not a.get('invalidated') or a['invalidated'].get('cause') != 'edit'],
+        'consoled': [a['user'].lower() for a in r.get('consoleVerifications', [])
+                     if not a.get('invalidated') or a['invalidated'].get('cause') != 'edit'],
         'experts': covering_experts(r['_game']['key']),
         'hasEncode': bool(enc) and not is_unclassified(r),
         'liveVerifs': len(live(r.get('verifications', []))),

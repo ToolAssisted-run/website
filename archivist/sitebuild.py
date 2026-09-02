@@ -65,14 +65,28 @@ def _incomplete(out):
 
 
 def _swap(out):
-    """Point `current` at the new build atomically: a symlink written beside
-    it, then renamed over it. A reader mid-request keeps the directory it
-    already opened; the next request gets the new site."""
+    """Atomically point `current` at the new build by creating a symlink
+    beside it and renaming that symlink over `current`. A reader mid-request
+    keeps the directory it already opened; the next request gets the new site.
+    If an OSError prevents creating or renaming a symlink (for example when
+    symlinks aren't supported or across filesystems), fall back to copying
+    the build directory into `current` so the site remains available."""
     tmp = SITE_DIR / f'.current-{out.name}'
     if tmp.is_symlink() or tmp.exists():
-        tmp.unlink()
-    os.symlink(out.name, tmp)
-    os.replace(tmp, SITE_DIR / 'current')
+        if tmp.is_dir() and not tmp.is_symlink():
+            shutil.rmtree(tmp)
+        else:
+            tmp.unlink()
+    try:
+        os.symlink(out.name, tmp, target_is_directory=True)
+        os.replace(tmp, SITE_DIR / 'current')
+    except OSError:
+        cur = SITE_DIR / 'current'
+        if cur.is_symlink():
+            cur.unlink()
+        elif cur.exists():
+            shutil.rmtree(cur)
+        shutil.copytree(out, cur)
 
 
 def _prune():

@@ -18,6 +18,7 @@ import hmac
 import http.server
 import io
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -163,17 +164,15 @@ def main():
 
         # ---------- launch the archivist ----------
         port = free_port()
-        env = dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
-                   GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='',
-                   CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
-                   THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
-                   DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET=SESSION_SECRET,
-                   SELF_URL=f'http://127.0.0.1:{port}', SITE_ORIGIN=SITE_ORIGIN,
-                   DISCOURSE_URL=FORUM_ORIGIN,
-                   PATH='/usr/bin:/bin', HOME=str(td))
-        import os
-        if 'PYTHONPATH' in os.environ:
-            env['PYTHONPATH'] = os.environ['PYTHONPATH']
+        env = dict(os.environ)
+        env.update(dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
+                        GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='',
+                        CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
+                        THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
+                        DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET=SESSION_SECRET,
+                        SELF_URL=f'http://127.0.0.1:{port}', SITE_ORIGIN=SITE_ORIGIN,
+                        DISCOURSE_URL=FORUM_ORIGIN,
+                        HOME=str(td)))
         log = (td / 'log').open('w')
         proc = subprocess.Popen([sys.executable, str(REPO / 'archivist/archivist.py')],
                                 env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -525,6 +524,11 @@ def main():
                v.stdout[-300:])
         finally:
             proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                pass
+            log.close()
             httpd.shutdown()
 
     print('---', len(failures), 'failures')

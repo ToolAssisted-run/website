@@ -826,7 +826,8 @@ def reproduce():
         if run.get('videoOnly'):
             return fail('this run is video-only: there is no input movie to '
                         'replay, so reproduction does not apply')
-        if user.lower() in {a['user'].lower() for a in run.get('reproductions', [])}:
+        if any(a['user'].lower() == user.lower() and (not a.get('invalidated') or a['invalidated'].get('cause') != 'edit')
+               for a in run.get('reproductions', [])):
             return fail('you have already reproduced this run; one reproduction per member')
 
         screenshot_upload = request.files.get('screenshot')
@@ -3980,7 +3981,7 @@ def spawn_site_sync(ref=None):
         _sync_last[0] = now
     argv = [SITE_SYNC_CMD] + ([ref] if ref else [])
     try:
-        if os.geteuid() == 0:
+        if getattr(os, 'geteuid', lambda: -1)() == 0:
             subprocess.Popen(['systemd-run', '--collect', '--quiet',
                               '--unit=tar-site-sync-' + secrets.token_hex(4)] + argv,
                              start_new_session=True)
@@ -4799,7 +4800,8 @@ def verify():
         act_error, run_dir, run, user = act_common(verification_form)
         if act_error:
             return act_error
-        if user.lower() in {a['user'].lower() for a in run.get('verifications', [])}:
+        if any(a['user'].lower() == user.lower() and (not a.get('invalidated') or a['invalidated'].get('cause') != 'edit')
+               for a in run.get('verifications', [])):
             return fail('you have already verified this run; one verification per member')
         if (run.get('category') or {}).get('goal') == 'unclassified':
             return fail('Unclassified runs cannot be verified because no goal is defined; '
@@ -4916,7 +4918,8 @@ def console_verify():
         if not systems_doc.get(run_dir.parent.parent.parent.name, {}).get('hardwareVerifiable'):
             return fail('this system is not one that is played back on original hardware '
                         '(systems.json: hardwareVerifiable), so console verification does not apply')
-        if user.lower() in {a['user'].lower() for a in run.get('consoleVerifications', [])}:
+        if any(a['user'].lower() == user.lower() and (not a.get('invalidated') or a['invalidated'].get('cause') != 'edit')
+               for a in run.get('consoleVerifications', [])):
             return fail('you have already console-verified this run; '
                         'one console verification per member')
         proof = (verification_form.get('proof') or '').strip()

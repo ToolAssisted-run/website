@@ -311,7 +311,12 @@ def main():
         arch = mkarchive.make_archive(td / 'a', [
             mkarchive.run_spec('M900801', frames=1000, authors=['Ada'],
                                status={'reproduced': 'community', 'verified': 'none'},
-                               reproductions=[{'user': 'Helper', 'date': '2026-08-01'}],
+                               reproductions=[{'user': 'Helper', 'date': '2026-08-01'},
+                                              {'user': 'ObsUser', 'date': '2026-07-01',
+                                               'screenshot': 'reproductions/2-ObsUser.png',
+                                               'invalidated': {'by': 'Ada', 'date': '2026-08-01', 'cause': 'edit', 'reason': 'movie replaced'}}],
+                               verifications=[{'user': 'ObsUser', 'date': '2026-07-01',
+                                               'invalidated': {'by': 'Ada', 'date': '2026-08-01', 'cause': 'edit', 'reason': 'movie replaced'}}],
                                reports=[{'id': 1, 'kind': 'spam-malicious', 'by': 'Fan',
                                          'date': '2026-08-02', 'details': 'Test report.',
                                          'status': 'open'}])],
@@ -443,6 +448,20 @@ def main():
                    st.get(wrap, {}).get('hidden') is False, str(st.get(wrap)))
             ck('the act zone itself is shown',
                st.get('actzone', {}).get('hidden') is False, str(st.get('actzone')))
+
+        # a member whose prior verification/reproduction was obsoleted (invalidated)
+        # can contribute again
+        obs_member = {'ok': True, 'loggedIn': True, 'user': 'ObsUser', 'claimed': True,
+                      'notifications': 0}
+        obs_act, err = run_real_page(node, assets_dir, td, 'obs-acts', run_html, obs_member,
+                                     module='page-run.js')
+        ck('the script runs for member with obsoleted contribution', obs_act is not None, err)
+        if obs_act:
+            ck('no exception for member with obsoleted contribution', not obs_act['errors'], str(obs_act['errors'][:2]))
+            st = obs_act['state']
+            for wrap in ('f-repro-wrap', 'f-verify-wrap'):
+                ck(f'{wrap} is revealed for a member with obsoleted contribution',
+                   st.get(wrap, {}).get('hidden') is False, str(st.get(wrap)))
 
         # an expert on a run page: the powers that only existed server-side
         expert_session = {'ok': True, 'loggedIn': True, 'user': 'Root',
