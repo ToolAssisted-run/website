@@ -368,7 +368,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .actforms{display:flex;flex-direction:column;align-items:flex-start}
 .actforms > summary:first-child{display:none}
 .actforms > div, .actforms > form{margin:0}
-.actforms > :not([hidden]) ~ :not([hidden]){margin-top:16px}
+.actforms > :not(summary):not([hidden]) ~ :not(summary):not([hidden]){margin-top:16px}
 .actforms > div:has(details[open]), .actforms > details[open], .actforms > form{width:100%}
 .actforms details.actform, .actforms details.actbtn{margin:0;background:transparent;border:0;padding:0;box-shadow:none}
 .actform{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
