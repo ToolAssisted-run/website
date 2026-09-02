@@ -1075,7 +1075,11 @@ archivist, module responsibilities). What matters designwise:
   runs after the full suite passes and reaches the VPS through a
   forced-command SSH key (`VPS_SYNC_KEY` secret) that can only ever run
   `/usr/local/bin/tar-site-sync`: pull the website checkout at
-  `/opt/archivist/website`, copy **all** of `archivist/*.py` to
+  `/opt/archivist/website` (over **SSH with a read-only deploy key**,
+  `/opt/archivist/website_deploy_key`, set as that checkout's own
+  `core.sshCommand`: GitHub began answering the host's anonymous HTTPS
+  git-upload-pack with 401, so every deploy failed at the pull while the
+  same URL still advertised its refs), copy **all** of `archivist/*.py` to
   `/opt/archivist/`, restart the archivist (whose startup build republishes
   the site). **A second, independent door**: GitHub's own webhook reaches
   `POST /api/hooks/github` on the archivist, HMAC-verified
