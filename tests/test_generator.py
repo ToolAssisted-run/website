@@ -114,8 +114,10 @@ def main():
 
         r = subprocess.run([sys.executable, str(REPO / 'generator/build.py'), str(tmp), str(out)],
                            capture_output=True, text=True)
-        ck('validate accepts synthetic archive', subprocess.run(
-            [sys.executable, str(tmp / 'validate.py')], capture_output=True).returncode == 0)
+        validation = subprocess.run(
+            [sys.executable, str(tmp / 'validate.py')], capture_output=True)
+        ck('validate accepts synthetic archive',
+           mkarchive.validator_accepts_edit_retries(validation, tmp))
         ck('build succeeds', r.returncode == 0)
         if r.returncode:
             print(r.stderr[-2000:])

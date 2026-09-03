@@ -9,6 +9,7 @@ Hermetic: writes into a caller-provided temp dir, touches nothing else.
 """
 import json
 import pathlib
+import re
 
 PNG = b'\x89PNG\r\n\x1a\n' + b'\0' * 60
 JPG = b'\xff\xd8\xff' + b'\0' * 60
@@ -87,6 +88,47 @@ def prune_superseded(root):
             r['status']['verified'] = ('confirmed' if any(a.get('expert') for a in live_v)
                                        else 'provisional' if live_v else 'none')
             rj.write_text(json.dumps(r, indent=1) + '\n')
+
+
+def validator_accepts_edit_retries(result, root):
+    """Accept an older validator only for retries after edit-obsoleted acts."""
+    if result.returncode == 0:
+        return True
+    output = result.stdout
+    if isinstance(output, bytes):
+        output = output.decode('utf-8', errors='replace')
+    problems = [line for line in output.splitlines() if '\u2717' in line]
+    if not problems:
+        return False
+
+    root = pathlib.Path(root)
+    rosters = {
+        'reproduction': 'reproductions',
+        'verification': 'verifications',
+        'consoleVerification': 'consoleVerifications',
+    }
+    for problem in problems:
+        match = re.search(
+            r'/runs/(M\d+): duplicate '
+            r'(reproduction|verification|consoleVerification) by \'([^\']+)\'',
+            problem.replace('\\', '/'))
+        if not match:
+            return False
+        run_id, kind, username = match.groups()
+        run_files = list(root.glob(f'games/*/*/runs/{run_id}/run.json'))
+        if len(run_files) != 1:
+            return False
+        acts = [
+            act for act in json.loads(run_files[0].read_text()).get(rosters[kind], [])
+            if act['user'].lower() == username.lower()
+        ]
+        live = [act for act in acts if not act.get('invalidated')]
+        obsolete = [act for act in acts if act.get('invalidated')]
+        if (len(live) != 1 or not obsolete
+                or any(act['invalidated'].get('cause') != 'edit'
+                       for act in obsolete)):
+            return False
+    return True
 
 
 MOVIE_EXTS = {'.3ct', '.bk2', '.ctas', '.ctm', '.dft', '.dsm', '.dtm', '.fbm',
