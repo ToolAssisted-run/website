@@ -355,5 +355,71 @@ import { api, mePromise, viewAsCoverage, el, fileRowsOf, note, noteBuilt,
     });
   }
 
+  // ---- movie and attachment downloads for text/json formats ----
+  // Browsers navigate to raw text/json files instead of downloading them,
+  // because GitHub raw serves text with inline disposition and ignores
+  // cross-origin <a download>. For text formats, fetch as blob and trigger
+  // a same-origin download so the file saves to disk as expected.
+  var TEXT_DOWNLOAD_RE = /\.(chimeraproject|json|txt|text|fm2|fm3|dsm|jrsr|mc2|ymv|bkm|3ct|tas|ctas|dft|htas|hltas|p2tas|srctas|qtas|mctas|inputs|itf|otts|ronr|sub|rec|csv|tsv|log|yaml|yml|xml|ini|cfg|conf|lua|py|sh|bash|bat|cmd|md|markdown|diff|patch)$/i;
+
+  document.addEventListener('click', function(ev){
+    if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+    if (!a || !a.href) return;
+    var url = a.href;
+    var inFactfoot = Boolean(a.closest && a.closest('.factfoot'));
+    var inFactbox = Boolean(a.closest && a.closest('.factbox'));
+    var isRawArchive = url.indexOf('raw.githubusercontent.com') !== -1;
+    if (!isRawArchive && !inFactfoot && !inFactbox) return;
+
+    var pathname = url.split('?')[0].split('#')[0];
+    if (!inFactfoot && !TEXT_DOWNLOAD_RE.test(pathname)) return;
+
+    ev.preventDefault();
+    var rawName = pathname.substring(pathname.lastIndexOf('/') + 1) || 'download';
+    var filename;
+    try {
+      filename = decodeURIComponent(rawName);
+    } catch (e) {
+      filename = rawName;
+    }
+    var originalText = a.textContent;
+    var isBtn = a.classList.contains('btn');
+    if (isBtn) {
+      a.textContent = 'Downloading…';
+      a.style.pointerEvents = 'none';
+    }
+
+    function done(){
+      if (isBtn) {
+        a.textContent = originalText;
+        a.style.pointerEvents = '';
+      }
+    }
+
+    fetch(url)
+      .then(function(res){
+        if (!res.ok) throw new Error('Fetch failed');
+        return res.blob();
+      })
+      .then(function(blob){
+        var blobUrl = URL.createObjectURL(blob);
+        var dlLink = document.createElement('a');
+        dlLink.href = blobUrl;
+        dlLink.download = filename;
+        document.body.appendChild(dlLink);
+        dlLink.click();
+        setTimeout(function(){
+          dlLink.remove();
+          URL.revokeObjectURL(blobUrl);
+        }, 1000);
+        done();
+      })
+      .catch(function(){
+        done();
+        window.location.href = url;
+      });
+  });
+
 export const page = 'run';
 window.TARApp.page = page;
