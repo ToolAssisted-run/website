@@ -662,8 +662,8 @@ window.TARApp = window.TARApp || {};
     }
     function makeRow(def){
       var row = {
-        label: el('input', 'mlabel'), type: document.createElement('select'),
-        better: document.createElement('select'), unit: el('input', 'munit')
+        label: el('input', 'mlabel'), type: el('select', 'mselect mtype'),
+        better: el('select', 'mselect mbetter'), unit: el('input', 'munit')
       };
       row.label.placeholder = 'Metric name, e.g. Score';
       [['number', 'number'], ['time', 'time (h:mm:ss)']].forEach(function(o){

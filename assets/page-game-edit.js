@@ -209,6 +209,28 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
       var box = byId('ge-cats');
       // up/down arrows for one item of a list: only the moves that exist
       // are offered (nothing up for the first, nothing down for the last)
+      // Helper: 6-dot grip icon for drag handles
+      function gripIcon(size){
+        var s = size || 14;
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'grip-icon');
+        svg.setAttribute('width', s);
+        svg.setAttribute('height', s);
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'currentColor');
+        svg.setAttribute('aria-hidden', 'true');
+        [[9,6], [15,6], [9,12], [15,12], [9,18], [15,18]].forEach(function(pt){
+          var cEl = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          cEl.setAttribute('cx', pt[0]);
+          cEl.setAttribute('cy', pt[1]);
+          cEl.setAttribute('r', '2');
+          svg.appendChild(cEl);
+        });
+        return svg;
+      }
+
+      // up/down arrows for one item of a list: only the moves that exist
+      // are offered (nothing up for the first, nothing down for the last)
       function orderArrows(list, item, render){
         var wrap = el('span', 'orderbtns');
         var i = list.indexOf(item);
@@ -217,7 +239,8 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
           if (j < 0 || j >= list.length) return;
           var b = el('button', 'orderbtn ' + spec[0]); b.type = 'button'; b.title = spec[2];
           b.setAttribute('aria-label', spec[2]);
-          b.addEventListener('click', function(){
+          b.addEventListener('click', function(ev){
+            ev.stopPropagation();
             list.splice(i, 1); list.splice(j, 0, item);
             render();
           });
@@ -225,48 +248,181 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
         });
         return wrap;
       }
+
+      var draggedCat = null;
+      function clearCatDragClasses(){
+        box.querySelectorAll('.gecard').forEach(function(node){
+          node.classList.remove('drag-over-top', 'drag-over-bottom', 'dragging');
+        });
+      }
+
       function card(c){
         var el_ = el('div', 'gecard');
         c.el = el_;
-        var head = el('div', 'gehead');
-        head.appendChild(el('b', '', c.key || '(new)'));
-        head.appendChild(el('span', 'actmeta', ' ' + (c.runs || 0) + ' run' + (c.runs === 1 ? '' : 's')));
-        head.appendChild(orderArrows(draft.cats, c, renderCards));
+        if (c.deleted) el_.classList.add('deleted');
+        if (c._open) el_.classList.add('is-open');
+
+        var head = el('div', 'gehead gecard-head');
+        var headLeft = el('div', 'gehead-left gecard-head-left');
+
+        // Drag handle
+        var handle = el('button', 'drag-handle');
+        handle.type = 'button';
+        handle.title = 'Drag to reorder category';
+        handle.setAttribute('aria-label', 'Drag to reorder category');
+        handle.setAttribute('draggable', 'true');
+        handle.appendChild(gripIcon(14));
+        handle.addEventListener('dragstart', function(ev){
+          draggedCat = c;
+          ev.dataTransfer.effectAllowed = 'move';
+          ev.dataTransfer.setData('text/plain', draft.cats.indexOf(c));
+          el_.classList.add('dragging');
+        });
+        handle.addEventListener('dragend', function(){
+          el_.classList.remove('dragging');
+          clearCatDragClasses();
+          draggedCat = null;
+        });
+        handle.addEventListener('click', function(ev){ ev.stopPropagation(); });
+        headLeft.appendChild(handle);
+
+        // Toggle expander button
+        var toggleBtn = el('button', 'gecard-toggle');
+        toggleBtn.type = 'button';
+        toggleBtn.setAttribute('aria-expanded', c._open ? 'true' : 'false');
+        toggleBtn.setAttribute('aria-label', (c._open ? 'Collapse ' : 'Expand ') + (c.label || c.key || 'category'));
+        var arrow = el('span', 'expander-arrow');
+        toggleBtn.appendChild(arrow);
+        headLeft.appendChild(toggleBtn);
+
+        // Category title & slug display (inline label + muted slug pill)
+        var titleWrap = el('span', 'gecard-title');
+        var labelDisplay = el('span', 'gecard-label-text', c.label || c.key || '(new category)');
+        var keyDisplay = el('code', 'geslug-code', c.key || '(assigned on save)');
+        titleWrap.appendChild(labelDisplay);
+        titleWrap.appendChild(keyDisplay);
+        headLeft.appendChild(titleWrap);
+
+        // Runs badge
+        var runsMeta = el('span', 'actmeta', ' ' + (c.runs || 0) + ' run' + (c.runs === 1 ? '' : 's'));
+        headLeft.appendChild(runsMeta);
+
+        head.appendChild(headLeft);
+
+        // Header action buttons (reorder arrows + delete)
+        var headActions = el('div', 'gehead-actions gecard-head-actions');
+        headActions.appendChild(orderArrows(draft.cats, c, renderCards));
+
         if (!c.runs) {
-          var del = el('button', 'btn danger', c.deleted ? 'Keep' : 'Delete'); del.type = 'button';
-          del.addEventListener('click', function(){
+          var del = el('button', 'btn danger', c.deleted ? 'Keep' : 'Delete');
+          del.type = 'button';
+          del.addEventListener('click', function(ev){
+            ev.stopPropagation();
             if (c.isNew) { draft.cats.splice(draft.cats.indexOf(c), 1); renderCards(); return; }
             c.deleted = !c.deleted; renderCards();
           });
-          head.appendChild(del);
+          headActions.appendChild(del);
         }
+        head.appendChild(headActions);
         el_.appendChild(head);
-        if (c.deleted) { el_.classList.add('deleted'); el_.appendChild(el('p', 'rules', 'Marked for deletion; Save removes it.')); return el_; }
+
+        // Toggle category expansion
+        function toggleOpen(){
+          c._open = !c._open;
+          el_.classList.toggle('is-open', c._open);
+          toggleBtn.setAttribute('aria-expanded', c._open ? 'true' : 'false');
+          toggleBtn.setAttribute('aria-label', (c._open ? 'Collapse ' : 'Expand ') + (c.label || c.key || 'category'));
+          body.hidden = !c._open;
+        }
+        head.addEventListener('click', function(ev){
+          if (ev.target.closest('button, input, a')) return;
+          toggleOpen();
+        });
+        toggleBtn.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          toggleOpen();
+        });
+
+        // Drop target listeners on el_
+        el_.addEventListener('dragover', function(ev){
+          if (!draggedCat || draggedCat === c) return;
+          ev.preventDefault();
+          ev.dataTransfer.dropEffect = 'move';
+          var rect = el_.getBoundingClientRect();
+          var midY = rect.top + rect.height / 2;
+          if (ev.clientY < midY) {
+            el_.classList.add('drag-over-top');
+            el_.classList.remove('drag-over-bottom');
+          } else {
+            el_.classList.add('drag-over-bottom');
+            el_.classList.remove('drag-over-top');
+          }
+        });
+        el_.addEventListener('dragleave', function(ev){
+          if (!el_.contains(ev.relatedTarget)) {
+            el_.classList.remove('drag-over-top', 'drag-over-bottom');
+          }
+        });
+        el_.addEventListener('drop', function(ev){
+          if (!draggedCat || draggedCat === c) return;
+          ev.preventDefault();
+          var fromIdx = draft.cats.indexOf(draggedCat);
+          var toIdx = draft.cats.indexOf(c);
+          if (fromIdx < 0 || toIdx < 0) return;
+          var rect = el_.getBoundingClientRect();
+          var insertAfter = ev.clientY >= (rect.top + rect.height / 2);
+          draft.cats.splice(fromIdx, 1);
+          var newTargetIdx = draft.cats.indexOf(c);
+          var destIdx = insertAfter ? newTargetIdx + 1 : newTargetIdx;
+          draft.cats.splice(destIdx, 0, draggedCat);
+          clearCatDragClasses();
+          draggedCat = null;
+          renderCards();
+        });
+
+        // The collapsible body
+        var body = el('div', 'gecard-body');
+        body.hidden = !c._open;
+
+        if (c.deleted) {
+          body.appendChild(el('p', 'rules', 'Marked for deletion; Save removes it.'));
+          el_.appendChild(body);
+          return el_;
+        }
+
         function field(labelText, tag){
-          var lab = el('label', '', labelText + ' ');
+          var lab = el('label', '', labelText);
           var inp = el(tag === 'textarea' ? 'textarea' : 'input');
           lab.appendChild(inp);
-          el_.appendChild(lab);
+          body.appendChild(lab);
           return inp;
         }
         var labelIn = field('Label'); labelIn.value = c.label; labelIn.maxLength = 80;
-        labelIn.addEventListener('input', function(){ c.label = labelIn.value; refresh(); });
+        labelIn.addEventListener('input', function(){
+          c.label = labelIn.value;
+          labelDisplay.textContent = c.label || c.key || '(new category)';
+          refresh();
+        });
         if (!c.isNew) {
           c.newKey = c.newKey || c.key;
           var keyIn = field('Key (lowercase-with-hyphens: the address rankings and links use; runs follow a rename)');
           keyIn.value = c.newKey; keyIn.maxLength = 60; keyIn.pattern = '[a-z0-9]+(-[a-z0-9]+)*';
-          keyIn.addEventListener('input', function(){ c.newKey = keyIn.value.trim(); refresh(); });
+          keyIn.addEventListener('input', function(){
+            c.newKey = keyIn.value.trim();
+            keyDisplay.textContent = c.newKey || c.key || '(assigned on save)';
+            refresh();
+          });
         }
         var ruleIn = field('Rule (markdown)', 'textarea'); ruleIn.value = c.rule; ruleIn.rows = 4; ruleIn.maxLength = 2000;
         ruleIn.addEventListener('input', function(){ c.rule = ruleIn.value; refresh(); });
 
         // Preview button logic for rules
-        var rulePvBtn = el('button', 'btn quiet', 'Preview'); rulePvBtn.type = 'button'; rulePvBtn.style.marginTop = '6px';
+        var rulePvBtn = el('button', 'btn quiet', 'Preview'); rulePvBtn.type = 'button'; rulePvBtn.style.marginTop = '8px';
         var rulePvBox = el('div', 'ge-rule-pv'); rulePvBox.hidden = true; rulePvBox.style.marginTop = '8px';
         var rulePvContent = el('div', 'rulesmd notes');
         rulePvBox.appendChild(rulePvContent);
-        el_.appendChild(rulePvBtn);
-        el_.appendChild(rulePvBox);
+        body.appendChild(rulePvBtn);
+        body.appendChild(rulePvBox);
         rulePvBtn.addEventListener('click', function(){
           if (rulePvBox.hidden) {
             rulePvBox.hidden = false;
@@ -281,11 +437,11 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
             rulePvBox.hidden = true;
           }
         });
-        
+
         var metricsRoot = el('div');
         metricsRoot.innerHTML = byId('med-skeleton').innerHTML;
         var metricsBox = metricsRoot.firstElementChild;
-        el_.appendChild(metricsBox);
+        body.appendChild(metricsBox);
         var metricsEd = initMetricsEd(metricsBox, JSON.parse(c.metrics || '[]'));
         c.metricsEd = metricsEd;
         // the baseline takes the editor's own spelling of the same metrics,
@@ -294,7 +450,8 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
         c.metrics = metricsEd.value();
         metricsBox.addEventListener('input', refresh);
         metricsBox.addEventListener('click', function(){ setTimeout(refresh, 0); });
-        // subcategories
+
+        // Subcategories section
         var subBox = el('div', 'subcats');
         subBox.appendChild(el('h4', '', 'Subcategories'));
         var choice = el('div', 'selchoice');
@@ -308,24 +465,167 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
           choice.appendChild(lab);
         });
         subBox.appendChild(choice);
-        var subList = el('div', 'sublist');
-        function subRow(sc){
-          var row = el('div', 'subrowed');
-          row.appendChild(orderArrows(c.subs, sc, renderSubs));
-          row.appendChild(el('code', 'subkey', sc.key || '(new)'));
-          if (sc.deleted) {
-            row.appendChild(el('span', 'rules', sc.label + ': marked for deletion'));
-          } else {
-            var l = el('input'); l.value = sc.label; l.maxLength = 80; l.placeholder = 'label';
-            l.addEventListener('input', function(){ sc.label = l.value; refresh(); });
-            var r = el('textarea'); r.value = sc.rule; r.maxLength = 2000; r.rows = 2; r.placeholder = 'rule fragment, markdown (optional)';
-            r.addEventListener('input', function(){ sc.rule = r.value; refresh(); });
-            row.appendChild(l); row.appendChild(r);
 
-            // Preview button logic for rules
+        var subList = el('div', 'sublist');
+        var draggedSub = null;
+        function clearSubDragClasses(){
+          subList.querySelectorAll('.gesubcard').forEach(function(node){
+            node.classList.remove('drag-over-top', 'drag-over-bottom', 'dragging');
+          });
+        }
+
+        function subRow(sc){
+          var subCard = el('div', 'gesubcard');
+          if (sc.deleted) subCard.classList.add('deleted');
+          if (sc._open) subCard.classList.add('is-open');
+
+          var sHead = el('div', 'gesub-head');
+          var sHeadLeft = el('div', 'gesub-head-left');
+
+          // Drag handle
+          var sHandle = el('button', 'drag-handle sub-drag-handle');
+          sHandle.type = 'button';
+          sHandle.title = 'Drag to reorder subcategory';
+          sHandle.setAttribute('aria-label', 'Drag to reorder subcategory');
+          sHandle.setAttribute('draggable', 'true');
+          sHandle.appendChild(gripIcon(13));
+          sHandle.addEventListener('dragstart', function(ev){
+            draggedSub = sc;
+            ev.dataTransfer.effectAllowed = 'move';
+            ev.dataTransfer.setData('text/plain', c.subs.indexOf(sc));
+            subCard.classList.add('dragging');
+          });
+          sHandle.addEventListener('dragend', function(){
+            subCard.classList.remove('dragging');
+            clearSubDragClasses();
+            draggedSub = null;
+          });
+          sHandle.addEventListener('click', function(ev){ ev.stopPropagation(); });
+          sHeadLeft.appendChild(sHandle);
+
+          // Expander button
+          var sToggle = el('button', 'gesub-toggle');
+          sToggle.type = 'button';
+          sToggle.setAttribute('aria-expanded', sc._open ? 'true' : 'false');
+          sToggle.setAttribute('aria-label', (sc._open ? 'Collapse ' : 'Expand ') + (sc.label || sc.key || 'subcategory'));
+          var sArrow = el('span', 'expander-arrow');
+          sToggle.appendChild(sArrow);
+          sHeadLeft.appendChild(sToggle);
+
+          // Subcategory title & slug display (inline label + muted slug pill)
+          var sTitleWrap = el('span', 'gesub-title');
+          var sLabelText = el('span', 'gesub-label-text', sc.label || sc.key || '(new subcategory)');
+          var sKeyDisplay = el('code', 'geslug-code', sc.key || '(assigned on save)');
+          sTitleWrap.appendChild(sLabelText);
+          sTitleWrap.appendChild(sKeyDisplay);
+          sHeadLeft.appendChild(sTitleWrap);
+
+          // Runs badge
+          var sRunsMeta = el('span', 'actmeta', ' ' + (sc.runs || 0) + ' run' + (sc.runs === 1 ? '' : 's'));
+          sHeadLeft.appendChild(sRunsMeta);
+
+          sHead.appendChild(sHeadLeft);
+
+          // Actions
+          var sHeadActions = el('div', 'gesub-head-actions');
+          sHeadActions.appendChild(orderArrows(c.subs, sc, renderSubs));
+
+          var live = c.subs.filter(function(x){ return !x.deleted; });
+          if (!sc.runs || live.length === 1) {
+            var sDel = el('button', 'btn danger', sc.deleted ? 'Keep' : 'Delete');
+            sDel.type = 'button';
+            sDel.addEventListener('click', function(ev){
+              ev.stopPropagation();
+              if (sc.isNew) { c.subs.splice(c.subs.indexOf(sc), 1); renderSubs(); return; }
+              sc.deleted = !sc.deleted; renderSubs();
+            });
+            sHeadActions.appendChild(sDel);
+          }
+          sHead.appendChild(sHeadActions);
+          subCard.appendChild(sHead);
+
+          function toggleSubOpen(){
+            sc._open = !sc._open;
+            subCard.classList.toggle('is-open', sc._open);
+            sToggle.setAttribute('aria-expanded', sc._open ? 'true' : 'false');
+            sToggle.setAttribute('aria-label', (sc._open ? 'Collapse ' : 'Expand ') + (sc.label || sc.key || 'subcategory'));
+            sBody.hidden = !sc._open;
+          }
+          sHead.addEventListener('click', function(ev){
+            if (ev.target.closest('button, input, a')) return;
+            toggleSubOpen();
+          });
+          sToggle.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            toggleSubOpen();
+          });
+
+          // DnD events for subCard
+          subCard.addEventListener('dragover', function(ev){
+            if (!draggedSub || draggedSub === sc) return;
+            ev.preventDefault();
+            ev.dataTransfer.dropEffect = 'move';
+            var rect = subCard.getBoundingClientRect();
+            var midY = rect.top + rect.height / 2;
+            if (ev.clientY < midY) {
+              subCard.classList.add('drag-over-top');
+              subCard.classList.remove('drag-over-bottom');
+            } else {
+              subCard.classList.add('drag-over-bottom');
+              subCard.classList.remove('drag-over-top');
+            }
+          });
+          subCard.addEventListener('dragleave', function(ev){
+            if (!subCard.contains(ev.relatedTarget)) {
+              subCard.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+          });
+          subCard.addEventListener('drop', function(ev){
+            if (!draggedSub || draggedSub === sc) return;
+            ev.preventDefault();
+            var fromIdx = c.subs.indexOf(draggedSub);
+            var toIdx = c.subs.indexOf(sc);
+            if (fromIdx < 0 || toIdx < 0) return;
+            var rect = subCard.getBoundingClientRect();
+            var insertAfter = ev.clientY >= (rect.top + rect.height / 2);
+            c.subs.splice(fromIdx, 1);
+            var newTargetIdx = c.subs.indexOf(sc);
+            var destIdx = insertAfter ? newTargetIdx + 1 : newTargetIdx;
+            c.subs.splice(destIdx, 0, draggedSub);
+            clearSubDragClasses();
+            draggedSub = null;
+            renderSubs();
+          });
+
+          // Subcategory body
+          var sBody = el('div', 'gesub-body');
+          sBody.hidden = !sc._open;
+
+          if (sc.deleted) {
+            sBody.appendChild(el('p', 'rules', (sc.label || 'Subcategory') + ': marked for deletion'));
+          } else {
+            var lLab = el('label', '', 'Label');
+            var l = el('input'); l.value = sc.label; l.maxLength = 80; l.placeholder = 'label';
+            lLab.appendChild(l);
+            l.addEventListener('input', function(){
+              sc.label = l.value;
+              sLabelText.textContent = sc.label || sc.key || '(new subcategory)';
+              refresh();
+            });
+
+            var rLab = el('label', '', 'Rule fragment (markdown, optional)');
+            var r = el('textarea'); r.value = sc.rule; r.maxLength = 2000; r.rows = 2; r.placeholder = 'rule fragment, markdown (optional)';
+            rLab.appendChild(r);
+            r.addEventListener('input', function(){ sc.rule = r.value; refresh(); });
+
+            sBody.appendChild(lLab);
+            sBody.appendChild(rLab);
+
+            // Preview button logic
+            var subPvRow = el('div', 'sub-pv-row');
             var subPvBtn = el('button', 'btn quiet', 'Preview'); subPvBtn.type = 'button';
             var subPvBox = el('div', 'ge-subrule-pv'); subPvBox.hidden = true;
-            subPvBox.style.flexBasis = '100%'; subPvBox.style.marginTop = '6px';
+            subPvBox.style.marginTop = '6px';
             var subPvContent = el('div', 'rulesmd notes');
             subPvBox.appendChild(subPvContent);
             subPvBtn.addEventListener('click', function(){
@@ -342,37 +642,32 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
                 subPvBox.hidden = true;
               }
             });
-            row.appendChild(subPvBtn);
-            row.appendChild(subPvBox);
-            
+            subPvRow.appendChild(subPvBtn);
+            subPvRow.appendChild(subPvBox);
+            sBody.appendChild(subPvRow);
           }
-          row.appendChild(el('span', 'actmeta', (sc.runs || 0) + ' run' + (sc.runs === 1 ? '' : 's')));
-          var live = c.subs.filter(function(x){ return !x.deleted; });
-          if (!sc.runs || live.length === 1) {
-            var b = el('button', 'btn danger', sc.deleted ? 'Keep' : 'Delete'); b.type = 'button';
-            b.addEventListener('click', function(){
-              if (sc.isNew) { c.subs.splice(c.subs.indexOf(sc), 1); renderSubs(); return; }
-              sc.deleted = !sc.deleted; renderSubs();
-            });
-            row.appendChild(b);
-          }
-          subList.appendChild(row);
+          subCard.appendChild(sBody);
+          subList.appendChild(subCard);
         }
+
         function renderSubs(){ subList.innerHTML = ''; c.subs.forEach(subRow); refresh(); }
         renderSubs();
         subBox.appendChild(subList);
-        var addRow = el('div', 'subrowed subadd');
+
+        var addRow = el('div', 'subadd');
         var addLabel = el('input'); addLabel.placeholder = 'new subcategory label, e.g. any%'; addLabel.maxLength = 80;
         var addBtn = el('button', 'btn leave', '+ Add a subcategory'); addBtn.type = 'button';
         addBtn.addEventListener('click', function(){
           if (!addLabel.value.trim()) { addLabel.focus(); return; }
-          c.subs.push({key: '', label: addLabel.value.trim(), rule: '', runs: 0, isNew: true, tmp: ++newSeq});
+          c.subs.push({key: '', label: addLabel.value.trim(), rule: '', runs: 0, isNew: true, _open: true, tmp: ++newSeq});
           addLabel.value = '';
           renderSubs();
         });
         addRow.appendChild(addLabel); addRow.appendChild(addBtn);
         subBox.appendChild(addRow);
-        el_.appendChild(subBox);
+
+        body.appendChild(subBox);
+        el_.appendChild(body);
         return el_;
       }
       function renderCards(){
@@ -383,7 +678,7 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
       byId('ge-addcat').addEventListener('click', function(){
         var label = window.prompt('Label of the new category (e.g. 100% completion):');
         if (!label || !label.trim()) return;
-        draft.cats.push({key: '', label: label.trim(), rule: '', runs: 0, metrics: '[]', subs: [], isNew: true, tmp: ++newSeq});
+        draft.cats.push({key: '', label: label.trim(), rule: '', runs: 0, metrics: '[]', subs: [], isNew: true, _open: true, tmp: ++newSeq});
         renderCards();
       });
 

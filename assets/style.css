@@ -374,6 +374,16 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .actforms details.actform, .actforms details.actbtn{margin:0;background:transparent;border:0;padding:0;box-shadow:none}
 .actform{background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
 .actform h3{font-size:1rem;margin-bottom:4px}
+.actform > :not(summary):not([hidden]) ~ :not(summary):not([hidden]){margin-top:14px}
+.actform label:not(.check){display:block;margin-top:14px;font-size:.88rem;color:var(--muted)}
+.actform label:not(.check):first-child{margin-top:0}
+.actform label:not(.check) > input,
+.actform label:not(.check) > textarea,
+.actform label:not(.check) > select{margin-top:6px;display:block;width:100%}
+.actform .gface{margin-top:14px}
+.actform .thumb-guidance{margin:14px 0}
+.actform .thumb-edit-preview{margin-top:14px}
+.actform .crop-panel{margin-top:14px}
 .actform input,.actform textarea{width:100%;padding:9px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
 .actform select{width:100%;padding:9px 36px 9px 12px;border:2.5px solid var(--hair);border-radius:9px;background-color:var(--panel);color:var(--ink);font:inherit;font-size:.88rem}
 .actform input:focus,.actform textarea:focus,.actform select:focus{outline:none;border-color:var(--accent-text)}
@@ -654,16 +664,19 @@ footer a{color:var(--accent-text);text-decoration:none}
 :root[data-theme=dark] .expertmenu>h2{color:#FDBA74}
 
 /* the category's own metrics: a dashed box below the video-only mark */
-.metricsbox{border:2.5px dashed var(--hairs);border-radius:10px;padding:12px 16px 16px;margin:10px 0}
+.metricsbox{border:2.5px dashed var(--hairs);border-radius:10px;padding:14px 18px;margin:14px 0}
 .metricsbox input[type=number]{max-width:220px}
 .metricsbox.metriced{min-height:170px}
-/* the metrics editor on the creation pages */
-.metriced .mrow{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
-.metriced .mrow input,.metriced .mrow select{margin:0}
+/* the metrics editor on the creation pages and game editor */
+.metriced .mrow{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap}
+.metriced .mrow input, .metriced .mrow select{margin:0;font-size:.88rem;color:var(--ink);background-color:var(--bg);border:2.5px solid var(--hair);border-radius:9px;box-sizing:border-box;font-family:inherit}
+.metriced .mrow input{padding:8px 12px;height:38px}
+.metriced .mrow select{height:38px;padding:8px 36px 8px 12px;cursor:pointer;flex:1;min-width:140px}
+.metriced .mrow input:focus, .metriced .mrow select:focus{outline:none;border-color:var(--accent-text)}
 .metriced .mlabel{flex:2;min-width:140px}
 .metriced .munit{flex:1;min-width:80px;max-width:120px}
-.metriced .mmove{padding:6px 10px;font-size:.8rem}
-.metriced .medbtns{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}
+.metriced .mmove{height:38px;min-width:38px;padding:0 10px;border:2.5px solid var(--hairs);border-radius:9px;font-size:.85rem;display:inline-flex;align-items:center;justify-content:center}
+.metriced .medbtns{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px}
 /* selector + "not there? create" question, side by side */
 .pickrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .pickrow .gamepick,.pickrow select{flex:1;min-width:min(320px,100%)}
@@ -741,11 +754,38 @@ footer a{color:var(--accent-text);text-decoration:none}
 
 /* the game editor's category cards */
 .gecard{border:2.5px solid var(--hair);border-radius:12px;background:var(--panel);
-  padding:14px 18px;margin-bottom:14px}
-.gecard .gehead{margin-bottom:8px;font-family:ui-monospace,monospace}
-.gecard label{display:block;margin:8px 0;font-size:.88rem;color:var(--muted)}
+  padding:14px 18px;margin-bottom:14px;transition:none}
+.gecard.deleted{opacity:.6;border-style:dashed}
+.gecard label:not(.check){display:block;margin-top:14px;font-size:.88rem;color:var(--muted)}
+.gecard label:not(.check):first-child{margin-top:0}
+.gecard label:not(.check) > input,
+.gecard label:not(.check) > textarea,
+.gecard label:not(.check) > select{margin-top:6px;display:block;width:100%}
 .gecard input,.gecard textarea{width:100%;border:2.5px solid var(--hair);border-radius:9px;
-  padding:8px 10px;background:var(--bg);color:var(--ink);font:inherit}
+  padding:8px 12px;background:var(--bg);color:var(--ink);font:inherit}
+.gecard select{width:100%;border:2.5px solid var(--hair);border-radius:9px;
+  padding:8px 36px 8px 12px;background-color:var(--bg);color:var(--ink);font:inherit;font-size:.88rem}
+.gecard input:focus,.gecard textarea:focus,.gecard select:focus{outline:none;border-color:var(--accent-text)}
+.gecard-head{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;user-select:none;min-height:34px}
+.gecard-head-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;flex:1}
+.gecard-head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.gecard-title, .gesub-title{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.gecard-label-text{font-size:.95rem;font-weight:700;color:var(--ink);line-height:1.25}
+.gesub-label-text{font-size:.88rem;font-weight:700;color:var(--ink);line-height:1.25}
+.geslug-code{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--muted);background:var(--bg);border:1px solid var(--hairs);border-radius:4px;padding:1px 6px;font-weight:500;letter-spacing:.02em;line-height:1.3;vertical-align:middle}
+.gecard-body{margin-top:14px;padding-top:14px;border-top:2px solid var(--hair)}
+.gecard-toggle, .gesub-toggle{background:none;border:0;padding:4px;cursor:pointer;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.expander-arrow{display:inline-block;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:6px solid currentColor;transition:none;margin-right:2px}
+.is-open > .gecard-head .expander-arrow,
+.is-open > .gesub-head .expander-arrow{transform:rotate(90deg);margin-right:0;margin-top:2px}
+
+/* drag and drop handles & feedback */
+.drag-handle{background:transparent;border:0;padding:4px 6px;cursor:grab;color:var(--faint);display:inline-flex;align-items:center;justify-content:center;border-radius:6px;line-height:1}
+.drag-handle:hover{color:var(--accent);background:rgba(34,197,94,.10)}
+.drag-handle:active{cursor:grabbing}
+.gecard.dragging, .gesubcard.dragging{opacity:.4;border-style:dashed}
+.gecard.drag-over-top, .gesubcard.drag-over-top{border-top:3px solid var(--accent)!important}
+.gecard.drag-over-bottom, .gesubcard.drag-over-bottom{border-bottom:3px solid var(--accent)!important}
 .gebtns{display:flex;gap:10px;margin-top:10px}
 
 /* ---- the checkbox: one component for the whole site. Drawn by us, not the
@@ -829,13 +869,24 @@ html:has(.agegate){overflow:hidden}
 input[type=date]{color-scheme:light dark}
 input[type=date]::-webkit-calendar-picker-indicator{width:22px;height:22px;cursor:pointer;opacity:1;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='16' rx='3'/><path d='M3 10h18M8 3v4M16 3v4'/></svg>") center/contain no-repeat}
 .formrule{border:0;border-top:2.5px solid var(--hair);margin:18px 0}
-/* the editor's subcategory rows: key · label · rule · why · runs · buttons */
-.subcats{margin:12px 0;padding:10px 12px;border:2.5px solid var(--hair);border-radius:9px}
-.subcats h4{margin:0 0 4px;font-size:.9rem}
-.subrowed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
-.subrowed input{flex:1;min-width:9rem}
-.subrowed .subkey{font-size:.78rem;color:var(--faint)}
-.subrowed .actmsg{flex-basis:100%;margin-top:4px}
+/* the editor's subcategories: collapsible cards inside each category */
+.subcats{margin:18px 0;padding:14px 16px;border:2.5px solid var(--hair);border-radius:10px;background:var(--bg)}
+.subcats h4{margin:0 0 10px;font-size:.92rem}
+.gesubcard{border:2px solid var(--hair);border-radius:9px;background:var(--panel);padding:10px 14px;margin:8px 0;transition:none}
+.gesubcard.deleted{opacity:.6;border-style:dashed}
+.gesub-head{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;user-select:none;min-height:30px}
+.gesub-head-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;flex:1}
+.gesub-head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.gesub-body{margin-top:12px;padding-top:12px;border-top:1.5px solid var(--hair)}
+.gesub-body label:not(.check){display:block;margin-top:12px;font-size:.84rem;color:var(--muted)}
+.gesub-body label:not(.check):first-child{margin-top:0}
+.gesub-body label:not(.check) > input,
+.gesub-body label:not(.check) > textarea{margin-top:4px;display:block;width:100%}
+.sub-pv-row{margin-top:8px}
+.subadd{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.subadd input{flex:1;min-width:12rem;padding:8px 12px;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit}
+.subadd input:focus{outline:none;border-color:var(--accent-text)}
+.subadd .btn{margin:0}
 .subrow .dimname{color:var(--faint)}
 /* the submit draft line: saved-at stamp on the left, Clear on the right */
 .draftbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;position:sticky;top:0;z-index:5;background:var(--ground);padding:6px 0}
