@@ -344,6 +344,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .impstart{margin:26px 0 10px}
 .main{min-width:0}
 .main h2{margin-top:24px}
+.main>h2:first-child{margin-top:0}
 /* the first section under the page header hugs the divider instead of
    stacking three margins into a blank line */
 .main>section:first-child{margin-top:2px}
@@ -618,7 +619,7 @@ input.bad{border-color:#DC2626!important}
 .factbox .statline{display:block}
 .homefoot .statline{font-size:.86rem;color:var(--muted)}
 .homefoot a{color:var(--accent-text)}
-.wrap.wrapfull{max-width:none}
+.wrap.wrapfull{max-width:1680px}
 .player{aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:2.5px solid var(--hair);box-shadow:var(--shadow);margin-bottom:6px;max-width:1160px}
 .player iframe{width:100%;height:100%;border:0}
 .srcnote{font-size:.78rem;color:var(--faint);margin-bottom:16px}
@@ -670,8 +671,40 @@ footer a{color:var(--accent-text);text-decoration:none}
 .createq .btn{padding:6px 12px;font-size:.8rem;line-height:1;margin-top:-2px}
 .createq [aria-disabled=true]{opacity:.45;pointer-events:none}
 
-/* stated-time picker: four boxes, a mistake is not possible */
+/* run page: stage layout with player on the left and recommendations on the right (YouTube style) */
+.run-stage{margin-bottom:24px}
+.stage-player{min-width:0}
 .alsolike{margin-bottom:34px}
+@media (min-width:1025px){
+  .wrapfull .cols{grid-template-columns:minmax(0,1fr) 360px}
+  .run-stage.has-reel{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:stretch;margin-bottom:24px}
+  .run-stage.has-reel .stage-player{display:flex;flex-direction:column}
+  .run-stage.has-reel .stage-player .player,
+  .run-stage.has-reel .stage-player .poster,
+  .run-stage.has-reel .stage-player .nsfw-gate{max-width:100%;width:100%}
+  .run-stage.has-reel .stage-player .srcnote{margin-bottom:0}
+  .run-stage.has-reel .stage-player .nsfw-gate{margin-bottom:0}
+  .run-stage.has-reel .alsolike{margin-top:0;margin-bottom:0;display:flex;flex-direction:column;min-height:0;height:100%}
+  .run-stage.has-reel .alsolike h2{font-size:.95rem;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin:0 0 8px 0;padding:0;line-height:1.25;flex:0 0 auto}
+  .run-stage.has-reel .alsolike .hwrap{flex:1 1 0;min-height:0;display:flex;flex-direction:column;position:relative}
+  .run-stage.has-reel .alsolike .hrow{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:8px;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--hairs) transparent;padding:2px 4px 6px 2px;cursor:default;scroll-snap-type:y proximity;-webkit-mask-image:linear-gradient(to bottom,black calc(100% - 24px),transparent 100%);mask-image:linear-gradient(to bottom,black calc(100% - 24px),transparent 100%)}
+  .run-stage.has-reel .alsolike .hrow::-webkit-scrollbar{width:5px}
+  .run-stage.has-reel .alsolike .hrow::-webkit-scrollbar-button{display:none;width:0;height:0}
+  .run-stage.has-reel .alsolike .hrow::-webkit-scrollbar-track{background:transparent}
+  .run-stage.has-reel .alsolike .hrow::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
+  .run-stage.has-reel .alsolike .hrow::-webkit-scrollbar-thumb:hover{background:var(--hairs)}
+  .run-stage.has-reel .alsolike .card{flex:0 0 auto;display:flex;flex-direction:row;border:2px solid var(--hair);border-radius:10px;align-items:center;background:var(--bg);gap:10px;padding:6px;scroll-snap-align:start;transition:border-color .12s,background .12s,transform .12s}
+  .run-stage.has-reel .alsolike .card:hover{transform:translateY(-1px);border-color:var(--accent-text);background:var(--panel)}
+  .run-stage.has-reel .alsolike .thumb{flex:0 0 124px;width:124px;height:70px;aspect-ratio:16/9;border-radius:6px;overflow:hidden;border:1.5px solid var(--hair);position:relative;align-self:center;flex-shrink:0;border-bottom:0}
+  .run-stage.has-reel .alsolike .thumb .sys{font-size:.85rem}
+  .run-stage.has-reel .alsolike .thumb .dur{font-size:.62rem;padding:1px 5px;right:4px;bottom:4px;border-radius:4px}
+  .run-stage.has-reel .alsolike .cbody{padding:0;gap:2px;flex:1 1 auto;min-width:0;overflow:hidden}
+  .run-stage.has-reel .alsolike .csys{font-size:.65rem;margin-bottom:-2px}
+  .run-stage.has-reel .alsolike .cbody b{font-size:.82rem;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-clamp:2;overflow:hidden}
+  .run-stage.has-reel .alsolike .ccat{font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .run-stage.has-reel .alsolike .cauth{font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .run-stage.has-reel .alsolike .cfoot{font-size:.68rem;padding-top:2px;margin-top:auto;display:flex;justify-content:space-between;align-items:center}
+}
 .sumdone{margin-left:10px;color:var(--accent-text);font:700 .8rem/1 ui-monospace,monospace}
 .chimerahead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 /* the download comes first on the Tools page: the button, then the nightly

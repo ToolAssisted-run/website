@@ -45,20 +45,24 @@
 <a id="agegate-no" class="btn leave" href="../../">No, take me home</a></div>
 </div></div>
 {% endif %}
-{% if 'sexual' in warns and vid|trim %}
-<template id="nsfwreal">{{ vid }}</template>
-<div class="nsfw-gate" id="nsfwgate">{% if thumb_url(r) %}<img class="nsfwblur" src="{{ thumb_url(r) }}" alt="">{% endif %}
-<div class="nsfw-overlay"><p>This run is flagged for sexual content.</p>
-<button id="nsfwok" class="btn">I confirm I am 18 or older</button></div></div>
-{% else %}
-{{ vid }}
-{% endif %}
-{# eight nearby runs, closest scope first: designated picks, then the same
-   category, game, group, system, then the site's best (view code: reel_for) #}
-{% if reel %}
-<section class="alsolike"><h2>You may also like…</h2>
-<div class="hwrap"><div class="hrow">{% for rr in reel %}{{ run_card(rr, '../') }}{% endfor %}</div></div></section>
-{% endif %}
+<div class="run-stage{% if reel %} has-reel{% endif %}">
+  <div class="stage-player">
+    {% if 'sexual' in warns and vid|trim %}
+    <template id="nsfwreal">{{ vid }}</template>
+    <div class="nsfw-gate" id="nsfwgate">{% if thumb_url(r) %}<img class="nsfwblur" src="{{ thumb_url(r) }}" alt="">{% endif %}
+    <div class="nsfw-overlay"><p>This run is flagged for sexual content.</p>
+    <button id="nsfwok" class="btn">I confirm I am 18 or older</button></div></div>
+    {% else %}
+    {{ vid }}
+    {% endif %}
+  </div>
+  {# eight nearby runs, closest scope first: designated picks, then the same
+     category, game, group, system, then the site's best (view code: reel_for) #}
+  {% if reel %}
+  <section class="alsolike"><h2>You may also like…</h2>
+  <div class="hwrap"><div class="hrow">{% for rr in reel %}{{ run_card(rr, '../') }}{% endfor %}</div></div></section>
+  {% endif %}
+</div>
 <div class="cols">
 <div class="main">
   {% if warns %}
