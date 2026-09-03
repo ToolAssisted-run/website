@@ -3648,23 +3648,29 @@ def preview_notes():
     """The submit preview, rendered by the very code that renders the
     published page (issue #30). Cross-references get a plain link here;
     the published page dresses them with the run's title and thumbnail.
+    When kind=rules or kind=markdown, renders rules using md_html.
 
     Who: anybody
-    Reads: form field notes
+    Reads: form field notes (or rules), kind
     Answers: {ok, html}, Cache-Control: no-store
     """
     gate = _helper_gate()
     if gate:
         return gate
-    import wikitext
-    text = (request.form.get('notes') or '').replace('\r\n', '\n')
+    text = (request.form.get('notes') or request.form.get('rules') or '').replace('\r\n', '\n')
     if len(text.encode()) > 1024 * 1024:
         return fail('notes exceed 1 MB')
-    def refs(markup):
-        markup = re.sub(r'\[M([0-9]+)\]', r'<a class="runref" href="/runs/M\1/">M\1</a>', markup)
-        markup = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', r'<span class="au">\1</span>', markup)
-        return markup
-    resp = jsonify({'ok': True, 'html': wikitext.wiki_html(text, refs=refs)})
+    kind = (request.form.get('kind') or request.form.get('dialect') or '').strip()
+    if kind in ('rules', 'markdown', 'md'):
+        from md import md_html
+        resp = jsonify({'ok': True, 'html': md_html(text)})
+    else:
+        import wikitext
+        def refs(markup):
+            markup = re.sub(r'\[M([0-9]+)\]', r'<a class="runref" href="/runs/M\1/">M\1</a>', markup)
+            markup = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', r'<span class="au">\1</span>', markup)
+            return markup
+        resp = jsonify({'ok': True, 'html': wikitext.wiki_html(text, refs=refs)})
     resp.headers['Cache-Control'] = 'no-store'
     return resp
 

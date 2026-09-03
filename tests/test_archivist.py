@@ -999,6 +999,9 @@ def main():
             ck('the preview renders the dialect exactly as the site does',
                c == 200 and '<h3>Head</h3>' in r['html'] and '<li>two\n</li></ul>' in r['html']
                and 'href="/runs/M900010/"' in r['html'], str(r)[:200])
+            c, r, _ = call(U + '/api/preview', {'key': KEY, 'notes': '# Rules\n* **Rule 1**: [link](https://example.com)', 'kind': 'rules'})
+            ck('the rules preview renders markdown with md_html',
+               c == 200 and '<h1>Rules</h1>' in r['html'] and '<b>Rule 1</b>' in r['html'] and '<a href="https://example.com">link</a>' in r['html'], str(r)[:200])
 
             # --- likes: one per member, never own runs, imported allowed ---
             # --- the categories feed: fresh from the checkout, no CDN lag ---

@@ -15,6 +15,10 @@ submit form; a category always belongs to a game.</p>
   <label>Category label</label><input name="label" required placeholder="e.g. 100k points">
   <label>Rules (markdown: paragraphs, lists, **bold**, *italic*, `code`, [links](url); see the <a href="../formatting/" target="_blank">formatting guide</a>)</label>
   <textarea name="rule" rows="4" maxlength="2000" required placeholder="What must a run do to belong here?"></textarea>
+  <button type="button" class="btn quiet" id="cc-preview-btn">Preview</button>
+  <div id="cc-preview" hidden style="margin-top:10px">
+    <div class="rulesmd notes" id="cc-preview-content"></div>
+  </div>
   <div id="cc-metrics">{{ METRICS_ED }}</div>
   <button class="btn" id="cc-submit">Create the category</button>
 </form>

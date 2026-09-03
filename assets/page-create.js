@@ -108,6 +108,28 @@ import { api, rel, mePromise, note, waitBuilt, post, initMetricsEd }
         createCatForm.querySelector('[name=label]').placeholder = isSub ? 'e.g. any%' : 'e.g. 100k points';
       }
       parentSelect.addEventListener('change', paintParent);
+
+      // Preview button render logic for rules
+      var ccRuleIn = createCatForm.querySelector('[name=rule]');
+      var ccPvBtn = document.getElementById('cc-preview-btn');
+      var ccPvBox = document.getElementById('cc-preview');
+      var ccPvContent = document.getElementById('cc-preview-content');
+      if (ccPvBtn && ccPvBox && ccPvContent) {
+        ccPvBtn.addEventListener('click', function(){
+          if (ccPvBox.hidden) {
+            ccPvBox.hidden = false;
+            ccPvContent.textContent = 'Rendering…';
+            var fd = new FormData();
+            fd.append('notes', ccRuleIn.value || '');
+            fd.append('kind', 'rules');
+            post('/api/preview', fd, ccPvBtn).then(function(res){
+              ccPvContent.innerHTML = (res.ok && res.j.ok) ? res.j.html : ((res.j && res.j.error) || 'preview failed');
+            }).catch(function(){ ccPvContent.textContent = 'The archivist is not reachable; the preview needs it.'; });
+          } else {
+            ccPvBox.hidden = true;
+          }
+        });
+      }
       wireCreateForm(createCatForm, document.getElementById('cc-login'), createCatMsg,
                      '/api/category/add', function(j){
         note(createCatMsg, 'Created. Publishing to the site…', true);

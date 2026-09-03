@@ -3,7 +3,7 @@
 // sequence of logged edits. Moved out of app.js: these ids exist only
 // on a game's /edit/ page.
 import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
-  initMetricsEd, setLastBtn } from './app.js';
+  initMetricsEd, setLastBtn, escapeHtml } from './app.js';
 
   // ---- the game editor (covering experts): one local draft, one Save ----
   // The page edits a copy of the game's record. Nothing is written until
@@ -259,6 +259,29 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
         }
         var ruleIn = field('Rule (markdown)', 'textarea'); ruleIn.value = c.rule; ruleIn.rows = 4; ruleIn.maxLength = 2000;
         ruleIn.addEventListener('input', function(){ c.rule = ruleIn.value; refresh(); });
+
+        // Preview button logic for rules
+        var rulePvBtn = el('button', 'btn quiet', 'Preview'); rulePvBtn.type = 'button'; rulePvBtn.style.marginTop = '6px';
+        var rulePvBox = el('div', 'ge-rule-pv'); rulePvBox.hidden = true; rulePvBox.style.marginTop = '8px';
+        var rulePvContent = el('div', 'rulesmd notes');
+        rulePvBox.appendChild(rulePvContent);
+        el_.appendChild(rulePvBtn);
+        el_.appendChild(rulePvBox);
+        rulePvBtn.addEventListener('click', function(){
+          if (rulePvBox.hidden) {
+            rulePvBox.hidden = false;
+            rulePvContent.textContent = 'Rendering…';
+            var fd = new FormData();
+            fd.append('notes', ruleIn.value || '');
+            fd.append('kind', 'rules');
+            post('/api/preview', fd, rulePvBtn).then(function(res){
+              rulePvContent.innerHTML = (res.ok && res.j.ok) ? res.j.html : escapeHtml((res.j && res.j.error) || 'preview failed');
+            }).catch(function(){ rulePvContent.textContent = 'The archivist is not reachable; the preview needs it.'; });
+          } else {
+            rulePvBox.hidden = true;
+          }
+        });
+        
         var metricsRoot = el('div');
         metricsRoot.innerHTML = byId('med-skeleton').innerHTML;
         var metricsBox = metricsRoot.firstElementChild;
@@ -298,6 +321,30 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
             var r = el('textarea'); r.value = sc.rule; r.maxLength = 2000; r.rows = 2; r.placeholder = 'rule fragment, markdown (optional)';
             r.addEventListener('input', function(){ sc.rule = r.value; refresh(); });
             row.appendChild(l); row.appendChild(r);
+
+            // Preview button logic for rules
+            var subPvBtn = el('button', 'btn quiet', 'Preview'); subPvBtn.type = 'button';
+            var subPvBox = el('div', 'ge-subrule-pv'); subPvBox.hidden = true;
+            subPvBox.style.flexBasis = '100%'; subPvBox.style.marginTop = '6px';
+            var subPvContent = el('div', 'rulesmd notes');
+            subPvBox.appendChild(subPvContent);
+            subPvBtn.addEventListener('click', function(){
+              if (subPvBox.hidden) {
+                subPvBox.hidden = false;
+                subPvContent.textContent = 'Rendering…';
+                var fd = new FormData();
+                fd.append('notes', r.value || '');
+                fd.append('kind', 'rules');
+                post('/api/preview', fd, subPvBtn).then(function(res){
+                  subPvContent.innerHTML = (res.ok && res.j.ok) ? res.j.html : escapeHtml((res.j && res.j.error) || 'preview failed');
+                }).catch(function(){ subPvContent.textContent = 'The archivist is not reachable; the preview needs it.'; });
+              } else {
+                subPvBox.hidden = true;
+              }
+            });
+            row.appendChild(subPvBtn);
+            row.appendChild(subPvBox);
+            
           }
           row.appendChild(el('span', 'actmeta', (sc.runs || 0) + ' run' + (sc.runs === 1 ? '' : 's')));
           var live = c.subs.filter(function(x){ return !x.deleted; });
@@ -470,6 +517,28 @@ import { api, mePromise, viewAsCoverage, el, note, noteBuilt, post,
         byId(id).addEventListener('input', refresh);
         byId(id).addEventListener('change', refresh);
       });
+      
+      // Preview button logic for rules
+      var rulesPvBtn = byId('ge-rules-pv-btn');
+      var rulesPvBox = byId('ge-rules-pv');
+      var rulesPvContent = byId('ge-rules-pv-content');
+      if (rulesPvBtn && rulesPvBox && rulesPvContent) {
+        rulesPvBtn.addEventListener('click', function(){
+          if (rulesPvBox.hidden) {
+            rulesPvBox.hidden = false;
+            rulesPvContent.textContent = 'Rendering…';
+            var fd = new FormData();
+            fd.append('notes', byId('ge-rules').value || '');
+            fd.append('kind', 'rules');
+            post('/api/preview', fd, rulesPvBtn).then(function(res){
+              rulesPvContent.innerHTML = (res.ok && res.j.ok) ? res.j.html : escapeHtml((res.j && res.j.error) || 'preview failed');
+            }).catch(function(){ rulesPvContent.textContent = 'The archivist is not reachable; the preview needs it.'; });
+          } else {
+            rulesPvBox.hidden = true;
+          }
+        });
+      }
+      
       window.addEventListener('beforeunload', function(ev){
         if (!dirty) return;
         ev.preventDefault(); ev.returnValue = '';

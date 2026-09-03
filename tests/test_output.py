@@ -389,6 +389,12 @@ def main():
            and 'id="ge-thumb-crop"' in game_edit
            and 'id="ge-crop-apply"' in game_edit
            and 'id="ge-crop-size"' in game_edit)
+        # --------- game editor: rules preview controls ---------
+        ck('game editor carries the rules preview controls',
+           'id="ge-rules-pv-btn"' in game_edit and 'id="ge-rules-pv"' in game_edit)
+        create_cat = all_html[out / 'create-category' / 'index.html']
+        ck('create category carries the rule preview controls',
+           'id="cc-preview-btn"' in create_cat and 'id="cc-preview"' in create_cat)
 
         # ---------- content warnings / 18+ gate / reports ----------
         warned = all_html[out / 'runs' / 'M900102' / 'index.html']
