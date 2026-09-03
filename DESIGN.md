@@ -134,7 +134,7 @@ A person can relate to the site in these ways, from lightest to heaviest:
   waiting until the tool is named (the empty reproduction roster says so,
   and names the tool when it is known); the submit form asks but never
   requires, and anything beyond the tool is a badge, never an obligation
-  (§1.9).
+  (§1.10).
 - **A member**: somebody with a forum account who has logged into the site at
   least once. First login writes their record in `authors/` (exactly two
   facts: the username, and that they are here; written in a background thread
@@ -1158,7 +1158,7 @@ anonymous `/api/visit` counter counts each address once per run per hour,
 in memory only (no address is stored), so reload loops cannot inflate view
 counts. Account registration is the forum's: Discourse defaults apply
 (email verification, at most 3 accounts per IP per day, its own signup
-rate limits); registration stays open by principle (§1.4).
+rate limits); registration stays open by principle (§1.5).
 - **Code quality**: `bash tools/sonar.sh` runs a local SonarQube (docker)
   over the repo per `sonar-project.properties`.
 
