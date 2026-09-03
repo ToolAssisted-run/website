@@ -17,6 +17,91 @@ def esc(s):
     dialect spells italics with it and it is harmless in a text node."""
     return html.escape(str(s), quote=False).replace('"', '&quot;')
 
+
+def md_html(text):
+    """The safe Markdown subset used by game and category rules."""
+    def link(match):
+        label, url = match.group(1), match.group(2)
+        if url.startswith(('http://', 'https://', '/', '#', './', '../')):
+            return f'<a href="{url}">{label}</a>'
+        return f'[{label}]({url})'
+
+    def inline_markdown(value):
+        value = esc(value)
+        value = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', link, value)
+        value = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', value)
+        value = re.sub(r'__(.+?)__', r'<b>\1</b>', value)
+        value = re.sub(r'(?<!\*)\*([^*\n]+)\*(?!\*)', r'<em>\1</em>', value)
+        value = re.sub(r'(?<!_)_([^_\n]+)_(?!_)', r'<em>\1</em>', value)
+        value = re.sub(r'~~(.+?)~~', r'<s>\1</s>', value)
+        return re.sub(r'`([^`]+)`', r'<code>\1</code>', value)
+
+    out = []
+    mode = [None]
+
+    def close():
+        if mode[0] == 'ul':
+            out.append('</ul>')
+        elif mode[0] == 'ol':
+            out.append('</ol>')
+        elif mode[0] == 'p':
+            out.append('</p>')
+        elif mode[0] == 'blockquote':
+            out.append('</blockquote>')
+        mode[0] = None
+
+    for raw in str(text or '').replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+        line = raw.strip()
+        if not line:
+            close()
+            continue
+        match = re.match(r'^(#{1,6})\s+(.*)', line)
+        if match:
+            close()
+            level = len(match.group(1))
+            out.append(f'<h{level}>{inline_markdown(match.group(2))}</h{level}>')
+            continue
+        if re.match(r'^(-{3,}|\*{3,}|_{3,})$', line):
+            close()
+            out.append('<hr>')
+            continue
+        match = re.match(r'^>\s*(.*)', line)
+        if match:
+            if mode[0] != 'blockquote':
+                close()
+                out.append('<blockquote>')
+                mode[0] = 'blockquote'
+            else:
+                out.append(' ')
+            out.append(inline_markdown(match.group(1)))
+            continue
+        match = re.match(r'[-*]\s+(.*)', line)
+        if match:
+            if mode[0] != 'ul':
+                close()
+                out.append('<ul>')
+                mode[0] = 'ul'
+            out.append(f'<li>{inline_markdown(match.group(1))}</li>')
+            continue
+        match = re.match(r'\d+[.)]\s+(.*)', line)
+        if match:
+            if mode[0] != 'ol':
+                close()
+                out.append('<ol>')
+                mode[0] = 'ol'
+            out.append(f'<li>{inline_markdown(match.group(1))}</li>')
+            continue
+        if mode[0] != 'p':
+            close()
+            out.append('<p>')
+            mode[0] = 'p'
+        else:
+            out.append(' ')
+        out.append(inline_markdown(line))
+    close()
+    return ''.join(out)
+
+
 # ---------------------------------------------------------------- inline ----
 
 _IMG = r'https?://[^\s|\]\[<>"]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s|\]\[<>"]*)?'

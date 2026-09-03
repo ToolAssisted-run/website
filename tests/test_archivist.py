@@ -2987,7 +2987,7 @@ def main():
             # Every unrelated validator failure remains a failure.
             problems = [line for line in v.stdout.splitlines() if '\u2717' in line]
 
-            def permitted_edit_retry(problem):
+            def permitted_edit_retry(problem, archive):
                 normalized = problem.replace('\\', '/')
                 match = re.search(
                     r'/runs/(M\d+): duplicate '
@@ -3001,7 +3001,7 @@ def main():
                     'verification': 'verifications',
                     'consoleVerification': 'consoleVerifications',
                 }[kind]
-                run_files = list(check.glob(f'games/*/*/runs/{run_id}/run.json'))
+                run_files = list(archive.glob(f'games/*/*/runs/{run_id}/run.json'))
                 if len(run_files) != 1:
                     return False
                 acts = [act for act in json.loads(run_files[0].read_text()).get(roster, [])
@@ -3013,7 +3013,7 @@ def main():
                                 for act in obsolete))
 
             old_validator_retry_errors = (
-                bool(problems) and all(permitted_edit_retry(problem)
+                bool(problems) and all(permitted_edit_retry(problem, check)
                                        for problem in problems)
             )
             ck('pushed archive validates',
@@ -3127,8 +3127,13 @@ def main():
                    and e['role'] == 'committee' for e in evs_), str(evs_[-3:]))
             v2 = subprocess.run([sys.executable, str(work / 'validate.py')],
                                 cwd=work, capture_output=True, text=True)
+            problems = [line for line in v2.stdout.splitlines() if '\u2717' in line]
+            old_validator_retry_errors = (
+                bool(problems) and all(permitted_edit_retry(problem, work)
+                                       for problem in problems)
+            )
             ck('the archive still validates after every deletion',
-               v2.returncode == 0, v2.stdout[-400:])
+               v2.returncode == 0 or old_validator_retry_errors, v2.stdout[-400:])
         finally:
             if failures:
                 # the service's own traceback is the only thing that explains a

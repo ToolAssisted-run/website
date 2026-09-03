@@ -3662,7 +3662,7 @@ def preview_notes():
         return fail('notes exceed 1 MB')
     kind = (request.form.get('kind') or request.form.get('dialect') or '').strip()
     if kind in ('rules', 'markdown', 'md'):
-        from rules_markdown import md_html
+        from wikitext import md_html
         resp = jsonify({'ok': True, 'html': md_html(text)})
     else:
         import wikitext

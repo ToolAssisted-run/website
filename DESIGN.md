@@ -353,8 +353,9 @@ Boards and logs sort by the moment (`at` falling back to `date`) and display
 the day; run arrivals were always second-exact via git commit times. Events
 predating the history collapse share the day-only date honestly.
 
-### Acts (all: any member except the run's authors, one per member per
-roster, spent forever — invalidation does not refund the slot)
+### Acts (all: any member except the run's authors, one live act per member per
+roster; an edit that obsoletes an act reopens the slot, while an expert
+invalidation of a faulty act does not)
 
 - **Verification**: watched the encode, confirms the stated goal is met.
   Requires an encode. Goal-bound: moving a run to unclassified voids live

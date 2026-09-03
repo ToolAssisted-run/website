@@ -247,7 +247,7 @@ def chip_views(n):
             '<circle cx="12" cy="12" r="2.6"/></svg> '
             + f'{n:,}</span>')
 
-from rules_markdown import md_html
+from wikitext import md_html
 
 def run_date_cell(r):
     """The run's primary date on a board: the completion date the authors
