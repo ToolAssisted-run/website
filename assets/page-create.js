@@ -36,14 +36,8 @@ import { api, rel, mePromise, note, waitBuilt, post, initMetricsEd }
     wireCreateForm(createGameForm, document.getElementById('cg-login'), createGameMsg,
                    '/api/game/create', function(j){
       note(createGameMsg, 'Created. Publishing to the site…', true);
-      waitBuilt(j.serial, function(live){
-        note(createGameMsg, live ? 'Created. The game page is live; submit a run to it now.'
-                         : 'Created. It will appear on the site shortly.', true);
-        var a = document.createElement('a');
-        a.className = 'btn'; a.href = '../submit/?game=' + j.game;
-        a.textContent = 'Submit a run to ' + j.game;
-        createGameMsg.appendChild(document.createElement('br'));
-        createGameMsg.appendChild(a);
+      waitBuilt(j.serial, function(){
+        location.href = rel + 'games/' + j.game + '/';
       });
     });
   }
