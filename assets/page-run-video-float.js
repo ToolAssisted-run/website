@@ -1,13 +1,18 @@
 const DESKTOP_QUERY = '(min-width: 901px)';
 const PORTRAIT_QUERY = '(orientation: portrait)';
 const MAX_DELTA = 200;
+const MAX_SIZE_MULTIPLIER = 2;
 const MIN_WIDTH = 220;
+const FRAME_CHROME_HEIGHT = 30;
 
 function initRunVideoFloat() {
   const stage = document.getElementById('run-stage-player');
   const player = document.getElementById('run-player');
   const frame = player && player.querySelector('iframe');
   if (!stage || !player || !frame) return;
+  const inlineRect = player.getBoundingClientRect();
+  const playerAspect = inlineRect.width > 0 && inlineRect.height > 0
+    ? inlineRect.width / inlineRect.height : 16 / 9;
 
   const anchor = document.createElement('div');
   const shell = document.createElement('div');
@@ -29,6 +34,7 @@ function initRunVideoFloat() {
   let savedGeometry = null;
 
   shell.className = 'run-video-float';
+  shell.style.setProperty('--run-video-aspect', playerAspect);
   anchor.className = 'run-video-anchor';
   bar.className = 'run-video-float-bar';
   title.className = 'run-video-float-title';
@@ -66,7 +72,7 @@ function initRunVideoFloat() {
     const aside = document.querySelector('.cols > aside');
     const width = aside ? aside.getBoundingClientRect().width : 290;
     defaults.width = Math.max(MIN_WIDTH, Math.round(width));
-    defaults.height = Math.round(defaults.width * 9 / 16) + 30;
+    defaults.height = Math.round(defaults.width / playerAspect) + FRAME_CHROME_HEIGHT;
   }
 
   function resetGeometry() {
@@ -219,11 +225,13 @@ function initRunVideoFloat() {
       const dx = moveEv.clientX - startX;
       const dy = moveEv.clientY - startY;
       const widthDelta = edges.left ? -dx : edges.right ? dx : 0;
-      const heightDelta = edges.top ? -dy : edges.bottom ? dy : 0;
-      const width = Math.max(MIN_WIDTH, Math.min(defaults.width + MAX_DELTA,
-        Math.max(defaults.width - MAX_DELTA, startWidth + widthDelta)));
-      const height = Math.max(150, Math.min(defaults.height + MAX_DELTA,
-        Math.max(defaults.height - MAX_DELTA, startHeight + heightDelta)));
+      const heightWidthDelta = (edges.top ? -dy : dy) * playerAspect;
+      const delta = Math.abs(widthDelta) >= Math.abs(heightWidthDelta)
+        ? widthDelta : heightWidthDelta;
+      const minWidth = Math.max(MIN_WIDTH, defaults.width - MAX_DELTA);
+      const maxWidth = (defaults.width + MAX_DELTA) * MAX_SIZE_MULTIPLIER;
+      const width = Math.max(minWidth, Math.min(maxWidth, startWidth + delta));
+      const height = Math.round(width / playerAspect) + FRAME_CHROME_HEIGHT;
       shell.style.width = Math.round(width) + 'px';
       shell.style.height = Math.round(height) + 'px';
       if (edges.left) shell.style.left = Math.round(startLeft + startWidth - width) + 'px';

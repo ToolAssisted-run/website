@@ -31,9 +31,9 @@
   border-right:0;border-left:2px solid var(--muted)}
 @media(max-width:900px){
   .run-video-float.is-floating{left:0;right:0;top:0;bottom:auto;width:100vw!important;
-    height:calc(56.25vw + 30px)!important;max-height:32vh;border-width:0 0 2.5px;border-radius:0}
+    height:auto!important;border-width:0 0 2.5px;border-radius:0}
   .run-video-float.is-floating .run-video-float-bar{height:30px;flex-basis:30px}
-  .run-video-float.is-floating .player{height:calc(100% - 30px);aspect-ratio:auto}
+  .run-video-float.is-floating .player{flex:none;height:auto;aspect-ratio:var(--run-video-aspect)}
   .run-video-float.is-floating .run-video-float-grip{display:none}
 }
 @media(max-width:900px) and (orientation:landscape){

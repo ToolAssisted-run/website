@@ -321,11 +321,13 @@ activates the behavior when the provider confirms that it started; providers
 without a reliable playback event fall back to the first click or tap on the
 player area. Once the inline player leaves the viewport, desktop docks it in a
 draggable, four-corner-resizable frame at the lower right, defaulting to the
-facts aside width. Portrait mobile docks it at the top at full width while
-keeping the inline player's 16:9 scale rather than filling the screen; landscape
-mobile hides it and restores it when portrait returns. The frame's close button
-pauses and hides it. Resuming from the inline player restores the default frame
-geometry and continues from the stopped moment.
+facts aside width. Resizing preserves the inline player's measured aspect
+beneath its fixed-height title bar; its maximum width is twice the former
+default-plus-200-pixel bound. Portrait mobile docks it at the top at full width
+while keeping the inline player's measured aspect rather than filling the screen;
+landscape mobile hides it and restores it when portrait returns. The frame's
+close button pauses and hides it. Resuming from the inline player restores the
+default frame geometry and continues from the stopped moment.
 
 ### States and the ranking gate
 
