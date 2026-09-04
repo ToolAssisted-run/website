@@ -44,7 +44,7 @@ PROVIDERS = [
                          r'youtube\.com/shorts/|youtube\.com/embed/|'
                          r'youtube-nocookie\.com/embed/)([\w-]{6,20})'),
         'watch': 'https://youtu.be/{id}',
-        'embed': 'https://www.youtube-nocookie.com/embed/{id}',
+        'embed': 'https://www.youtube-nocookie.com/embed/{id}?enablejsapi=1',
         'thumbs': ('{ytbase}{id}/maxresdefault.jpg', '{ytbase}{id}/hqdefault.jpg'),
     },
     {
@@ -73,7 +73,7 @@ PROVIDERS = [
         'hosts': ('vimeo.com', 'player.vimeo.com'),
         'id': re.compile(r'vimeo\.com/(?:video/)?(\d{6,12})'),
         'watch': 'https://vimeo.com/{id}',
-        'embed': 'https://player.vimeo.com/video/{id}',
+        'embed': 'https://player.vimeo.com/video/{id}?api=1',
         'thumb_api': ('https://vimeo.com/api/oembed.json?url=https%3A//vimeo.com/{id}',
                       'json', 'thumbnail_url'),
     },
