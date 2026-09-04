@@ -568,7 +568,7 @@ def breadcrumb_ld(items):
 INDEXED_PAGES = set()
 
 def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
-         seo=None, full_title=False, scripts=None):
+         seo=None, full_title=False, scripts=None, styles=None):
     """The site chrome around a page body: head, nav, footer (templates/base.html)."""
     full = title if full_title else title + ' · toolAssisted.run'
     if seo and 'path' in seo and not seo.get('noindex'):
@@ -576,6 +576,7 @@ def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
     return tpl('base.html', title=full, body=body, rel=rel, crumb=crumb, active=active,
                head_extra=head_extra, wide=wide,
                page_scripts=scripts or ['page-core.js'],
+               page_styles=styles or [],
                seo_block=seo_head(dict(seo, title=seo.get('title') or full)) if seo else '')
 
 

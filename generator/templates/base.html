@@ -4,6 +4,7 @@
 <title>{{ title }}</title>
 <script>try{var t=localStorage.getItem('tar-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="{{ rel }}assets/style.css?v={{ SITE_COMMIT or 'dev' }}">
+{% for style in page_styles %}<link rel="stylesheet" href="{{ rel }}assets/{{ style }}?v={{ SITE_COMMIT or 'dev' }}">{% endfor %}
 <link rel="icon" type="image/png" sizes="32x32" href="{{ rel }}assets/icon-32.png">
 <link rel="icon" type="image/png" sizes="512x512" href="{{ rel }}assets/icon-512.png">
 <link rel="apple-touch-icon" href="{{ rel }}assets/avatar-512-dark.png">

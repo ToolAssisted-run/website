@@ -316,6 +316,16 @@ the space to the right of the video player in a vertical scrollable column
 (YouTube style) with compact horizontal cards; on mobile/tablet viewports, it
 wraps down below the player as a horizontal scrolling reel.
 
+Run encodes use a sticky floating player while reading long run pages. Playback
+activates the behavior when the provider confirms that it started; providers
+without a reliable playback event fall back to the first click or tap on the
+player area. Once the inline player leaves the viewport, desktop docks it in a
+draggable, edge-resizable frame at the lower right, defaulting to the facts
+aside width. Portrait mobile docks it at the top at full width; landscape mobile
+hides it and restores it when portrait returns. The frame's close button pauses
+and hides it. Resuming from the inline player restores the default frame
+geometry and continues from the stopped moment.
+
 ### States and the ranking gate
 
 **Verification is the ranking gate.** Reproduction gates nothing (it is a

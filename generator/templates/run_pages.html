@@ -26,7 +26,7 @@
    runs flagged for sexual content hide it behind an age gate (app.js swaps the template in) #}
 {% set vid %}
 {% if pv %}
-<div class="player"><iframe src="{{ pv['embed'] }}" title="Run encode" allowfullscreen></iframe></div>
+<div class="player" id="run-player"><iframe src="{{ pv['embed'] }}" title="Run encode" allowfullscreen></iframe></div>
 <p class="srcnote">External embedded video, not hosted at toolAssisted.run · <a href="{{ enc['url'] }}">watch on {{ pv['name'] }}</a></p>
 {% elif thumb_url(r) %}
 <div class="poster"><img src="{{ thumb_url(r) }}" alt="run thumbnail"></div>
@@ -46,7 +46,7 @@
 </div></div>
 {% endif %}
 <div class="run-stage{% if reel %} has-reel{% endif %}">
-  <div class="stage-player">
+  <div class="stage-player" id="run-stage-player">
     {% if 'sexual' in warns and vid|trim %}
     <template id="nsfwreal">{{ vid }}</template>
     <div class="nsfw-gate" id="nsfwgate">{% if thumb_url(r) %}<img class="nsfwblur" src="{{ thumb_url(r) }}" alt="">{% endif %}

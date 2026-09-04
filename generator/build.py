@@ -101,11 +101,12 @@ def _ship_script(name):
 for _script in (REPO_ROOT / 'assets').glob('*.js'):
     _ship_script(_script.name)
 
-# ---- stylesheet ----
-# A real file (assets/style.css), shipped verbatim.
-(OUT / 'assets' / 'style.css').write_text(
-    (REPO_ROOT / 'assets' / 'style.css').read_text(encoding='utf-8'),
-    encoding='utf-8')
+# ---- stylesheets ----
+# Every real CSS file in assets/ is shipped verbatim, including page-specific
+# rules such as the floating run video frame.
+for _css in sorted((REPO_ROOT / 'assets').glob('*.css')):
+    (OUT / 'assets' / _css.name).write_text(_css.read_text(encoding='utf-8'),
+                                            encoding='utf-8')
 print(f'built {sum(1 for _ in OUT.rglob("*") if _.is_file())} files -> {OUT}')
 
 # ---------------- search engines: sitemap and robots ----------------

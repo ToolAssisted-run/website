@@ -4,6 +4,9 @@
 // these ids exist only on a run page.
 import { api, mePromise, viewAsCoverage, el, fileRowsOf, note, noteBuilt,
   actionBtn, post, escapeHtml } from './app.js';
+import { initRunVideoFloat } from './page-run-video-float.js';
+
+initRunVideoFloat();
 
   // ---- run-page act zone ----
   var actDataEl = document.getElementById('actdata');
