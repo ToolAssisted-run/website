@@ -627,6 +627,11 @@ input.bad{border-color:#DC2626!important}
 .factbox dd.big{font-size:1.1rem;font-weight:700}
 .statline{font-size:.84rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
 .factbox .statline{display:block}
+/* attached files: contain the filename within the box; truncate cleanly
+   with ellipsis instead of wrapping or overflowing past the border */
+.factbox.attbox{overflow:hidden}
+.attline{display:block;min-width:0}
+.attline .attname,.attbox .statline a{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
 .homefoot .statline{font-size:.86rem;color:var(--muted)}
 .homefoot a{color:var(--accent-text)}
 .wrap.wrapfull{max-width:1680px}
