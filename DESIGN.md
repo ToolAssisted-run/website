@@ -456,9 +456,10 @@ This is what keeps replacing a video link from touching the scoring.
   notes, emulator, completion date, goal description, encode, stated time
   (whenever the category ranks by it), metric values, and the movie file. Authors
   alone may also revise the author list (refused if it would credit somebody
-  who already acted on the run) and upload **supplementary files** (same
-  validation and caps as submission's attachments, counted together; stored
-  under `attachments/` with role `supplementary`; a taken name is refused).
+  who already acted on the run) and manage **supplementary files** (add new,
+  replace, or delete existing attachments; same validation and caps as
+  submission's attachments, counted together; stored under `attachments/` with
+  role `supplementary`).
   An expert using the panel must state a public reason (8–500 chars) and can
   never touch the author list or the uploads; their changes log exactly like
   `/api/expert/edit` ones. Replacing a movie invalidates the live reproductions
@@ -920,7 +921,7 @@ archivist, module responsibilities). What matters designwise:
   (`/api/run/record`, with who may do what); every panel is open and
   prefilled; the game is fixed; category and subcategory are changeable by
   a covering expert or an editor only (their logged move edit); authors
-  alone change the author list and add supplementary files; the movie file
+  alone change the author list and manage supplementary files (add, replace, delete); the movie file
   stays, a covering expert may replace it; experts state their public
   reason; an editor touches nothing but category and subcategory. "Save
   changes" asks the archivist first (dry run) and warns before an edit that

@@ -1872,6 +1872,36 @@ def main():
                            {'attachments': ('gift.txt', b'not mine to add')})
             ck("supplementary files are the authors' own",
                c == 403 and 'authors' in r.get('error', ''), str(r))
+
+            # replacing an attachment: delete old name + upload replacement
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010',
+                                             'attachments_delete': 'extra.txt'},
+                           {'attachments': ('extra.txt', b'replaced supplementary data')})
+            ck('an author replaces an attachment',
+               c == 200 and r['changed'] == ['attachments'], str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            ck('the replacement file content is updated on disk',
+               (work / 'games/nes/pinball/runs/M900010/attachments/extra.txt').read_bytes() == b'replaced supplementary data')
+
+            # deleting an attachment
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010',
+                                             'attachments_delete': 'extra.txt'})
+            ck('an author deletes an attachment',
+               c == 200 and r['changed'] == ['attachments'], str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rj_ = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
+            ck('the deleted attachment is removed from run record and disk',
+               not any(a['file'] == 'attachments/extra.txt' for a in rj_.get('attachments', []))
+               and not (work / 'games/nes/pinball/runs/M900010/attachments/extra.txt').exists())
+
+            # non-authors cannot delete attachments
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'eien86',
+                                             'run': 'M900010',
+                                             'reason': 'An expert trying to delete.',
+                                             'attachments_delete': 'extra.txt'})
+            ck("non-authors cannot delete supplementary files", c == 403, str(r))
             c, r, _ = call(U + '/api/note', {'key': KEY, 'user': 'helper', 'run': 'M900010',
                                              'role': 'reproducer', 'notes': 'x'})
             ck('the retired community-notes endpoint is gone', c == 404, str(r)[:80])

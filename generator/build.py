@@ -93,9 +93,9 @@ import views.sitelog  # noqa: F401,E402  (renders its pages on import)
 # (today, only the submit page's encode-link check).
 def _ship_script(name):
     (OUT / 'assets' / name).write_text(
-        (REPO_ROOT / 'assets' / name).read_text()
+        (REPO_ROOT / 'assets' / name).read_text(encoding='utf-8')
         .replace('ENCODE_HOSTS', '|'.join(providers.ALL_HOSTS))
-        .replace('ENCODE_NAMES', ' · '.join(providers.names())))
+        .replace('ENCODE_NAMES', ' · '.join(providers.names())), encoding='utf-8')
 
 
 for _script in (REPO_ROOT / 'assets').glob('*.js'):
@@ -104,7 +104,8 @@ for _script in (REPO_ROOT / 'assets').glob('*.js'):
 # ---- stylesheet ----
 # A real file (assets/style.css), shipped verbatim.
 (OUT / 'assets' / 'style.css').write_text(
-    (REPO_ROOT / 'assets' / 'style.css').read_text())
+    (REPO_ROOT / 'assets' / 'style.css').read_text(encoding='utf-8'),
+    encoding='utf-8')
 print(f'built {sum(1 for _ in OUT.rglob("*") if _.is_file())} files -> {OUT}')
 
 # ---------------- search engines: sitemap and robots ----------------

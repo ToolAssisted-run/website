@@ -522,6 +522,355 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         var body = String(m).padStart(2, '0') + ':' + String(s2).padStart(2, '0') + '.' + String(ms).padStart(3, '0');
         return h ? h + ':' + body : body;
       }
+
+      // ---- Supplementary files (attachments): staged list, add, delete, replace ----
+      var ATTACH_TEXT_EXTS = new Set(['txt', 'md', 'ini', 'cfg', 'conf', 'toml', 'json', 'yaml', 'yml', 'xml', 'lua', 'sync', 'properties']);
+      var ATTACH_MOVIE_EXTS = new Set([
+        '3ct', 'bk2', 'bkm', 'chimeraproject', 'ctas', 'ctm', 'dft', 'dof', 'dsm', 'dtm',
+        'fbm', 'fcm', 'fm2', 'fm3', 'fmv', 'gbmv', 'gmtas', 'gmv', 'gzm', 'hltas',
+        'htas', 'inputs', 'itf', 'jrsr', 'kbm', 'llm', 'lmp', 'lsmv', 'ltm', 'm64',
+        'mar', 'mc2', 'mcm', 'mctas', 'mmv', 'nmv', 'omr', 'otts', 'p2m2', 'p2tas',
+        'pjm', 'pxm', 'qtas', 'rec', 'replay', 'ronr', 'smv', 'srctas', 'tas', 'tasproj',
+        'vbm', 'vmv', 'wbm', 'wtf', 'ymv', 'zmv'
+      ]);
+      function extOf(fn){
+        var p = (fn || '').split('.');
+        return p.length > 1 ? p.pop().toLowerCase() : '';
+      }
+      function isAttachExt(fn){
+        var e = extOf(fn);
+        return ATTACH_TEXT_EXTS.has(e) || ATTACH_MOVIE_EXTS.has(e);
+      }
+      function fmtFileSize(bytes){
+        if (!bytes && bytes !== 0) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      var stagedAttachments = [];          // newly added File objects
+      var existingAttachments = [];        // { name, file, role }
+      var deletedAttachments = new Set();  // set of filenames marked for deletion
+      var replacedAttachments = new Map(); // existingName -> File object
+      var replaceTargetName = null;
+
+      var attWidget = document.getElementById('s-att-widget');
+      var attList = document.getElementById('s-att-list');
+      var attInput = document.getElementById('s-att-input');
+      var attReplaceInput = document.getElementById('s-att-replace-input');
+      var attAddBtn = document.getElementById('s-att-add-btn');
+      var attHint = document.getElementById('s-att-hint');
+      var attMsg = document.getElementById('s-att-msg');
+
+      if (attAddBtn) {
+        attAddBtn.addEventListener('click', function(){
+          if (attInput) {
+            attInput.value = '';
+            attInput.click();
+          }
+        });
+      }
+
+      function setAttError(errText){
+        if (!attMsg) return;
+        if (!errText) {
+          attMsg.hidden = true;
+          attMsg.textContent = '';
+          return;
+        }
+        attMsg.hidden = false;
+        attMsg.className = 'rules fullw enc-bad att-msg';
+        attMsg.textContent = '✗ ' + errText;
+      }
+
+      function renderAttachments(){
+        if (!attList) return;
+        attList.innerHTML = '';
+        var canEdit = !editRunId || (editMay && editMay.author);
+
+        existingAttachments.forEach(function(att){
+          var row = document.createElement('div');
+          var isDeleted = deletedAttachments.has(att.name);
+          var repFile = replacedAttachments.get(att.name);
+          row.className = 'att-row' + (isDeleted ? ' deleted' : '');
+
+          var left = document.createElement('div');
+          left.className = 'att-row-left';
+
+          var nameSpan = document.createElement('span');
+          nameSpan.className = 'att-name';
+          nameSpan.textContent = att.name;
+          nameSpan.title = att.name;
+          left.appendChild(nameSpan);
+
+          var badge = document.createElement('span');
+          badge.className = 'att-badge att-badge-existing';
+          badge.textContent = att.role || 'supplementary';
+          left.appendChild(badge);
+
+          if (isDeleted) {
+            var delBadge = document.createElement('span');
+            delBadge.className = 'att-badge';
+            delBadge.style.color = '#DC2626';
+            delBadge.style.borderColor = '#DC2626';
+            delBadge.textContent = repFile ? 'will be replaced' : 'will be deleted';
+            left.appendChild(delBadge);
+          }
+          row.appendChild(left);
+
+          if (canEdit) {
+            var actions = document.createElement('div');
+            actions.className = 'att-row-actions';
+            if (isDeleted) {
+              var undoBtn = document.createElement('button');
+              undoBtn.type = 'button';
+              undoBtn.className = 'att-btn att-undo';
+              undoBtn.textContent = 'Undo';
+              undoBtn.addEventListener('click', function(){
+                deletedAttachments.delete(att.name);
+                replacedAttachments.delete(att.name);
+                setAttError(null);
+                renderAttachments();
+              });
+              actions.appendChild(undoBtn);
+            } else {
+              var repBtn = document.createElement('button');
+              repBtn.type = 'button';
+              repBtn.className = 'att-btn att-rep';
+              repBtn.textContent = 'Replace';
+              repBtn.addEventListener('click', function(){
+                replaceTargetName = att.name;
+                if (attReplaceInput) {
+                  attReplaceInput.value = '';
+                  attReplaceInput.click();
+                }
+              });
+              actions.appendChild(repBtn);
+
+              var delBtn = document.createElement('button');
+              delBtn.type = 'button';
+              delBtn.className = 'att-btn att-del';
+              delBtn.textContent = 'Delete';
+              delBtn.addEventListener('click', function(){
+                deletedAttachments.add(att.name);
+                replacedAttachments.delete(att.name);
+                setAttError(null);
+                renderAttachments();
+              });
+              actions.appendChild(delBtn);
+            }
+            row.appendChild(actions);
+          }
+          attList.appendChild(row);
+
+          if (repFile) {
+            var repRow = document.createElement('div');
+            repRow.className = 'att-row';
+
+            var repLeft = document.createElement('div');
+            repLeft.className = 'att-row-left';
+
+            var repNameSpan = document.createElement('span');
+            repNameSpan.className = 'att-name';
+            repNameSpan.textContent = repFile.name;
+            repNameSpan.title = repFile.name;
+            repLeft.appendChild(repNameSpan);
+
+            var repSizeSpan = document.createElement('span');
+            repSizeSpan.className = 'att-size';
+            repSizeSpan.textContent = fmtFileSize(repFile.size);
+            repLeft.appendChild(repSizeSpan);
+
+            var repBadge = document.createElement('span');
+            repBadge.className = 'att-badge att-badge-replaced';
+            repBadge.textContent = repFile.name === att.name ? 'replaces existing file' : 'replaces ' + att.name;
+            repLeft.appendChild(repBadge);
+
+            repRow.appendChild(repLeft);
+
+            if (canEdit) {
+              var repActions = document.createElement('div');
+              repActions.className = 'att-row-actions';
+
+              var rmRepBtn = document.createElement('button');
+              rmRepBtn.type = 'button';
+              rmRepBtn.className = 'authx att-del';
+              rmRepBtn.title = 'Cancel replacement of ' + att.name;
+              rmRepBtn.textContent = '×';
+              rmRepBtn.addEventListener('click', function(){
+                replacedAttachments.delete(att.name);
+                deletedAttachments.delete(att.name);
+                setAttError(null);
+                renderAttachments();
+              });
+              repActions.appendChild(rmRepBtn);
+              repRow.appendChild(repActions);
+            }
+            attList.appendChild(repRow);
+          }
+        });
+
+        stagedAttachments.forEach(function(file, idx){
+          var row = document.createElement('div');
+          row.className = 'att-row';
+
+          var left = document.createElement('div');
+          left.className = 'att-row-left';
+
+          var nameSpan = document.createElement('span');
+          nameSpan.className = 'att-name';
+          nameSpan.textContent = file.name;
+          nameSpan.title = file.name;
+          left.appendChild(nameSpan);
+
+          var sizeSpan = document.createElement('span');
+          sizeSpan.className = 'att-size';
+          sizeSpan.textContent = fmtFileSize(file.size);
+          left.appendChild(sizeSpan);
+
+          var badge = document.createElement('span');
+          badge.className = 'att-badge att-badge-new';
+          badge.textContent = 'new';
+          left.appendChild(badge);
+
+          row.appendChild(left);
+
+          if (canEdit) {
+            var actions = document.createElement('div');
+            actions.className = 'att-row-actions';
+
+            var rmBtn = document.createElement('button');
+            rmBtn.type = 'button';
+            rmBtn.className = 'authx att-del';
+            rmBtn.title = 'Remove ' + file.name;
+            rmBtn.textContent = '×';
+            rmBtn.addEventListener('click', function(){
+              stagedAttachments.splice(idx, 1);
+              setAttError(null);
+              renderAttachments();
+            });
+            actions.appendChild(rmBtn);
+            row.appendChild(actions);
+          }
+          attList.appendChild(row);
+        });
+
+        if (editRunId && editMay && !editMay.author) {
+          if (attAddBtn) attAddBtn.hidden = true;
+          if (attHint) attHint.textContent = 'Supplementary files are editable by authors only.';
+        }
+      }
+
+      function stageFiles(fileList){
+        if (!fileList || !fileList.length) return;
+        var errs = [];
+        var activeCount = existingAttachments.filter(function(a){ return !deletedAttachments.has(a.name); }).length + stagedAttachments.length;
+        var movieCount = existingAttachments.filter(function(a){
+          if (deletedAttachments.has(a.name)) return false;
+          var rep = replacedAttachments.get(a.name);
+          var fn = rep ? rep.name : a.name;
+          return ATTACH_MOVIE_EXTS.has(extOf(fn));
+        }).length + stagedAttachments.filter(function(f){ return ATTACH_MOVIE_EXTS.has(extOf(f.name)); }).length;
+
+        Array.prototype.forEach.call(fileList, function(file){
+          if (!isAttachExt(file.name)) {
+            errs.push(file.name + ': unsupported extension');
+            return;
+          }
+          var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
+          if (isMovie && file.size > 32 * 1024 * 1024) {
+            errs.push(file.name + ' exceeds 32 MB');
+            return;
+          }
+          if (!isMovie && file.size > 128 * 1024) {
+            errs.push(file.name + ' exceeds 128 KB');
+            return;
+          }
+          var inReplaced = false;
+          replacedAttachments.forEach(function(rf){ if (rf.name === file.name) inReplaced = true; });
+          var duplicate = stagedAttachments.some(function(f){ return f.name === file.name; }) ||
+            inReplaced ||
+            (!deletedAttachments.has(file.name) && existingAttachments.some(function(a){ return a.name === file.name; }));
+          if (duplicate) {
+            errs.push(file.name + ' is already added');
+            return;
+          }
+          if (activeCount + 1 > 8) {
+            errs.push('Too many attachments (maximum 8)');
+            return;
+          }
+          if (isMovie && movieCount + 1 > 4) {
+            errs.push('Too many movie attachments (maximum 4)');
+            return;
+          }
+          activeCount++;
+          if (isMovie) movieCount++;
+          stagedAttachments.push(file);
+        });
+        if (errs.length) {
+          setAttError(errs.join('; '));
+        } else {
+          setAttError(null);
+        }
+        renderAttachments();
+      }
+
+      if (attInput) {
+        attInput.addEventListener('change', function(){
+          stageFiles(attInput.files);
+          attInput.value = '';
+        });
+      }
+      if (attReplaceInput) {
+        attReplaceInput.addEventListener('change', function(){
+          var file = attReplaceInput.files && attReplaceInput.files[0];
+          attReplaceInput.value = '';
+          if (!file || !replaceTargetName) return;
+          if (!isAttachExt(file.name)) {
+            setAttError(file.name + ': unsupported extension');
+            return;
+          }
+          var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
+          if (isMovie && file.size > 32 * 1024 * 1024) {
+            setAttError(file.name + ' exceeds 32 MB');
+            return;
+          }
+          if (!isMovie && file.size > 128 * 1024) {
+            setAttError(file.name + ' exceeds 128 KB');
+            return;
+          }
+          var alreadyStaged = stagedAttachments.some(function(f){ return f.name === file.name; });
+          var alreadyExisting = existingAttachments.some(function(a){
+            return a.name === file.name && !deletedAttachments.has(a.name) && a.name !== replaceTargetName;
+          });
+          var alreadyReplaced = false;
+          replacedAttachments.forEach(function(rf, target){
+            if (target !== replaceTargetName && rf.name === file.name) alreadyReplaced = true;
+          });
+          if (alreadyStaged || alreadyExisting || alreadyReplaced) {
+            setAttError(file.name + ' is already added');
+            return;
+          }
+          var wasMovie = ATTACH_MOVIE_EXTS.has(extOf(replaceTargetName));
+          if (!wasMovie && isMovie) {
+            var currentMovies = existingAttachments.filter(function(a){
+              if (deletedAttachments.has(a.name) && a.name !== replaceTargetName) return false;
+              if (a.name === replaceTargetName) return false;
+              var rep = replacedAttachments.get(a.name);
+              var fn = rep ? rep.name : a.name;
+              return ATTACH_MOVIE_EXTS.has(extOf(fn));
+            }).length + stagedAttachments.filter(function(f){ return ATTACH_MOVIE_EXTS.has(extOf(f.name)); }).length;
+            if (currentMovies + 1 > 4) {
+              setAttError('Too many movie attachments (maximum 4)');
+              return;
+            }
+          }
+          setAttError(null);
+          replacedAttachments.set(replaceTargetName, file);
+          deletedAttachments.add(replaceTargetName);
+          renderAttachments();
+        });
+      }
       var scoreNote = document.getElementById('s-scorenote');
       // the run's time is the one the author states, always: never filled in
       // for them. Import from movie reads it out of a parsed file on demand.
@@ -851,14 +1200,23 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
               byIdS('s-movielabel').textContent = 'Replace the movie file (optional; the current one stays unless you pick another)';
             }
             else { movieWrap.hidden = true; }
+            var movieSec = (run.movie && run.movie.frames && run.movie.fps) ? run.movie.frames / run.movie.fps : (j.seconds || null);
             movieInfo = run.videoOnly ? null : {parsed: !!(run.movie && run.movie.frames), frames: (run.movie || {}).frames,
-              seconds: (run.movie && run.movie.frames && run.movie.fps) ? run.movie.frames / run.movie.fps : null,
+              seconds: movieSec,
               format: (run.movie || {}).format};
             submitForm.querySelector('[name=emulator]').value = (run.contract || {}).emulator || '';
             var files = (run.contract || {}).files || ((run.contract || {}).rom ? [run.contract.rom] : []);
             var rowsBox = submitForm.querySelector('.filerows');
             files.forEach(function(f){ rowsBox.querySelector('.addfile').click(); var rows = rowsBox.querySelectorAll('.filerow'); var row = rows[rows.length - 1]; row.querySelector('[name=file_name]').value = f.name || ''; row.querySelector('[name=file_sha1]').value = f.sha1 || ''; });
-            if (!editMay.author) submitForm.querySelector('[name=attachments]').disabled = true;
+            existingAttachments = (run.attachments || []).map(function(a){
+              var p = a.file || '';
+              var fn = p.indexOf('/') >= 0 ? p.split('/').pop() : p;
+              return { name: fn, file: a.file, role: a.role || 'supplementary' };
+            });
+            deletedAttachments = new Set();
+            replacedAttachments = new Map();
+            stagedAttachments = [];
+            renderAttachments();
             (run.contentWarnings || []).forEach(function(w){ var b = submitForm.querySelector('[name=content_warnings][value="' + w + '"]'); if (b) b.checked = true; });
             // pre-fill notes from backend raw text (the stored markup, not
             // any rendered form); done before paintPanels opens the panels
@@ -902,6 +1260,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         // fall back to the run's own stated duration or frames-derived value
         if (!sec && run.duration) sec = run.duration;
         if (!sec && run.movie && run.movie.frames && run.movie.fps) sec = run.movie.frames / run.movie.fps;
+        if (!sec && movieInfo && movieInfo.seconds) sec = movieInfo.seconds;
         if (!sec) return;
         setTime(sec);
         composeTime();
@@ -1279,8 +1638,17 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           submitForm.querySelectorAll('input[name^=metric_]').forEach(function(h){ fd.append(h.name, h.value); });
           if (timeStatedNeeded()) fd.append('time', byIdS('s-time').value);
           if (pickedMovie && (editMay.author || editMay.expert)) fd.append('movie', pickedMovie);
-          var att = submitForm.querySelector('[name=attachments]');
-          if (editMay.author && att.files) Array.prototype.forEach.call(att.files, function(f){ fd.append('attachments', f); });
+          if (editMay.author) {
+            deletedAttachments.forEach(function(name){
+              fd.append('attachments_delete', name);
+            });
+            replacedAttachments.forEach(function(file){
+              fd.append('attachments', file);
+            });
+            stagedAttachments.forEach(function(file){
+              fd.append('attachments', file);
+            });
+          }
           var why = submitForm.querySelector('[name=reason]').value.trim();
           if (why) fd.append('reason', why);
           return fd;
@@ -1305,7 +1673,11 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         dry.then(function(res){
           var wv = (res.ok && res.j.ok) ? (res.j.would_void || []) : [];
           var nothing = !res.ok && /nothing to change/.test(res.j.error || '');
-          if (!(res.ok && res.j.ok) && !nothing) { note(msg, res.j.error || 'something went wrong', false); return; }
+          if (!(res.ok && res.j.ok) && !nothing) {
+            if (res.j.error && res.j.error.indexOf('attachment') !== -1) setAttError(res.j.error);
+            note(msg, res.j.error || 'something went wrong', false);
+            return;
+          }
           if ((moveGame || moveGoal) && liveVerifications) wv = wv.concat(['verifications']);
           var text = '';
           if (wv.indexOf('verifications') >= 0) text = 'This run is verified. Changing its scoring invalidates the verifications: it leaves the ranking until somebody verifies it again.';
@@ -1346,7 +1718,11 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             }
             steps.shift()().then(function(r2){
               if (r2.ok && r2.j.ok) { serial = r2.j.serial || serial; (r2.j.voided || []).forEach(function(v){ if (voided.indexOf(v) < 0) voided.push(v); }); step(); }
-              else { submitting = false; note(msg, r2.j.error || 'something went wrong', false); }
+              else {
+                submitting = false;
+                if (r2.j && r2.j.error && r2.j.error.indexOf('attachment') !== -1) setAttError(r2.j.error);
+                note(msg, (r2.j && r2.j.error) || 'something went wrong', false);
+              }
             });
           })();
         });
@@ -1362,7 +1738,12 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         var submitBtn = document.getElementById('s-submit');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Archiving…'; }
         note(msg, 'Archiving your run…', true);
-        post('/api/submit', new FormData(submitForm), submitBtn).then(function(res){
+        var fd = new FormData(submitForm);
+        fd.delete('attachments');
+        stagedAttachments.forEach(function(f){
+          fd.append('attachments', f);
+        });
+        post('/api/submit', fd, submitBtn).then(function(res){
           submitting = false;
           if (submitBtn) submitBtn.textContent = 'Submit';
           if (res.ok && res.j.ok) {
@@ -1378,7 +1759,10 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
               'Your run page is live at <a href="' + escapeHtml(runUrl) + '">' + escapeHtml(runUrl) + '</a>.'
             ];
             noteHtml(msg, true, lines);
-          } else note(msg, res.j.error || 'something went wrong', false);
+          } else {
+            if (res.j && res.j.error && res.j.error.indexOf('attachment') !== -1) setAttError(res.j.error);
+            note(msg, (res.j && res.j.error) || 'something went wrong', false);
+          }
         });
       });
     });

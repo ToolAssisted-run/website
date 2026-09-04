@@ -3460,20 +3460,47 @@ def edit_run():
                 befores['duration'] = str(run.get('duration'))
                 run['duration'] = duration
                 changed.append('duration')
-        new_attachments, attachment_error = read_attachments(run.get('attachments') or [])
+        attachments_delete = [
+            re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(f).name)
+            for f in request.form.getlist('attachments_delete') if f
+        ]
+        has_new_attachments = bool(request.files.getlist('attachments'))
+        if attachments_delete or has_new_attachments:
+            if not is_author:
+                return fail("supplementary files are the authors' own uploads", 403)
+
+        old_attachments = list(run.get('attachments') or [])
+        befores['attachments'] = ', '.join(pathlib.Path(a['file']).name for a in old_attachments) or '(none)'
+
+        remaining_existing = []
+        deleted_files_to_remove = []
+        for a in old_attachments:
+            fname = pathlib.Path(a['file']).name
+            if fname in attachments_delete:
+                deleted_files_to_remove.append(a['file'])
+            else:
+                remaining_existing.append(a)
+
+        if deleted_files_to_remove:
+            run['attachments'] = remaining_existing
+            if not run['attachments']:
+                run.pop('attachments', None)
+            if 'attachments' not in changed:
+                changed.append('attachments')
+
+        new_attachments, attachment_error = read_attachments(remaining_existing)
         if attachment_error:
             return attachment_error
         if new_attachments:
-            if not is_author:
-                return fail("supplementary files are the authors' own uploads", 403)
-            existing_files = {a['file'] for a in run.get('attachments') or []}
-            clash = [name for name, _ in new_attachments if f'attachments/{name}' in existing_files]
+            existing_files = {pathlib.Path(a['file']).name for a in remaining_existing}
+            clash = [name for name, _ in new_attachments if name in existing_files]
             if clash:
                 return fail(f'attachment {clash[0]!r} already exists on this run')
             run.setdefault('attachments', []).extend(
                 {'file': f'attachments/{name}', 'role': 'supplementary'}
                 for name, _ in new_attachments)
-            changed.append('attachments')
+            if 'attachments' not in changed:
+                changed.append('attachments')
         if not changed:
             return fail('nothing to change: every value sent already matches the '
                         'record (send notes, emulator, completed, goalDescription, '
@@ -3491,10 +3518,17 @@ def edit_run():
         voided = void_acts_for(run, changed, user)
         if 'notes' in changed:
             (run_dir / 'notes.md').write_text(notes)
+        for rel in deleted_files_to_remove:
+            (run_dir / rel).unlink(missing_ok=True)
         if new_attachments:
             (run_dir / 'attachments').mkdir(exist_ok=True)
             for name, data in new_attachments:
                 (run_dir / 'attachments' / name).write_bytes(data)
+        if (run_dir / 'attachments').exists() and not any((run_dir / 'attachments').iterdir()):
+            try:
+                (run_dir / 'attachments').rmdir()
+            except OSError:
+                pass
         (run_dir / 'run.json').write_text(json.dumps(
             {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
         # every revision joins the same history the expert edits live in: the
@@ -3515,7 +3549,7 @@ def edit_run():
                            'related': ', '.join(run.get('related', [])),
                            'files': '; '.join(f"{f.get('name', '')} {f.get('sha1', '')}".strip()
                                               for f in run.get('contract', {}).get('files', [])),
-                           'attachments': ', '.join(name for name, _ in new_attachments),
+                           'attachments': ', '.join(pathlib.Path(a['file']).name for a in (run.get('attachments') or [])) or '(none)',
                            }.get(field, ''))[:300]),
                      user, "The author's own revision." if is_author else reason)
         commit_push(f'Edit {run_id}: {", ".join(changed)} by '

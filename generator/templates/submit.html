@@ -121,8 +121,18 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   locally, the file <b>never leaves your machine</b>; or type them.</label>
   {{ file_rows() }}
   <hr class="formrule">
-  <label>Supplementary files to upload (optional: text configs, or additional movie files)</label>
-  <input name="attachments" type="file" multiple>
+  <div class="att-widget" id="s-att-widget">
+    <label id="s-att-label">Supplementary files to upload (optional: text configs, or additional movie files)</label>
+    <div class="att-list" id="s-att-list"></div>
+    <div class="att-actions">
+      <button type="button" class="btn leave addfile" id="s-att-add-btn" title="Add supplementary files">+ Add a file</button>
+      <input type="file" id="s-att-input" multiple hidden>
+      <input type="file" id="s-att-replace-input" hidden>
+      <span class="att-hint" id="s-att-hint">Allowed: text configs (.txt, .md, .ini, .cfg, .conf, .json, .yaml, .xml, .lua) or movie files.</span>
+    </div>
+    <p class="rules fullw enc-bad att-msg" id="s-att-msg" hidden></p>
+    <div id="s-att-deleted-inputs" hidden></div>
+  </div>
   </div></section>
 
   <section class="panel actform folded" id="p-score" data-step="4">
@@ -160,10 +170,10 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   <div class="pbody">
   <label>Content warnings, to warn viewers about (tick every one that applies; Submission Policy 3.1.7):</label>
   <div class="cwrow">
-    <label class="cwlab"><input type="checkbox" name="content_warnings" value="mature-violence"> Mature / violent</label>
-    <label class="cwlab"><input type="checkbox" name="content_warnings" value="sexual"> Sexual content (18+ gate)</label>
-    <label class="cwlab"><input type="checkbox" name="content_warnings" value="photosensitivity"> Photosensitivity (flashing lights)</label>
-    <label class="cwlab"><input type="checkbox" name="content_warnings" value="strong-language"> Strong language</label>
+    <label class="check cwlab"><input type="checkbox" name="content_warnings" value="mature-violence"> Mature / violent</label>
+    <label class="check cwlab"><input type="checkbox" name="content_warnings" value="sexual"> Sexual content (18+ gate)</label>
+    <label class="check cwlab"><input type="checkbox" name="content_warnings" value="photosensitivity"> Photosensitivity (flashing lights)</label>
+    <label class="check cwlab"><input type="checkbox" name="content_warnings" value="strong-language"> Strong language</label>
   </div>
   <label>Notes (your write-up; see the <a href="../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="10"></textarea>
   <button type="button" class="btn quiet" id="s-preview-btn">Preview</button>
@@ -179,7 +189,7 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   <h2 class="ptitle" id="p-agree-title"><span class="pnum">6</span> Agreement</h2>
   <p class="pwaits" id="p-agree-waits">After you have previewed your notes.</p>
   <div class="pbody">
-  <label class="cwlab consent"><input type="checkbox" name="consent" value="yes" required>
+  <label class="check cwlab consent"><input type="checkbox" name="consent" value="yes" required>
   <span>I license this submission under <b>CC BY 4.0</b>, I have read and agree with the
   <a href="https://github.com/ToolAssisted-run#1-community-principles" target="_blank">Community Principles</a>,
   the <a href="https://github.com/ToolAssisted-run#31-run-submission-policy" target="_blank">Run submission policy</a> and
