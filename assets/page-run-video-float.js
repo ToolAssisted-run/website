@@ -78,15 +78,15 @@ function initRunVideoFloat() {
     } else if (provider === 'dailymotion') {
       frame.contentWindow.postMessage(JSON.stringify({method: 'pause'}), '*');
     }
+  }
 
-    function play() {
-      if (provider === 'youtube') {
-        frame.contentWindow.postMessage(JSON.stringify({event: 'command', func: 'playVideo', args: []}), '*');
-      } else if (provider === 'vimeo') {
-        frame.contentWindow.postMessage({method: 'play'}, '*');
-      } else if (provider === 'dailymotion') {
-        frame.contentWindow.postMessage(JSON.stringify({method: 'play'}), '*');
-      }
+  function play() {
+    if (provider === 'youtube') {
+      frame.contentWindow.postMessage(JSON.stringify({event: 'command', func: 'playVideo', args: []}), '*');
+    } else if (provider === 'vimeo') {
+      frame.contentWindow.postMessage({method: 'play'}, '*');
+    } else if (provider === 'dailymotion') {
+      frame.contentWindow.postMessage(JSON.stringify({method: 'play'}), '*');
     }
   }
 
