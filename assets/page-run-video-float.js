@@ -9,7 +9,6 @@ function initRunVideoFloat() {
   const frame = player && player.querySelector('iframe');
   if (!stage || !player || !frame) return;
 
-  const placeholder = document.createComment('run player position');
   const shell = document.createElement('div');
   const bar = document.createElement('div');
   const title = document.createElement('span');
@@ -20,10 +19,10 @@ function initRunVideoFloat() {
   let activated = false;
   let closed = false;
   let provider = providerFor(frame.src);
-  const activationShield = document.createElement('button');
+  let pointerOverPlayer = false;
+  let savedGeometry = null;
 
   shell.className = 'run-video-float';
-  shell.hidden = true;
   bar.className = 'run-video-float-bar';
   title.className = 'run-video-float-title';
   title.textContent = 'Run encode';
@@ -33,13 +32,8 @@ function initRunVideoFloat() {
   close.textContent = '×';
   grip.className = 'run-video-float-grip';
   bar.append(title, close);
-  shell.append(bar, grip);
-  document.body.appendChild(shell);
-  player.parentNode.insertBefore(placeholder, player);
-  activationShield.type = 'button';
-  activationShield.className = 'run-video-activate-shield';
-  activationShield.setAttribute('aria-label', 'Start video');
-  player.appendChild(activationShield);
+  player.parentNode.insertBefore(shell, player);
+  shell.append(bar, player, grip);
 
   function isDesktop() {
     return window.matchMedia(DESKTOP_QUERY).matches;
@@ -70,6 +64,36 @@ function initRunVideoFloat() {
     shell.style.bottom = defaults.bottom + 'px';
   }
 
+  function clearGeometry() {
+    shell.style.width = '';
+    shell.style.height = '';
+    shell.style.left = '';
+    shell.style.top = '';
+    shell.style.right = '';
+    shell.style.bottom = '';
+  }
+
+  function saveGeometry() {
+    savedGeometry = {
+      width: shell.style.width,
+      height: shell.style.height,
+      left: shell.style.left,
+      top: shell.style.top,
+      right: shell.style.right,
+      bottom: shell.style.bottom
+    };
+  }
+
+  function applySavedGeometry() {
+    if (!savedGeometry) {
+      resetGeometry();
+      return;
+    }
+    Object.keys(savedGeometry).forEach(function(key) {
+      shell.style[key] = savedGeometry[key];
+    });
+  }
+
   function pause() {
     if (provider === 'youtube') {
       frame.contentWindow.postMessage(JSON.stringify({event: 'command', func: 'pauseVideo', args: []}), '*');
@@ -80,16 +104,6 @@ function initRunVideoFloat() {
     }
   }
 
-  function play() {
-    if (provider === 'youtube') {
-      frame.contentWindow.postMessage(JSON.stringify({event: 'command', func: 'playVideo', args: []}), '*');
-    } else if (provider === 'vimeo') {
-      frame.contentWindow.postMessage({method: 'play'}, '*');
-    } else if (provider === 'dailymotion') {
-      frame.contentWindow.postMessage(JSON.stringify({method: 'play'}), '*');
-    }
-  }
-
   function showFloat() {
     if (isLandscapeMobile()) {
       shell.hidden = true;
@@ -97,19 +111,19 @@ function initRunVideoFloat() {
     }
     if (!floating) {
       floating = true;
-      shell.hidden = false;
-      shell.insertBefore(player, grip);
       shell.classList.add('is-floating');
+      applySavedGeometry();
     }
     shell.hidden = false;
   }
 
-  function restoreInline() {
+  function restoreInline(preserveGeometry) {
     if (!floating) return;
-    placeholder.parentNode.insertBefore(player, placeholder.nextSibling);
+    if (preserveGeometry !== false) saveGeometry();
     floating = false;
-    shell.hidden = true;
     shell.classList.remove('is-floating');
+    clearGeometry();
+    shell.hidden = false;
   }
 
   function onPlay() {
@@ -117,7 +131,7 @@ function initRunVideoFloat() {
     if (closed) {
       closed = false;
       activated = true;
-      resetGeometry();
+      savedGeometry = null;
     }
     activated = true;
     if (wasClosed || !isStageVisible()) showFloat();
@@ -156,10 +170,19 @@ function initRunVideoFloat() {
     frame.src = url.toString();
   }
 
+  function subscribeToProviderEvents() {
+    if (provider === 'youtube') {
+      frame.contentWindow.postMessage(JSON.stringify({event: 'listening', id: 'run-player'}), '*');
+    } else if (provider === 'vimeo') {
+      frame.contentWindow.postMessage({method: 'addEventListener', value: 'play'}, '*');
+    }
+  }
+
   function activateFallback() {
-    if (!activated) {
+    if (!activated || closed) {
       activated = true;
       closed = false;
+      savedGeometry = null;
     }
   }
 
@@ -170,7 +193,7 @@ function initRunVideoFloat() {
     } else if (!isStageVisible()) {
       showFloat();
     } else if (floating && !closed) {
-      restoreInline();
+      restoreInline(true);
     }
   }
 
@@ -238,8 +261,8 @@ function initRunVideoFloat() {
   close.addEventListener('click', function() {
     pause();
     closed = true;
-    restoreInline();
-    shell.hidden = true;
+    savedGeometry = null;
+    restoreInline(false);
   });
   shell.addEventListener('pointerdown', function(ev) {
     if (ev.target === close || ev.target === bar || bar.contains(ev.target)) return;
@@ -258,14 +281,18 @@ function initRunVideoFloat() {
     }
   });
   enableProviderEvents();
-  player.addEventListener('pointerdown', activateFallback);
-  activationShield.addEventListener('pointerdown', function() {
-    activateFallback();
-    play();
-    activationShield.remove();
+  frame.addEventListener('load', subscribeToProviderEvents);
+  player.addEventListener('pointerenter', function() {
+    pointerOverPlayer = true;
+  });
+  player.addEventListener('pointerleave', function() {
+    pointerOverPlayer = false;
+  });
+  window.addEventListener('blur', function() {
+    if (pointerOverPlayer || document.activeElement === frame) activateFallback();
   });
   window.addEventListener('message', function(ev) {
-    if (messageIsPlay(ev.data)) onPlay();
+    if (ev.source === frame.contentWindow && messageIsPlay(ev.data)) onPlay();
   });
   window.addEventListener('scroll', maybeFloat, {passive: true});
   window.addEventListener('resize', function() {
@@ -278,7 +305,6 @@ function initRunVideoFloat() {
   });
   window.matchMedia(PORTRAIT_QUERY).addEventListener('change', maybeFloat);
   defaultGeometry();
-  resetGeometry();
 }
 
 export { initRunVideoFloat };
