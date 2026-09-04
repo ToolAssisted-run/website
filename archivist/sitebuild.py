@@ -31,6 +31,7 @@ WEBSITE_DIR = pathlib.Path(os.environ.get('WEBSITE_DIR',
 SITE_DIR = pathlib.Path(os.environ.get('SITE_DIR', str(ARCHIVE.parent / 'site')))
 
 BUILD_TIMEOUT = float(os.environ.get('SITE_BUILD_TIMEOUT', '300'))
+SITE_BUILD_LIMIT = int(os.environ.get('SITE_BUILD_LIMIT', '0'))
 
 _wake = threading.Event()
 _serial = {'n': 0}          # monotonic build names within one process life
@@ -45,6 +46,8 @@ def request_build():
     """Called after every successful push and every refresh that moved HEAD.
     Cheap and idempotent: the worker coalesces a burst into one build, and a
     commit landing mid-build simply schedules the next one."""
+    if (SITE_DIR / '.pause').exists() or (SITE_BUILD_LIMIT and _serial['n'] >= SITE_BUILD_LIMIT):
+        return
     _wake.set()
 
 
@@ -79,8 +82,15 @@ def _swap(out):
             tmp.unlink()
     try:
         os.symlink(out.name, tmp, target_is_directory=True)
+        if os.name == 'nt' and (SITE_DIR / 'current').is_symlink():
+            (SITE_DIR / 'current').unlink()
         os.replace(tmp, SITE_DIR / 'current')
     except OSError:
+        if tmp.is_symlink() or tmp.exists():
+            if tmp.is_dir() and not tmp.is_symlink():
+                shutil.rmtree(tmp, ignore_errors=True)
+            else:
+                tmp.unlink(missing_ok=True)
         cur = SITE_DIR / 'current'
         if cur.is_symlink():
             cur.unlink()
@@ -116,7 +126,7 @@ def _build_once():
     # never captures half of a concurrent write; builds take about a second,
     # which a queued request can afford to wait out
     with gitstore.lock:
-        r = subprocess.run([sys.executable, str(WEBSITE_DIR / 'generator' / 'build.py'),
+        r = subprocess.run([sys.executable, '-X', 'utf8', str(WEBSITE_DIR / 'generator' / 'build.py'),
                             str(ARCHIVE), str(out)],
                            capture_output=True, text=True, timeout=BUILD_TIMEOUT)
     if r.returncode != 0:
@@ -136,6 +146,8 @@ def _worker():
     while True:
         _wake.wait()
         _wake.clear()
+        if (SITE_DIR / '.pause').exists() or (SITE_BUILD_LIMIT and _serial['n'] >= SITE_BUILD_LIMIT):
+            continue
         try:
             _build_once()
             _last.update(ok=True, when=time.time(), error=None)

@@ -118,7 +118,7 @@ for key, g in games.items():
              'image': (SITE_URL + thumb_url(best)) if best else None,
              'ld': [breadcrumb_ld([('Games', 'games/'), (sysname, f'systems/{g["system"]}/'),
                                    (g['title'], f'games/{g["key"]}/')])]},
-         scripts=['page-library.js']))
+         scripts=['page-library.js']), encoding='utf-8')
 
     # ---- the game editor (templates/game_pages_edit.html) ----
     opt_data = []
@@ -146,4 +146,4 @@ for key, g in games.items():
         f"Edit {g['title']}", ebody, erel,
         tpl('game_pages_crumb.html', g=g, rel=erel, edit=True),
         'Games', seo={'path': f'games/{g["key"]}/edit/', 'noindex': True},
-        scripts=['page-game-edit.js']))
+        scripts=['page-game-edit.js']), encoding='utf-8')

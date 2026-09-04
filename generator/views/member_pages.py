@@ -20,10 +20,10 @@ from render import SITE_URL, page, tpl
 # the client-side data feeds beside the pages (names for pickers, the news
 # dates for the avatar dot, per-member stats for the menu)
 (OUT / 'assets' / 'authornames.json').write_text(json.dumps(
-    sorted((a['username'] for a in authors.values()), key=str.lower)))
+    sorted((a['username'] for a in authors.values()), key=str.lower)), encoding='utf-8')
 (OUT / 'assets' / 'news.json').write_text(json.dumps(
-    {u: [e['date'] for e in lst] for u, lst in author_news.items()}))
-(OUT / 'assets' / 'authorstats.json').write_text(json.dumps(author_stats))
+    {u: [e['date'] for e in lst] for u, lst in author_news.items()}), encoding='utf-8')
+(OUT / 'assets' / 'authorstats.json').write_text(json.dumps(author_stats), encoding='utf-8')
 
 NEWS_ICON = {'reproduced': '↻', 'verified': '✓', 'liked': '★'}
 
@@ -65,7 +65,7 @@ for uname, a in authors.items():
                   'ld': [{'@context': 'https://schema.org', '@type': 'Person',
                           'name': a['username'],
                           'url': f'{SITE_URL}/authors/{profile_slug(uname)}/'}]},
-             scripts=['page-member.js']))
+             scripts=['page-member.js']), encoding='utf-8')
 
 # withdrawn runs still get a page: an honest tombstone, not a 404
 for r in withdrawn_runs:
@@ -75,4 +75,4 @@ for r in withdrawn_runs:
     d.mkdir(parents=True, exist_ok=True)
     (d / 'index.html').write_text(page(f"{g['title']} (withdrawn)", body, '../../',
                                        tpl('member_pages_crumb.html', kind='run', label=r['id']),
-                                       seo={'path': f'runs/{r["id"]}/', 'noindex': True}))
+                                       seo={'path': f'runs/{r["id"]}/', 'noindex': True}), encoding='utf-8')

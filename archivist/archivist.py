@@ -4020,6 +4020,8 @@ def spawn_site_sync(ref=None):
             return 'already syncing'
         _sync_last[0] = now
     argv = [SITE_SYNC_CMD] + ([ref] if ref else [])
+    if os.name == 'nt' and SITE_SYNC_CMD.lower().endswith(('.cmd', '.bat')):
+        argv = ['cmd.exe', '/c'] + argv
     try:
         if getattr(os, 'geteuid', lambda: -1)() == 0:
             subprocess.Popen(['systemd-run', '--collect', '--quiet',

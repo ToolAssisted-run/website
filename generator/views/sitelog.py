@@ -185,7 +185,7 @@ modlog = tpl('sitelog.html',
 (OUT / 'policy' / 'site-log' / 'index.html').write_text(page(
     'Site log', modlog, '../../',
     seo={'path': 'policy/site-log/',
-         'description': 'Every act of authority on toolAssisted.run, in the open: appointments, edits, deletions, decisions.'}))
+         'description': 'Every act of authority on toolAssisted.run, in the open: appointments, edits, deletions, decisions.'}), encoding='utf-8')
 # The log used to live at /policy/moderation-log/ and that address is in the
 # footer of every page ever served, in forum posts and in the archivist's own
 # replies. Pages has no rewrites, so the old path keeps a page of its own that
@@ -194,4 +194,4 @@ modlog = tpl('sitelog.html',
 (OUT / 'policy' / 'moderation-log' / 'index.html').write_text(page(
     'Moved: the site log', tpl('sitelog_moved.html'), '../../', '',
     head_extra=tpl('sitelog_moved_head.html'),
-    seo={'path': 'policy/site-log/', 'noindex': True}))
+    seo={'path': 'policy/site-log/', 'noindex': True}), encoding='utf-8')

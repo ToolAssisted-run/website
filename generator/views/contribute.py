@@ -69,4 +69,4 @@ body = tpl('contribute.html', need_repro=need_repro, need_verify=need_verify,
     'Contribute: verify and reproduce TAS runs', body, '../', '', 'Contribute',
     seo={'path': 'contribute/',
          'description': ('The public worklist: verify and reproduce tool-assisted speedruns, '
-                         'earn contributor points, no assignment needed.')}))
+                         'earn contributor points, no assignment needed.')}), encoding='utf-8')

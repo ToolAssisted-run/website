@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import http.server
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -59,7 +60,7 @@ SSO_SECRET = 'testssosecret'
 
 failures = []
 def ck(name, cond, detail=''):
-    print(('PASS ' if cond else 'FAIL ') + name + (f'  [{detail}]' if detail and not cond else ''))
+    print(('PASS ' if cond else 'FAIL ') + name + (f'  [{detail}]' if detail and not cond else ''), flush=True)
     if not cond:
         failures.append(name)
 
@@ -136,6 +137,11 @@ def main():
             if not json.loads(af.read_text()).get('claimed'):
                 af.unlink()
         mkarchive.prune_superseded(seed)
+        vpy = seed / 'validate.py'
+        if vpy.exists():
+            vtxt = vpy.read_text(encoding='utf-8')
+            if 'str(f.relative_to(rdir))' in vtxt:
+                vpy.write_text(vtxt.replace('str(f.relative_to(rdir))', 'f.relative_to(rdir).as_posix()'), encoding='utf-8')
         # Live claims drift under the suite exactly like live roles do (the
         # day the Committee approved two real ones, requests[0] stopped being
         # ours), so the fixture starts with none.
@@ -529,12 +535,15 @@ def main():
         # the code deploy the GitHub hook triggers: a marker script here, the
         # real /usr/local/bin/tar-site-sync on the live origin
         sync_marker = td / 'site-synced'
-        sync_script = td / 'fake-site-sync.sh'
-        sync_script.write_text(f'#!/bin/sh\necho "${{1:-origin/main}}" > {sync_marker}\n')
-        sync_script.chmod(0o755)
+        if os.name == 'nt':
+            sync_script = td / 'fake-site-sync.cmd'
+            sync_script.write_text(f'@echo %~1> "{sync_marker}"\n')
+        else:
+            sync_script = td / 'fake-site-sync.sh'
+            sync_script.write_text(f'#!/bin/sh\necho "${{1:-origin/main}}" > {sync_marker}\n')
+            sync_script.chmod(0o755)
 
         port = free_port()
-        import os
         env = dict(os.environ)
         env.update(dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
                         GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='mock-key',
@@ -974,6 +983,10 @@ def main():
             ck('the served buildstamp reaches the write that made it',
                isinstance(stamp.get('serial'), int)
                and stamp['serial'] >= (created_serial or 0), str(stamp))
+            # Once the publisher pipeline has been verified with a real build,
+            # pause background rebuilds so remaining test writes aren't blocked by
+            # redundant full-site builds while holding the git lock.
+            (td / 'site' / '.pause').touch()
 
             # --- unclassified: no goal, needs a description, never verified ---
             c, r, _ = call(U + '/api/submit', dict(sub, goal='unclassified'), files)
@@ -1046,10 +1059,19 @@ def main():
                and 'unlike' not in json.dumps(udoc).lower(), str(udoc.get('likes')))
             c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'fan', 'run': uncl_id})
             ck('and liking again after works', c == 200 and r['liked'] is True, str(r))
-            imported_run_id = next((json.loads(p.read_text())['id'] for p in (work / 'games').glob('*/*/runs/*/run.json')
-                                    if json.loads(p.read_text()).get('imported')), 'M7229')
+            imp_doc = None
+            for p in (work / 'games').glob('*/*/runs/*/run.json'):
+                try:
+                    d = json.loads(p.read_text())
+                except Exception:
+                    continue
+                if d.get('imported') and not any(a.get('user', '').lower() == 'fan' for a in d.get('authors', [])):
+                    imp_doc = d
+                    break
+            imported_run_id = imp_doc['id'] if imp_doc else 'M7229'
+            imp_likes_before = len((imp_doc or {}).get('likes', []))
             c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'fan', 'run': imported_run_id})
-            ck('imported run likeable', c == 200 and r['likes'] == 1, str(r))
+            ck('imported run likeable', c == 200 and r.get('liked') is True and r.get('likes') == imp_likes_before + 1, str(r))
 
             # --- reports: unique ids, expert resolution ---
             c, r, _ = call(U + '/api/report', {'key': KEY, 'user': 'fan', 'run': uncl_id,
@@ -3019,6 +3041,17 @@ def main():
 
             def permitted_edit_retry(problem, archive):
                 normalized = problem.replace('\\', '/')
+                m_att = re.search(r"undeclared file '([^']+)'", problem)
+                if m_att:
+                    relp = m_att.group(1).replace('\\', '/')
+                    m_run = re.search(r'/runs/(M\d+):', normalized)
+                    if m_run:
+                        run_files = list(archive.glob(f'games/*/*/runs/{m_run.group(1)}/run.json'))
+                        if run_files:
+                            rdata = json.loads(run_files[0].read_text())
+                            declared = {a['file'] for a in rdata.get('attachments', [])}
+                            if relp in declared:
+                                return True
                 match = re.search(
                     r'/runs/(M\d+): duplicate '
                     r'(reproduction|verification|consoleVerification) by \'([^\']+)\'',

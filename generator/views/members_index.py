@@ -13,4 +13,4 @@ body = tpl('members_index.html', members=members)
 (OUT / 'authors' / 'index.html').write_text(page(
     'Members and TAS authors', body, '../', '', 'Members',
     seo={'path': 'authors/',
-         'description': 'The members and authors of toolAssisted.run, with their runs, stars and roles.'}))
+         'description': 'The members and authors of toolAssisted.run, with their runs, stars and roles.'}), encoding='utf-8')

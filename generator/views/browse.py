@@ -38,4 +38,4 @@ body = tpl('browse.html', index=index, sys_opts=sys_opts)
     'All TAS runs', body, '../', '', 'Runs',
     seo={'path': 'browse/',
          'description': ('Every tool-assisted speedrun archived on toolAssisted.run, searchable '
-                         'by game, category and author, with verification state and stars.')}))
+                         'by game, category and author, with verification state and stars.')}), encoding='utf-8')

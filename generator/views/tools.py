@@ -153,7 +153,7 @@ body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=
     'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',
     seo={'path': 'tools/',
          'description': ('Emulators with rerecording and movie formats, plus game-specific '
-                         'tool-assisted speedrun tools, each linked to its home.')}))
+                         'tool-assisted speedrun tools, each linked to its home.')}), encoding='utf-8')
 
 # ---- formatting guide ----
 FMT_EXAMPLES = [
@@ -189,5 +189,5 @@ body = tpl('tools_formatting.html', examples=examples)
 (OUT / 'formatting').mkdir(exist_ok=True)
 (OUT / 'formatting' / 'index.html').write_text(page(
     'Formatting guide', body, '../',
-    seo={'path': 'formatting/', 'description': 'The markup accepted in run notes on toolAssisted.run.'}))
+    seo={'path': 'formatting/', 'description': 'The markup accepted in run notes on toolAssisted.run.'}), encoding='utf-8')
 

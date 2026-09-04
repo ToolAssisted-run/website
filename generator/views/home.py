@@ -74,6 +74,6 @@ body = tpl('home.html',
                 {'@context': 'https://schema.org', '@type': 'Organization',
                  'name': 'toolAssisted.run', 'url': SITE_URL + '/',
                  'logo': SITE_URL + '/assets/avatar-512-dark.png'}]},
-     scripts=['page-home.js']))
+    scripts=['page-home.js']), encoding='utf-8')
 
-(OUT / '404.html').write_text(tpl('404.html'))
+(OUT / '404.html').write_text(tpl('404.html'), encoding='utf-8')

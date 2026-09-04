@@ -51,7 +51,7 @@ if _mock.exists():
     shutil.copy2(_mock, OUT / 'mock' / 'index.html')
 # GitHub Pages reads the custom domain from the repository settings, but a
 # CNAME in the upload is what keeps it from ever being dropped by a deploy.
-(OUT / 'CNAME').write_text('toolassisted.run\n')
+(OUT / 'CNAME').write_text('toolassisted.run\n', encoding='utf-8')
 # the freshness beacon: Pages serves every page with max-age=600, so a
 # browser can show a 10-minute-old leaderboard while the site is long since
 # rebuilt. Each page knows the build it came from (window.TAR.v); the client
@@ -60,7 +60,7 @@ if _mock.exists():
     {'v': SITE_COMMIT or 'dev',
      'serial': ARCHIVE_SERIAL,
      'built': datetime.datetime.now(datetime.timezone.utc)
-              .strftime('%Y-%m-%dT%H:%M:%SZ')}))
+              .strftime('%Y-%m-%dT%H:%M:%SZ')}), encoding='utf-8')
 (OUT / 'runs').mkdir()
 (OUT / 'authors').mkdir()
 (OUT / 'policy').mkdir()
@@ -112,25 +112,21 @@ print(f'built {sum(1 for _ in OUT.rglob("*") if _.is_file())} files -> {OUT}')
 # Every public content page, with the day it last changed; tooling pages
 # (submit, panels, editors, mocks) carry noindex and stay out of the map.
 import re as _re
+from render import INDEXED_PAGES
 SITE = 'https://toolassisted.run'
 _skip = _re.compile(r'^(submit|claim|import|expert|founder|committee|create-game|'
                     r'create-category|mock)/|/edit/$')
-_entries = []
-for _p in sorted(OUT.rglob('index.html')):
-    _relp = _p.relative_to(OUT).as_posix()[:-len('index.html')]
-    if _skip.search(_relp) or '<meta name="robots" content="noindex">' in _p.read_text():
-        continue
-    _entries.append(_relp)
+_entries = sorted(p for p in INDEXED_PAGES if not _skip.search(p))
 _today = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
 (OUT / 'sitemap.xml').write_text(
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + ''.join(f'<url><loc>{SITE}/{_e}</loc><lastmod>{_today}</lastmod></url>\n' for _e in _entries)
-    + '</urlset>\n')
+    + '</urlset>\n', encoding='utf-8')
 (OUT / 'robots.txt').write_text(
     'User-agent: *\nAllow: /\n'
     + ''.join(f'Disallow: /{_d}/\n' for _d in ('submit', 'claim', 'import', 'expert', 'founder',
                                                  'committee', 'create-game', 'create-category', 'mock'))
     + 'Disallow: /games/*/edit/\n'
-    + f'Sitemap: {SITE}/sitemap.xml\n')
+    + f'Sitemap: {SITE}/sitemap.xml\n', encoding='utf-8')
 print(f'sitemap: {len(_entries)} urls')

@@ -24,9 +24,9 @@ crumb = lambda leaf: tpl('create_pages_crumb.html', leaf=leaf).strip()
 (OUT / 'create-game' / 'index.html').write_text(
     page('Create a game', game_body, '../', crumb('Create a game'),
          'Games', seo={'path': 'create-game/', 'noindex': True},
-         scripts=['page-create.js']))
+         scripts=['page-create.js']), encoding='utf-8')
 (OUT / 'create-category').mkdir(exist_ok=True)
 (OUT / 'create-category' / 'index.html').write_text(
     page('Create a category', cat_body, '../', crumb('Create a category'), 'Games',
          seo={'path': 'create-category/', 'noindex': True},
-         scripts=['page-create.js']))
+         scripts=['page-create.js']), encoding='utf-8')

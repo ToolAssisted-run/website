@@ -78,12 +78,12 @@ def main():
         ck('panel starts with a loading note', 'Loading the latest posts' in home)
         # the feed is page-home.js's alone;
         # check every shipped client script, not just one of them
-        js = '\n'.join(p.read_text() for p in (out / 'assets').glob('*.js'))
+        js = '\n'.join(p.read_text(encoding='utf-8') for p in (out / 'assets').glob('*.js'))
         ck('no third-party script is loaded for the feed',
            'platform.twitter.com' not in js and 'widgets.js' not in js)
         ck('the feed is read from the public AT Protocol endpoint',
            'public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed' in js)
-        css = (REPO / 'assets/style.css').read_text()
+        css = (REPO / 'assets/style.css').read_text(encoding='utf-8')
         feed_rule = css[css.index('.bskyfeed{'):css.index('.bpost{')]
         news_rule = css[css.index('.heronews{'):css.index('.heronews h2')]
         ck('the news window is a bounded scroll box, not a growing column',
@@ -105,7 +105,7 @@ console.log(JSON.stringify(payload.feed.map(
   (it) => bskyPostHtml(it, 'https://bsky.app/profile/toolassisted.run', linkify, since))));
 """
         script = td / 'h.mjs'
-        script.write_text(harness)
+        script.write_text(harness, encoding='utf-8')
         res = subprocess.run([node, str(script), json.dumps(PAYLOAD)],
                              capture_output=True, text=True)
         ck('renderer runs under node', res.returncode == 0, res.stderr[-400:])

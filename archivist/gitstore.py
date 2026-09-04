@@ -80,8 +80,24 @@ def _abandon_unfinished_git_state():
     """Leave no half-finished rebase or merge behind. A conflicted rebase
     would otherwise wedge the checkout: every later request's `checkout -B`
     fails too, and intake stays broken until someone logs into the VPS."""
-    for args in (('git', 'rebase', '--abort'), ('git', 'merge', '--abort'),
-                 ('git', 'cherry-pick', '--abort')):
+    git_dir = ARCHIVE / '.git'
+    if git_dir.is_dir():
+        has_rebase = (git_dir / 'rebase-merge').exists() or (git_dir / 'rebase-apply').exists()
+        has_merge = (git_dir / 'MERGE_HEAD').exists()
+        has_cherry = (git_dir / 'CHERRY_PICK_HEAD').exists()
+        if not (has_rebase or has_merge or has_cherry):
+            return
+        to_abort = []
+        if has_rebase:
+            to_abort.append(('git', 'rebase', '--abort'))
+        if has_merge:
+            to_abort.append(('git', 'merge', '--abort'))
+        if has_cherry:
+            to_abort.append(('git', 'cherry-pick', '--abort'))
+    else:
+        to_abort = (('git', 'rebase', '--abort'), ('git', 'merge', '--abort'),
+                    ('git', 'cherry-pick', '--abort'))
+    for args in to_abort:
         try:
             sh(*args)
         except subprocess.CalledProcessError:
@@ -119,7 +135,6 @@ def checkout_branch():
         sh('git', 'checkout', '-q', '-f', '-B', BRANCH, 'origin/main')
     # discard anything a failed request left in the worktree, so the next
     # commit carries only what this request writes
-    sh('git', 'reset', '-q', '--hard', f'origin/{BRANCH}')
     sh('git', 'clean', '-qfd')
     # content that arrived from elsewhere (a manual push, another writer)
     # deserves a fresh site just as much as content committed here

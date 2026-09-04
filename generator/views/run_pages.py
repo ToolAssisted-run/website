@@ -38,6 +38,17 @@ for _gr in groups:
     for _k in _gr.get('games', []):
         _group_of_game.setdefault(_k, set()).add(_gr['key'])
 
+_runs_by_game = {}
+_runs_by_system = {}
+for r_ in runs:
+    _runs_by_game.setdefault(r_['game'], []).append(r_)
+    _runs_by_system.setdefault(r_['game'].split('/')[0], []).append(r_)
+
+_rest_submitted = sorted(runs, key=lambda x: x.get('submitted') or '', reverse=True)
+_fallback_liked = sorted(sorted(_rest_submitted, key=nlikes, reverse=True), key=is_ranked, reverse=True)
+_fallback_viewed = sorted(sorted(_rest_submitted, key=nvisits, reverse=True), key=is_ranked, reverse=True)
+_fallback_recent = sorted(_rest_submitted, key=is_ranked, reverse=True)
+
 
 def _bucket_order(cands):
     c = sorted(cands, key=lambda x: x.get('submitted') or '', reverse=True)
@@ -60,7 +71,7 @@ def reel_for(r):
     take(_runs_by_id[i] for i in r.get('related', []) if i in _runs_by_id)
     goal = (r.get('category') or {}).get('goal')
     sub = (r.get('category') or {}).get('sub')
-    same_game = [x for x in runs if x['game'] == r['game']]
+    same_game = _runs_by_game.get(r['game'], [])
     take(_bucket_order([x for x in same_game
                         if (x.get('category') or {}).get('goal') == goal
                         and (x.get('category') or {}).get('sub') != sub]))
@@ -70,14 +81,11 @@ def reel_for(r):
         take(_bucket_order([x for x in runs
                             if _group_of_game.get(x['game'], set()) & my_groups]))
     system = r['game'].split('/')[0]
-    take(_bucket_order([x for x in runs if x['game'].split('/')[0] == system]))
+    take(_bucket_order(_runs_by_system.get(system, [])))
     if len(picked) < REEL_SIZE:
-        rest = sorted(runs, key=lambda x: x.get('submitted') or '', reverse=True)
-        take(sorted(sorted(rest, key=nlikes, reverse=True),
-                    key=is_ranked, reverse=True))                    # most liked
-        take(sorted(sorted(rest, key=nvisits, reverse=True),
-                    key=is_ranked, reverse=True))                    # most viewed
-        take(sorted(rest, key=is_ranked, reverse=True))              # most recent
+        take(_fallback_liked)                     # most liked
+        take(_fallback_viewed)                    # most viewed
+        take(_fallback_recent)                    # most recent
     return picked
 
 
@@ -206,4 +214,4 @@ for r in runs:
         page(seo_title, body, '../../', crumb, 'Runs', wide=True,
              seo={'path': f'runs/{r["id"]}/', 'description': seo_desc,
                   'image': (SITE_URL + tu) if tu else None, 'type': 'video.other' if enc else 'article',
-                  'ld': ld}, scripts=['page-run.js']))
+                  'ld': ld}, scripts=['page-run.js']), encoding='utf-8')

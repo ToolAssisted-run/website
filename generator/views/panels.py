@@ -18,7 +18,7 @@ def write_panel(slug, title, body):
     (OUT / slug / 'index.html').write_text(
         page(title, body, '../', tpl('panels_crumb.html', label=title).strip(),
              seo={'path': slug + '/', 'noindex': True},
-             scripts=['page-panels.js']))
+             scripts=['page-panels.js']), encoding='utf-8')
 
 def users_with(role):
     return sorted({ev['user'] for (u, r, sc), ev in ROLES_NOW.items() if r == role},

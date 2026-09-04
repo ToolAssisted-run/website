@@ -62,6 +62,11 @@ def main():
             if not json.loads(af.read_text()).get('claimed'):
                 af.unlink()
         mkarchive.prune_superseded(tmp)
+        vpy = tmp / 'validate.py'
+        if vpy.exists():
+            vtxt = vpy.read_text(encoding='utf-8')
+            if 'str(f.relative_to(rdir))' in vtxt:
+                vpy.write_text(vtxt.replace('str(f.relative_to(rdir))', 'f.relative_to(rdir).as_posix()'), encoding='utf-8')
         for member in ('TestAuthor', 'helper', 'watcher', 'second', 'skeptic', 'fan'):
             (tmp / 'authors' / f'{member.lower()}.json').write_text(
                 json.dumps({'username': member, 'claimed': True}, indent=1) + '\n')
@@ -115,7 +120,7 @@ def main():
         r = subprocess.run([sys.executable, str(REPO / 'generator/build.py'), str(tmp), str(out)],
                            capture_output=True, text=True)
         validation = subprocess.run(
-            [sys.executable, str(tmp / 'validate.py')], capture_output=True)
+            [sys.executable, '-X', 'utf8', str(tmp / 'validate.py')], capture_output=True)
         ck('validate accepts synthetic archive',
            mkarchive.validator_accepts_edit_retries(validation, tmp))
         ck('build succeeds', r.returncode == 0)

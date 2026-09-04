@@ -243,7 +243,7 @@ for gjson in ARCHIVE.glob('games/*/*/game.json'):
         r['_dir'] = rjson.parent
         r['_game'] = g
         notes = rjson.parent / 'notes.md'
-        r['_notes'] = notes.read_text() if notes.exists() else ''
+        r['_notes'] = notes.read_text(encoding='utf-8', errors='replace') if notes.exists() else ''
         g['runs'].append(r)
         runs.append(r)
 

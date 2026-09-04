@@ -565,10 +565,14 @@ def breadcrumb_ld(items):
                 {'@type': 'ListItem', 'position': i + 1, 'name': n,
                  'item': SITE_URL + '/' + p.lstrip('/')} for i, (n, p) in enumerate(items)]}
 
+INDEXED_PAGES = set()
+
 def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
          seo=None, full_title=False, scripts=None):
     """The site chrome around a page body: head, nav, footer (templates/base.html)."""
     full = title if full_title else title + ' · toolAssisted.run'
+    if seo and 'path' in seo and not seo.get('noindex'):
+        INDEXED_PAGES.add(seo['path'].lstrip('/'))
     return tpl('base.html', title=full, body=body, rel=rel, crumb=crumb, active=active,
                head_extra=head_extra, wide=wide,
                page_scripts=scripts or ['page-core.js'],
