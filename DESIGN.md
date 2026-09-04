@@ -320,10 +320,11 @@ Run encodes use a sticky floating player while reading long run pages. Playback
 activates the behavior when the provider confirms that it started; providers
 without a reliable playback event fall back to the first click or tap on the
 player area. Once the inline player leaves the viewport, desktop docks it in a
-draggable, edge-resizable frame at the lower right, defaulting to the facts
-aside width. Portrait mobile docks it at the top at full width; landscape mobile
-hides it and restores it when portrait returns. The frame's close button pauses
-and hides it. Resuming from the inline player restores the default frame
+draggable, four-corner-resizable frame at the lower right, defaulting to the
+facts aside width. Portrait mobile docks it at the top at full width while
+keeping the inline player's 16:9 scale rather than filling the screen; landscape
+mobile hides it and restores it when portrait returns. The frame's close button
+pauses and hides it. Resuming from the inline player restores the default frame
 geometry and continues from the stopped moment.
 
 ### States and the ranking gate

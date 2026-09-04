@@ -9,11 +9,17 @@ function initRunVideoFloat() {
   const frame = player && player.querySelector('iframe');
   if (!stage || !player || !frame) return;
 
+  const anchor = document.createElement('div');
   const shell = document.createElement('div');
   const bar = document.createElement('div');
   const title = document.createElement('span');
   const close = document.createElement('button');
-  const grip = document.createElement('span');
+  const grips = [
+    ['top-left', {left: true, top: true}],
+    ['top-right', {right: true, top: true}],
+    ['bottom-left', {left: true, bottom: true}],
+    ['bottom-right', {right: true, bottom: true}]
+  ];
   const defaults = {width: 0, height: 0, right: 18, bottom: 18};
   let floating = false;
   let activated = false;
@@ -23,6 +29,7 @@ function initRunVideoFloat() {
   let savedGeometry = null;
 
   shell.className = 'run-video-float';
+  anchor.className = 'run-video-anchor';
   bar.className = 'run-video-float-bar';
   title.className = 'run-video-float-title';
   title.textContent = 'Run encode';
@@ -30,10 +37,18 @@ function initRunVideoFloat() {
   close.type = 'button';
   close.setAttribute('aria-label', 'Close floating video');
   close.textContent = '×';
-  grip.className = 'run-video-float-grip';
   bar.append(title, close);
+  player.parentNode.insertBefore(anchor, player);
   player.parentNode.insertBefore(shell, player);
-  shell.append(bar, player, grip);
+  shell.append(bar, player);
+  grips.forEach(function(item) {
+    const grip = document.createElement('span');
+    grip.className = 'run-video-float-grip ' + item[0];
+    grip.addEventListener('pointerdown', function(ev) {
+      resizeStart(ev, item[1]);
+    });
+    shell.appendChild(grip);
+  });
 
   function isDesktop() {
     return window.matchMedia(DESKTOP_QUERY).matches;
@@ -110,6 +125,8 @@ function initRunVideoFloat() {
       return;
     }
     if (!floating) {
+      const rect = shell.getBoundingClientRect();
+      anchor.style.height = Math.round(rect.height) + 'px';
       floating = true;
       shell.classList.add('is-floating');
       applySavedGeometry();
@@ -123,6 +140,7 @@ function initRunVideoFloat() {
     floating = false;
     shell.classList.remove('is-floating');
     clearGeometry();
+    anchor.style.height = '';
     shell.hidden = false;
   }
 
@@ -138,7 +156,7 @@ function initRunVideoFloat() {
   }
 
   function isStageVisible() {
-    const rect = stage.getBoundingClientRect();
+    const rect = anchor.getBoundingClientRect();
     return rect.bottom > 0 && rect.top < window.innerHeight;
   }
 
@@ -157,17 +175,6 @@ function initRunVideoFloat() {
     return data.event === 'play' || data.event === 'playing' ||
       data.info === 1 || data.method === 'playProgress' ||
       data.playerState === 1 || data.event === 'video_play';
-  }
-
-  function enableProviderEvents() {
-    const url = new URL(frame.src);
-    if (provider === 'youtube') {
-      url.searchParams.set('enablejsapi', '1');
-      url.searchParams.set('origin', window.location.origin);
-    } else if (provider === 'vimeo') {
-      url.searchParams.set('api', '1');
-    }
-    frame.src = url.toString();
   }
 
   function subscribeToProviderEvents() {
@@ -219,8 +226,8 @@ function initRunVideoFloat() {
         Math.max(defaults.height - MAX_DELTA, startHeight + heightDelta)));
       shell.style.width = Math.round(width) + 'px';
       shell.style.height = Math.round(height) + 'px';
-      if (edges.left) shell.style.left = Math.round(startLeft + dx) + 'px';
-      if (edges.top) shell.style.top = Math.round(startTop + dy) + 'px';
+      if (edges.left) shell.style.left = Math.round(startLeft + startWidth - width) + 'px';
+      if (edges.top) shell.style.top = Math.round(startTop + startHeight - height) + 'px';
       if (edges.left || edges.top) {
         shell.style.right = '';
         shell.style.bottom = '';
@@ -264,24 +271,9 @@ function initRunVideoFloat() {
     savedGeometry = null;
     restoreInline(false);
   });
-  shell.addEventListener('pointerdown', function(ev) {
-    if (ev.target === close || ev.target === bar || bar.contains(ev.target)) return;
-    const rect = shell.getBoundingClientRect();
-    const edge = 10;
-    const edges = {
-      left: ev.clientX - rect.left <= edge,
-      right: rect.right - ev.clientX <= edge,
-      top: ev.clientY - rect.top <= edge,
-      bottom: rect.bottom - ev.clientY <= edge
-    };
-    if (edges.left || edges.right || edges.top || edges.bottom) {
-      resizeStart(ev, edges);
-    } else {
-      dragStart(ev);
-    }
-  });
-  enableProviderEvents();
+  bar.addEventListener('pointerdown', dragStart);
   frame.addEventListener('load', subscribeToProviderEvents);
+  subscribeToProviderEvents();
   player.addEventListener('pointerenter', function() {
     pointerOverPlayer = true;
   });
