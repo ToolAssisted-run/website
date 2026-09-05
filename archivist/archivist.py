@@ -2980,7 +2980,7 @@ def emulators_edit():
 
         checkout_branch()
         save_emulators(doc)
-        log_edit('emulators', system, ', '.join(changed), 'previous', 'updated', actor, reason)
+        log_edit('system', system, f'emulators ({", ".join(changed)})', 'previous', 'updated', actor, reason)
         ensure_member(actor)
         commit_push(f'Emulators ({system}): {", ".join(changed)} by {actor}\n\nReason: {reason}\nBy: {actor}\nVia: archivist')
 
