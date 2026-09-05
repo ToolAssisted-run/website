@@ -760,13 +760,27 @@ archivist, module responsibilities). What matters designwise:
   `edits.json`, `deletions.json`, `systems.json`, `schema/`, `validate.py`.
   Rosters are the facts; the stored `status` is a checked cache that CI
   refuses to let lie. Invalidated acts stay on the record with by/date/reason.
+- **A write that would break the archive's rules is refused, not reported.**
+  `gitstore.commit_push` stages, runs the archive's `validate.py` (about a
+  second and a half over the whole archive), and raises `ArchiveInvalid` if
+  the verdict names a path this request wrote; the endpoint answers 422 with
+  what the validator said, and `checkout_branch()` puts the tree back the way
+  origin has it, so nothing lands and nothing wedges. Refusal beats reporting
+  because 2.8.2 forbids rewriting history: an invalid state that lands is in
+  the archive for good. Only complaints about the paths this write touched
+  can refuse it, since a gate that took the whole verdict would turn one bad
+  record anywhere into a total outage of writes. Problems elsewhere are
+  logged and left to the daily sweep, as is a validator that could not run at
+  all (absent, no `jsonschema`, crashed, hung), which has said nothing about
+  the content and so never blocks a member.
 - **Three derivations must always agree** (change all or none):
   `archivist/records.py::sync_status`, the archive's `validate.py`, and
   `generator/model.py::eff_state`. Same for rename resolution
   (`identity.py::current_name` / `canon()` in the other two).
 - **The archivist** (Flask, VPS, `/opt/archivist/`, systemd `archivist`) is
   the archive's single writer: validates mechanically (parse + schema, no
-  emulation), commits and pushes over SSH with a deploy key
+  emulation), runs the archive's own `validate.py` over the tree before it
+  commits, commits and pushes over SSH with a deploy key
   (`GIT_SSH_COMMAND` in `/etc/archivist.env`, so any fresh clone can push).
   Identity: session first, shared key + explicit username as operator
   fallback; cookie-authenticated writes are CSRF-guarded by Origin. Reads
@@ -810,9 +824,13 @@ archivist, module responsibilities). What matters designwise:
   (HEAD moved → rebuild). **GitHub Pages remains the hot standby**: the
   same push still fires the website's `deploy.yml` dispatch
   (`WEBSITE_DISPATCH_TOKEN`; `reason=archive-content` skips the code-test
-  gate), the archive repo's `rebuild-site` job and a six-hourly schedule
-  back that up, and Pages keeps a complete, current copy of the site that
-  one DNS change puts back in front. Website pushes run the full suite
+  gate), the archive repo's `rebuild-site` job (ungated, nothing before it,
+  for the commits the archivist did not make: our own pushes, a merged PR)
+  and a six-hourly schedule back that up, and Pages keeps a complete, current
+  copy of the site that one DNS change puts back in front. The archive repo
+  validates nothing on the push path any more, because the archivist refuses
+  a bad write before it becomes a commit; what remains there is a daily
+  sweep, which reports what reached the archive around that gate. Website pushes run the full suite
   before touching either origin; a red suite keeps the last good build
   everywhere.
 - **The site serves its own images**: thumbnails at `/thumbs/`, proof

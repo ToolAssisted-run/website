@@ -12,6 +12,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -191,8 +192,92 @@ def dispatch_site_rebuild():
     threading.Thread(target=work, daemon=True).start()
 
 
+class ArchiveInvalid(Exception):
+    """A write that would leave the archive breaking its own rules."""
+
+
+VALIDATE_TIMEOUT = 120
+
+def _touched_keys():
+    """Paths this request wrote, plus the run directory that owns each.
+
+    What the validator names in a complaint is a file or a run folder, so
+    these are the strings that say "this one is mine".
+    """
+    keys = set()
+    for line in sh('git', 'status', '--porcelain').stdout.splitlines():
+        path = line[3:].strip().strip('"').split(' -> ')[-1]
+        if not path:
+            continue
+        keys.add(path)
+        parts = path.split('/')
+        for i, part in enumerate(parts[:-1]):
+            if part == 'runs':
+                keys.add('/'.join(parts[:i + 2]))
+                break
+    return keys
+
+
+def validate_worktree():
+    """The archive's own rules, applied to what this write touched, before
+    the commit that would break them.
+
+    validate.py lives in the archive because the archive is written from more
+    places than intake: our own commits, the self-import, a maintainer's
+    hand. This is the last point at which a bad write can still be refused,
+    and 2.8.2 is why refusing beats reporting: nobody may rewrite history, so
+    an invalid state that lands is in the archive for good.
+
+    Only complaints about the paths this request wrote can stop it. The
+    validator judges the whole archive, and a gate that took its verdict
+    whole would turn one bad record anywhere into a total outage of writes:
+    the morning two .wch attachments made the archive invalid, every
+    submission on the site would have been refused until somebody noticed.
+    Problems elsewhere are logged and left to the daily sweep.
+
+    Returns the complaint to refuse on, or None. A validator that could not
+    run at all (absent from the checkout, no jsonschema, crashed, hung) has
+    said nothing about the content, so it never blocks a member's write.
+    """
+    script = ARCHIVE / 'validate.py'
+    if not script.exists():
+        return None            # a fixture archive carries no validator
+    try:
+        r = subprocess.run([sys.executable, str(script)], cwd=ARCHIVE,
+                           capture_output=True, text=True,
+                           timeout=VALIDATE_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as e:
+        LOG.warning('archive validator could not run (%s): the write goes '
+                    'through and the daily sweep has the last word', e)
+        return None
+    if r.returncode == 0:
+        return None
+    said = ((r.stdout or '') + (r.stderr or '')).strip()
+    if 'INVALID' not in said:
+        # its own setup complaints ("jsonschema is not installed", "no
+        # schemas found") are not a verdict on this content
+        LOG.warning('archive validator unavailable: %s', said[:300])
+        return None
+    problems = [l.strip() for l in said.splitlines() if l.strip().startswith('\u2717')]
+    keys = _touched_keys()
+    mine = [l for l in problems if any(k in l for k in keys)]
+    theirs = [l for l in problems if l not in mine]
+    if theirs:
+        LOG.warning('the archive carries %d problem(s) this write did not '
+                    'cause; the daily sweep reports them: %s',
+                    len(theirs), ' | '.join(theirs)[:600])
+    return '\n'.join(mine) if mine else None
+
+
 def commit_push(message):
     sh('git', 'add', '-A')
+    bad = validate_worktree()
+    if bad:
+        LOG.error('refusing a write the archive would reject:\n%s', bad[:4000])
+        # put the checkout back the way origin has it, exactly as a failed
+        # request's leftovers are discarded, so the next write starts clean
+        checkout_branch()
+        raise ArchiveInvalid(bad)
     sh('git', 'commit', '-q', '-m', message)
     for attempt in range(2):
         try:

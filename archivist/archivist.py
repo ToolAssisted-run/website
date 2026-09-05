@@ -88,6 +88,7 @@ from identity import (
     sso_sign,
 )
 from gitstore import (
+    ArchiveInvalid,
     checkout_branch,
     commit_push,
     current_serial,
@@ -181,6 +182,25 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 96 * 1024 * 1024
 
 sso_nonces = {}   # nonce -> expiry
+
+@app.errorhandler(ArchiveInvalid)
+def archive_invalid(e):
+    """A write the archive's own rules reject never became a commit.
+
+    Who: any endpoint that writes, through commit_push
+    Reads: the validator's complaint
+    Answers: 422 {ok: false, error, detail} and an unchanged archive
+
+    The member sees that nothing was written and why, rather than a 500
+    that leaves them guessing whether it landed. Nothing was: the checkout
+    is back at origin's state before this is raised.
+    """
+    LOG.error('write refused by the archive\'s own rules: %s', str(e)[:1000])
+    return jsonify({'ok': False,
+                    'error': 'the archive refused this change: it would leave '
+                             'the archive breaking its own rules. Nothing was '
+                             'written. Please report this.',
+                    'detail': str(e)[:2000]}), 422
 
 @app.after_request
 def cors(resp):

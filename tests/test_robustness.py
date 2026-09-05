@@ -194,6 +194,49 @@ def main():
             code, r, _ = call(U + '/api/submit', dict(sub), files={'movie': ('m.bk2', mkarchive.unique_movie())})
             ck('intake still healthy after a rejection', code == 200, str(r)[:120])
 
+            # ---------- a write the archive's own rules reject ----------
+            # The gate is in commit_push: validate.py runs over the tree
+            # before the commit, and a complaint naming a path this request
+            # wrote refuses it, so an invalid state never reaches history
+            # (2.8.2 leaves nothing to be rewritten afterwards). The rule is
+            # pushed like any other content, because a refusal resets the
+            # checkout and anything merely planted in it would go with it.
+            canary = (work / 'validate.py').read_text(encoding='utf-8').replace(
+                'if errors:',
+                "for _p in ROOT.glob('games/*/*/runs/M*'):\n"
+                "    if 'gatecanary' in ((_p / 'notes.md').read_text(encoding='utf-8')\n"
+                "                         if (_p / 'notes.md').exists() else ''):\n"
+                "        err(f'{_p}: fixture canary refuses this run')\n"
+                '\nif errors:', 1)
+            other_pushes(other, 'validate.py', canary)
+            for _ in range(60):     # the checkout refreshes on its own clock
+                if 'gatecanary' in (work / 'validate.py').read_text(encoding='utf-8'):
+                    break
+                try:    # a read refreshes the checkout on its own clock
+                    urllib.request.urlopen(
+                        U + '/api/categories?game=nes/testgame', timeout=5).read()
+                except OSError:
+                    pass
+                time.sleep(1)
+            ck('the planted rule reached the checkout',
+               'gatecanary' in (work / 'validate.py').read_text(encoding='utf-8'))
+            git('fetch', '-q', 'origin', cwd=other)
+            before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
+            code, r, _ = call(U + '/api/submit', dict(sub, notes='gatecanary'),
+                              files={'movie': ('m.bk2', mkarchive.unique_movie())})
+            ck('a write the archive would refuse is refused', code == 422, str(r)[:200])
+            ck('and the member is told what the archive said',
+               'canary' in str(r.get('detail', '')), str(r)[:200])
+            git('fetch', '-q', 'origin', cwd=other)
+            after = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
+            ck('a refused write commits nothing', before == after,
+               f'{before[:8]} -> {after[:8]}')
+            # the refusal put the checkout back the way origin has it:
+            # intake is healthy, not wedged, and takes the next write
+            code, r, _ = call(U + '/api/submit', dict(sub),
+                              files={'movie': ('m.bk2', mkarchive.unique_movie())})
+            ck('intake still healthy after a refused write', code == 200, str(r)[:120])
+
             # ---------- the archive is valid throughout ----------
             check = td / 'check'
             subprocess.run(['git', 'clone', '-q', f'file://{origin}', str(check)], check=True)
