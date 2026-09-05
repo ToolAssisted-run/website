@@ -597,6 +597,8 @@ window.TARApp = window.TARApp || {};
     var seed = [];
     try { seed = JSON.parse(box.dataset.files || '[]'); } catch (e) {}
     seed.forEach(addRow);
+    // always show at least one row so file_name / file_sha1 are immediately visible
+    if (!seed.length) addRow();
     box.querySelector('.addfile').addEventListener('click', function(){
       var row = addRow();
       row.querySelector('input[name=file_name]').focus();
