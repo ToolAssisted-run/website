@@ -760,6 +760,16 @@ archivist, module responsibilities). What matters designwise:
   `edits.json`, `deletions.json`, `systems.json`, `schema/`, `validate.py`.
   Rosters are the facts; the stored `status` is a checked cache that CI
   refuses to let lie. Invalidated acts stay on the record with by/date/reason.
+- **Intake reads the archive's rules, it does not copy them.** The extensions
+  intake accepts (`settings.allowed_movie_exts` / `allowed_attach_exts`) are
+  this service's own roster narrowed by the lists in the archive's
+  `validate.py`, and its size caps are clamped to the archive's; both are
+  re-read when that file changes, and intake's own values stand in when there
+  is no validator to read. Intake stricter than the archive is fine and
+  deliberate (32 MB movies against the archive's 100 MB); intake looser is
+  what archives a correct submission and then breaks the archive, which
+  happened twice in a day (a `.chimeraProject` movie, two `.wch` watch
+  files). A member hears no at the door, in the words of the rule.
 - **A write that would break the archive's rules is refused, not reported.**
   `gitstore.commit_push` stages, runs the archive's `validate.py` (about a
   second and a half over the whole archive), and raises `ArchiveInvalid` if

@@ -110,6 +110,47 @@ ATTACH_EXTS = {
     '.csv', '.log', '.diff', '.patch',
 }
 
+# The archive is the authority on what it will hold, and its rules live in
+# its own validate.py. Intake reads them there rather than keeping a second
+# copy: the copies drift, and a drifted copy takes a member's correct
+# submission, archives it, and leaves the archive invalid (a .chimeraProject
+# movie, then two .wch watch files, within a day of each other). A stat per
+# call, re-read only when the file changes, and intake's own roster stands in
+# when the archive has no validator to read.
+_roster_cache = {}
+
+def _archive_roster(name):
+    """The extensions the archive's validate.py names in set literal `name`,
+    or None when it cannot be read."""
+    script = ARCHIVE / 'validate.py'
+    try:
+        stamp = script.stat().st_mtime_ns, script.stat().st_size
+    except OSError:
+        return None
+    hit = _roster_cache.get(name)
+    if hit and hit[0] == stamp:
+        return hit[1]
+    try:
+        body = script.read_text(encoding='utf-8').split(f'{name} = {{', 1)[1]
+        found = set(re.findall(r"'(\.[a-z0-9]+)'", body.split('}', 1)[0])) or None
+    except (OSError, IndexError, UnicodeDecodeError):
+        found = None
+    _roster_cache[name] = (stamp, found)
+    return found
+
+def allowed_movie_exts():
+    """Movie formats intake accepts, dotless: what this service can read,
+    narrowed to what the archive will hold."""
+    theirs = _archive_roster('MOVIE_ATTACH_EXT')
+    return MOVIE_EXTS if theirs is None else {e for e in MOVIE_EXTS
+                                              if '.' + e in theirs}
+
+def allowed_attach_exts():
+    """Text attachments intake accepts, dotted, narrowed the same way."""
+    theirs = _archive_roster('ALLOWED_ATTACH_EXT')
+    return ATTACH_EXTS if theirs is None else ATTACH_EXTS & theirs
+
+
 MOVIE_MAX = 32 * 1024 * 1024   # intake cap. A console TAS can be genuinely
 
 NOTES_MAX = 256 * 1024
@@ -123,6 +164,39 @@ ATTACH_MAX_COUNT = 8
 SHOT_MAX_EACH = 512 * 1024
 
 SHOT_MAX_TOTAL = 8 * 1024 * 1024
+
+
+def _archive_cap(name, ours):
+    """The archive's own limit for `name`, when it is stricter than ours.
+
+    Intake is deliberately tighter than the archive in places (a 32 MB movie
+    against the archive's 100 MB), and that direction is fine: what breaks
+    the archive is intake being looser, so the smaller of the two is the one
+    that governs. Read from validate.py's source, arithmetic and all, so a
+    limit tightened there takes effect here without a code change.
+    """
+    script = ARCHIVE / 'validate.py'
+    try:
+        found = re.search(rf'^{name} = ([0-9 *]+)$',
+                          script.read_text(encoding='utf-8'), re.M)
+    except (OSError, UnicodeDecodeError):
+        return ours
+    if not found:
+        return ours
+    theirs = 1
+    for factor in found.group(1).split('*'):
+        theirs *= int(factor.strip())
+    if theirs < ours:
+        LOG.warning('%s: the archive caps this at %d, tighter than intake\'s '
+                    '%d, so intake takes the archive\'s', name, theirs, ours)
+    return min(ours, theirs)
+
+MOVIE_MAX = _archive_cap('MOVIE_MAX', MOVIE_MAX)
+NOTES_MAX = _archive_cap('NOTES_MAX', NOTES_MAX)
+ATTACH_MAX_EACH = _archive_cap('ATTACH_MAX_EACH', ATTACH_MAX_EACH)
+ATTACH_MAX_TOTAL = _archive_cap('ATTACH_MAX_TOTAL', ATTACH_MAX_TOTAL)
+SHOT_MAX_EACH = _archive_cap('SHOT_MAX_EACH', SHOT_MAX_EACH)
+SHOT_MAX_TOTAL = _archive_cap('SHOT_MAX_TOTAL', SHOT_MAX_TOTAL)
 
 THUMB_MAX = 256 * 1024
 

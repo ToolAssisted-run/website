@@ -44,7 +44,8 @@ from settings import (
     now_iso,
     ACT_NOTES_MAX,
     ARCHIVE,
-    ATTACH_EXTS,
+    allowed_attach_exts,
+    allowed_movie_exts,
     ATTACH_MAX_COUNT,
     ATTACH_MAX_EACH,
     ATTACH_MAX_TOTAL,
@@ -58,7 +59,6 @@ from settings import (
     DUMPS_DIR,
     IMAGE_MAGIC,
     LOG,
-    MOVIE_EXTS,
     MOVIE_MAX,
     VISITS_FILE,
     NOTES_MAX,
@@ -196,11 +196,13 @@ def archive_invalid(e):
     is back at origin's state before this is raised.
     """
     LOG.error('write refused by the archive\'s own rules: %s', str(e)[:1000])
+    said = str(e).strip()
+    # the validator names a path on this server; a member reads a run id
+    first = (said.splitlines() or [''])[0].replace(f'{ARCHIVE}/', '').strip()
     return jsonify({'ok': False,
-                    'error': 'the archive refused this change: it would leave '
-                             'the archive breaking its own rules. Nothing was '
-                             'written. Please report this.',
-                    'detail': str(e)[:2000]}), 422
+                    'error': f'the archive will not hold this as written: '
+                             f'{first}. Nothing was written.',
+                    'detail': said[:2000]}), 422
 
 @app.after_request
 def cors(resp):
@@ -445,21 +447,25 @@ def read_attachments(existing=None):
     existing = existing or []
     attachments = []
     total = 0
+    # what this service can read, narrowed to what the archive will hold:
+    # taking a file the archive refuses archives it and then breaks the
+    # archive, so the door is the place to say no
+    movie_exts, attach_exts = allowed_movie_exts(), allowed_attach_exts()
     movie_atts = sum(1 for a in existing
-                     if pathlib.Path(a['file']).suffix.lower().lstrip('.') in MOVIE_EXTS)
+                     if pathlib.Path(a['file']).suffix.lower().lstrip('.') in movie_exts)
     for upload in request.files.getlist('attachments'):
         if not upload.filename:
             continue
         name = re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(upload.filename).name)
         suffix = pathlib.Path(name).suffix.lower()
         data = upload.read()
-        if suffix.lstrip('.') in MOVIE_EXTS:
+        if suffix.lstrip('.') in movie_exts:
             if len(data) > MOVIE_MAX:
                 return None, fail(
                     f'movie attachment {name!r} exceeds {MOVIE_MAX >> 20} MB'
                 )
             movie_atts += 1
-        elif suffix in ATTACH_EXTS:
+        elif suffix in attach_exts:
             total += len(data)
             if len(data) > ATTACH_MAX_EACH:
                 return None, fail(f'attachment {name!r} exceeds 128 KB')
@@ -3682,7 +3688,7 @@ def movie_inspect():
         return fail('movie file is empty')
     if len(movie_bytes) > MOVIE_MAX:
         return fail(MOVIE_TOO_LARGE)
-    known = ext in MOVIE_EXTS
+    known = ext in allowed_movie_exts()
     parsed = movieparse.parse(movie_upload.filename, movie_bytes) if known else {'ok': False, 'error': f'.{ext} is not a format the archive can read'}
     fps = parsed.get('fps') if parsed.get('ok') else None
     frames = parsed.get('frames') if parsed.get('ok') else None

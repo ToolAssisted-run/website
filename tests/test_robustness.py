@@ -201,7 +201,11 @@ def main():
             # (2.8.2 leaves nothing to be rewritten afterwards). The rule is
             # pushed like any other content, because a refusal resets the
             # checkout and anything merely planted in it would go with it.
-            canary = (work / 'validate.py').read_text(encoding='utf-8').replace(
+            canary = (work / 'validate.py').read_text(encoding='utf-8')
+            # the archive stops accepting one text format: intake has to stop
+            # taking it too, at the door, without waiting for the commit gate
+            ck('the fixture validator lists .lua', "'.lua'," in canary)
+            canary = canary.replace("'.lua',", '', 1).replace(
                 'if errors:',
                 "for _p in ROOT.glob('games/*/*/runs/M*'):\n"
                 "    if 'gatecanary' in ((_p / 'notes.md').read_text(encoding='utf-8')\n"
@@ -222,6 +226,11 @@ def main():
                'gatecanary' in (work / 'validate.py').read_text(encoding='utf-8'))
             git('fetch', '-q', 'origin', cwd=other)
             before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
+            code, r, _ = call(U + '/api/submit', dict(sub),
+                              files={'movie': ('m.bk2', mkarchive.unique_movie()),
+                                     'attachments': ('helper.lua', b'-- helper\n')})
+            ck('intake refuses what the archive no longer accepts, at the door',
+               code == 400 and 'allowed' in str(r.get('error', '')), str(r)[:200])
             code, r, _ = call(U + '/api/submit', dict(sub, notes='gatecanary'),
                               files={'movie': ('m.bk2', mkarchive.unique_movie())})
             ck('a write the archive would refuse is refused', code == 422, str(r)[:200])
