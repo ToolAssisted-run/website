@@ -257,8 +257,9 @@ form, never a refusal · optional completion
 date (real date, 1980+, not future; shown beside the submission date;
 author-editable later) · content warnings, required where they apply (§3.1.7; mature/violent,
 sexual, photosensitivity, strong language; sexual blurs thumbnails behind a
-session-scoped 18+ overlay) · text attachments (allowlisted extensions incl.
-.xml, UTF-8, ≤128 KB each/≤512 KB total/≤8 files, plus up to 4 extra movie
+session-scoped 18+ overlay) · text attachments (allowlisted plain-text extensions
+for configs, scripts, solvers, memory watches, cheats, subtitles, and diffs,
+UTF-8, ≤128 KB each/≤512 KB total/≤8 files, plus up to 4 extra movie
 files) · notes (the author's write-up) · consent: **CC BY 4.0** license grant
 plus agreement with the Community Principles (§1), the Run submission policy
 (§3.1) and the Multiple author submission policy (§3.2); the constitution's

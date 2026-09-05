@@ -92,8 +92,23 @@ SESSION_TTL = 14 * 24 * 3600
 
 MOVIE_EXTS = set(movieparse.PARSERS) | set(movieparse.KNOWN_UNPARSED)
 
-ATTACH_EXTS = {'.txt', '.md', '.ini', '.cfg', '.conf', '.toml', '.json', '.yaml',
-               '.yml', '.xml', '.lua', '.sync', '.properties'}
+ATTACH_EXTS = {
+    # Text documentation & configuration
+    '.txt', '.md', '.ini', '.cfg', '.conf', '.toml', '.json', '.yaml',
+    '.yml', '.xml', '.sync', '.properties', '.htm', '.html',
+    # Scripts, solvers & automation
+    '.lua', '.py', '.asm', '.cs', '.sh', '.bat', '.ps1', '.ahk',
+    '.js', '.ts', '.pl', '.c', '.cpp', '.h', '.java', '.tcl',
+    '.rb', '.vbs', '.avs',
+    # Memory watch, symbols & debugging
+    '.wch', '.watch', '.sym', '.map', '.dbg', '.nl', '.bpt', '.gdb', '.lst',
+    # Cheats & emulator layout configs
+    '.cht', '.clt', '.pat', '.uae', '.lay',
+    # Subtitles & commentary tracks
+    '.srt', '.ass', '.ssa', '.ytt',
+    # Data logs & source diffs
+    '.csv', '.log', '.diff', '.patch',
+}
 
 MOVIE_MAX = 32 * 1024 * 1024   # intake cap. A console TAS can be genuinely
 

@@ -524,7 +524,14 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
       }
 
       // ---- Supplementary files (attachments): staged list, add, delete, replace ----
-      var ATTACH_TEXT_EXTS = new Set(['txt', 'md', 'ini', 'cfg', 'conf', 'toml', 'json', 'yaml', 'yml', 'xml', 'lua', 'sync', 'properties']);
+      var ATTACH_TEXT_EXTS = new Set([
+        'ahk', 'asm', 'ass', 'avs', 'bat', 'bpt', 'c', 'cfg', 'cht', 'clt',
+        'conf', 'cpp', 'cs', 'csv', 'dbg', 'diff', 'gdb', 'h', 'htm', 'html',
+        'ini', 'java', 'js', 'json', 'lay', 'log', 'lst', 'lua', 'map', 'md',
+        'nl', 'patch', 'pat', 'pl', 'properties', 'ps1', 'py', 'rb', 'sh', 'srt',
+        'ssa', 'sym', 'sync', 'tcl', 'toml', 'ts', 'txt', 'uae', 'vbs', 'watch',
+        'wch', 'xml', 'yaml', 'yml', 'ytt'
+      ]);
       var ATTACH_MOVIE_EXTS = new Set([
         '3ct', 'bk2', 'bkm', 'chimeraproject', 'ctas', 'ctm', 'dft', 'dof', 'dsm', 'dtm',
         'fbm', 'fcm', 'fm2', 'fm3', 'fmv', 'gbmv', 'gmtas', 'gmv', 'gzm', 'hltas',
