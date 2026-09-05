@@ -666,6 +666,18 @@ def main():
         ours = {'.' + e for e in set(movieparse.PARSERS) | set(movieparse.KNOWN_UNPARSED)}
         ck('the archive accepts every movie format intake does',
            not (ours - declared), str(sorted(ours - declared)[:6]))
+        # The same drift, in the other roster: intake's text attachments
+        # (settings.ATTACH_EXTS) widened once and two .wch watch files
+        # archived cleanly and then failed the archive (M6986). Read as text
+        # so this stays hermetic and needs none of settings' environment.
+        vtext = validator.read_text()
+        arch_txt = set(re.findall(r"'(\.[a-z0-9]+)'",
+                                  vtext.split('ALLOWED_ATTACH_EXT = {')[1].split('}')[0]))
+        stext = (REPO / 'archivist' / 'settings.py').read_text()
+        ours_txt = set(re.findall(r"'(\.[a-z0-9]+)'",
+                                  stext.split('ATTACH_EXTS = {')[1].split('}')[0]))
+        ck('the archive accepts every text attachment intake does',
+           ours_txt and not (ours_txt - arch_txt), str(sorted(ours_txt - arch_txt)[:6]))
     else:
         print('SKIP archive attachment roster: no archive checkout')
 
