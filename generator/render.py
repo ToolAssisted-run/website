@@ -494,6 +494,7 @@ FOUNDER_NAMES_JS = json.dumps(sorted({ev['user'].lower()
 
 NAV_LINKS = [('browse/', 'Runs'), ('games/', 'Games'), ('authors/', 'Members'),
              ('contribute/', 'Contribute'), ('tools/', 'Tools'), ('submit/', 'Submit'),
+             ('about/', 'About us'),
              ('|', ''),   # separator: in-site links end here
              (FORUM, 'Forum'), ('https://discord.gg/VsKDT9XB6u', 'Discord')]
 

@@ -1,0 +1,82 @@
+{# The About page: what this community is, how to submit, what a game's
+   owner can shape, what we allow, and where the community lives. #}
+<header class="ghead"><div><h1>About us</h1>
+<p class="authline">toolAssisted.run provides a platform for archiving and showcasing
+tool-assisted speedruns.</p></div></header>
+
+<p class="abovelede">We are a community where casual viewers, speedrunners and TASers of
+all skill levels are welcome: from those just starting out to experts with years of
+experience. All types of TASes are accepted here, from casual superplays to runs that push
+a game to its absolute limits. In a nutshell, we wish to enable people to come together to
+enjoy and celebrate their favourite games through TASing.</p>
+
+<section><h2>How it works</h2>
+<ol class="steps">
+<li><b>Go to <a href="../submit/">the submit page</a>.</b> You need a forum account, and
+that is the only account there is.</li>
+<li><b>Select the game and category</b> you are submitting a TAS for. Neither one there
+yet? You can create it, right in the form.</li>
+<li><b>Provide a video link</b> and the rest of the run's information: authors, time, the
+movie file if you have one.</li>
+<li><b>Click Submit, and voilà:</b> your TAS is showcased on the site, in the archive, and
+in the game's leaderboard from that moment.</li>
+</ol>
+<p class="rules fullw">From there your run can collect likes, be <b>verified</b> (somebody
+watches the encode and confirms it meets the category's goal, which is what ranks it) and,
+if you attached a movie file, be <b>reproduced</b> by somebody who plays it back and
+confirms it syncs. <a href="../contribute/">The worklist</a> shows what is waiting.</p>
+</section>
+
+<section><h2>Yours to shape</h2>
+<div class="cols3">
+<div class="factbox"><h4>Games and groups</h4><p class="statline">Any member creates and
+edits games, and gathers a series into a group{% if group_example %}, like
+<a href="../groups/{{ group_example['key'] }}/">{{ group_example['title'] }}</a>{% endif %}.</p></div>
+<div class="factbox"><h4>Categories</h4><p class="statline">Categories and subcategories
+belong to each game{% if game_example %}, as on
+<a href="../games/{{ game_example['key'] }}/">{{ game_example['title'] }}</a>{% endif %}.
+Individual levels can be categories or subcategories of their own.</p></div>
+<div class="factbox"><h4>Your own metrics</h4><p class="statline">A category can be scored
+by whatever actually decides it: Score, Percentage completed, In-game time, Load-removed
+time.</p></div>
+<div class="factbox"><h4>Unranked boards</h4><p class="statline">Play-arounds and
+experimental categories can be listed without a ranking, so a run that is not a race is
+not judged like one.</p></div>
+</div>
+</section>
+
+<section><h2>Permissive, not restrictive</h2>
+<ul class="allowlist">
+<li><b>Video-only runs are welcome.</b> No movie file, no reproducibility requirement: the
+encode is the run.</li>
+<li><b>The community decides which tools and emulators suit each game</b>, not a central
+committee.</li>
+<li><b>Tools like Cheat Engine, or one written for a single game, are allowed</b> where the
+community accepts them.</li>
+</ul>
+</section>
+
+<section><h2>A community, not a filing cabinet</h2>
+<div class="cols3">
+<div class="factbox"><h4>Community guidelines</h4><p class="statline">A strong set of
+<a href="https://github.com/ToolAssisted-run#readme">community guidelines</a> keeps this
+place free, open and speedrunning-oriented.</p></div>
+<div class="factbox"><h4>Forum</h4><p class="statline">A <a href="{{ FORUM }}">full
+forum</a>, ideal for members helping each other along in their TAS quest.</p></div>
+<div class="factbox"><h4>Discord</h4><p class="statline">A gaming-first
+<a href="https://discord.gg/VsKDT9XB6u">Discord server</a>, where the talk stays on games.</p></div>
+<div class="factbox"><h4>Contribution points</h4><p class="statline">Points for what you do
+here: verifying, reproducing, playing a movie back on real hardware.
+<a href="../contribute/">The board</a> says who has done the most.</p></div>
+<div class="factbox"><h4>Every run is everyone's</h4><p class="statline">TASes are a
+community affair: anybody can like a run and say what they think of it, on the run's page
+and in its forum topic.</p></div>
+<div class="factbox"><h4>Experts</h4><p class="statline">Members become experts for the
+games they know, and weigh in when a verification or a reproduction is genuinely
+difficult.</p></div>
+</div>
+</section>
+
+<div class="resourcebox"><b>Have a run to share?</b>
+<a href="../submit/">Submit it</a>. It takes a few minutes, and it is archived the moment
+it arrives.</div>
