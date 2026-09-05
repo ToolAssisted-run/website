@@ -734,14 +734,20 @@ footer a{color:var(--accent-text);text-decoration:none}
    their own surfaces with the number set in mono, and a plain list of what
    this place allows. Numbers come from a counter, so the markup stays an
    ordered list for anything reading it aloud. */
-.abovelede{font-size:1.02rem;color:var(--muted);max-width:78ch;margin:2px 0 6px}
+.abovelede{font-size:1.02rem;color:var(--muted);margin:2px 0 6px}
 .abovelede b{color:var(--ink)}
+.abovelede a{color:var(--accent-text)}
 .steps{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:15px;counter-reset:step;margin:0 0 14px}
 .steps li{counter-increment:step;background:var(--bg);border:2.5px solid var(--hair);border-radius:12px;box-shadow:var(--shadow);padding:13px 15px 15px;font-size:.89rem;color:var(--muted)}
 .steps li::before{content:counter(step);display:block;font-family:ui-monospace,monospace;font-size:1.45rem;line-height:1;color:var(--accent-text);margin-bottom:9px}
 .steps li b{color:var(--ink)}
+/* the community grid is deliberately three across and two down, not the
+   auto-fit of .cols3: six boxes on one line reads as a toolbar */
+.sixup{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:860px){.sixup{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.sixup{grid-template-columns:minmax(0,1fr)}}
 .allowlist{list-style:none;margin:0}
-.allowlist li{position:relative;padding-left:26px;margin:10px 0;font-size:.93rem;color:var(--muted);max-width:82ch}
+.allowlist li{position:relative;padding-left:26px;margin:10px 0;font-size:.93rem;color:var(--muted)}
 .allowlist li::before{content:"\2713";position:absolute;left:2px;top:0;color:var(--accent-text);font-weight:700}
 .allowlist li b{color:var(--ink)}
 .chimeradl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 18px}
