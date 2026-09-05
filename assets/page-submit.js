@@ -878,6 +878,541 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           renderAttachments();
         });
       }
+
+      // ---- Emulator preset assistant: context-aware presets, version chips,
+      // core selection, and quick chips for the reproduction tool field ----
+      var EMULATOR_PRESETS = [];
+      var QUICK_CHIPS = {};
+
+      function loadAuthoritativeEmulators(){
+        function ingest(data){
+          if (!data) return;
+          if (data.systems && typeof data.systems === 'object') {
+            var sysMap = data.systems;
+            var catalog = data.catalog || data.presets || [];
+            var catMap = {};
+            catalog.forEach(function(c){ catMap[c.id] = c; });
+
+            QUICK_CHIPS = {};
+            var presetMap = {};
+
+            for (var skey in sysMap) {
+              var sdata = sysMap[skey];
+              if (sdata.quick_chips) QUICK_CHIPS[skey] = sdata.quick_chips;
+              (sdata.tools || []).forEach(function(t){
+                var tid = t.id;
+                var catTool = catMap[tid] || { id: tid, name: tid, kind: 'emulator' };
+                if (!presetMap[tid]) {
+                  presetMap[tid] = {
+                    id: tid,
+                    name: catTool.name || tid,
+                    kind: catTool.kind || 'emulator',
+                    game: catTool.game || '',
+                    multi: !!catTool.multi,
+                    has_cores: !!catTool.has_cores,
+                    aliases: catTool.aliases || [],
+                    systems: [],
+                    versions: t.versions || catTool.versions || [],
+                    system_versions: {},
+                    cores: {}
+                  };
+                }
+                var p = presetMap[tid];
+                if (p.systems.indexOf(skey) < 0) p.systems.push(skey);
+                if (t.versions && t.versions.length) p.system_versions[skey] = t.versions;
+                if (t.cores && t.cores.length) p.cores[skey] = t.cores;
+              });
+            }
+
+            catalog.forEach(function(c){
+              if (!presetMap[c.id]) {
+                presetMap[c.id] = {
+                  id: c.id,
+                  name: c.name || c.id,
+                  kind: c.kind || 'emulator',
+                  game: c.game || '',
+                  multi: !!c.multi,
+                  has_cores: !!c.has_cores,
+                  aliases: c.aliases || [],
+                  systems: c.systems || [],
+                  versions: c.versions || [],
+                  system_versions: {},
+                  cores: c.cores || {}
+                };
+              }
+            });
+
+            EMULATOR_PRESETS = Object.values(presetMap);
+          } else if (data.presets && Array.isArray(data.presets)) {
+            EMULATOR_PRESETS = data.presets;
+            if (data.quick_chips) QUICK_CHIPS = data.quick_chips;
+          }
+        }
+
+        var elData = document.getElementById('s-emulatordata');
+        if (elData && elData.textContent.trim()) {
+          try { ingest(JSON.parse(elData.textContent)); } catch(e) {}
+        }
+        if (typeof fetch === 'function') {
+          var vq = typeof versionQuery !== 'undefined' ? versionQuery : '';
+          fetch(rel + 'assets/emulators.json' + vq)
+            .then(function(res){ return res.ok ? res.json() : null; })
+            .then(function(data){
+              if (data) {
+                ingest(data);
+                updateEmulatorAssistant();
+              }
+            })
+            .catch(function(){});
+        }
+      }
+      loadAuthoritativeEmulators();
+
+      var emuPresetSel = document.getElementById('s-emu-preset');
+      var emuVersionsBox = document.getElementById('s-emu-versions');
+      var emuQuickBox = document.getElementById('s-emu-quick');
+      var emuInput = document.getElementById('s-emulator') || submitForm.querySelector('[name=emulator]');
+
+      function escapeRegex(s){
+        return (s || '').replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      }
+
+      function getCurrentSystem(){
+        if (gameSelect && gameSelect.value) return systemOf(gameSelect.value);
+        if (systemSelect && systemSelect.value) return systemSelect.value;
+        return '';
+      }
+
+      function findPresetMatch(str){
+        if (!str) return null;
+        var s = str.trim().toLowerCase();
+        for (var i = 0; i < EMULATOR_PRESETS.length; i++) {
+          var p = EMULATOR_PRESETS[i];
+          if (s === p.name.toLowerCase() || s.indexOf(p.name.toLowerCase()) === 0) return p;
+          for (var j = 0; j < (p.aliases || []).length; j++) {
+            var a = p.aliases[j].toLowerCase();
+            if (s === a || s.indexOf(a) === 0) return p;
+          }
+        }
+        return null;
+      }
+
+      function getCoresForPreset(preset, sys){
+        if (!preset || !preset.cores) return [];
+        if (Array.isArray(preset.cores)) return preset.cores;
+        if (sys && preset.cores[sys]) return preset.cores[sys];
+        return [];
+      }
+
+      function applyVersionToInput(preset, ver){
+        if (!emuInput) return;
+        var cur = emuInput.value.trim();
+        if (!cur) {
+          emuInput.value = preset.name + ' ' + ver;
+        } else {
+          var matched = findPresetMatch(cur);
+          if (matched && matched.id === preset.id) {
+            var verRegex = new RegExp('^(' + escapeRegex(matched.name) + '[\\s\\-_]+)([^\\s\\(\\+]+)(.*)$', 'i');
+            var m = verRegex.exec(cur);
+            if (m) {
+              emuInput.value = matched.name + ' ' + ver + (m[3] ? m[3] : '');
+            } else {
+              var nameOnlyRegex = new RegExp('^' + escapeRegex(matched.name) + '([\\s\\-_]*)(.*)$', 'i');
+              var m2 = nameOnlyRegex.exec(cur);
+              if (m2) {
+                emuInput.value = matched.name + ' ' + ver + (m2[2] ? ' ' + m2[2].trim() : '');
+              } else {
+                emuInput.value = preset.name + ' ' + ver;
+              }
+            }
+          } else {
+            emuInput.value = preset.name + ' ' + ver;
+          }
+        }
+        syncPresetFromInput();
+        emuInput.dispatchEvent(new Event('input', {bubbles: true}));
+        emuInput.dispatchEvent(new Event('change', {bubbles: true}));
+      }
+
+      function extractCoreFromInput(str){
+        if (!str) return '';
+        var m = /\s*\((?:Core:\s*)?([^\)]+)\)/i.exec(str);
+        return m ? m[1].trim() : '';
+      }
+
+      function applyCoreToInput(preset, core){
+        if (!emuInput) return;
+        var cur = emuInput.value.trim();
+        var corePattern = /\s*\((?:Core:\s*)?([^\)]+)\)/i;
+        var m = corePattern.exec(cur);
+        if (m) {
+          var existingCore = m[1].trim();
+          if (existingCore.toLowerCase() === core.toLowerCase()) {
+            emuInput.value = cur.replace(corePattern, '').trim();
+          } else {
+            emuInput.value = cur.replace(corePattern, ' (Core: ' + core + ')').trim();
+          }
+        } else {
+          if (!cur) {
+            emuInput.value = (preset ? preset.name : '') + ' (Core: ' + core + ')';
+            emuInput.value = emuInput.value.trim();
+          } else {
+            emuInput.value = cur + ' (Core: ' + core + ')';
+          }
+        }
+        syncPresetFromInput();
+        emuInput.dispatchEvent(new Event('input', {bubbles: true}));
+        emuInput.dispatchEvent(new Event('change', {bubbles: true}));
+      }
+
+      function updateActiveChips(preset){
+        if (!emuVersionsBox || !emuInput) return;
+        var cur = emuInput.value.trim();
+        var activeCoreName = extractCoreFromInput(cur).toLowerCase();
+
+        emuVersionsBox.querySelectorAll('.emu-chip:not(.emu-chip-core):not(.emu-chip-add-core)').forEach(function(btn){
+          var v = btn.dataset.ver;
+          var isMatch = false;
+          if (v && cur) {
+            var regex = new RegExp('(?:^|[\\s\\-_])' + escapeRegex(v) + '(?:[\\s\\-_\\(]|$)', 'i');
+            isMatch = regex.test(cur);
+          }
+          btn.classList.toggle('active', isMatch);
+        });
+
+        emuVersionsBox.querySelectorAll('.emu-chip-core').forEach(function(btn){
+          var c = (btn.dataset.core || '').toLowerCase();
+          var isMatch = (activeCoreName && activeCoreName === c);
+          btn.classList.toggle('active', !!isMatch);
+        });
+      }
+
+      function renderVersionsAndCores(preset){
+        if (!emuVersionsBox) return;
+        emuVersionsBox.innerHTML = '';
+        var curVal = emuInput ? emuInput.value.trim() : '';
+        if (!preset && !curVal && (!emuPresetSel || emuPresetSel.value !== '__custom__')) {
+          emuVersionsBox.hidden = true;
+          return;
+        }
+
+        var curSys = getCurrentSystem();
+        var rawCores = getCoresForPreset(preset, curSys);
+        var cores = rawCores.slice();
+        var activeCore = extractCoreFromInput(curVal);
+        if (activeCore) {
+          var exists = cores.some(function(c){ return c.toLowerCase() === activeCore.toLowerCase(); });
+          if (!exists) {
+            cores.push(activeCore);
+          }
+        }
+
+        var sysVers = (preset && preset.system_versions && curSys && preset.system_versions[curSys]) ||
+                       (preset && preset.versions) || [];
+        if (sysVers && sysVers.length) {
+          sysVers.forEach(function(ver){
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'emu-chip';
+            chip.textContent = ver;
+            chip.dataset.ver = ver;
+            chip.addEventListener('click', function(ev){
+              ev.preventDefault();
+              applyVersionToInput(preset, ver);
+            });
+            emuVersionsBox.appendChild(chip);
+          });
+        }
+
+        // Only multi-core emulators (e.g. BizHawk, Chimera) receive core options
+        var supportsCores = preset && (preset.has_cores || (preset.cores && Object.keys(preset.cores).length > 0));
+        if (supportsCores) {
+          cores.forEach(function(core){
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'emu-chip emu-chip-core';
+            chip.textContent = core;
+            chip.title = 'Core: ' + core;
+            chip.dataset.core = core;
+            chip.addEventListener('click', function(ev){
+              ev.preventDefault();
+              applyCoreToInput(preset, core);
+            });
+            emuVersionsBox.appendChild(chip);
+          });
+
+          // Add "+ Core…" chip to specify custom core
+          var addCoreBtn = document.createElement('button');
+          addCoreBtn.type = 'button';
+          addCoreBtn.className = 'emu-chip emu-chip-add-core';
+          addCoreBtn.textContent = '+ Core…';
+          addCoreBtn.title = 'Specify core';
+          addCoreBtn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            var inp = document.createElement('input');
+            inp.type = 'text';
+            inp.className = 'emu-core-input';
+            inp.placeholder = 'Core name…';
+            if (activeCore) inp.value = activeCore;
+
+            var committed = false;
+            function commit(){
+              if (committed) return;
+              committed = true;
+              var val = inp.value.trim();
+              if (val) {
+                applyCoreToInput(preset, val);
+              } else if (activeCore) {
+                applyCoreToInput(preset, activeCore);
+              } else {
+                renderVersionsAndCores(preset);
+              }
+            }
+
+            inp.addEventListener('keydown', function(e){
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                committed = true;
+                renderVersionsAndCores(preset);
+              }
+            });
+            inp.addEventListener('blur', function(){
+              commit();
+            });
+
+            emuVersionsBox.replaceChild(inp, addCoreBtn);
+            inp.focus();
+            if (inp.select) inp.select();
+          });
+          emuVersionsBox.appendChild(addCoreBtn);
+        }
+
+        emuVersionsBox.hidden = false;
+        updateActiveChips(preset);
+      }
+
+      function updateQuickChipsActive(val){
+        if (!emuQuickBox) return;
+        var normVal = (val || '').trim().toLowerCase();
+        emuQuickBox.querySelectorAll('.emu-chip').forEach(function(btn){
+          var txt = (btn.dataset.val || btn.textContent || '').trim().toLowerCase();
+          btn.classList.toggle('active', !!normVal && normVal === txt);
+        });
+      }
+
+      function syncPresetFromInput(){
+        if (!emuInput || !emuPresetSel) return;
+        var val = emuInput.value.trim();
+        if (!val) {
+          emuPresetSel.value = '';
+          if (emuVersionsBox) emuVersionsBox.hidden = true;
+          updateQuickChipsActive('');
+          return;
+        }
+        var match = findPresetMatch(val);
+        if (match) {
+          emuPresetSel.value = match.id;
+          renderVersionsAndCores(match);
+        } else {
+          emuPresetSel.value = '__custom__';
+          renderVersionsAndCores(null);
+        }
+        updateQuickChipsActive(val);
+      }
+
+      function updateEmulatorAssistant(systemKey){
+        if (!emuPresetSel) return;
+        var sys = systemKey || getCurrentSystem();
+        var sysName = (systemNames && systemNames[sys]) || (sys ? sys.toUpperCase() : '');
+
+        emuPresetSel.innerHTML = '';
+
+        var defOpt = document.createElement('option');
+        defOpt.value = '';
+        defOpt.textContent = 'Choose an emulator preset…';
+        emuPresetSel.appendChild(defOpt);
+
+        var recPresets = [];
+        var multiPresets = [];
+        var otherPresets = [];
+        var gameToolPresets = [];
+
+        EMULATOR_PRESETS.forEach(function(p){
+          if (p.kind === 'game_tool') {
+            gameToolPresets.push(p);
+            return;
+          }
+          var isSys = sys && (p.systems || []).indexOf(sys) >= 0;
+          if (isSys) {
+            recPresets.push(p);
+          } else if (p.multi) {
+            multiPresets.push(p);
+          } else {
+            otherPresets.push(p);
+          }
+        });
+
+        if (recPresets.length && sys) {
+          var grpRec = document.createElement('optgroup');
+          grpRec.label = (sysName || sys.toUpperCase()) + ' Emulators';
+          recPresets.forEach(function(p){
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            grpRec.appendChild(opt);
+          });
+          emuPresetSel.appendChild(grpRec);
+        }
+
+        if (multiPresets.length) {
+          var grpMulti = document.createElement('optgroup');
+          grpMulti.label = 'Multi-system';
+          var multiCount = 0;
+          multiPresets.forEach(function(p){
+            if (recPresets.indexOf(p) >= 0) return;
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            grpMulti.appendChild(opt);
+            multiCount++;
+          });
+          if (multiCount > 0) emuPresetSel.appendChild(grpMulti);
+        }
+
+        if (otherPresets.length) {
+          var grpOther = document.createElement('optgroup');
+          grpOther.label = 'Other Emulators';
+          var otherCount = 0;
+          otherPresets.forEach(function(p){
+            if (recPresets.indexOf(p) >= 0 || multiPresets.indexOf(p) >= 0) return;
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            grpOther.appendChild(opt);
+            otherCount++;
+          });
+          if (otherCount > 0) emuPresetSel.appendChild(grpOther);
+        }
+
+        if (gameToolPresets.length) {
+          var grpGame = document.createElement('optgroup');
+          grpGame.label = 'Game-specific TAS tools';
+          var gameCount = 0;
+          gameToolPresets.sort(function(a, b){ return a.name.localeCompare(b.name); });
+          gameToolPresets.forEach(function(p){
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name + (p.game ? ' (' + p.game + ')' : '');
+            grpGame.appendChild(opt);
+            gameCount++;
+          });
+          if (gameCount > 0) emuPresetSel.appendChild(grpGame);
+        }
+
+        var custOpt = document.createElement('option');
+        custOpt.value = '__custom__';
+        custOpt.textContent = 'Custom / unlisted emulator…';
+        emuPresetSel.appendChild(custOpt);
+
+        if (emuQuickBox) {
+          emuQuickBox.innerHTML = '';
+          var chips = (sys && QUICK_CHIPS[sys]) ? QUICK_CHIPS[sys] : QUICK_CHIPS['default'];
+          if (chips && chips.length) {
+            var lbl = document.createElement('span');
+            lbl.className = 'emu-quick-label';
+            lbl.textContent = 'Quick:';
+            emuQuickBox.appendChild(lbl);
+
+            chips.forEach(function(chipVal){
+              var btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'emu-chip';
+              btn.textContent = chipVal;
+              btn.dataset.val = chipVal;
+              btn.addEventListener('click', function(ev){
+                ev.preventDefault();
+                if (emuInput) {
+                  emuInput.value = chipVal;
+                  syncPresetFromInput();
+                  emuInput.dispatchEvent(new Event('input', {bubbles: true}));
+                  emuInput.dispatchEvent(new Event('change', {bubbles: true}));
+                }
+              });
+              emuQuickBox.appendChild(btn);
+            });
+            emuQuickBox.hidden = false;
+          } else {
+            emuQuickBox.hidden = true;
+          }
+        }
+
+        var emuManageLink = document.getElementById('s-emu-manage');
+        if (emuManageLink) {
+          mePromise.then(function(d){
+            if (!d || !d.loggedIn) {
+              emuManageLink.hidden = true;
+              return;
+            }
+            var who = (d.user || '').toLowerCase();
+            var T = window.TAR || {};
+            var isCurator = (T.editors || []).map(function(x){ return x.toLowerCase(); }).indexOf(who) >= 0 ||
+                            (T.experts || []).map(function(x){ return x.toLowerCase(); }).indexOf(who) >= 0 ||
+                            (T.committee || []).map(function(x){ return x.toLowerCase(); }).indexOf(who) >= 0;
+            emuManageLink.hidden = !isCurator;
+            if (isCurator) {
+              emuManageLink.href = sys ? (rel + 'systems/' + sys + '/#sys-emu-curate') : (rel + 'tools/');
+            }
+          });
+        }
+
+        syncPresetFromInput();
+      }
+
+      function initEmulatorAssistant(){
+        if (!emuPresetSel || !emuInput) return;
+
+        emuPresetSel.addEventListener('change', function(){
+          var val = emuPresetSel.value;
+          if (!val) {
+            if (emuVersionsBox) emuVersionsBox.hidden = true;
+            return;
+          }
+          if (val === '__custom__') {
+            renderVersionsAndCores(null);
+            emuInput.focus();
+            return;
+          }
+          var preset = null;
+          for (var i = 0; i < EMULATOR_PRESETS.length; i++) {
+            if (EMULATOR_PRESETS[i].id === val) { preset = EMULATOR_PRESETS[i]; break; }
+          }
+          if (!preset) return;
+
+          renderVersionsAndCores(preset);
+
+          var cur = emuInput.value.trim();
+          var matched = findPresetMatch(cur);
+          if (!cur || !matched || matched.id !== preset.id) {
+            var curSys = getCurrentSystem();
+            var sysVers = (preset.system_versions && curSys && preset.system_versions[curSys]) || preset.versions || [];
+            var firstVer = sysVers[0] || '';
+            emuInput.value = preset.name + (firstVer ? ' ' + firstVer : '');
+            emuInput.dispatchEvent(new Event('input', {bubbles: true}));
+            emuInput.dispatchEvent(new Event('change', {bubbles: true}));
+          }
+          updateActiveChips(preset);
+        });
+
+        emuInput.addEventListener('input', function(){
+          syncPresetFromInput();
+        });
+
+        updateEmulatorAssistant();
+      }
+
       var scoreNote = document.getElementById('s-scorenote');
       // the run's time is the one the author states, always: never filled in
       // for them. Import from movie reads it out of a parsed file on demand.
@@ -1212,6 +1747,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
               seconds: movieSec,
               format: (run.movie || {}).format};
             submitForm.querySelector('[name=emulator]').value = (run.contract || {}).emulator || '';
+            updateEmulatorAssistant(systemOf(j.game.key));
+            syncPresetFromInput();
             var files = (run.contract || {}).files || ((run.contract || {}).rom ? [run.contract.rom] : []);
             var rowsBox = submitForm.querySelector('.filerows');
             files.forEach(function(f){ rowsBox.querySelector('.addfile').click(); var rows = rowsBox.querySelectorAll('.filerow'); var row = rows[rows.length - 1]; row.querySelector('[name=file_name]').value = f.name || ''; row.querySelector('[name=file_sha1]').value = f.sha1 || ''; });
@@ -1421,6 +1958,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         gameList.hidden = true;
         if (systemSelect && gameTitles[key]) systemSelect.value = systemOf(key);
         loadGoals();
+        updateEmulatorAssistant(systemOf(key));
       }
       function fillGameList(){
         var q = gameSearch.value.trim().toLowerCase();
@@ -1453,6 +1991,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           fillGoals([]);
         }
         paintPanels();
+        updateEmulatorAssistant(systemSelect.value);
       });
 
       // ---- a machine nobody has listed yet, added from here ----
@@ -1500,6 +2039,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
       var presetGame = null;
       try { presetGame = new URLSearchParams(location.search).get('game'); } catch (e) {}
       initAuthorPick(submitForm.querySelector('.authpick'), [d.user]);
+      initEmulatorAssistant();
       // a draft restores first; a game named in the URL then overrides its game
       var restored = editRunId ? false : restoreDraft();
       if (!editRunId && presetGame && gameTitles[presetGame]) {

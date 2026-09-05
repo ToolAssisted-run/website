@@ -331,3 +331,54 @@ def may_decide_claims(user):
     """
     return is_committee(user)
 
+def expert_covers_system(user, system_key):
+    """May this expert curate emulators/quick chips for this system?"""
+    if not user:
+        return False
+    if is_editor(user) or is_site_expert(user):
+        return True
+    if system_key == 'default':
+        return False
+    scopes = {e['scope'] for e in load_experts() if e['user'].lower() == user.lower()}
+    return system_key in scopes
+
+ARCHIVE_EMULATORS = ARCHIVE / 'emulators.json'
+SITE_EMULATORS = pathlib.Path(__file__).resolve().parent.parent / 'assets' / 'emulators.json'
+
+def load_emulators():
+    if ARCHIVE_EMULATORS.exists():
+        p = ARCHIVE_EMULATORS
+    elif SITE_EMULATORS.exists():
+        p = SITE_EMULATORS
+    else:
+        return {'systems': {}, 'catalog': []}
+    return json.loads(p.read_text(encoding='utf-8'))
+
+def save_emulators(doc):
+    clean_doc = {}
+    if 'systems' in doc and isinstance(doc['systems'], dict):
+        s_map = doc['systems']
+        sorted_s = {}
+        if 'default' in s_map:
+            sorted_s['default'] = s_map['default']
+        for k in sorted(s_map.keys()):
+            if k != 'default':
+                sorted_s[k] = s_map[k]
+        clean_doc['systems'] = sorted_s
+    if 'catalog' in doc:
+        clean_doc['catalog'] = doc['catalog']
+    elif 'presets' in doc:
+        clean_doc['presets'] = doc['presets']
+    for k, v in doc.items():
+        if k not in clean_doc:
+            clean_doc[k] = v
+
+    ARCHIVE_EMULATORS.parent.mkdir(parents=True, exist_ok=True)
+    ARCHIVE_EMULATORS.write_text(json.dumps(clean_doc, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    if SITE_EMULATORS.exists():
+        try:
+            SITE_EMULATORS.write_text(json.dumps(clean_doc, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+        except Exception:
+            pass
+
+

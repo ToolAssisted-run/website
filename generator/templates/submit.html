@@ -13,6 +13,7 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
 <script type="application/json" id="gamedata">{{ json_blob({'raw': ARCHIVE_RAW, 'games': gamedata}) }}</script>
 <script type="application/json" id="systemdata">{{ json_blob(systemdata) }}</script>
 <script type="application/json" id="authordata">{{ json_blob(authornames) }}</script>
+<script type="application/json" id="s-emulatordata">{{ json_blob(emulatordata) }}</script>
 <p id="s-login" hidden><a href="{{ ARCHIVIST }}/login">Log in via the forum</a> to submit a run.</p>
 <form id="submitform" class="bigform" hidden>
   {# the draft: everything typed is kept in this browser as you go (never the
@@ -113,8 +114,18 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   <div class="movierow"><input name="movie" type="file"><span class="bmark" id="s-moviemark"></span></div>
   <p class="rules fullw" id="s-movienote" hidden></p>
   </div>
-  <label>Tool used to produce the movie: name it precisely (emulator, emulator + core, game-specific tool, or other) with its version</label>
-  <input name="emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES core), libTAS 1.4.6, jaffarPlus 3.2">
+  <label id="s-emulabel">Tool used to produce the movie: name it precisely (emulator, emulator + core, game-specific tool, or other) with its version</label>
+  <div class="emu-assist" id="s-emu-assist">
+    <div class="emu-assist-row">
+      <select id="s-emu-preset" class="emu-preset-select" aria-label="Select emulator preset">
+        <option value="">Choose an emulator preset…</option>
+      </select>
+      <div class="emu-chips" id="s-emu-versions" hidden></div>
+      <a href="../expert/" id="s-emu-manage" class="emu-manage-link" target="_blank" title="Curate presets and quick chips for this system" hidden>⚙ Manage presets</a>
+    </div>
+    <div class="emu-chips emu-quick-chips" id="s-emu-quick" hidden></div>
+  </div>
+  <input name="emulator" id="s-emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES core), libTAS 1.4.6, jaffarPlus 3.2">
   <hr class="formrule">
   <label>Files the movie was made against (optional: ROMs, disc images, executables,
   sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed

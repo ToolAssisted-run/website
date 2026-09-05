@@ -25,7 +25,8 @@ window.TARApp = window.TARApp || {};
   export function viewAsCoverage(list, who){
     var m = viewAsActive();
     if (!m) return list || [];
-    list = (list || []).filter(function(n){ return n !== who; });
+    var w = (who || '').toLowerCase();
+    list = (list || []).filter(function(n){ return (n || '').toLowerCase() !== w; });
     if (m === 'expert') list = list.concat([who]);   // site scope covers everything
     return list;
   }

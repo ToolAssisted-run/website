@@ -968,3 +968,47 @@ input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::
 .rulesbox{background:var(--bg);border:2.5px solid var(--hairs);border-radius:14px;padding:22px 26px;box-shadow:var(--shadow);color:var(--ink);max-height:82vh;overflow:auto}
 .rulesbox h3{margin:0 0 10px}
 .rulesbox .btnrow{justify-content:flex-end;margin-top:14px;align-items:center}
+
+/* emulator preset assistant on submit form */
+.emu-assist{margin:8px 0 6px;display:flex;flex-direction:column;gap:6px}
+.emu-assist-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.emu-preset-select{padding:7px 10px;font-size:.82rem;font-family:inherit;background:var(--panel);color:var(--ink);border:2px solid var(--hairs);border-radius:8px;max-width:100%;cursor:pointer}
+.emu-preset-select:focus{border-color:var(--accent);outline:none}
+.emu-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.emu-chip{font-size:.76rem;font-family:ui-monospace,monospace;padding:3px 8px;border-radius:6px;border:1.5px solid var(--hairs);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2;transition:border-color .1s, background .1s}
+.emu-chip:hover{border-color:var(--accent-text);background:rgba(34,197,94,.08)}
+.emu-chip.active{border-color:var(--accent);background:rgba(34,197,94,.15);color:var(--accent-text);font-weight:600}
+.emu-chip-core{border-style:dashed}
+.emu-chip-add-core, .emu-chip-add-ver{border-style:dashed;color:var(--faint)}
+.emu-chip-add-core:hover, .emu-chip-add-ver:hover{color:var(--ink);border-color:var(--accent)}
+.emu-core-input, .emu-version-input{font-size:.76rem;font-family:ui-monospace,monospace;padding:2px 6px;border-radius:6px;border:1.5px solid var(--accent);background:var(--panel);color:var(--ink);outline:none;line-height:1.2;min-width:7.5rem}
+.emu-quick-label{font-size:.72rem;color:var(--muted);font-weight:600;margin-right:2px;text-transform:uppercase;letter-spacing:.03em}
+.emu-manage-link{font-size:.76rem;color:var(--accent-text);text-decoration:none;margin-left:auto;padding:2px 6px;border-radius:4px;border:1px solid transparent;transition:border-color .1s, background .1s}
+.emu-manage-link:hover{border-color:var(--accent);background:rgba(34,197,94,.08);text-decoration:none}
+.emu-curate-section{margin:14px 0 10px;padding:12px 14px;background:var(--panel);border:1.5px solid var(--hairs);border-radius:8px}
+.emu-curate-section h3{margin:0 0 4px;font-size:.9rem}
+
+/* system page emulator curation inside expertmenu */
+.sys-curate-section{margin-top:18px;padding-top:14px;border-top:1.5px solid var(--hair)}
+.sys-curate-section:first-of-type{border-top:none;padding-top:0}
+.sys-curate-section h4{font-size:.95rem;margin:0 0 4px;color:var(--ink);font-weight:700}
+.sys-curate-section .rules{margin-bottom:8px}
+.sys-input-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+.sys-text-input{padding:9px 12px;font-size:.88rem;font-family:inherit;background:var(--panel);color:var(--ink);border:2.5px solid var(--hair);border-radius:9px;box-sizing:border-box}
+.sys-text-input:focus{outline:none;border-color:var(--accent-text)}
+.sys-select{padding:9px 36px 9px 12px;font-size:.88rem;font-family:inherit;background-color:var(--panel);color:var(--ink);border:2.5px solid var(--hair);border-radius:9px;box-sizing:border-box;cursor:pointer;min-width:260px;max-width:100%}
+.sys-select:focus{outline:none;border-color:var(--accent-text)}
+.sys-tools-list{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.sys-tool-card{background:var(--bg);border:2.5px solid var(--hair);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.sys-tool-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.sys-tool-title{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.sys-tool-title code{font-family:ui-monospace,monospace;font-size:.78rem;padding:2px 6px;border-radius:5px;background:var(--panel);color:var(--faint);border:1px solid var(--hairs)}
+.sys-tool-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width: 600px){.sys-tool-fields{grid-template-columns:1fr}}
+.sys-tool-field label{font-size:.82rem;color:var(--muted);display:block;margin-bottom:4px;font-weight:600}
+.sys-tool-field input{width:100%;padding:8px 12px;font-size:.85rem;font-family:inherit;background:var(--panel);color:var(--ink);border:2px solid var(--hair);border-radius:8px;box-sizing:border-box}
+.sys-tool-field input:focus{border-color:var(--accent-text);outline:none}
+.sys-qc-chip-x{margin-left:5px;cursor:pointer;opacity:.65;font-weight:bold;background:none;border:none;color:inherit;padding:0 3px;line-height:1}
+.sys-qc-chip-x:hover{opacity:1;color:#DC2626}
+
+

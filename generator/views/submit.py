@@ -2,7 +2,7 @@
 import datetime
 import providers
 from config import ARCHIVE_RAW, ARCHIVIST, OUT
-from model import authors, credited, games, systems
+from model import authors, credited, emulators, games, systems
 from render import page, tpl
 
 # ---- submit page (session-authenticated, posts to the archivist) ----
@@ -19,7 +19,7 @@ authornames = sorted({**credited, **{k: a['username'] for k, a in authors.items(
 systemdata = {k: sy['name'] for k, sy in sorted(systems.items(),
                                                 key=lambda kv: kv[1]['name'].lower())}
 body = tpl('submit.html', ARCHIVE_RAW=ARCHIVE_RAW, ARCHIVIST=ARCHIVIST, gamedata=gamedata,
-           systemdata=systemdata,
+           systemdata=systemdata, emulatordata=emulators,
            authornames=authornames, provider_names=' · '.join(providers.names()),
            today=datetime.date.today().isoformat())
 (OUT / 'submit').mkdir(exist_ok=True)

@@ -79,6 +79,10 @@ The key is never among them: it opens every game address filed under the
 system, and a run cannot move between systems. **Removing one is the Steering
 Committee's alone** (`/api/system/delete`), refused while any game is filed
 under it or any expert holds scope over it, and it asks for a public reason.
+On the system's own page (`/systems/<system>/`), the Expert menu allows covering
+system experts, site-wide experts, and editors to curate that system's mapped
+TAS tools, version presets, system-specific cores, and quick chips via
+`/api/emulators/edit`.
 
 
 - **Groups** gather one family of games across every system it appeared on.
@@ -154,7 +158,7 @@ what is the fold of it, never stored twice):
 | **Steering Committee** | The Founder (directly), or the Committee's own poll | Decides name claims and identity (it ALONE assesses identity — §2.5.8, §4.8); appoints experts at any scope (§2.5.3); records role decisions from Committee polls; deletes member records (never a seated member: the Committee does not eat itself); decides appeals |
 | **Expert** (scoped) | Any Committee seat at any scope, or a strictly wider expert scope (downward, never sideways: equal scope cannot clone itself); annulled by Committee poll (simple majority, §2.5.4); resignation needs nobody | See "what experts do" below |
 | **Moderator** | Committee poll | Forum moderation; enforce on everyone; may admonish but never remove Founder/Committee |
-| **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the contributor tiers. |
+| **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, curate emulator presets and quick chips across systems (`/api/emulators/edit`), edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the contributor tiers. |
 
 A Committee seat is a forum administrator by virtue of the seat: the
 archivist's role publishing (`forumapi.publish_group`) requests forum admin
@@ -248,12 +252,13 @@ of Chimera's cores (PCSX2, Flycast) end a frame when the machine presents a
 picture rather than at a vblank, so a game that drops frames makes a
 frames-over-rate time a lower bound; the form says so, and the author states
 the time regardless; every parser validated against
-real movies from the TASVideos corpus. The Tools page carries three tables:
-current emulators, classic emulator formats (the retired rerecording
-emulators whose movies still parse in full), and game-specific tools, each
-row marked parsed or not; GPL-3.0 with TASVideos contributors credited; the rest of the
-repo is MIT), and a parse failure or an unknown format is a warning at the
-form, never a refusal · optional completion
+real movies from the TASVideos corpus. The Tools page carries three tables
+(rendered dynamically from the archive's `emulators.json` catalog): Emulator-based
+TAS tools, Legacy emulator formats (the retired rerecording emulators whose
+movies still parse in full), and Game-specific TAS tools, each row marked parsed
+or not; GPL-3.0 with TASVideos contributors credited; the rest of the repo is
+MIT), and a parse failure or an unknown format is a warning at the form, never a
+refusal · optional completion
 date (real date, 1980+, not future; shown beside the submission date;
 author-editable later) · content warnings, required where they apply (§3.1.7; mature/violent,
 sexual, photosensitivity, strong language; sexual blurs thumbnails behind a
@@ -282,6 +287,41 @@ IS the run. Nothing exists to
 reproduce, in emulator or on console: both gates are marked `not-applicable`
 (a status only video-only runs may carry), the endpoints refuse the acts, and
 the page says so plainly. Verification ranks it exactly like any other run.
+
+**Reproduction tool, Preset Assistant, and Curator Maintenance**: reproduction
+information names the tool used to produce the movie (`contract.emulator` in
+`run.json`). Presets, version presets, cores, and quick chips are
+authoritatively defined in `emulators.json` at the root of the archive:
+structured with `systems` first (one object per platform, containing its
+quick chips and mapped tools with system-specific version presets and cores)
+followed by the `catalog` of all supported tools across the three categories:
+*Emulator-based TAS tools*, *Legacy emulator formats*, and *Game-specific TAS tools*.
+Because game-specific tools belong to particular games or engines rather than platforms,
+they are never mapped to systems and cannot be added to a system's tools list.
+Curation is maintained directly on each platform's system page
+(`/systems/<system>/#sys-emu-curate`) via `/api/emulators/edit`:
+system experts curate their assigned system's quick chips, mapped catalog tools,
+version presets, and system-specific cores; site-wide experts and editors
+have site-wide authority over all systems and global defaults. Only multi-core
+emulators (e.g. BizHawk, Chimera) expose core curation and core chips; standalone
+emulators never have core options. Every curation act requires a public reason,
+logs to `edits.json`, commits `emulators.json` directly to the archive git history,
+and automatically dispatches a site rebuild.
+On the submit form (`/submit/`) and run edit panel, the Preset Assistant consumes
+this catalog, grouping presets into `<system> Emulators` (filtered to the
+chosen game's system), `Multi-system` emulators (BizHawk, Ares, Mednafen,
+Chimera), `Other Emulators`, and a separate `Game-specific TAS tools` group,
+accompanied by system-filtered one-click Quick chips (e.g. `BizHawk 2.11.1`,
+`FCEUX 2.6.6`, `Snes9x 1.63`, `lsnes rr2-β23`, `Dolphin 5.0`, `mGBA 0.10.3`;
+with `libTAS` strictly scoped to PC and Flash), common version chips, and
+predefined core chips with a `+ Core…` option for multi-core emulators. A direct
+`⚙ Manage presets` link routes curators directly to `/systems/<system>/#sys-emu-curate`.
+The single text input remains the canonical source of truth submitted and
+stored; authors can type any unlisted tool, custom version, or core freely, and
+historical records (including non-standard strings, hyphens, and stacks like
+`libTAS 1.4.6 // ruffle-nightly-...`) load verbatim with zero migration or
+string mutation. The public `/tools/` page dynamically renders all three catalog
+categories directly from `emulators.json`.
 
 **The stated time is the record** (fully decoupled from the movie): whenever
 the category ranks by time, the submitter states the run's time through the
@@ -982,7 +1022,7 @@ archivist, module responsibilities). What matters designwise:
   the format is unknown or unreadable, with a note saying the submission
   or edit continues but nothing is importable from the movie (the file is
   archived exactly as it is, `frames` 0), the tool and its version
-  (free text), the files
+  (assisted by presets, versions, cores, and quick chips; stored as free text), the files
   the movie was made against, supplementary uploads; 4 scoring: the
   category's metric values, and the time, stated by the author, never
   filled in for them (Import from movie fills it on demand when the movie

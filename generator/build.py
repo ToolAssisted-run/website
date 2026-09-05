@@ -21,7 +21,7 @@ import json
 import pathlib
 import shutil
 
-from config import ARCHIVE_SERIAL, OUT, REPO_ROOT, SITE_COMMIT
+from config import ARCHIVE, ARCHIVE_SERIAL, OUT, REPO_ROOT, SITE_COMMIT
 import providers  # noqa: E402  (config put archivist/ on the path)
 from render import ship_thumbnails
 
@@ -107,6 +107,15 @@ for _script in (REPO_ROOT / 'assets').glob('*.js'):
 for _css in sorted((REPO_ROOT / 'assets').glob('*.css')):
     (OUT / 'assets' / _css.name).write_text(_css.read_text(encoding='utf-8'),
                                             encoding='utf-8')
+
+# ---- data assets ----
+for _json in sorted((REPO_ROOT / 'assets').glob('*.json')):
+    (OUT / 'assets' / _json.name).write_text(_json.read_text(encoding='utf-8'),
+                                            encoding='utf-8')
+if (ARCHIVE / 'emulators.json').exists():
+    (OUT / 'assets' / 'emulators.json').write_text((ARCHIVE / 'emulators.json').read_text(encoding='utf-8'),
+                                                   encoding='utf-8')
+
 print(f'built {sum(1 for _ in OUT.rglob("*") if _.is_file())} files -> {OUT}')
 
 # ---------------- search engines: sitemap and robots ----------------

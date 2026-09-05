@@ -2,153 +2,64 @@
 from config import OUT
 from render import page, tpl
 
+from model import emulators as emu_catalog, systems as sys_catalog
+
 # ---- tools page ----
-EMULATORS = [
-    ('Chimera', 'https://github.com/ToolAssisted-run/chimera',
-     'multi-system (NES, SNES, GameCube, Wii, Genesis, Dreamcast, PS2, PSP, PS3, '
-     'Xbox, 3DO, Atari 2600, DOS, Flash, …)',
-     '.chimeraProject'),
-    ('BizHawk', 'https://github.com/TASEmulators/BizHawk',
-     'multi-system (NES, SNES, Genesis, GB/GBA, N64, PSX, Saturn, …)', '.bk2, .tasproj'),
-    ('FCEUX', 'https://github.com/TASEmulators/fceux', 'NES / Famicom', '.fm2, .fm3'),
-    ('lsnes', 'https://repo.or.cz/lsnes.git', 'SNES', '.lsmv'),
-    ('Gens-rr', 'https://github.com/TASEmulators/gens-rerecording',
-     'Genesis / Mega Drive', '.gmv'),
-    ('VBA-rr', 'https://github.com/TASEmulators/vba-rerecording',
-     'Game Boy / Color / Advance', '.vbm'),
-    ('Gambatte', 'https://github.com/sinamas/gambatte', 'Game Boy / Color', '.gbmv'),
-    ('DeSmuME', 'https://github.com/TASEmulators/desmume', 'Nintendo DS', '.dsm'),
-    ('Mupen64-rr', 'https://github.com/mkdasher/mupen64-rr-lua-', 'Nintendo 64', '.m64'),
-    ('Dolphin', 'https://github.com/dolphin-emu/dolphin', 'GameCube / Wii', '.dtm'),
-    ('libTAS', 'https://github.com/clementgallet/libTAS',
-     'Linux (native games and emulators)', '.ltm'),
-    ('Hourglass', 'https://github.com/Hourglass-Resurrection/Hourglass-Resurrection',
-     'Windows', '.wtf'),
-    ('JPC-rr', 'https://repo.or.cz/jpcrr.git', 'DOS', '.jrsr'),
-    ('Citra', 'https://github.com/citra-mirror/citra', 'Nintendo 3DS', '.ctm'),
-    ('PCSX2', 'https://github.com/pcsx2/pcsx2', 'PlayStation 2', '.p2m2'),
-    ('openMSX', 'https://github.com/openMSX/openMSX', 'MSX', '.omr'),
-    ('MAME-rr', 'https://github.com/TASEmulators/mame-rr', 'Arcade', '.mar'),
-    ('FBNeo / FB Alpha', 'https://github.com/finalburnneo/FBNeo', 'Arcade', '.fbm'),
-]
-emulators = [dict(name=n, url=u, systems=sy, formats=x) for n, u, sy, x in EMULATORS]
+emulators = []
+historical = []
+game_tools = []
 
-# The classic rerecording emulators: retired tools whose movies the archive
-# still reads in full (frames, time, rerecords), so a historical work arrives
-# with its record intact. Every one of these parsers was written from the
-# TASVideos format specification and validated against real publications.
-HISTORICAL = [
-    ('Snes9x-rr', 'https://tasvideos.org/EmulatorResources/Snes9x', 'SNES', '.smv'),
-    ('ZSNES-rr', 'https://tasvideos.org/OtherEmulators/ZMV', 'SNES', '.zmv'),
-    ('FCEU 0.98', 'https://tasvideos.org/EmulatorResources/FCEU', 'NES / Famicom', '.fcm'),
-    ('Famtasia', 'https://tasvideos.org/EmulatorResources/Famtasia', 'NES / Famicom', '.fmv'),
-    ('VirtuaNES', 'https://tasvideos.org/OtherEmulators/VMV', 'NES / Famicom', '.vmv'),
-    ('Nintendulator', 'https://tasvideos.org/OtherEmulators/NMV', 'NES / Famicom', '.nmv'),
-    ('Dega', 'https://tasvideos.org/EmulatorResources/MMV', 'Master System / Game Gear', '.mmv'),
-    ('Mednafen-rr', 'https://tasvideos.org/EmulatorResources/Mednafen',
-     'PC Engine, PC-FX, WonderSwan, Neo Geo Pocket, Lynx', '.mcm, .mc2'),
-    ('PSXjin', 'https://tasvideos.org/EmulatorResources/PSXjin', 'PlayStation', '.pjm'),
-    ('PCSX-rr', 'https://tasvideos.org/EmulatorResources/PCSX', 'PlayStation', '.pxm'),
-    ('Yabause-rr', 'https://tasvideos.org/EmulatorResources/Yabause', 'Sega Saturn', '.ymv'),
-    ('BizHawk 1.x', 'https://tasvideos.org/Bizhawk/BKMFormat', 'multi-system', '.bkm'),
-    ("DOSBox-rr (Bisqwit's patch)", 'https://tasvideos.org/EmulatorResources/DOSBox', 'DOS', '.dof'),
-]
-historical = [dict(name=n, url=u, systems=sy, formats=x) for n, u, sy, x in HISTORICAL]
+tools_catalog = emu_catalog.get('catalog', emu_catalog.get('presets', []))
+systems_map = emu_catalog.get('systems', {})
 
-# (tool, link, game/engine, movie format, parsed mechanically at submission)
-# surveyed from the community's collections; ordered by game
-GAME_TOOLS = [
-    ('hatTAS', 'https://github.com/doesthisusername/hat-tas',
-     'A Hat in Time', '.htas', True),
-    ('BallanceModLoader (TASSupport)', 'https://github.com/Gamepiaynmo/BML-Mods',
-     'Ballance', '.tas', True),
-    ('Greasemonkey TAS script', 'https://pastebin.com/d0RHZHn2',
-     'Candy Box 2', 'no movie file (runs are video-only)', False),
-    ('CelesteTAS + Celeste Studio',
-     'https://github.com/EverestAPI/CelesteTAS-EverestInterop',
-     'Celeste', '.tas', True),
-    ('UniversalClassicTas / ClassicTAS',
-     'https://github.com/CelesteClassic/UniversalClassicTas',
-     'Celeste Classic (PICO-8)', '.tas', True),
-    ('DarkSouls-TAS', 'https://github.com/DavidCEllis/DarkSouls-TAS',
-     'Dark Souls', 'JSON key lists (.txt)', False),
-    ('DSDA-Doom / PrBoom+', 'https://github.com/kraflab/dsda-doom',
-     'Doom engine (Doom, Doom II, Heretic, Hexen)', '.lmp', True),
-    ('XDRE', 'https://github.com/RockyGaming4725/XDRE-R',
-     'Doom engine (Doom, Doom II)', '.lmp', True),
-    ('Dustmod', 'https://dustmod.com', 'Dustforce', '.dft', True),
-    ('factorio-tas-playback', 'https://github.com/Bilka2/factorio-tas-playback',
-     'Factorio', 'run scripts', False),
-    ('TAS-Helper-for-Factorio', 'https://github.com/MortenTobiasNielsen/TAS-Helper-for-Factorio',
-     'Factorio', 'run scripts', False),
-    ('Factorio-AnyPct-TAS', 'https://github.com/gotyoke/Factorio-AnyPct-TAS',
-     'Factorio', 'run scripts', False),
-    ('FireBoyWaterGirlTAS', 'https://github.com/pixelchai/FireBoyWaterGirlTAS',
-     'Fireboy & Watergirl', 'input scripts', False),
-    ('SoulsTAS', 'https://github.com/Vinjul1704/SoulsTAS',
-     'FromSoftware games (Dark Souls III, Sekiro, Elden Ring)', 'TAS scripts (.txt)', False),
-    ('OpenGMK / GM8emulator', 'https://github.com/OpenGMK/OpenGMK',
-     'GameMaker 8 games', '.gmtas', True),
-    ('ReplayBot', 'https://github.com/matcool/ReplayBot',
-     'Geometry Dash', '.replay', True),
-    ('Bunnymod XT', 'https://github.com/YaLTeR/BunnymodXT',
-     'Half-Life and other GoldSrc games', '.hltas', True),
-    ('Iji TAS mod', 'https://github.com/Kataiser/Iji-TAS-mod',
-     'Iji', '.itf', True),
-    ('jazz2tas', 'https://github.com/BinaryBlob92/jazz2tas',
-     'Jazz Jackrabbit 2', 'TAS projects (.xml)', False),
-    ('JumpKingTAS', 'https://github.com/ShootMe/JumpKingTAS',
-     'Jump King', '.tas', True),
-    ('KalimbaTAS', 'https://github.com/ShootMe/KalimbaTAS',
-     'Kalimba', '.tas', True),
-    ('LaMulanaTAS', 'https://github.com/worsety/LaMulanaTAS',
-     'La-Mulana (remake)', 'script.txt', False),
-    ('Left4TAS', 'https://github.com/sw1ft747/Left4TAS',
-     'Left 4 Dead 1 & 2', 'TAS scripts', False),
-    ('LoTAS', 'https://www.curseforge.com/minecraft/mc-mods/lotas',
-     'Minecraft (Java Edition)', 'no movie file (runs are video-only)', False),
-    ('TASmod', 'https://github.com/MinecraftTAS/TASmod',
-     'Minecraft (Java Edition)', '.mctas', True),
-    ('OriDETAS', 'https://github.com/ShootMe/OriDETAS',
-     'Ori and the Blind Forest (Definitive Edition)', '.tas', True),
-    ('OTS TAS Tool', 'https://github.com/thisishowmymindworks/ots-tas-tool',
-     'Out There Somewhere', '.otts', True),
-    ('SourceAutoRecord', 'https://sar.portal2.sr/',
-     'Portal 2', '.p2tas', True),
-    ('TASQuake', 'https://github.com/lipsanen/TASQuake',
-     'Quake', '.qtas', True),
-    ('racket science', 'https://github.com/doesthisusername/racket-science',
-     'Ratchet & Clank', 'input scripts', False),
-    ('Refunct TAS Tool', 'https://github.com/oberien/refunct-tas',
-     'Refunct', 'Lua scripts', False),
-    ('naezith_tas', 'https://github.com/negative-seven/naezith_tas',
-     'Remnants of Naezith', 'replay text (.ronr in-game)', False),
-    ('SmolTAS', 'https://github.com/Sh1r0Yaksha/SmolTAS',
-     'Smol Ame', 'per-level key lists (.txt)', False),
-    ('SourcePauseTool (SPT)', 'https://github.com/YaLTeR/SourcePauseTool',
-     'Source engine (Half-Life 2, Portal)', '.srctas', True),
-    ('SplasherTAS', 'https://github.com/ShootMe/SplasherTAS',
-     'Splasher', '.tas', True),
-    ('wafel', 'https://github.com/branpk/wafel',
-     'Super Mario 64', '.m64 (standard Mupen movies)', True),
-    ('TAS Plugin', 'https://jump.tf/forum/index.php/topic,1350.0.html',
-     'Team Fortress 2', 'plugin recordings', False),
-    ('TeslagradTAS', 'https://github.com/ShootMe/TeslagradTAS',
-     'Teslagrad', '.tas', True),
-    ('TinertiaTAS', 'https://github.com/ShootMe/TinertiaTAS',
-     'Tinertia', '.tas', True),
-    ('TMInterface', 'https://donadigo.com/tminterface',
-     'TrackMania Nations / United Forever', '.inputs', True),
-    ('UniTAS', 'https://github.com/eddio0141/UniTAS',
-     'Unity games (generic; in development)', 'Lua movie scripts', False),
-    ('Elasto Mania (built-in replays)', 'https://elmaonline.net',
-     'Elasto Mania', '.rec', True),
-    ('gz / practice macros', 'https://github.com/glankk/gz',
-     "Zelda: Ocarina of Time and Majora's Mask (N64)", '.gzm', True),
-]
-# parsed formats first, then the rest in survey order
-game_tools = [dict(name=n, url=u, game=g, format=x, parsed=p)
-              for n, u, g, x, p in sorted(GAME_TOOLS, key=lambda t: not t[4])]
+# Precompute mapping from tool_id to list of systems
+tool_to_systems = {}
+for skey, sdata in systems_map.items():
+    if skey == 'default':
+        continue
+    for t in sdata.get('tools', []):
+        tid = t.get('id') if isinstance(t, dict) else str(t)
+        tool_to_systems.setdefault(tid, []).append(skey)
+
+for p in tools_catalog:
+    kind = p.get('kind', 'emulator')
+    pid = p.get('id')
+    sys_disp = p.get('systems_display')
+    if not sys_disp:
+        if p.get('multi'):
+            sys_disp = 'multi-system'
+        else:
+            mapped = tool_to_systems.get(pid, p.get('systems', []))
+            names = [sys_catalog.get(s, {}).get('name', s.upper()) for s in mapped]
+            sys_disp = ', '.join(names) if names else '—'
+
+    if kind == 'emulator':
+        emulators.append(dict(
+            name=p['name'],
+            url=p.get('url', ''),
+            systems=sys_disp,
+            formats=p.get('formats') or p.get('format', ''),
+            parsed=p.get('parsed', True),
+        ))
+    elif kind == 'legacy':
+        historical.append(dict(
+            name=p['name'],
+            url=p.get('url', ''),
+            systems=sys_disp,
+            formats=p.get('formats') or p.get('format', ''),
+            parsed=p.get('parsed', True),
+        ))
+    elif kind == 'game_tool':
+        game_tools.append(dict(
+            name=p['name'],
+            url=p.get('url', ''),
+            game=p.get('game', ''),
+            format=p.get('formats') or p.get('format', ''),
+            parsed=p.get('parsed', False),
+        ))
+
+# parsed formats first, then the rest
+game_tools.sort(key=lambda t: not t['parsed'])
 body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=game_tools)
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page(

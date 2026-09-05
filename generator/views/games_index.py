@@ -16,6 +16,7 @@ from model import (
     live_groups,
     nlikes,
     systems,
+    emulators,
 )
 from render import (
     SITE_URL,
@@ -83,14 +84,15 @@ for skey in sorted(by_sys):
     shown_sys = {u.lower() for u in sysexperts}
     site_experts_sys = sorted({e['user'] for e in experts_reg if e['scope'] == 'site'
                                and e['user'].lower() not in shown_sys}, key=str.lower)
-    sbody = tpl('games_system.html', sname=sname, sgames=sgames, sruns=sruns,
+    sbody = tpl('games_system.html', sname=sname, skey=skey, sgames=sgames, sruns=sruns,
                 sysexperts=sysexperts, site_experts=site_experts_sys,
-                srows=ranked_rows(sruns), **HELPERS)
+                srows=ranked_rows(sruns), emulatordata=emulators, **HELPERS)
     sdir = OUT / 'systems' / skey
     sdir.mkdir(parents=True, exist_ok=True)
     sbest = best_thumb(sruns)
     (sdir / 'index.html').write_text(page(
         f'{sname} TAS runs and leaderboards', sbody, '../../', crumb(sname), 'Games',
+        scripts=['page-core.js', 'page-system.js'],
         seo={'path': f'systems/{skey}/',
              'description': (f'Tool-assisted speedruns on {sname}: '
                              f'{plural(len(sgames), "game")}, '

@@ -113,6 +113,7 @@ from records import (
     covers_group,
     ensure_member,
     expert_covers,
+    expert_covers_system,
     held_roles,
     is_committee,
     is_editor,
@@ -120,6 +121,7 @@ from records import (
     is_site_expert,
     is_uncl_run,
     load_claims,
+    load_emulators,
     load_experts,
     load_groups,
     log_deletion,
@@ -128,6 +130,7 @@ from records import (
     next_report_id,
     note_new_member,
     save_claims,
+    save_emulators,
     save_groups,
     scope_covers,
     scope_exists,
@@ -2865,6 +2868,123 @@ def system_delete():
         notify_discord(f'\U0001f5d1\ufe0f **{member_md(actor)}** removed the empty '
                        f'system **{name}**: {reason}')
     return jsonify({'ok': True, 'key': key, 'name': name})
+
+
+@app.post('/api/emulators/edit')
+def emulators_edit():
+    """Curate emulator presets, recommended versions, cores, and quick chips.
+
+    Who: an editor or site-wide expert for all systems and global defaults;
+         a system expert for their assigned system only.
+    Reads: form fields system, quick_chips (JSON array), presets (JSON array),
+           reason, dry_run
+    Answers: {ok, system, changed}; dry_run: {ok, dry_run, would_change}
+    """
+    edit_form = request.form
+    dry_run = edit_form.get('dry_run') in ('1', 'true', 'yes')
+    refresh_archive()
+    with lock:
+        auth_error = auth_precheck(edit_form)
+        if auth_error:
+            return auth_error
+        actor, error = request_identity(edit_form, 'expert')
+        if error:
+            return error
+
+        system = (edit_form.get('system') or '').strip().lower()
+        reason = (edit_form.get('reason') or '').strip()
+
+        if not 8 <= len(reason) <= 500:
+            return fail('say why: public reason required between 8 and 500 characters')
+
+        am_site = is_site_expert(actor)
+        am_editor = is_editor(actor)
+
+        doc = load_emulators()
+        all_systems = load_systems()
+
+        if not system:
+            return fail('system key required')
+
+        if system != 'default' and system not in all_systems:
+            return fail(f'unknown system: {system!r}', 404)
+
+        if not expert_covers_system(actor, system):
+            return fail(f'{actor!r} does not have authority over {system!r} (system expert, site-wide expert, or editor required)', 403)
+
+        changed = []
+
+        if 'systems' not in doc:
+            doc['systems'] = {}
+        if system not in doc['systems']:
+            doc['systems'][system] = {}
+
+        # Update quick chips for this system if provided
+        if 'quick_chips' in edit_form:
+            try:
+                qc_data = json.loads(edit_form['quick_chips'])
+            except Exception as ex:
+                return fail(f'invalid quick_chips format: {ex}')
+            if not isinstance(qc_data, list):
+                return fail('quick_chips must be a JSON array of strings')
+            clean_qc = [str(x).strip() for x in qc_data if str(x).strip()]
+            if doc['systems'][system].get('quick_chips') != clean_qc:
+                doc['systems'][system]['quick_chips'] = clean_qc
+                changed.append('quick_chips')
+
+        # Update mapped tools for this system if provided
+        if 'tools' in edit_form:
+            try:
+                tools_data = json.loads(edit_form['tools'])
+            except Exception as ex:
+                return fail(f'invalid tools format: {ex}')
+            if not isinstance(tools_data, list):
+                return fail('tools must be a JSON array of tool objects')
+
+            clean_tools = []
+            catalog_list = doc.get('catalog', [])
+            for t in tools_data:
+                tid = (t.get('id') or '').strip().lower()
+                if not tid or not re.fullmatch(r'[a-z0-9-_]+', tid):
+                    return fail(f'invalid tool id: {tid!r}')
+                cat_entry = next((c for c in catalog_list if c.get('id') == tid), None)
+                if cat_entry and cat_entry.get('kind') == 'game_tool':
+                    return fail(f'{cat_entry.get("name", tid)!r} is a game-specific tool and cannot be mapped to a system')
+                entry = {'id': tid}
+                if 'versions' in t and isinstance(t['versions'], list):
+                    entry['versions'] = [str(v).strip() for v in t['versions'] if str(v).strip()]
+                if 'cores' in t and isinstance(t['cores'], list):
+                    entry['cores'] = [str(c).strip() for c in t['cores'] if str(c).strip()]
+                clean_tools.append(entry)
+
+            if doc['systems'][system].get('tools') != clean_tools:
+                doc['systems'][system]['tools'] = clean_tools
+                changed.append('tools')
+
+        # Update catalog if provided (site expert or editor only)
+        if 'catalog' in edit_form and (am_site or am_editor):
+            try:
+                cat_data = json.loads(edit_form['catalog'])
+            except Exception as ex:
+                return fail(f'invalid catalog format: {ex}')
+            if not isinstance(cat_data, list):
+                return fail('catalog must be a JSON array of tool objects')
+            doc['catalog'] = cat_data
+            changed.append('catalog')
+
+        if not changed:
+            return fail('nothing sent differs from the record')
+
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'system': system, 'would_change': changed})
+
+        checkout_branch()
+        save_emulators(doc)
+        log_edit('emulators', system, ', '.join(changed), 'previous', 'updated', actor, reason)
+        ensure_member(actor)
+        commit_push(f'Emulators ({system}): {", ".join(changed)} by {actor}\n\nReason: {reason}\nBy: {actor}\nVia: archivist')
+
+        return jsonify({'ok': True, 'system': system, 'changed': changed})
 
 
 @app.post('/api/group/create')

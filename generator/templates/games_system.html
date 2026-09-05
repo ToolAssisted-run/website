@@ -14,3 +14,57 @@ group each belongs to.</p>
 <div class="grid">{% for g in sgames %}{{ game_card(g, '../../games/') }}{% endfor %}</div>
 
 {{ records_table(srows, 'Records across the system', 'No ranked run on this system yet.') }}
+
+<div id="sysexpertmenu" class="actzone expertmenu" hidden>
+<h2>Expert menu</h2>
+<p class="rules">Only experts whose scope covers this system, site-wide experts, and editors see this box; every action here is logged in the open.</p>
+
+<details class="actform actforms" id="sys-emu-curate" open>
+  <summary style="display:none"></summary>
+  <div class="foldbody fullw">
+    <h3>Emulator presets and quick chips</h3>
+    <p class="rules fullw">Configure the emulator presets, versions, cores, and quick chips for <b>{{ sname }}</b>.
+
+    <div class="sys-curate-section">
+      <h4>Quick Chips</h4>
+      <p class="rules fullw">Common submission shortcuts shown as one-click chips on the submit page for {{ sname }}.</p>
+      <div class="emu-chips" id="sys-qc-chips"></div>
+      <div class="sys-input-row">
+        <input type="text" id="sys-qc-new" class="sys-text-input" placeholder="e.g. BizHawk 2.11.1 (Core: QuickNES)" style="max-width:340px;">
+        <button type="button" class="btn" id="sys-qc-add">+ Add quick chip</button>
+      </div>
+    </div>
+
+    <div class="sys-curate-section">
+      <h4>Mapped TAS Tools for {{ sname }}</h4>
+      <p class="rules fullw">Tools from the catalog configured for {{ sname }}. Standalone emulators do not have cores; multi-core emulators (e.g. BizHawk, Chimera) specify their supported cores for this platform.</p>
+      <div id="sys-mapped-tools-list" class="sys-tools-list"></div>
+    </div>
+
+    <div class="sys-curate-section">
+      <h4>Map another TAS tool from catalog</h4>
+      <p class="rules fullw">Select an emulator, legacy format, or game tool from the authoritative catalog to support on {{ sname }}.</p>
+      <div class="sys-input-row">
+        <select id="sys-tool-catalog-select" class="sys-select">
+          <option value="">Select a tool to map…</option>
+        </select>
+        <button type="button" class="btn" id="sys-tool-catalog-add">Map to {{ sname }}</button>
+      </div>
+    </div>
+
+    <div class="sys-curate-section">
+      <label>Why <input type="text" id="sys-curate-reason" name="reason" class="sys-text-input" required minlength="8" maxlength="500" placeholder="e.g. Add BizHawk 2.11.1 and NesHawk core for NES presets" style="width:100%; max-width:600px;"></label>
+      <div class="btnrow" style="margin-top:14px; display:flex; align-items:center; gap:12px;">
+        <button type="button" class="btn" id="sys-curate-save">Save changes</button>
+        <span class="bmark" id="sys-curate-mark" role="status"></span>
+      </div>
+      <p class="rules fullw" id="sys-curate-msg" hidden></p>
+    </div>
+  </div>
+</details>
+</div>
+
+<script type="application/json" id="sysemudata">{{ json_blob(emulatordata) }}</script>
+<script type="application/json" id="syskeydata">"{{ skey }}"</script>
+<script type="application/json" id="sysexpertsdata">{{ json_blob(sysexperts) }}</script>
+<script type="application/json" id="siteexpertsdata">{{ json_blob(site_experts) }}</script>

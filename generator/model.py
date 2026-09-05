@@ -50,7 +50,16 @@ PT_CONSOLE = 1000
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
 
-systems = json.loads((ARCHIVE / 'systems.json').read_text())
+systems = json.loads((ARCHIVE / 'systems.json').read_text(encoding='utf-8'))
+
+_archive_emu = ARCHIVE / 'emulators.json'
+_repo_emu = pathlib.Path(__file__).resolve().parent.parent / 'assets' / 'emulators.json'
+if _archive_emu.exists():
+    emulators = json.loads(_archive_emu.read_text(encoding='utf-8'))
+elif _repo_emu.exists():
+    emulators = json.loads(_repo_emu.read_text(encoding='utf-8'))
+else:
+    emulators = {'presets': [], 'quick_chips': {}}
 
 authors = {}
 
