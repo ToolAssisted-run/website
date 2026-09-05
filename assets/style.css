@@ -857,9 +857,9 @@ html:has(.agegate){overflow:hidden}
 .gecard .actmsg{margin-top:10px}
 @media (max-width:640px){.prop-head{flex-wrap:wrap}.prop-name{min-width:100%}}
 .stat b .starglyph{color:var(--accent);font-size:1.1rem;margin-right:4px;vertical-align:2px}
-/* file rows (ROMs, disc images, sources): choose | name | sha1 | remove */
-.filerow{display:flex;gap:8px;align-items:stretch;margin:6px 0}
-.filerow .pickfile{display:flex;align-items:center;padding:9px 12px;font-size:.88rem;white-space:nowrap;cursor:pointer}
+/* file rows (ROMs, disc images, sources): browse | name | sha1 | remove */
+.filerow{display:flex;gap:8px;align-items:center;margin:6px 0}
+.filerow .pickfile{display:flex;align-items:center;align-self:stretch;padding:9px 12px;font-size:.88rem;white-space:nowrap;cursor:pointer}
 .filerow input[name=file_name]{flex:3;min-width:8rem}
 .filerow input[name=file_sha1]{flex:2;min-width:10rem;font-family:ui-monospace,monospace;font-size:.82rem}
 .filerow .rmfile{flex:none}
