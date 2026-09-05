@@ -180,7 +180,7 @@ if ((expertMenu || curateFold) && emuDataEl && sysKeyEl) {
         var title = el('div', 'sys-tool-title');
         title.appendChild(el('b', '', def.name || t.id));
 
-        var kindName = def.kind === 'emulator' ? 'Emulator' : (def.kind === 'legacy' ? 'Legacy' : 'Game tool');
+        var kindName = def.kind === 'emulator' ? 'Emulator' : (def.kind === 'legacy' ? 'Old format' : 'Game tool');
         title.appendChild(el('span', 'chip', kindName));
         if (def.formats || def.format) {
           title.appendChild(el('code', '', def.formats || def.format));
@@ -266,7 +266,7 @@ if ((expertMenu || curateFold) && emuDataEl && sysKeyEl) {
       }
 
       addGroup('Emulator-based TAS tools', emus);
-      addGroup('Legacy emulator formats', leg);
+      addGroup('Old emulator formats', leg);
     }
 
     if (catalogAddBtn && catalogSelect) {

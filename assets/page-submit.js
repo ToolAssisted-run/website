@@ -1004,29 +1004,47 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         return [];
       }
 
+      function extractVersionFromInput(preset, str){
+        if (!preset || !str) return '';
+        var cur = str.trim();
+        var matched = findPresetMatch(cur);
+        if (!matched || matched.id !== preset.id) return '';
+        var names = [matched.name].concat(matched.aliases || []);
+        for (var i = 0; i < names.length; i++) {
+          var nm = names[i];
+          var verRegex = new RegExp('^(' + escapeRegex(nm) + '[\\s\\-_]+)([^\\s\\(\\+]+)', 'i');
+          var m = verRegex.exec(cur);
+          if (m) return m[2].trim();
+        }
+        return '';
+      }
+
       function applyVersionToInput(preset, ver){
         if (!emuInput) return;
         var cur = emuInput.value.trim();
+        ver = (ver || '').trim();
         if (!cur) {
-          emuInput.value = preset.name + ' ' + ver;
+          emuInput.value = ver ? (preset.name + ' ' + ver) : preset.name;
         } else {
           var matched = findPresetMatch(cur);
           if (matched && matched.id === preset.id) {
             var verRegex = new RegExp('^(' + escapeRegex(matched.name) + '[\\s\\-_]+)([^\\s\\(\\+]+)(.*)$', 'i');
             var m = verRegex.exec(cur);
             if (m) {
-              emuInput.value = matched.name + ' ' + ver + (m[3] ? m[3] : '');
+              var tail = m[3] ? m[3].trim() : '';
+              emuInput.value = (matched.name + (ver ? ' ' + ver : '') + (tail ? ' ' + tail : '')).trim();
             } else {
               var nameOnlyRegex = new RegExp('^' + escapeRegex(matched.name) + '([\\s\\-_]*)(.*)$', 'i');
               var m2 = nameOnlyRegex.exec(cur);
               if (m2) {
-                emuInput.value = matched.name + ' ' + ver + (m2[2] ? ' ' + m2[2].trim() : '');
+                var rest = m2[2] ? m2[2].trim() : '';
+                emuInput.value = (matched.name + (ver ? ' ' + ver : '') + (rest ? ' ' + rest : '')).trim();
               } else {
-                emuInput.value = preset.name + ' ' + ver;
+                emuInput.value = (preset.name + (ver ? ' ' + ver : '')).trim();
               }
             }
           } else {
-            emuInput.value = preset.name + ' ' + ver;
+            emuInput.value = (preset.name + (ver ? ' ' + ver : '')).trim();
           }
         }
         syncPresetFromInput();
@@ -1069,11 +1087,19 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         if (!emuVersionsBox || !emuInput) return;
         var cur = emuInput.value.trim();
         var activeCoreName = extractCoreFromInput(cur).toLowerCase();
+        var activeVer = extractVersionFromInput(preset, cur);
 
-        emuVersionsBox.querySelectorAll('.emu-chip:not(.emu-chip-core):not(.emu-chip-add-core)').forEach(function(btn){
+        var verInp = emuVersionsBox.querySelector('.emu-version-input');
+        if (verInp && document.activeElement !== verInp) {
+          verInp.value = activeVer || '';
+        }
+
+        emuVersionsBox.querySelectorAll('.emu-chip:not(.emu-chip-core):not(.emu-chip-add-core):not(.emu-chip-add-ver)').forEach(function(btn){
           var v = btn.dataset.ver;
           var isMatch = false;
-          if (v && cur) {
+          if (activeVer && v && activeVer.toLowerCase() === v.toLowerCase()) {
+            isMatch = true;
+          } else if (v && cur) {
             var regex = new RegExp('(?:^|[\\s\\-_])' + escapeRegex(v) + '(?:[\\s\\-_\\(]|$)', 'i');
             isMatch = regex.test(cur);
           }
@@ -1107,6 +1133,8 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           }
         }
 
+        var activeVer = extractVersionFromInput(preset, curVal);
+
         var sysVers = (preset && preset.system_versions && curSys && preset.system_versions[curSys]) ||
                        (preset && preset.versions) || [];
         if (sysVers && sysVers.length) {
@@ -1118,10 +1146,92 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
             chip.dataset.ver = ver;
             chip.addEventListener('click', function(ev){
               ev.preventDefault();
-              applyVersionToInput(preset, ver);
+              var curActive = extractVersionFromInput(preset, emuInput ? emuInput.value : '');
+              if (curActive && curActive.toLowerCase() === ver.toLowerCase()) {
+                applyVersionToInput(preset, '');
+              } else {
+                applyVersionToInput(preset, ver);
+              }
             });
             emuVersionsBox.appendChild(chip);
           });
+
+          // Add "+ Version…" chip to specify custom version
+          var addVerBtn = document.createElement('button');
+          addVerBtn.type = 'button';
+          addVerBtn.className = 'emu-chip emu-chip-add-core emu-chip-add-ver';
+          addVerBtn.textContent = '+ Version…';
+          addVerBtn.title = 'Specify version';
+          addVerBtn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            var inp = document.createElement('input');
+            inp.type = 'text';
+            inp.className = 'emu-core-input emu-version-input';
+            inp.placeholder = 'Version…';
+            if (activeVer) inp.value = activeVer;
+
+            var committed = false;
+            function commit(){
+              if (committed) return;
+              committed = true;
+              var val = inp.value.trim();
+              if (val) {
+                applyVersionToInput(preset, val);
+              } else {
+                renderVersionsAndCores(preset);
+              }
+            }
+
+            inp.addEventListener('keydown', function(e){
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                committed = true;
+                renderVersionsAndCores(preset);
+              }
+            });
+            inp.addEventListener('blur', function(){
+              commit();
+            });
+
+            emuVersionsBox.replaceChild(inp, addVerBtn);
+            inp.focus();
+            if (inp.select) inp.select();
+          });
+          emuVersionsBox.appendChild(addVerBtn);
+        } else if (preset) {
+          // No version presets configured for this system: render text box directly
+          var verInp = document.createElement('input');
+          verInp.type = 'text';
+          verInp.className = 'emu-core-input emu-version-input';
+          verInp.placeholder = 'Version…';
+          if (activeVer) verInp.value = activeVer;
+
+          var committed = false;
+          function commit(){
+            if (committed) return;
+            committed = true;
+            var val = verInp.value.trim();
+            applyVersionToInput(preset, val);
+          }
+
+          verInp.addEventListener('keydown', function(e){
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              committed = true;
+              verInp.value = activeVer || '';
+              renderVersionsAndCores(preset);
+            }
+          });
+          verInp.addEventListener('blur', function(){
+            commit();
+          });
+          emuVersionsBox.appendChild(verInp);
         }
 
         // Only multi-core emulators (e.g. BizHawk, Chimera) receive core options
@@ -1190,8 +1300,12 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           emuVersionsBox.appendChild(addCoreBtn);
         }
 
-        emuVersionsBox.hidden = false;
-        updateActiveChips(preset);
+        if (!emuVersionsBox.children.length) {
+          emuVersionsBox.hidden = true;
+        } else {
+          emuVersionsBox.hidden = false;
+          updateActiveChips(preset);
+        }
       }
 
       function updateQuickChipsActive(val){
@@ -1395,13 +1509,20 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
 
           var cur = emuInput.value.trim();
           var matched = findPresetMatch(cur);
+          var curSys = getCurrentSystem();
+          var sysVers = (preset.system_versions && curSys && preset.system_versions[curSys]) || preset.versions || [];
+          var firstVer = sysVers[0] || '';
           if (!cur || !matched || matched.id !== preset.id) {
-            var curSys = getCurrentSystem();
-            var sysVers = (preset.system_versions && curSys && preset.system_versions[curSys]) || preset.versions || [];
-            var firstVer = sysVers[0] || '';
             emuInput.value = preset.name + (firstVer ? ' ' + firstVer : '');
             emuInput.dispatchEvent(new Event('input', {bubbles: true}));
             emuInput.dispatchEvent(new Event('change', {bubbles: true}));
+          }
+          if (!firstVer) {
+            var verInp = emuVersionsBox ? emuVersionsBox.querySelector('.emu-version-input') : null;
+            if (verInp) {
+              verInp.focus();
+              if (verInp.select) verInp.select();
+            }
           }
           updateActiveChips(preset);
         });

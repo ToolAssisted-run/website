@@ -254,7 +254,7 @@ frames-over-rate time a lower bound; the form says so, and the author states
 the time regardless; every parser validated against
 real movies from the TASVideos corpus. The Tools page carries three tables
 (rendered dynamically from the archive's `emulators.json` catalog): Emulator-based
-TAS tools, Legacy emulator formats (the retired rerecording emulators whose
+TAS tools, Old emulator formats (the retired rerecording emulators whose
 movies still parse in full), and Game-specific TAS tools, each row marked parsed
 or not; GPL-3.0 with TASVideos contributors credited; the rest of the repo is
 MIT), and a parse failure or an unknown format is a warning at the form, never a
@@ -295,7 +295,7 @@ authoritatively defined in `emulators.json` at the root of the archive:
 structured with `systems` first (one object per platform, containing its
 quick chips and mapped tools with system-specific version presets and cores)
 followed by the `catalog` of all supported tools across the three categories:
-*Emulator-based TAS tools*, *Legacy emulator formats*, and *Game-specific TAS tools*.
+*Emulator-based TAS tools*, *Old emulator formats*, and *Game-specific TAS tools*.
 Because game-specific tools belong to particular games or engines rather than platforms,
 they are never mapped to systems and cannot be added to a system's tools list.
 Curation is maintained directly on each platform's system page
@@ -313,8 +313,10 @@ chosen game's system), `Multi-system` emulators (BizHawk, Ares, Mednafen,
 Chimera), `Other Emulators`, and a separate `Game-specific TAS tools` group,
 accompanied by system-filtered one-click Quick chips (e.g. `BizHawk 2.11.1`,
 `FCEUX 2.6.6`, `Snes9x 1.63`, `lsnes rr2-β23`, `Dolphin 5.0`, `mGBA 0.10.3`;
-with `libTAS` strictly scoped to PC and Flash), common version chips, and
-predefined core chips with a `+ Core…` option for multi-core emulators. A direct
+with `libTAS` strictly scoped to PC and Flash), version presets (or a direct
+version text input when no presets are configured for the system, plus a `+ Version…`
+chip to input a custom version when presets exist), and predefined core chips
+with a `+ Core…` option for multi-core emulators. A direct
 `⚙ Manage presets` link routes curators directly to `/systems/<system>/#sys-emu-curate`.
 The single text input remains the canonical source of truth submitted and
 stored; authors can type any unlisted tool, custom version, or core freely, and
