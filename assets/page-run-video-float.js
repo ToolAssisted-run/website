@@ -165,7 +165,8 @@ function initRunVideoFloat() {
   }
 
   function isStageVisible() {
-    const rect = anchor.getBoundingClientRect();
+    const target = floating ? anchor : shell;
+    const rect = target.getBoundingClientRect();
     return rect.bottom > 0 && rect.top < window.innerHeight;
   }
 
@@ -297,6 +298,7 @@ function initRunVideoFloat() {
   player.addEventListener('pointerleave', function() {
     pointerOverPlayer = false;
   });
+  player.addEventListener('pointerdown', activateFallback);
   window.addEventListener('blur', function() {
     if (pointerOverPlayer || document.activeElement === frame) activateFallback();
   });
