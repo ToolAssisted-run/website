@@ -299,10 +299,14 @@ followed by the `catalog` of all supported tools across the three categories:
 Because game-specific tools belong to particular games or engines rather than platforms,
 they are never mapped to systems and cannot be added to a system's tools list.
 Curation is maintained directly on each platform's system page
-(`/systems/<system>/#sys-emu-curate`) via `/api/emulators/edit`:
+(`/systems/<system>/#sys-emu-curate`) and on the tools page
+(`/tools/#toolexpertmenu`) via `/api/emulators/edit`:
 system experts curate their assigned system's quick chips, mapped catalog tools,
 version presets, and system-specific cores; site-wide experts and editors
-have site-wide authority over all systems and global defaults. Only multi-core
+have site-wide authority over all systems and the global catalog itself,
+editing and removing tools directly in the tool tables or adding new ones across all
+three categories, with pending changes tracked dynamically above the save bar
+in the expert panel before saving. Only multi-core
 emulators (e.g. BizHawk, Chimera) expose core curation and core chips; standalone
 emulators never have core options. Every curation act requires a public reason,
 logs to `edits.json`, commits `emulators.json` directly to the archive git history,

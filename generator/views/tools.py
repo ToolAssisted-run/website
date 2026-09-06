@@ -2,7 +2,9 @@
 from config import OUT
 from render import page, tpl
 
-from model import emulators as emu_catalog, systems as sys_catalog
+from model import emulators as emu_catalog, systems as sys_catalog, experts_reg
+
+site_experts = sorted({e['user'] for e in experts_reg if e['scope'] == 'site'})
 
 # ---- tools page ----
 emulators = []
@@ -35,6 +37,7 @@ for p in tools_catalog:
 
     if kind == 'emulator':
         emulators.append(dict(
+            id=pid,
             name=p['name'],
             url=p.get('url', ''),
             systems=sys_disp,
@@ -43,6 +46,7 @@ for p in tools_catalog:
         ))
     elif kind == 'legacy':
         historical.append(dict(
+            id=pid,
             name=p['name'],
             url=p.get('url', ''),
             systems=sys_disp,
@@ -51,19 +55,23 @@ for p in tools_catalog:
         ))
     elif kind == 'game_tool':
         game_tools.append(dict(
+            id=pid,
             name=p['name'],
             url=p.get('url', ''),
             game=p.get('game', ''),
             format=p.get('formats') or p.get('format', ''),
+            formats=p.get('formats') or p.get('format', ''),
             parsed=p.get('parsed', False),
         ))
 
 # parsed formats first, then the rest
 game_tools.sort(key=lambda t: not t['parsed'])
-body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=game_tools)
+body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=game_tools,
+           emulatordata=emu_catalog, site_experts=site_experts)
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page(
     'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',
+    scripts=['page-core.js', 'page-tools.js'],
     seo={'path': 'tools/',
          'description': ('Emulators with rerecording and movie formats, plus game-specific '
                          'tool-assisted speedrun tools, each linked to its home.')}), encoding='utf-8')

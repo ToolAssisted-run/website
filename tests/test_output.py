@@ -209,12 +209,12 @@ def check_markup_lives_in_templates():
     through (HTML helpers are registered safe in render.py already)."""
     tag = re.compile(r'<[a-zA-Z][a-zA-Z0-9-]*[\s>/]')
     for view in sorted((REPO / 'generator' / 'views').glob('*.py')):
-        ck(f'no markup in views/{view.name}', not tag.search(view.read_text()))
+        ck(f'no markup in views/{view.name}', not tag.search(view.read_text(encoding='utf-8')))
     templates = sorted((REPO / 'generator' / 'templates').glob('*.html'))
     ck('every view has templates to render from', len(templates) >= 13)
     for t in templates:
         ck(f'{t.name} does not |safe a string',
-           not re.search(r"'[^']*'\s*\|\s*safe", t.read_text()))
+           not re.search(r"'[^']*'\s*\|\s*safe", t.read_text(encoding='utf-8')))
 
 
 def main():

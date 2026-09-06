@@ -44,43 +44,148 @@ engine for routing and solving games by massive state-space search.
 BizHawk, searching inputs from inside the emulator itself, by toca.
 <a href="https://github.com/toca-1/advancedbot-bizhawk">Source on GitHub</a>.</p></div>
 </div></section>
-<section><h2>Emulator-based TAS tools</h2>
+<section id="sec-emulators"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+<h2>Emulator-based TAS tools</h2>
+<button type="button" class="btn quiet cat-add-btn" data-kind="emulator" hidden>+ Add emulator</button>
+</div>
 <p class="rules fullw">These are emulators capable of running many different games. You can
 attach their movie files to your submission as supplementary data beside your run video; for
 most of these formats we extract the relevant information (time, frames, rerecords) directly
 from the file.</p>
-<div class="tblwrap"><table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
-<th class="num">Parsed</th></tr></thead>
+<div class="tblwrap"><table id="tbl-emulators"><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
+<th class="num">Parsed</th><th class="tool-act-col num" hidden>Actions</th></tr></thead>
 <tbody>
 {% for e in emulators %}
-<tr><td><b><a href="{{ e.url }}">{{ e.name }}</a></b></td><td>{{ e.systems }}</td>
+<tr data-tool-id="{{ e.id }}"><td><b>{% if e.url %}<a href="{{ e.url }}">{{ e.name }}</a>{% else %}{{ e.name }}{% endif %}</b></td><td>{{ e.systems }}</td>
 <td class="num"><code>{{ e.formats }}</code></td>
-<td class="num"><span class="tick-yes">✓</span></td></tr>
+<td class="num"><span class="tick-yes">✓</span></td>
+<td class="tool-act-col num" hidden><button type="button" class="btn quiet cat-edit-btn" data-id="{{ e.id }}" title="Edit tool" aria-label="Edit tool"><svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button> <button type="button" class="btn danger cat-del-btn" data-id="{{ e.id }}" title="Remove tool" aria-label="Remove tool"><svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></td></tr>
 {% endfor %}
 </tbody></table></div></section>
-<section><h2>Old emulator formats</h2>
+<section id="sec-historical"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+<h2>Old emulator formats</h2>
+<button type="button" class="btn quiet cat-add-btn" data-kind="legacy" hidden>+ Add old format</button>
+</div>
 <p class="rules fullw">The rerecording emulators of an earlier era. Their movies are read in
 full (time, frames, rerecords), so a historical work arrives here with its record intact.</p>
-<div class="tblwrap"><table><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
-<th class="num">Parsed</th></tr></thead>
+<div class="tblwrap"><table id="tbl-historical"><thead><tr><th>Emulator</th><th>Systems</th><th class="num">Movie format</th>
+<th class="num">Parsed</th><th class="tool-act-col num" hidden>Actions</th></tr></thead>
 <tbody>
 {% for e in historical %}
-<tr><td><b><a href="{{ e.url }}">{{ e.name }}</a></b></td><td>{{ e.systems }}</td>
+<tr data-tool-id="{{ e.id }}"><td><b>{% if e.url %}<a href="{{ e.url }}">{{ e.name }}</a>{% else %}{{ e.name }}{% endif %}</b></td><td>{{ e.systems }}</td>
 <td class="num"><code>{{ e.formats }}</code></td>
-<td class="num"><span class="tick-yes">✓</span></td></tr>
+<td class="num"><span class="tick-yes">✓</span></td>
+<td class="tool-act-col num" hidden><button type="button" class="btn quiet cat-edit-btn" data-id="{{ e.id }}" title="Edit tool" aria-label="Edit tool"><svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button> <button type="button" class="btn danger cat-del-btn" data-id="{{ e.id }}" title="Remove tool" aria-label="Remove tool"><svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></td></tr>
 {% endfor %}
 </tbody></table></div></section>
-<section><h2>Game-specific TAS tools</h2>
+<section id="sec-game-tools"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+<h2>Game-specific TAS tools</h2>
+<button type="button" class="btn quiet cat-add-btn" data-kind="game_tool" hidden>+ Add game tool</button>
+</div>
 <p class="rules fullw">These tools create tool-assisted runs inside one game or engine, with no
 emulator involved. You can attach their input or replay files to your submission as
 supplementary data beside your run video; for some of these formats we extract the relevant
 information (time, frames, rerecords) directly from the file, marked below.</p>
-<div class="tblwrap"><table><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
-<th class="num">Parsed</th></tr></thead>
+<div class="tblwrap"><table id="tbl-game-tools"><thead><tr><th>Tool</th><th>Game / engine</th><th>Movie format</th>
+<th class="num">Parsed</th><th class="tool-act-col num" hidden>Actions</th></tr></thead>
 <tbody>
 {% for t in game_tools %}
-<tr><td><b><a href="{{ t.url }}">{{ t.name }}</a></b></td><td>{{ t.game }}</td>
+<tr data-tool-id="{{ t.id }}"><td><b>{% if t.url %}<a href="{{ t.url }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}</b></td><td>{{ t.game }}</td>
 <td><code>{{ t.format }}</code></td>
-<td class="num">{% if t.parsed %}<span class=tick-yes>✓</span>{% else %}<span class=tick-no>—</span>{% endif %}</td></tr>
+<td class="num">{% if t.parsed %}<span class=tick-yes>✓</span>{% else %}<span class=tick-no>—</span>{% endif %}</td>
+<td class="tool-act-col num" hidden><button type="button" class="btn quiet cat-edit-btn" data-id="{{ t.id }}" title="Edit tool" aria-label="Edit tool"><svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button> <button type="button" class="btn danger cat-del-btn" data-id="{{ t.id }}" title="Remove tool" aria-label="Remove tool"><svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></td></tr>
 {% endfor %}
 </tbody></table></div></section>
+
+<div id="toolexpertmenu" class="actzone expertmenu" hidden>
+<h2>Expert menu</h2>
+<p class="rules">Only site-wide experts and editors see this box; every action here is logged in the open.</p>
+
+<section class="savebar" id="cat-savebar" style="margin-top:16px;">
+  <div class="actform">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <h3 style="margin:0;">Authoritative TAS tools catalog</h3>
+      <button type="button" class="btn" id="cat-open-add-btn">+ Add new tool</button>
+    </div>
+    <p class="rules fullw" style="margin-top:6px;">Add, edit, or remove tools directly in the tables above. Changes update the catalog of record in <code>emulators.json</code> and rebuild the public tool listings and submission presets.</p>
+
+    <p class="statline" style="margin-top:12px;"><b id="cat-pending">No changes yet</b></p>
+    <ul id="cat-pending-list" class="cat-changes-list" hidden></ul>
+
+    <label style="margin-top:12px;">Why (public, one reason for every change in this save)
+      <input type="text" id="cat-curate-reason" name="reason" class="sys-text-input" required minlength="8" maxlength="500" placeholder="e.g. Update Dolphin format and add CelesteTAS" style="width:100%; max-width:600px;">
+    </label>
+    <div class="btnrow" style="margin-top:14px; display:flex; align-items:center; gap:12px;">
+      <button type="button" class="btn" id="cat-curate-save" disabled>Save catalog changes</button>
+      <span class="bmark" id="cat-curate-mark" role="status"></span>
+    </div>
+    <p class="rules fullw" id="cat-curate-msg" hidden></p>
+  </div>
+</section>
+
+<dialog id="cat-tool-dlg" class="rulesdlg">
+  <div class="rulesbox" style="max-width:540px;">
+    <h3 id="cat-dlg-title">Add tool to catalog</h3>
+    <p class="rules fullw" id="cat-dlg-desc">Define a new TAS tool to be supported in the site-wide catalog.</p>
+    <form id="cat-tool-form" onsubmit="return false;" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+      <input type="hidden" id="cat-tool-mode" value="add">
+      <div class="sys-tool-field">
+        <label for="cat-tool-kind">Category / Kind</label>
+        <select id="cat-tool-kind" class="sys-select" style="width:100%;">
+          <option value="emulator">Emulator-based TAS tool</option>
+          <option value="legacy">Old emulator format</option>
+          <option value="game_tool">Game-specific TAS tool</option>
+        </select>
+      </div>
+      <div class="sys-tool-field">
+        <label for="cat-tool-id">Tool ID slug <span class="actmeta">(lowercase, a-z0-9._-, unique)</span></label>
+        <input type="text" id="cat-tool-id" class="sys-text-input" placeholder="e.g. dolphin, celestetas" required pattern="^[a-z0-9._-]+$" style="width:100%;">
+      </div>
+      <div class="sys-tool-field">
+        <label for="cat-tool-name">Display Name</label>
+        <input type="text" id="cat-tool-name" class="sys-text-input" placeholder="e.g. Dolphin, CelesteTAS" required style="width:100%;">
+      </div>
+      <div class="sys-tool-field">
+        <label for="cat-tool-url">Project / Download URL</label>
+        <input type="url" id="cat-tool-url" class="sys-text-input" placeholder="https://..." style="width:100%;">
+      </div>
+      <div class="sys-tool-field" id="cat-wrap-game" hidden>
+        <label for="cat-tool-game">Target Game / Engine</label>
+        <input type="text" id="cat-tool-game" class="sys-text-input" placeholder="e.g. Celeste, Doom" style="width:100%;">
+      </div>
+      <div class="sys-tool-field" id="cat-wrap-sys-disp">
+        <label for="cat-tool-sys-disp">Target Systems (Display)</label>
+        <input type="text" id="cat-tool-sys-disp" class="sys-text-input" placeholder="e.g. NES / Famicom, or SNES" style="width:100%;">
+        <p class="rules fullw" style="margin:4px 0 0; font-size:.78rem; color:var(--muted);">This will only be the display in table overriding the auto-generated text based on community vetted system mappings.</p>
+      </div>
+      <div class="sys-tool-field">
+        <label for="cat-tool-formats">Movie format(s) <span class="actmeta">(comma-separated)</span></label>
+        <input type="text" id="cat-tool-formats" class="sys-text-input" placeholder="e.g. .dtm or .bk2, .tasproj" style="width:100%;">
+      </div>
+      <div class="sys-tool-field">
+        <label for="cat-tool-aliases">Aliases <span class="actmeta">(optional, comma-separated)</span></label>
+        <input type="text" id="cat-tool-aliases" class="sys-text-input" placeholder="e.g. EmuHawk, TASEmulators/BizHawk" style="width:100%;">
+      </div>
+      <div id="cat-wrap-flags" style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <label style="font-size:.85rem; display:flex; align-items:center; gap:8px; cursor:pointer;" id="cat-lbl-multi">
+          <input type="checkbox" id="cat-tool-multi"> Multi-system emulator (runs games across multiple platforms)
+        </label>
+        <label style="font-size:.85rem; display:flex; align-items:center; gap:8px; cursor:pointer;" id="cat-lbl-cores">
+          <input type="checkbox" id="cat-tool-cores"> Supports interchangeable cores (e.g. BizHawk, Chimera)
+        </label>
+        <label style="font-size:.85rem; display:flex; align-items:center; gap:8px; cursor:pointer;" id="cat-lbl-parsed">
+          <input type="checkbox" id="cat-tool-parsed" checked> Format is parsed by archive (extracts frames/time from file)
+        </label>
+      </div>
+      <p class="rules fullw" id="cat-tool-err" style="color:#DC2626;" hidden></p>
+      <div class="btnrow" style="margin-top:8px; display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn quiet" id="cat-tool-cancel">Cancel</button>
+        <button type="button" class="btn" id="cat-tool-apply">Apply tool</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+</div>
+
+<script type="application/json" id="toolemudata">{{ json_blob(emulatordata) }}</script>
+<script type="application/json" id="siteexpertsdata">{{ json_blob(site_experts) }}</script>
