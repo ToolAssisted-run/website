@@ -28,7 +28,7 @@ SYSTEM_NAMES = {
     'DS': 'Nintendo DS', 'Genesis': 'Sega Genesis', 'SMS': 'Sega Master System',
     'GG': 'Sega Game Gear', 'Saturn': 'Sega Saturn', 'PSX': 'PlayStation',
     'PSP': 'PlayStation Portable', 'PS2': 'PlayStation 2',
-    'PS3': 'PlayStation 3', 'Xbox': 'Xbox', 'Symbian': 'Symbian',
+    'PS3': 'PlayStation 3', 'Xbox': 'Xbox', 'Symbian': 'Symbian (N-Gage)',
     'C64': 'Commodore 64', 'DOS': 'DOS',
     'PC': 'PC', 'Amiga': 'Amiga', '3DO': '3DO', 'Arcade': 'Arcade',
     'MSX': 'MSX', 'PCE': 'PC Engine / TurboGrafx-16', 'WSWAN': 'WonderSwan',
