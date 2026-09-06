@@ -828,15 +828,17 @@ window.TARApp = window.TARApp || {};
       });
     });
 
-    var wrap = table.closest('.tblwrap') || table;
-    var key = table.dataset.pagesizeKey || (wrap && wrap.dataset.pagesizeKey);
-    if (table.classList.contains('paginated') || key) {
+    var wrap = (typeof table.closest === 'function' ? table.closest('.tblwrap') : null) || table;
+    var key = (table.dataset && table.dataset.pagesizeKey) || (wrap && wrap.dataset && wrap.dataset.pagesizeKey);
+    if ((table.classList && typeof table.classList.contains === 'function' && table.classList.contains('paginated')) || key) {
       var pagBox = el('div', 'pag-wrap');
-      wrap.parentNode.insertBefore(pagBox, wrap.nextSibling);
-      var itemLabel = table.dataset.itemLabel || (wrap && wrap.dataset.itemLabel) || 'row';
+      if (wrap.parentNode && typeof wrap.parentNode.insertBefore === 'function') {
+        wrap.parentNode.insertBefore(pagBox, wrap.nextSibling);
+      }
+      var itemLabel = (table.dataset && table.dataset.itemLabel) || (wrap && wrap.dataset && wrap.dataset.itemLabel) || 'row';
       table._paginator = paginateElements(function(){
         return Array.prototype.slice.call(tbody.rows).filter(function(r){
-          return !r.dataset.filtered;
+          return !r.dataset || !r.dataset.filtered;
         });
       }, {
         key: key || 'table',

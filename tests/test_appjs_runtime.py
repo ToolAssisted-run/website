@@ -631,6 +631,18 @@ global.document = {
   querySelector: () => null,
   querySelectorAll: () => [],
   addEventListener(){},
+  createElement: (tag) => ({
+    tagName: tag.toUpperCase(),
+    className: '',
+    textContent: '',
+    children: [],
+    dataset: {},
+    classList: { add(){}, remove(){}, contains: () => false },
+    setAttribute(){},
+    getAttribute: () => null,
+    appendChild(){},
+    addEventListener(){}
+  }),
   cookie: '',
 };
 global.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, loggedIn: false }) });
@@ -687,7 +699,9 @@ const tbody = {
 const table = {
   dataset: {},
   tHead: { querySelectorAll: () => ths },
-  tBodies: [tbody]
+  tBodies: [tbody],
+  closest: () => null,
+  classList: { contains: () => false, add(){}, remove(){} }
 };
 
 armSortableTable(table);
