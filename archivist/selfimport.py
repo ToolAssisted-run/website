@@ -28,7 +28,7 @@ SYSTEM_NAMES = {
     'DS': 'Nintendo DS', 'Genesis': 'Sega Genesis', 'SMS': 'Sega Master System',
     'GG': 'Sega Game Gear', 'Saturn': 'Sega Saturn', 'PSX': 'PlayStation',
     'PSP': 'PlayStation Portable', 'PS2': 'PlayStation 2',
-    'PS3': 'PlayStation 3', 'Xbox': 'Xbox',
+    'PS3': 'PlayStation 3', 'Xbox': 'Xbox', 'Symbian': 'Symbian',
     'C64': 'Commodore 64', 'DOS': 'DOS',
     'PC': 'PC', 'Amiga': 'Amiga', '3DO': '3DO', 'Arcade': 'Arcade',
     'MSX': 'MSX', 'PCE': 'PC Engine / TurboGrafx-16', 'WSWAN': 'WonderSwan',
@@ -54,11 +54,12 @@ EXACT_FPS = {
     'ps2': 59.94005994005994, 'psp': 59.94005994005994,
     'dreamcast': 59.94005994005994, 'xbox': 59.94005994005994,
     'ps3': 59.94005994005994,
+    'symbian': 60.0,   # EKA2L1 declares 60/1 for the handset
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
-                'ps2', 'psp', 'ps3', 'xbox',
+                'ps2', 'psp', 'ps3', 'xbox', 'symbian',
                 'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
 
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}
