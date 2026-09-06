@@ -50,7 +50,7 @@ a{color:inherit}
 .chipx{border:0;background:none;color:inherit;cursor:pointer;font-weight:700;padding:0 2px}
 .navoff::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
  background:#D97706;margin-right:6px;vertical-align:middle}
-.navsearch{margin-left:auto;flex:0 1 auto;min-width:0}
+.navsearch{margin-left:auto;flex:0 1 auto;min-width:0;position:relative}
 .navtoggle{display:none;align-items:center;justify-content:center;margin-left:auto;
   width:40px;height:36px;border:2.5px solid var(--hair);border-radius:9px;
   background:var(--panel);color:var(--ink);cursor:pointer;padding:0}
@@ -283,7 +283,7 @@ tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 /* the system a card's run is on: above the title, and not competing with it */
 .csys{font-size:.7rem;color:var(--faint);letter-spacing:.02em;margin-bottom:-2px}
 .ccat{font-family:ui-monospace,monospace;font-size:.74rem;color:var(--accent-text)}
-.csys{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--faint)}
+.csys{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:100%}
 .grpline{margin-top:7px;margin-bottom:8px;color:var(--muted);font-size:.9rem}
 .grpline a{color:var(--accent-text);font-weight:600}
 .grpstrip{margin-bottom:26px}
@@ -1052,5 +1052,54 @@ input[type=radio]:checked{border-color:var(--accent)}input[type=radio]:checked::
 .sys-tool-field input:focus{border-color:var(--accent-text);outline:none}
 .sys-qc-chip-x{margin-left:5px;cursor:pointer;opacity:.65;font-weight:bold;background:none;border:none;color:inherit;padding:0 3px;line-height:1}
 .sys-qc-chip-x:hover{opacity:1;color:#DC2626}
+
+/* ---- navbar search instant popup ---- */
+.navsearch-pop{position:absolute;top:calc(100% + 8px);right:0;width:420px;max-width:92vw;background:var(--panel);border:2.5px solid var(--hair);border-radius:10px;box-shadow:var(--shadow);z-index:1000;overflow-y:auto;max-height:480px;text-align:left}
+.navsearch-group{padding:4px 0;border-bottom:1.5px solid var(--hair)}
+.navsearch-group:last-of-type{border-bottom:none}
+.navsearch-cat{font-family:ui-monospace,monospace;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);padding:6px 12px 2px}
+.navsearch-item{display:flex;align-items:center;gap:8px;padding:7px 12px;text-decoration:none;color:var(--ink);font-size:.85rem}
+.navsearch-item:hover,.navsearch-item.active{background:var(--bg);color:var(--accent-text)}
+.navsearch-badge{font-size:.68rem;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:4px;border:1px solid var(--hair);background:var(--panel);color:var(--faint);flex-shrink:0}
+.navsearch-item:hover .navsearch-badge,.navsearch-item.active .navsearch-badge{border-color:var(--accent-text);color:var(--accent-text)}
+.navsearch-title{font-weight:600;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navsearch-title .bcat{margin-left:6px;font-size:.78rem;font-weight:400;color:var(--faint)}
+.navsearch-sub{font-size:.76rem;color:var(--faint);flex-shrink:0;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navsearch-foot{padding:8px 12px;background:var(--bg);border-top:1.5px solid var(--hair);text-align:center}
+.navsearch-all{font-size:.82rem;font-weight:600;color:var(--accent-text);text-decoration:none}
+.navsearch-all:hover{text-decoration:underline}
+.navsearch-empty{padding:16px 12px;text-align:center;font-size:.84rem;color:var(--faint)}
+@media(max-width:1120px){
+  .nav.open .navsearch-pop{position:static;width:100%;max-width:100%;margin-top:6px}
+}
+
+/* ---- dedicated /search/ page ---- */
+.search-wrap{margin-top:16px}
+.search-bar input{width:100%;padding:12px 16px;font-size:1.05rem;border:2.5px solid var(--hair);border-radius:9px;background:var(--panel);color:var(--ink);box-sizing:border-box}
+.search-bar input:focus{outline:none;border-color:var(--accent-text)}
+.search-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 24px;border-bottom:2px solid var(--hair);padding-bottom:12px}
+.stab{padding:6px 14px;border:2px solid var(--hair);border-radius:8px;background:var(--panel);color:var(--ink);cursor:pointer;font:inherit;font-size:.86rem;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.stab .scnt{font-size:.74rem;font-weight:700;background:var(--bg);padding:1px 6px;border-radius:10px;border:1px solid var(--hair)}
+.stab.on{border-color:var(--accent-text);background:var(--bg);color:var(--accent-text)}
+.stab.on .scnt{border-color:var(--accent-text);background:var(--panel);color:var(--accent-text)}
+.search-empty{padding:40px 20px;text-align:center;font-size:1rem;color:var(--faint)}
+.search-sec{margin-bottom:32px}
+.search-sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.search-sec-title{font-size:1.15rem;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.search-sec-title .scnt{font-size:.88rem;color:var(--faint);font-weight:400}
+.search-browse-link{font-size:.86rem;color:var(--accent-text);text-decoration:none;font-weight:600}
+.search-browse-link:hover{text-decoration:underline}
+.search-grid{display:grid;gap:12px}
+.search-grid-systems,.search-grid-groups,.search-grid-authors{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.search-grid-games{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.search-card{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:2px solid var(--hair);border-radius:8px;background:var(--panel);text-decoration:none;color:var(--ink);min-width:0}
+.search-card:hover{border-color:var(--accent-text)}
+.search-card-title{font-weight:700;font-size:.95rem;overflow-wrap:break-word;color:var(--ink)}
+.search-card-group .search-card-title{font-style:italic;color:var(--ink)}
+.search-card-sub{font-size:.8rem;color:var(--faint);display:flex;align-items:center;gap:6px;min-width:0}
+.search-card-partof{font-size:.82rem;color:var(--faint);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.search-card-sys{display:flex;align-items:center;min-width:0;max-width:100%}
+.search-card-sys .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+
 
 

@@ -858,15 +858,22 @@ archivist, module responsibilities). What matters designwise:
   whichever script actually names them): `assets/app.js` is the **shared,
   page-agnostic** ES module every page loads (nav, account menu, view-as,
   the type-to-find picker, the busy/note/mark helpers, file rows, the
-  metrics editor) — every page-specific behavior it used to carry has
+  metrics editor, navbar instant search) — every page-specific behavior it used to carry has
   moved out into a real per-page module (`assets/page-home.js`,
   `page-library.js`, `page-run.js`, `page-game-edit.js`, `page-submit.js`,
-  `page-create.js`, `page-panels.js`, `page-member.js`, `page-import.js`),
+  `page-create.js`, `page-panels.js`, `page-member.js`, `page-import.js`,
+  `page-search.js`),
   each declared through the page renderer's `scripts=` and each importing
   the shared bindings it needs with an explicit `import … from './app.js'`
   (all in `assets/`, so the import resolves the same regardless of how
   deep the HTML page itself sits). Pages embed JSON blobs the client reads
-  (always `.replace('<', '\\u003c')`-armoured). Run arrival dates come from
+  (always `.replace('<', '\\u003c')`-armoured). Site-wide search is common
+  across games, game groups, systems, runs, and authors: pre-computed at build
+  time into a lean standalone `assets/search-index.json` asset (including indexed
+  game and run counts for systems and groups), lazy-loaded on demand by the client
+  runtime for an instant, keyboard-navigable navbar dropdown, and presented in full
+  with match-strength relevance ranking, per-category pagination, and tabbed filtering
+  on `/search/`. Run arrival dates come from
   git history (`fetch-depth: 0` in CI), falling back to
   `importedAt`/`submitted`.
 - **The pipeline**: the archivist is the publisher. The moment its push

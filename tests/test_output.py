@@ -1357,6 +1357,67 @@ def main():
                 ck('and every run lands, none of the cells broken',
                    out0['rows'] > 0 and not out0['broken'], str(out0))
 
+        # ---------- site-wide search ----------
+        s_idx_path = out / 'assets' / 'search-index.json'
+        ck('search-index.json exists in assets', s_idx_path.exists())
+        if s_idx_path.exists():
+            s_idx = json.loads(s_idx_path.read_text(encoding='utf-8'))
+            ck('search-index has games, groups, systems, authors, runs',
+               all(k in s_idx for k in ('games', 'groups', 'systems', 'authors', 'runs')),
+               str(list(s_idx.keys())))
+            ck('systems index includes game and run counts (gc, rc)',
+               bool(s_idx.get('systems')) and all('gc' in s and 'rc' in s for s in s_idx['systems']))
+            ck('groups index includes run count (rc)',
+               bool(s_idx.get('groups')) and all('rc' in g for g in s_idx['groups']))
+        search_html = all_html.get(out / 'search' / 'index.html', '')
+        ck('the search page is built with its page script',
+           'page-search.js' in search_html and 'id="search-input"' in search_html,
+           search_html[:200])
+        nav_sample = all_html.get(out / 'games' / 'index.html', '')
+        ck('the navbar search form targets search/ with popup container',
+           'action="../search/"' in nav_sample and 'id="navsearch-pop"' in nav_sample,
+           nav_sample[nav_sample.find('navsearch'):nav_sample.find('navsearch')+200] if 'navsearch' in nav_sample else '')
+
+        if node0:
+            match_test_code = """
+global.window = { TAR: {} };
+global.document = { querySelectorAll: () => [], getElementById: () => null };
+const { querySearchIndex } = await import(""" + json.dumps((out / 'assets' / 'page-search.js').as_uri()) + """);
+const mock = {
+  games: [{ k: 'nes/m', t: 'Super Mario', s: 'nes', sn: 'NES', g: ['Mario Family'] }],
+  groups: [{ k: 'pop', t: 'Prince of Persia', c: 1, gc: 1, rc: 1, gt: ['Sands of Time'] }],
+  systems: [
+    { k: 'genesis', n: 'Sega Genesis', gc: 10, rc: 5 },
+    { k: 'nes', n: 'Nintendo Entertainment System', gc: 20, rc: 15 }
+  ],
+  authors: [{ u: 'masterjun', p: 'masterjun', r: 1, s: 1 }],
+  runs: [{ id: 'M1', t: 'Super Mario', s: 'nes', sn: 'NES', c: 'warpless', a: ['masterjun'], m: 'Time', res: '4:00', stars: 1, d: '2024-01-01', st: 'verified' }]
+};
+const nesMatch = querySearchIndex(mock, 'nes');
+const res = {
+  gameByTitle: querySearchIndex(mock, 'super').games.length === 1,
+  gameByGroup: querySearchIndex(mock, 'family').games.length === 1,
+  groupByTitle: querySearchIndex(mock, 'prince').groups.length === 1,
+  groupByGame: querySearchIndex(mock, 'sands').groups.length === 1,
+  systemByName: querySearchIndex(mock, 'nintendo').systems.length === 1,
+  systemBySlug: nesMatch.systems.length === 2,
+  nesRanksBeforeGenesis: nesMatch.systems[0].k === 'nes',
+  authorByUsername: querySearchIndex(mock, 'masterjun').authors.length === 1,
+  authorNoCategoryMatch: querySearchIndex(mock, 'warpless').authors.length === 0,
+  runMatch: querySearchIndex(mock, 'warpless').runs.length === 1,
+};
+console.log(JSON.stringify(res));
+"""
+            rm = subprocess.run([node0, '--input-type=module', '-e', match_test_code],
+                                capture_output=True, text=True, timeout=10)
+            if rm.returncode == 0 and rm.stdout.strip():
+                r_json = json.loads(rm.stdout.strip().splitlines()[-1])
+                ck('search matching logic conforms across games, groups, systems, authors, runs',
+                   all(r_json.values()), str(r_json))
+            else:
+                ck('search matching logic conforms across games, groups, systems, authors, runs',
+                   False, rm.stderr[-300:])
+
         # ---------- client app ----------
         js = (out / 'assets' / 'app.js').read_text()
         node = shutil.which('node')

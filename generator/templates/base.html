@@ -14,8 +14,9 @@
 <button class="navtoggle" id="navtoggle" aria-label="Open menu" aria-expanded="false"
  aria-controls="navlinks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 <div class="navlinks" id="navlinks">{% for href, label in NAV_LINKS %}{% if href == '|' %}<span class="navsep"></span>{% else %}<a class="nl{{ ' on' if label == active else '' }}" href="{{ href if href.startswith('http') else rel + href }}">{{ label }}</a>{% endif %}{% endfor %}</div>
-<form class="navsearch" action="{{ rel }}browse/" method="get">
-<input type="search" name="q" placeholder="Search runs…" aria-label="Search runs"></form>
+<form class="navsearch" id="navsearch" action="{{ rel }}search/" method="get" autocomplete="off">
+<input type="search" id="navsearch-input" name="q" placeholder="Search archive…" aria-label="Search archive" autocomplete="off">
+<div class="navsearch-pop" id="navsearch-pop" hidden></div></form>
 <span id="navauth"></span>
 <button id="navoffline" class="nl navoff" hidden title="This site cannot reach the archivist right now, so logging in, submitting and contributing will not work. Reading works fine. It is usually a firewall, a VPN or a content blocker between you and forum.toolassisted.run. Click to try again.">archivist unreachable</button></nav>
 <script>window.TAR = {api: '{{ ARCHIVIST }}', rel: '{{ rel }}', v: '{{ SITE_COMMIT or 'dev' }}', experts: {{ EXPERT_NAMES_JS|safe }}, editors: {{ EDITOR_NAMES_JS|safe }}, committee: {{ COMMITTEE_NAMES_JS|safe }}, founders: {{ FOUNDER_NAMES_JS|safe }}}</script>

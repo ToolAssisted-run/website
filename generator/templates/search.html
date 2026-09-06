@@ -1,0 +1,60 @@
+{# The dedicated search page: common search across games, game groups, systems, runs, and authors #}
+<header class="ghead"><div><h1>Search</h1>
+<p class="authline">Search across all games, game groups, systems, runs, and authors in the archive.</p></div></header>
+
+<div class="search-wrap">
+  <div class="search-bar">
+    <input id="search-input" type="search" placeholder="Search games, groups, systems, runs, authors…" autocomplete="off" autofocus>
+  </div>
+
+  <div class="search-tabs" id="search-tabs" role="tablist">
+    <button type="button" class="stab on" data-tab="all" role="tab" aria-selected="true">All <span class="scnt" id="scnt-all">0</span></button>
+    <button type="button" class="stab" data-tab="games" role="tab" aria-selected="false">Games <span class="scnt" id="scnt-games">0</span></button>
+    <button type="button" class="stab" data-tab="groups" role="tab" aria-selected="false">Game Groups <span class="scnt" id="scnt-groups">0</span></button>
+    <button type="button" class="stab" data-tab="systems" role="tab" aria-selected="false">Systems <span class="scnt" id="scnt-systems">0</span></button>
+    <button type="button" class="stab" data-tab="authors" role="tab" aria-selected="false">Authors <span class="scnt" id="scnt-authors">0</span></button>
+    <button type="button" class="stab" data-tab="runs" role="tab" aria-selected="false">Runs <span class="scnt" id="scnt-runs">0</span></button>
+  </div>
+
+  <div id="search-loading" class="search-empty" hidden>Loading search index…</div>
+  <div id="search-empty" class="search-empty">Type a search term to find games, game groups, systems, runs, and authors.</div>
+  <div id="search-no-results" class="search-empty" hidden>No results found.</div>
+
+  <div id="search-results" class="search-sections">
+    <section class="search-sec" id="sec-systems" hidden>
+      <h2 class="search-sec-title">Systems <span class="scnt" id="hcnt-systems"></span></h2>
+      <div class="search-grid search-grid-systems" id="res-systems"></div>
+      <div class="pag-wrap" id="pag-systems"></div>
+    </section>
+
+    <section class="search-sec" id="sec-groups" hidden>
+      <h2 class="search-sec-title">Game Groups <span class="scnt" id="hcnt-groups"></span></h2>
+      <div class="search-grid search-grid-groups" id="res-groups"></div>
+      <div class="pag-wrap" id="pag-groups"></div>
+    </section>
+
+    <section class="search-sec" id="sec-games" hidden>
+      <h2 class="search-sec-title">Games <span class="scnt" id="hcnt-games"></span></h2>
+      <div class="search-grid search-grid-games" id="res-games"></div>
+      <div class="pag-wrap" id="pag-games"></div>
+    </section>
+
+    <section class="search-sec" id="sec-authors" hidden>
+      <h2 class="search-sec-title">Authors <span class="scnt" id="hcnt-authors"></span></h2>
+      <div class="search-grid search-grid-authors" id="res-authors"></div>
+      <div class="pag-wrap" id="pag-authors"></div>
+    </section>
+
+    <section class="search-sec" id="sec-runs" hidden>
+      <div class="search-sec-head">
+        <h2 class="search-sec-title">Runs <span class="scnt" id="hcnt-runs"></span></h2>
+        <a class="search-browse-link" id="runs-browse-link" href="../browse/">Browse matching runs with filters →</a>
+      </div>
+      <div class="tblwrap"><table class="btable">
+        <thead><tr><th>Game</th><th>System</th><th>Authors</th><th>Goal</th><th class="num">Value</th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th>Status</th></tr></thead>
+        <tbody id="res-runs"></tbody>
+      </table></div>
+      <div class="pag-wrap" id="pag-runs"></div>
+    </section>
+  </div>
+</div>

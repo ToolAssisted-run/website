@@ -999,13 +999,294 @@ window.TARApp = window.TARApp || {};
     return pag;
   }
 
+  // Match scoring helper: ranks search hits by strength of match.
+  // Prioritizes: exact match > word exact match > starts-with > word starts-with > substring.
+  export function scoreString(target, needle) {
+    if (!target || !needle) return 0;
+    var t = target.toLowerCase();
+    var n = needle.toLowerCase();
+    if (t === n) return 1000;
+    var idx = t.indexOf(n);
+    if (idx === -1) return 0;
+
+    var words = t.split(/[\s\-_/:]+/);
+    if (idx === 0) {
+      if (words[0] === n) return 900;
+      return 750;
+    }
+
+    for (var i = 0; i < words.length; i++) {
+      if (words[i] === n) return Math.max(700, 850 - (i * 10));
+    }
+
+    for (var j = 0; j < words.length; j++) {
+      if (words[j].indexOf(n) === 0) return Math.max(500, 700 - (j * 10));
+    }
+
+    return Math.max(10, 300 - (idx * 5) - Math.min(50, t.length));
+  }
+
+  // ---- site-wide navbar search ----
+  var searchIndexCache = null;
+  var searchIndexPromise = null;
+
+  export function loadSearchIndex() {
+    if (searchIndexCache) return Promise.resolve(searchIndexCache);
+    if (!searchIndexPromise) {
+      var url = (rel || '') + 'assets/search-index.json' + (versionQuery || '');
+      searchIndexPromise = fetch(url)
+        .then(function(r){
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(data){
+          searchIndexCache = data;
+          return data;
+        })
+        .catch(function(err){
+          searchIndexPromise = null;
+          throw err;
+        });
+    }
+    return searchIndexPromise;
+  }
+
+  export function initNavSearch(){
+    if (typeof document === 'undefined') return;
+    var form = document.getElementById('navsearch');
+    var input = document.getElementById('navsearch-input');
+    var pop = document.getElementById('navsearch-pop');
+    if (!form || !input || !pop) return;
+
+    var activeIdx = -1;
+
+    function getItems(){
+      return Array.prototype.slice.call(pop.querySelectorAll('.navsearch-item'));
+    }
+
+    function setActive(idx){
+      var items = getItems();
+      items.forEach(function(el, i){
+        el.classList.toggle('active', i === idx);
+        if (i === idx && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      });
+      activeIdx = idx;
+    }
+
+    function closePop(){
+      pop.hidden = true;
+      pop.innerHTML = '';
+      activeIdx = -1;
+    }
+
+    function doSearch(){
+      var q = input.value.trim();
+      if (!q) {
+        closePop();
+        return;
+      }
+      var needle = q.toLowerCase();
+      loadSearchIndex().then(function(data){
+        if (input.value.trim() !== q) return;
+
+        var systems = (data.systems || []).map(function(sys){
+          var sName = scoreString(sys.n, needle);
+          var sKey = scoreString(sys.k, needle) * 1.2;
+          return { item: sys, score: Math.max(sName, sKey) };
+        }).filter(function(x){ return x.score > 0; })
+          .sort(function(a, b){ return b.score - a.score || a.item.n.localeCompare(b.item.n); })
+          .map(function(x){ return x.item; })
+          .slice(0, 3);
+
+        var groups = (data.groups || []).map(function(gr){
+          var sTitle = scoreString(gr.t, needle);
+          var sMembers = 0;
+          if (gr.gt && gr.gt.length) {
+            for (var i = 0; i < gr.gt.length; i++) {
+              var sm = scoreString(gr.gt[i], needle);
+              if (sm > sMembers) sMembers = sm;
+            }
+          }
+          var sKey = scoreString(gr.k, needle);
+          return { item: gr, score: Math.max(sTitle, sMembers * 0.75, sKey * 0.8) };
+        }).filter(function(x){ return x.score > 0; })
+          .sort(function(a, b){ return b.score - a.score || (b.item.gc || b.item.c || 0) - (a.item.gc || a.item.c || 0) || a.item.t.localeCompare(b.item.t); })
+          .map(function(x){ return x.item; })
+          .slice(0, 3);
+
+        var games = (data.games || []).map(function(g){
+          var sTitle = scoreString(g.t, needle);
+          var sGroups = 0;
+          if (g.g && g.g.length) {
+            for (var i = 0; i < g.g.length; i++) {
+              var sg = scoreString(g.g[i], needle);
+              if (sg > sGroups) sGroups = sg;
+            }
+          }
+          var sKey = scoreString(g.k, needle);
+          return { item: g, score: Math.max(sTitle, sGroups * 0.75, sKey * 0.8) };
+        }).filter(function(x){ return x.score > 0; })
+          .sort(function(a, b){ return b.score - a.score || a.item.t.localeCompare(b.item.t); })
+          .map(function(x){ return x.item; })
+          .slice(0, 4);
+
+        var authors = (data.authors || []).map(function(a){
+          return { item: a, score: scoreString(a.u, needle) };
+        }).filter(function(x){ return x.score > 0; })
+          .sort(function(a, b){ return b.score - a.score || (b.item.r || 0) - (a.item.r || 0) || a.item.u.localeCompare(b.item.u); })
+          .map(function(x){ return x.item; })
+          .slice(0, 3);
+
+        var runs = (data.runs || []).map(function(r){
+          var sTitle = scoreString(r.t, needle);
+          var sCat = scoreString(r.c, needle);
+          var sAuthors = 0;
+          if (r.a && r.a.length) {
+            for (var i = 0; i < r.a.length; i++) {
+              var sa = scoreString(r.a[i], needle);
+              if (sa > sAuthors) sAuthors = sa;
+            }
+          }
+          var sId = (r.id && r.id.toLowerCase() === needle) ? 1000 : (r.id && r.id.toLowerCase().indexOf(needle) === 0 ? 600 : 0);
+          return { item: r, score: Math.max(sTitle, sCat * 0.8, sAuthors * 0.85, sId) };
+        }).filter(function(x){ return x.score > 0; })
+          .sort(function(a, b){ return b.score - a.score || (b.item.stars || 0) - (a.item.stars || 0) || String(b.item.d).localeCompare(String(a.item.d)); })
+          .map(function(x){ return x.item; })
+          .slice(0, 4);
+
+        var total = systems.length + groups.length + games.length + authors.length + runs.length;
+        if (total === 0) {
+          pop.innerHTML = '<div class="navsearch-empty">No results for "' + escapeHtml(q) + '"</div>';
+          pop.hidden = false;
+          activeIdx = -1;
+          return;
+        }
+
+        var html = '';
+        if (systems.length) {
+          html += '<div class="navsearch-group"><div class="navsearch-cat">Systems</div>';
+          systems.forEach(function(sys){
+            html += '<a class="navsearch-item" href="' + (rel || '') + 'systems/' + escapeHtml(sys.k) + '/">' +
+              '<span class="navsearch-badge">System</span>' +
+              '<span class="navsearch-title">' + escapeHtml(sys.n) + '</span>' +
+              '<span class="navsearch-sub">' + (sys.gc || 0) + ' game' + (sys.gc === 1 ? '' : 's') + ' · ' + (sys.rc || 0) + ' run' + (sys.rc === 1 ? '' : 's') + '</span>' +
+              '</a>';
+          });
+          html += '</div>';
+        }
+
+        if (groups.length) {
+          html += '<div class="navsearch-group"><div class="navsearch-cat">Game Groups</div>';
+          groups.forEach(function(gr){
+            html += '<a class="navsearch-item" href="' + (rel || '') + 'groups/' + escapeHtml(gr.k) + '/">' +
+              '<span class="navsearch-badge">Group</span>' +
+              '<span class="navsearch-title">' + escapeHtml(gr.t) + '</span>' +
+              '<span class="navsearch-sub">' + (gr.gc || gr.c || 0) + ' game' + ((gr.gc || gr.c) === 1 ? '' : 's') + ' · ' + (gr.rc || 0) + ' run' + (gr.rc === 1 ? '' : 's') + '</span>' +
+              '</a>';
+          });
+          html += '</div>';
+        }
+
+        if (games.length) {
+          html += '<div class="navsearch-group"><div class="navsearch-cat">Games</div>';
+          games.forEach(function(g){
+            var grp = (g.g && g.g.length) ? ' · part of ' + escapeHtml(g.g[0]) : '';
+            html += '<a class="navsearch-item" href="' + (rel || '') + 'games/' + escapeHtml(g.k) + '/">' +
+              '<span class="navsearch-badge">Game</span>' +
+              '<span class="navsearch-title">' + escapeHtml(g.t) + '</span>' +
+              '<span class="navsearch-sub">' + escapeHtml(g.sn) + grp + '</span>' +
+              '</a>';
+          });
+          html += '</div>';
+        }
+
+        if (authors.length) {
+          html += '<div class="navsearch-group"><div class="navsearch-cat">Authors</div>';
+          authors.forEach(function(a){
+            html += '<a class="navsearch-item" href="' + (rel || '') + 'authors/' + escapeHtml(a.p) + '/">' +
+              '<span class="navsearch-badge">Author</span>' +
+              '<span class="navsearch-title">@' + escapeHtml(a.u) + '</span>' +
+              '<span class="navsearch-sub">' + a.r + ' run' + (a.r === 1 ? '' : 's') + '</span>' +
+              '</a>';
+          });
+          html += '</div>';
+        }
+
+        if (runs.length) {
+          html += '<div class="navsearch-group"><div class="navsearch-cat">Runs</div>';
+          runs.forEach(function(r){
+            html += '<a class="navsearch-item" href="' + (rel || '') + 'runs/' + escapeHtml(r.id) + '/">' +
+              '<span class="navsearch-badge">Run</span>' +
+              '<span class="navsearch-title">' + escapeHtml(r.t) + ' <span class="bcat">' + escapeHtml(r.c) + '</span></span>' +
+              '<span class="navsearch-sub">' + escapeHtml(r.a.join(', ')) + '</span>' +
+              '</a>';
+          });
+          html += '</div>';
+        }
+
+        html += '<div class="navsearch-foot"><a class="navsearch-all" href="' + (rel || '') + 'search/?q=' + encodeURIComponent(q) + '">View all matching results →</a></div>';
+
+        pop.innerHTML = html;
+        pop.hidden = false;
+        activeIdx = -1;
+      }).catch(function(){});
+    }
+
+    input.addEventListener('focus', function(){
+      loadSearchIndex().catch(function(){});
+      if (input.value.trim()) doSearch();
+    });
+
+    input.addEventListener('input', doSearch);
+
+    input.addEventListener('keydown', function(ev){
+      if (pop.hidden) return;
+      var items = getItems();
+      if (!items.length) return;
+
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        var next = activeIdx + 1;
+        if (next >= items.length) next = 0;
+        setActive(next);
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        var prev = activeIdx - 1;
+        if (prev < 0) prev = items.length - 1;
+        setActive(prev);
+      } else if (ev.key === 'Enter') {
+        if (activeIdx >= 0 && items[activeIdx]) {
+          ev.preventDefault();
+          items[activeIdx].click();
+        }
+      } else if (ev.key === 'Escape') {
+        closePop();
+      }
+    });
+
+    document.addEventListener('click', function(ev){
+      if (!form.contains(ev.target)) {
+        closePop();
+      }
+    });
+  }
+
   export function initSortableTables(){
+    if (typeof document === 'undefined') return;
     document.querySelectorAll('table.sortable').forEach(armSortableTable);
   }
+
+  function initApp(){
+    initSortableTables();
+    initNavSearch();
+  }
+
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initSortableTables);
+      document.addEventListener('DOMContentLoaded', initApp);
     } else {
-      initSortableTables();
+      initApp();
     }
   }
