@@ -76,6 +76,10 @@ function initRunVideoFloat() {
   }
 
   function resetGeometry() {
+    if (!isDesktop()) {
+      clearGeometry();
+      return;
+    }
     defaultGeometry();
     shell.style.width = defaults.width + 'px';
     shell.style.height = defaults.height + 'px';
@@ -95,6 +99,7 @@ function initRunVideoFloat() {
   }
 
   function saveGeometry() {
+    if (!isDesktop()) return;
     savedGeometry = {
       width: shell.style.width,
       height: shell.style.height,
@@ -106,6 +111,10 @@ function initRunVideoFloat() {
   }
 
   function applySavedGeometry() {
+    if (!isDesktop()) {
+      clearGeometry();
+      return;
+    }
     if (!savedGeometry) {
       resetGeometry();
       return;
@@ -309,6 +318,11 @@ function initRunVideoFloat() {
   window.addEventListener('resize', function() {
     if (floating) {
       shell.hidden = isLandscapeMobile();
+      if (isDesktop()) {
+        applySavedGeometry();
+      } else {
+        clearGeometry();
+      }
     } else {
       shell.hidden = false;
       defaultGeometry();
