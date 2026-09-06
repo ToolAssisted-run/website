@@ -126,10 +126,6 @@ function initRunVideoFloat() {
   }
 
   function showFloat() {
-    if (isLandscapeMobile()) {
-      shell.hidden = true;
-      return;
-    }
     if (!floating) {
       const rect = shell.getBoundingClientRect();
       anchor.style.height = Math.round(rect.height) + 'px';
@@ -137,11 +133,14 @@ function initRunVideoFloat() {
       shell.classList.add('is-floating');
       applySavedGeometry();
     }
-    shell.hidden = false;
+    shell.hidden = isLandscapeMobile();
   }
 
   function restoreInline(preserveGeometry) {
-    if (!floating) return;
+    if (!floating) {
+      shell.hidden = false;
+      return;
+    }
     if (preserveGeometry !== false) saveGeometry();
     floating = false;
     shell.classList.remove('is-floating');
@@ -158,7 +157,11 @@ function initRunVideoFloat() {
       savedGeometry = null;
     }
     activated = true;
-    if (wasClosed || !isStageVisible()) showFloat();
+    if (!isStageVisible()) {
+      showFloat();
+    } else {
+      restoreInline(false);
+    }
   }
 
   function isStageVisible() {
@@ -197,15 +200,21 @@ function initRunVideoFloat() {
       closed = false;
       savedGeometry = null;
     }
+    if (!isStageVisible()) {
+      showFloat();
+    }
   }
 
   function maybeFloat() {
-    if (!activated || closed) return;
-    if (isLandscapeMobile()) {
-      shell.hidden = true;
-    } else if (!isStageVisible()) {
+    if (!activated || closed) {
+      if (!floating) {
+        shell.hidden = false;
+      }
+      return;
+    }
+    if (!isStageVisible()) {
       showFloat();
-    } else if (floating && !closed) {
+    } else if (floating) {
       restoreInline(true);
     }
   }
@@ -296,14 +305,24 @@ function initRunVideoFloat() {
   });
   window.addEventListener('scroll', maybeFloat, {passive: true});
   window.addEventListener('resize', function() {
-    if (isLandscapeMobile()) {
-      shell.hidden = true;
-    } else if (floating) {
+    if (floating) {
+      shell.hidden = isLandscapeMobile();
+    } else {
       shell.hidden = false;
+      defaultGeometry();
     }
-    if (!floating) defaultGeometry();
+    if (activated && !closed) {
+      maybeFloat();
+    }
   });
-  window.matchMedia(PORTRAIT_QUERY).addEventListener('change', maybeFloat);
+  window.matchMedia(PORTRAIT_QUERY).addEventListener('change', function() {
+    if (floating) {
+      shell.hidden = isLandscapeMobile();
+    }
+    if (activated && !closed) {
+      maybeFloat();
+    }
+  });
   defaultGeometry();
 }
 
