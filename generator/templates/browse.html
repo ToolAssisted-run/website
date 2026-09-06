@@ -4,6 +4,7 @@
 <div class="filters">
 <input id="bq" type="search" placeholder="Search game, category, author…">
 <select id="bsys"><option value="">All systems</option>{% for k, v in sys_opts %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+<select id="bgrp"><option value="">All game groups</option>{% for k, v in group_opts %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
 <select id="bst"><option value="">All statuses</option><option value="ranked">Ranked</option>
 <option value="verified">Verified</option>
 <option value="pending">Pending</option>
@@ -13,24 +14,102 @@
 <option value="title">By title</option></select>
 <span id="bcount" class="bcount"></span></div>
 <div class="tblwrap"><table class="btable"><thead><tr><th>Game</th><th>System</th><th>Authors</th>
-<th>Goal</th><th class="num">Value</th><th class="num"><span class="starglyph">★</span></th><th>Archived</th><th>Status</th></tr></thead>
+<th>Goal</th><th class="num">Value</th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th>Status</th></tr></thead>
 <tbody id="brows"></tbody></table></div>
+<div id="bpag" class="pag-wrap"></div>
 <script>
 var RUNS = {{ json_blob(index) }};
 var q = document.getElementById('bq'), sysf = document.getElementById('bsys'),
+    grpf = document.getElementById('bgrp'),
     stf = document.getElementById('bst'), sortf = document.getElementById('bsort'),
-    tbody = document.getElementById('brows'), count = document.getElementById('bcount');
+    tbody = document.getElementById('brows'), count = document.getElementById('bcount'),
+    pagBox = document.getElementById('bpag');
 var params = new URLSearchParams(location.search);
 if (params.get('q')) q.value = params.get('q');
+if (params.get('sys')) sysf.value = params.get('sys');
+if (params.get('grp')) grpf.value = params.get('grp');
+var curPage = parseInt(params.get('p') || '1', 10);
+if (isNaN(curPage) || curPage < 1) curPage = 1;
+
+var SIZES = [10, 20, 30, 40, 50];
+var pageSize = 10;
+try {
+  var savedSize = parseInt(localStorage.getItem('tar-pagesize-browse'), 10);
+  if (SIZES.indexOf(savedSize) >= 0) pageSize = savedSize;
+} catch(e){}
+
 function chip(state){
   return {verified:'<span class="chip verchip">Verified</span>',
           unclassified:'<span class="chip unclchip">Unclassified</span>',
           pending:'<span class="chip pendchip">Pending</span>'}[state];
 }
-function render(){
-  var needle = q.value.toLowerCase(), sys = sysf.value, st = stf.value;
+
+function syncUrl(){
+  try {
+    if (typeof history !== 'undefined' && history.replaceState) {
+      var u = new URL(location.href);
+      if (curPage > 1) u.searchParams.set('p', curPage);
+      else u.searchParams.delete('p');
+      if (q.value) u.searchParams.set('q', q.value);
+      else u.searchParams.delete('q');
+      if (sysf.value) u.searchParams.set('sys', sysf.value);
+      else u.searchParams.delete('sys');
+      if (grpf && grpf.value) u.searchParams.set('grp', grpf.value);
+      else u.searchParams.delete('grp');
+      history.replaceState(null, '', u.toString());
+    }
+  } catch(e){}
+}
+
+function renderPagBar(totalMatches){
+  if (!pagBox) return;
+  var totalPages = Math.max(1, Math.ceil(totalMatches / pageSize));
+  if (curPage > totalPages) curPage = totalPages;
+  if (curPage < 1) curPage = 1;
+
+  var startIdx = totalMatches === 0 ? 0 : (curPage - 1) * pageSize + 1;
+  var endIdx = Math.min(curPage * pageSize, totalMatches);
+
+  var sizeOpts = SIZES.map(function(s){
+    return '<option value="' + s + '"' + (s === pageSize ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+
+  pagBox.innerHTML = '<nav class="pag-bar" aria-label="Runs pagination">' +
+    '<div class="pag-info">Showing ' + startIdx + '–' + endIdx + ' of ' + totalMatches + ' runs</div>' +
+    '<div class="pag-nav">' +
+    '<button type="button" class="pag-btn" id="bp-prev"' + (curPage <= 1 ? ' disabled' : '') + '>← Prev</button>' +
+    '<span class="pag-cur">Page ' + curPage + ' of ' + totalPages + '</span>' +
+    '<button type="button" class="pag-btn" id="bp-next"' + (curPage >= totalPages ? ' disabled' : '') + '>Next →</button>' +
+    '</div>' +
+    '<label class="pag-size">Per page: <select id="bp-size">' + sizeOpts + '</select></label>' +
+    '</nav>';
+
+  var prevBtn = document.getElementById('bp-prev');
+  if (prevBtn) prevBtn.addEventListener('click', function(){
+    if (curPage > 1) { curPage--; render(false); }
+  });
+  var nextBtn = document.getElementById('bp-next');
+  if (nextBtn) nextBtn.addEventListener('click', function(){
+    if (curPage < totalPages) { curPage++; render(false); }
+  });
+  var sizeSel = document.getElementById('bp-size');
+  if (sizeSel) sizeSel.addEventListener('change', function(){
+    var ns = parseInt(sizeSel.value, 10);
+    if (SIZES.indexOf(ns) >= 0) {
+      pageSize = ns;
+      try { localStorage.setItem('tar-pagesize-browse', String(pageSize)); } catch(e){}
+      curPage = 1;
+      render(false);
+    }
+  });
+}
+
+function render(resetPage){
+  if (resetPage) curPage = 1;
+  var needle = q.value.toLowerCase(), sys = sysf.value, grp = grpf ? grpf.value : '', st = stf.value;
   var rs = RUNS.filter(function(r){
     if (sys && r.sys !== sys) return false;
+    if (grp && (!r.groups || r.groups.indexOf(grp) === -1)) return false;
     if (st === 'ranked' && (r.state === 'pending')) return false;
     if (st && st !== 'ranked' && st !== 'verified' && r.state !== st) return false;
     if (needle){
@@ -42,8 +121,17 @@ function render(){
   if (sortf.value === 'stars') rs.sort(function(a,b){ return b.stars - a.stars; });
   else if (sortf.value === 'title') rs.sort(function(a,b){ return a.title.localeCompare(b.title); });
   else rs.sort(function(a,b){ return b.date.localeCompare(a.date); });
+
   count.textContent = rs.length + ' run' + (rs.length === 1 ? '' : 's');
-  tbody.innerHTML = rs.map(function(r){
+  var total = rs.length;
+  var totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (curPage > totalPages) curPage = totalPages;
+  if (curPage < 1) curPage = 1;
+
+  var start = (curPage - 1) * pageSize;
+  var pageItems = rs.slice(start, start + pageSize);
+
+  tbody.innerHTML = pageItems.map(function(r){
     return '<tr onclick="location=\'../runs/' + r.id + '/\'">' +
       '<td><b>' + r.title + '</b><span class="bcat">' + r.cat + '</span></td>' +
       '<td class="bsys">' + r.sysname + '</td>' +
@@ -54,9 +142,15 @@ function render(){
       '<td class="bsys bdate">' + r.date + '</td>' +
       '<td>' + chip(r.state) + '</td></tr>';
   }).join('');
+
+  renderPagBar(total);
+  syncUrl();
 }
-[q, sysf, stf, sortf].forEach(function(el){
-  el.addEventListener('input', render); el.addEventListener('change', render);
+
+[q, sysf, grpf, stf, sortf].forEach(function(el){
+  if (!el) return;
+  el.addEventListener('input', function(){ render(true); });
+  el.addEventListener('change', function(){ render(true); });
 });
-render();
+render(false);
 </script>

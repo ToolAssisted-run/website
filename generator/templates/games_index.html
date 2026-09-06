@@ -20,10 +20,12 @@ experts curate afterwards.</p></div>
 <button class="dimopt gview-btn" data-view="list">List</button></span></div>
 {% if live_groups %}
 <div class="gview" id="v-groups" hidden><div class="grid">{% for gr in live_groups %}{{ group_card(gr) }}{% endfor %}</div>
+<div id="pag-groups" class="pag-wrap"></div>
 <p class="authline">{{ ngroups }} groups, and every game belongs to one:
 those no group has claimed yet are gathered under Uncategorized.</p></div>
 {% endif %}
 <div class="gview" id="v-systems"><div class="grid">{% for skey in sys_keys %}{{ system_card(skey, by_sys[skey]) }}{% endfor %}</div>
+<div id="pag-systems" class="pag-wrap"></div>
 <p class="authline">{{ by_sys|length }} systems; every game lives on one.</p></div>
 <div class="gview" id="v-list" hidden><div class="tblwrap"><table class="rtab"><thead><tr>
 <th data-key="title" class="sorted" data-dir="▲">Game</th>
@@ -43,10 +45,92 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
 <td class="num"><span class="starglyph">★</span>{{ stars_of(g['runs']) }}</td>
 {% if visits_known %}<td class="num">{{ card_views(views_of(g['runs'])) }}</td>{% endif %}</tr>
 {% endfor %}
-</tbody></table></div></div>
+</tbody></table></div>
+<div id="pag-list" class="pag-wrap"></div>
+</div>
 <script>
 (function(){
   var sortMode = 'stars', view = 'systems';
+  var TABLE_SIZES = [10, 20, 30, 40, 50];
+  var GRID_SIZES = [12, 24, 36, 48];
+  var pagState = {
+    groups: { p: 1, size: 12, sizes: GRID_SIZES, key: 'tar-pagesize-games-groups', label: 'group' },
+    systems: { p: 1, size: 12, sizes: GRID_SIZES, key: 'tar-pagesize-games-systems', label: 'system' },
+    list: { p: 1, size: 10, sizes: TABLE_SIZES, key: 'tar-pagesize-games-list', label: 'game' }
+  };
+  ['groups', 'systems', 'list'].forEach(function(k){
+    var st = pagState[k];
+    try {
+      var s = parseInt(localStorage.getItem(st.key), 10);
+      if (st.sizes.indexOf(s) >= 0) st.size = s;
+    } catch(e){}
+  });
+
+  function getItems(k){
+    if (k === 'list') {
+      var tb = document.querySelector('#v-list tbody');
+      return tb ? Array.prototype.slice.call(tb.rows) : [];
+    }
+    var grid = document.querySelector('#v-' + k + ' .grid');
+    return grid ? Array.prototype.slice.call(grid.children) : [];
+  }
+
+  function updatePagination(k){
+    var st = pagState[k];
+    if (!st) return;
+    var items = getItems(k);
+    var total = items.length;
+    var totalPages = Math.max(1, Math.ceil(total / st.size));
+    if (st.p > totalPages) st.p = totalPages;
+    if (st.p < 1) st.p = 1;
+
+    var start = (st.p - 1) * st.size;
+    var end = start + st.size;
+    items.forEach(function(el, idx){
+      el.hidden = !(idx >= start && idx < end);
+    });
+
+    var box = document.getElementById('pag-' + k);
+    if (!box) return;
+    if (total <= 0) { box.innerHTML = ''; return; }
+
+    var startIdx = total === 0 ? 0 : start + 1;
+    var endIdx = Math.min(end, total);
+
+    var sizeOpts = st.sizes.map(function(s){
+      return '<option value="' + s + '"' + (s === st.size ? ' selected' : '') + '>' + s + '</option>';
+    }).join('');
+
+    box.innerHTML = '<nav class="pag-bar" aria-label="' + st.label + ' pagination">' +
+      '<div class="pag-info">Showing ' + startIdx + '–' + endIdx + ' of ' + total + ' ' + (total === 1 ? st.label : st.label + 's') + '</div>' +
+      '<div class="pag-nav">' +
+      '<button type="button" class="pag-btn prev-btn"' + (st.p <= 1 ? ' disabled' : '') + '>← Prev</button>' +
+      '<span class="pag-cur">Page ' + st.p + ' of ' + totalPages + '</span>' +
+      '<button type="button" class="pag-btn next-btn"' + (st.p >= totalPages ? ' disabled' : '') + '>Next →</button>' +
+      '</div>' +
+      '<label class="pag-size">Per page: <select class="size-sel">' + sizeOpts + '</select></label>' +
+      '</nav>';
+
+    var prev = box.querySelector('.prev-btn');
+    if (prev) prev.addEventListener('click', function(){
+      if (st.p > 1) { st.p--; updatePagination(k); }
+    });
+    var next = box.querySelector('.next-btn');
+    if (next) next.addEventListener('click', function(){
+      if (st.p < totalPages) { st.p++; updatePagination(k); }
+    });
+    var sel = box.querySelector('.size-sel');
+    if (sel) sel.addEventListener('change', function(){
+      var ns = parseInt(sel.value, 10);
+      if (st.sizes.indexOf(ns) >= 0) {
+        st.size = ns;
+        try { localStorage.setItem(st.key, String(st.size)); } catch(e){}
+        st.p = 1;
+        updatePagination(k);
+      }
+    });
+  }
+
   // a remembered view whose section is gone (an archive with no groups yet)
   // must not blank the page
   try {
@@ -75,6 +159,8 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
     document.querySelectorAll('.gsort').forEach(function(b){
       b.classList.toggle('on', b.dataset.mode === sortMode);
     });
+    updatePagination('groups');
+    updatePagination('systems');
   }
   // the list view sorts by any column; a second click flips the direction.
   // Text columns start ascending, counts start with the biggest first.
@@ -97,6 +183,7 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
         ths.forEach(function(t){ t.classList.remove('sorted'); t.removeAttribute('data-dir'); });
         th.classList.add('sorted');
         th.setAttribute('data-dir', lasc ? '▲' : '▼');
+        updatePagination('list');
       });
     });
   }
@@ -115,6 +202,7 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
     var row = document.getElementById('gsortrow');
     if (row) row.hidden = (view === 'list');
     resort();
+    updatePagination(view);
   }
   document.querySelectorAll('.gsort').forEach(function(b){
     b.addEventListener('click', function(){ sortMode = b.dataset.mode; resort(); });

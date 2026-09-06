@@ -2,7 +2,7 @@
 // the small act zone experts and editors use to shape the library
 // (rename, thumbnail, category, delete a game; move or delete a group;
 // found a new group). Moved out of app.js: these ids exist only here.
-import { api, mePromise, viewAsCoverage, note, noteBuilt, actionBtn, post }
+import { api, mePromise, viewAsCoverage, note, noteBuilt, actionBtn, post, searchArchive }
   from './app.js';
 
   // ---- acts that live on the page they are about ----
@@ -32,33 +32,70 @@ import { api, mePromise, viewAsCoverage, note, noteBuilt, actionBtn, post }
       var zoneBtn = document.getElementById(dataId + '-btn');
       if (zoneBtn) zoneBtn.hidden = false;
       var groupMoveForm = document.getElementById('f-groupmove');
-      if (groupMoveForm && zoneData.movable) {
+      if (groupMoveForm) {
         var moveList = groupMoveForm.querySelector('.gmovelist');
         var moveField = groupMoveForm.querySelector('[name=move]');
-        var syncMoveField = function(){
-          var picked = [];
-          moveList.querySelectorAll('input:checked').forEach(function(c){ picked.push(c.value); });
-          moveField.value = picked.join(' ');
-        };
-        var moveRows = zoneData.movable.map(function(g){
-          var labelEl = document.createElement('label');
-          labelEl.className = 'gmrow';
-          var checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = g.key;
-          checkbox.addEventListener('change', syncMoveField);
-          labelEl.appendChild(checkbox);
-          labelEl.appendChild(document.createTextNode(' ' + g.title + ' (' + g.key + ')'
-            + (g.group ? ' · now in ' + g.group : '')));
-          labelEl.dataset.hay = (g.title + ' ' + g.key).toLowerCase();
-          moveList.appendChild(labelEl);
-          return labelEl;
-        });
         var moveFilter = groupMoveForm.querySelector('.gmfilter');
-        if (moveFilter) moveFilter.addEventListener('input', function(){
-          var n = moveFilter.value.toLowerCase();
-          moveRows.forEach(function(r){ r.hidden = !!n && r.dataset.hay.indexOf(n) === -1; });
-        });
+        var picked = new Set();
+        var syncMoveField = function(){
+          if (moveField) moveField.value = Array.from(picked).join(' ');
+        };
+
+        if (zoneData.movable) {
+          var moveRows = zoneData.movable.map(function(g){
+            var labelEl = document.createElement('label');
+            labelEl.className = 'gmrow';
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = g.key;
+            checkbox.addEventListener('change', function(){
+              if (checkbox.checked) picked.add(g.key); else picked.delete(g.key);
+              syncMoveField();
+            });
+            labelEl.appendChild(checkbox);
+            labelEl.appendChild(document.createTextNode(' ' + g.title + ' (' + g.key + ')'
+              + (g.group ? ' · now in ' + g.group : '')));
+            labelEl.dataset.hay = (g.title + ' ' + g.key).toLowerCase();
+            moveList.appendChild(labelEl);
+            return labelEl;
+          });
+          if (moveFilter) moveFilter.addEventListener('input', function(){
+            var n = moveFilter.value.toLowerCase();
+            moveRows.forEach(function(r){ r.hidden = !!n && r.dataset.hay.indexOf(n) === -1; });
+          });
+        } else if (moveFilter && moveList) {
+          var debTimer = null;
+          moveFilter.addEventListener('input', function(){
+            clearTimeout(debTimer);
+            var q = moveFilter.value.trim();
+            if (!q) return;
+            debTimer = setTimeout(function(){
+              searchArchive('games', q).then(function(items){
+                var checkedEls = moveList.querySelectorAll('input:checked');
+                var kept = {};
+                checkedEls.forEach(function(cb){ kept[cb.value] = cb.closest('label'); });
+                moveList.innerHTML = '';
+                Object.values(kept).forEach(function(el){ moveList.appendChild(el); });
+
+                items.forEach(function(item){
+                  if (kept[item.value] || item.value === zoneData.group) return;
+                  var labelEl = document.createElement('label');
+                  labelEl.className = 'gmrow';
+                  var checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.value = item.value;
+                  checkbox.addEventListener('change', function(){
+                    if (checkbox.checked) picked.add(item.value); else picked.delete(item.value);
+                    syncMoveField();
+                  });
+                  labelEl.appendChild(checkbox);
+                  labelEl.appendChild(document.createTextNode(' ' + item.label));
+                  moveList.appendChild(labelEl);
+                });
+              });
+            }, 250);
+          });
+        }
       }
       forms.forEach(function(spec){
         var form = document.getElementById(spec.id);

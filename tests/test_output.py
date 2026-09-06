@@ -512,8 +512,8 @@ def main():
                'Nintendo Entertainment System' in gh and 'DOS' in gh)
             ck('a hostile group title is escaped',
                '<b>Family</b>' not in gh and '&lt;b&gt;Family' in gh)
-            ck('the group page lists the runs of its games',
-               'runs/M900101/' in gh and 'runs/M900104/' in gh)
+            ck('the group page links to its runs in browse',
+               'browse/?grp=test-family' in gh and 'Browse all' in gh)
             ck('a withdrawn run stays off the group page', 'M900106' not in gh)
             ck('an expert scoped to the group is shown as covering it', 'Grp' in gh)
         ck('a group holding a single game has a page like any other',

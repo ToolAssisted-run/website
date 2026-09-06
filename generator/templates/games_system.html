@@ -13,7 +13,7 @@ group each belongs to.</p>
 {{ library_controls() }}
 <div class="grid">{% for g in sgames %}{{ game_card(g, '../../games/') }}{% endfor %}</div>
 
-{{ records_table(srows, 'Records across the system', 'No ranked run on this system yet.') }}
+{{ records_table(sruns|length, 'Records across the system', 'No runs on this system yet.', browse_href='../../browse/?sys=' + skey) }}
 
 <div id="sysexpertmenu" class="actzone expertmenu" hidden>
 <h2>Expert menu</h2>

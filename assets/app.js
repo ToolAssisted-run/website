@@ -814,6 +814,9 @@ window.TARApp = window.TARApp || {};
           return compareCells(rowA.cells[colIdx], rowB.cells[colIdx], asc);
         });
         rows.forEach(function(row){ tbody.appendChild(row); });
+        if (table._paginator) {
+          table._paginator.update();
+        }
       }
 
       th.addEventListener('click', sortCol);
@@ -824,6 +827,174 @@ window.TARApp = window.TARApp || {};
         }
       });
     });
+
+    var wrap = table.closest('.tblwrap') || table;
+    var key = table.dataset.pagesizeKey || (wrap && wrap.dataset.pagesizeKey);
+    if (table.classList.contains('paginated') || key) {
+      var pagBox = el('div', 'pag-wrap');
+      wrap.parentNode.insertBefore(pagBox, wrap.nextSibling);
+      var itemLabel = table.dataset.itemLabel || (wrap && wrap.dataset.itemLabel) || 'row';
+      table._paginator = paginateElements(function(){
+        return Array.prototype.slice.call(tbody.rows).filter(function(r){
+          return !r.dataset.filtered;
+        });
+      }, {
+        key: key || 'table',
+        container: pagBox,
+        itemLabel: itemLabel
+      });
+    }
+  }
+
+  // ---- client-side pagination helper ----
+  // Reusable pagination helper for tables, lists, and element grids.
+  // Manages:
+  // - pageSize options: [10, 20, 30, 40, 50], default 10
+  // - remembering pageSize per listKey in localStorage ('tar-pagesize-' + listKey)
+  // - current page navigation (prev, next, direct page, total pages)
+  // - rendering the .pag-bar UI with accessible controls
+  // - calling onChange(page, pageSize)
+  export function createPaginator(opts){
+    var listKey = opts.key || 'default';
+    var storageKey = 'tar-pagesize-' + listKey;
+    var sizes = opts.sizes || [10, 20, 30, 40, 50];
+    var defaultSize = opts.defaultSize || 10;
+    var pageSize = defaultSize;
+    try {
+      var saved = parseInt(localStorage.getItem(storageKey), 10);
+      if (sizes.indexOf(saved) >= 0) pageSize = saved;
+    } catch(e){}
+
+    var currentPage = opts.initialPage || 1;
+    var totalItems = opts.total !== undefined ? opts.total : 0;
+    var container = opts.container;
+    var onChange = opts.onChange;
+    var itemLabel = opts.itemLabel || 'item';
+
+    function totalPages(){
+      return Math.max(1, Math.ceil(totalItems / pageSize));
+    }
+
+    function renderControls(){
+      if (!container) return;
+      container.innerHTML = '';
+      if (totalItems <= 0 && !opts.showEmpty) return;
+      var maxP = totalPages();
+      if (currentPage > maxP) currentPage = maxP;
+      if (currentPage < 1) currentPage = 1;
+
+      var bar = el('nav', 'pag-bar');
+      bar.setAttribute('aria-label', 'Pagination');
+
+      var startIdx = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+      var endIdx = Math.min(currentPage * pageSize, totalItems);
+      var info = el('div', 'pag-info', 'Showing ' + startIdx + '\u2013' + endIdx + ' of ' + totalItems + ' ' + (totalItems === 1 ? itemLabel : itemLabel + 's'));
+      bar.appendChild(info);
+
+      var nav = el('div', 'pag-nav');
+      var prevBtn = el('button', 'pag-btn', '\u2190 Prev');
+      prevBtn.type = 'button';
+      prevBtn.disabled = currentPage <= 1;
+      prevBtn.addEventListener('click', function(){
+        if (currentPage > 1) { setPage(currentPage - 1); }
+      });
+      nav.appendChild(prevBtn);
+
+      var pageIndicator = el('span', 'pag-cur', 'Page ' + currentPage + ' of ' + maxP);
+      nav.appendChild(pageIndicator);
+
+      var nextBtn = el('button', 'pag-btn', 'Next \u2192');
+      nextBtn.type = 'button';
+      nextBtn.disabled = currentPage >= maxP;
+      nextBtn.addEventListener('click', function(){
+        if (currentPage < maxP) { setPage(currentPage + 1); }
+      });
+      nav.appendChild(nextBtn);
+      bar.appendChild(nav);
+
+      var sizeWrap = el('label', 'pag-size');
+      sizeWrap.appendChild(document.createTextNode('Per page: '));
+      var select = document.createElement('select');
+      sizes.forEach(function(s){
+        var opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        if (s === pageSize) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', function(){
+        var newSize = parseInt(select.value, 10);
+        if (sizes.indexOf(newSize) >= 0) {
+          pageSize = newSize;
+          try { localStorage.setItem(storageKey, String(pageSize)); } catch(e){}
+          currentPage = 1;
+          trigger();
+        }
+      });
+      sizeWrap.appendChild(select);
+      bar.appendChild(sizeWrap);
+
+      container.appendChild(bar);
+    }
+
+    function trigger(){
+      renderControls();
+      if (typeof onChange === 'function') onChange(currentPage, pageSize);
+    }
+
+    function setPage(p){
+      currentPage = Math.max(1, Math.min(p, totalPages()));
+      trigger();
+    }
+
+    function setTotal(n){
+      totalItems = n;
+      var maxP = totalPages();
+      if (currentPage > maxP) currentPage = maxP;
+      renderControls();
+    }
+
+    renderControls();
+
+    return {
+      setPage: setPage,
+      setTotal: setTotal,
+      getPage: function(){ return currentPage; },
+      getPageSize: function(){ return pageSize; },
+      update: trigger
+    };
+  }
+
+  export function paginateElements(elements, opts){
+    var listKey = opts.key || 'default';
+    var container = opts.container;
+    var getItems = typeof elements === 'function' ? elements : function(){ return Array.prototype.slice.call(elements); };
+    var itemLabel = opts.itemLabel || 'item';
+
+    var pag = createPaginator({
+      key: listKey,
+      total: getItems().length,
+      container: container,
+      itemLabel: itemLabel,
+      onChange: function(page, size){
+        var items = getItems();
+        var start = (page - 1) * size;
+        var end = start + size;
+        items.forEach(function(item, idx){
+          item.hidden = !(idx >= start && idx < end);
+        });
+        if (typeof opts.onPage === 'function') opts.onPage(page, size);
+      }
+    });
+
+    var initialItems = getItems();
+    var p0 = pag.getPage(), s0 = pag.getPageSize();
+    var start0 = (p0 - 1) * s0, end0 = start0 + s0;
+    initialItems.forEach(function(item, idx){
+      item.hidden = !(idx >= start0 && idx < end0);
+    });
+
+    return pag;
   }
 
   export function initSortableTables(){

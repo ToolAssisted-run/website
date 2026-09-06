@@ -3,6 +3,86 @@
 <td>{{ systems[r['_game']['system']]['name'] }}</td>
 <td>{{ r['authors']|map(attribute='user')|join(', ') }}</td>
 {% endmacro %}
+{% macro capped(scroll, cap, key, label) %}
+<div id="{{ scroll }}-pag" class="pag-wrap"></div>
+<script>
+(function(){
+  var SIZES = [10, 20, 30, 40, 50];
+  var storageKey = 'tar-pagesize-contrib-{{ key }}';
+  var pageSize = 10, curPage = 1;
+  try {
+    var s = parseInt(localStorage.getItem(storageKey), 10);
+    if (SIZES.indexOf(s) >= 0) pageSize = s;
+  } catch (e) {}
+
+  var box = document.getElementById('{{ scroll }}');
+  var pagBox = document.getElementById('{{ scroll }}-pag');
+  if (!box || !pagBox) return;
+
+  function paint(resetPage){
+    if (resetPage) curPage = 1;
+    var allRows = Array.prototype.slice.call(box.querySelectorAll('tbody tr'));
+    var visibleRows = allRows.filter(function(tr){ return tr.dataset.filtered !== '1'; });
+    var total = visibleRows.length;
+    var totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (curPage > totalPages) curPage = totalPages;
+    if (curPage < 1) curPage = 1;
+
+    var start = (curPage - 1) * pageSize;
+    var end = start + pageSize;
+
+    allRows.forEach(function(tr){
+      var idx = visibleRows.indexOf(tr);
+      tr.style.display = (idx >= start && idx < end) ? '' : 'none';
+    });
+
+    if (total <= 0) {
+      pagBox.innerHTML = '';
+      return;
+    }
+
+    var startIdx = total === 0 ? 0 : start + 1;
+    var endIdx = Math.min(end, total);
+    var sizeOpts = SIZES.map(function(sz){
+      return '<option value="' + sz + '"' + (sz === pageSize ? ' selected' : '') + '>' + sz + '</option>';
+    }).join('');
+
+    pagBox.innerHTML = '<nav class="pag-bar" aria-label="{{ label }} pagination">' +
+      '<div class="pag-info">Showing ' + startIdx + '–' + endIdx + ' of ' + total + ' runs</div>' +
+      '<div class="pag-nav">' +
+      '<button type="button" class="pag-btn prev-btn"' + (curPage <= 1 ? ' disabled' : '') + '>← Prev</button>' +
+      '<span class="pag-cur">Page ' + curPage + ' of ' + totalPages + '</span>' +
+      '<button type="button" class="pag-btn next-btn"' + (curPage >= totalPages ? ' disabled' : '') + '>Next →</button>' +
+      '</div>' +
+      '<label class="pag-size">Per page: <select class="size-sel">' + sizeOpts + '</select></label>' +
+      '</nav>';
+
+    var prev = pagBox.querySelector('.prev-btn');
+    if (prev) prev.addEventListener('click', function(){
+      if (curPage > 1) { curPage--; paint(false); }
+    });
+    var next = pagBox.querySelector('.next-btn');
+    if (next) next.addEventListener('click', function(){
+      if (curPage < totalPages) { curPage++; paint(false); }
+    });
+    var sel = pagBox.querySelector('.size-sel');
+    if (sel) sel.addEventListener('change', function(){
+      var ns = parseInt(sel.value, 10);
+      if (SIZES.indexOf(ns) >= 0) {
+        pageSize = ns;
+        try { localStorage.setItem(storageKey, String(pageSize)); } catch(e){}
+        paint(true);
+      }
+    });
+  }
+
+  window.tarRecap = window.tarRecap || [];
+  window.tarRecap.push(function(){ paint(true); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ paint(false); });
+  else paint(false);
+})();
+</script>
+{% endmacro %}
 <header class="ghead"><div><h1>Contribute</h1>
 <p class="authline">The public worklist. No claiming, no assignment; anyone may do anything,
 anytime; the first to finish earns the points.</p></div></header>
@@ -13,13 +93,14 @@ anytime; the first to finish earns the points.</p></div></header>
 verification ranks the run</b>, shown as verified; an expert may later invalidate a
 wrong one. The bounty <b>rises one point per day</b> the run waits, up to {{ '{:,}'.format(PT_VERIFY_MAX) }}.</p>
 {% if need_verify %}
-<div class="contscroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>
+<div class="contscroll" id="nv-scroll"><table><thead><tr><th>Run</th><th>System</th><th>Authors</th><th class="num">Bounty</th></tr></thead><tbody>
 {% for r in need_verify %}
 <tr data-sys="{{ r['_game']['system'] }}" onclick="window.open('../runs/{{ r['id'] }}/', '_blank')">
 {{ run_cell(r) }}
 <td class="num"><b class="bounty">{{ verify_bounty(r) }}</b> pts</td></tr>
 {% endfor %}
 </tbody></table></div>
+{{ capped('nv-scroll', 10, 'verify', 'Verification') }}
 {% else %}
 <p class="emptynote">Nothing waiting: every run that can be verified has been.</p>
 {% endif %}
@@ -78,44 +159,8 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
       apply();
     });
   });
-  // the list sits below this script in the page: on a fresh load the rows
-  // do not exist yet when this runs, so the remembered choice filtered
-  // nothing while the buttons showed it (#40)
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
   else apply();
-})();
-</script>
-{% endmacro %}
-{% macro capped(scroll, cap) %}
-{# Twenty rows, then "Show more": two hundred waiting runs is a scroll
-   nobody reaches the end of, and the ones below are the same work as the
-   ones above. The cap owns every row's display, filter included, so the
-   twenty shown are twenty the reader can actually act on. #}
-<p class="capmore" hidden><button class="btn quiet" type="button" id="{{ scroll }}-more"></button></p>
-<script>
-(function(){
-  var CAP = {{ cap }}, shown = CAP;
-  var box = document.getElementById('{{ scroll }}');
-  var btn = document.getElementById('{{ scroll }}-more');
-  if (!box || !btn) return;
-  function paint(){
-    var rows = Array.prototype.filter.call(
-      box.querySelectorAll('tr[data-sys]'),
-      function(tr){ return tr.dataset.filtered !== '1'; });
-    Array.prototype.forEach.call(box.querySelectorAll('tr[data-sys]'), function(tr){
-      tr.style.display = 'none';
-    });
-    rows.forEach(function(tr, i){ if (i < shown) tr.style.display = ''; });
-    var left = rows.length - shown;
-    btn.parentNode.hidden = left <= 0;
-    btn.textContent = left > CAP ? 'Show ' + CAP + ' more (' + left + ' left)'
-                                 : 'Show the last ' + left;
-  }
-  btn.addEventListener('click', function(){ shown += CAP; paint(); });
-  window.tarRecap = window.tarRecap || [];
-  window.tarRecap.push(function(){ shown = CAP; paint(); });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
-  else paint();
 })();
 </script>
 {% endmacro %}
@@ -129,7 +174,7 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 <td class="num"><b class="bounty">{{ repro_bounty(r) }}</b> pts</td></tr>
 {% endfor %}
 </tbody></table></div>
-{{ capped('nr-scroll', 20) }}
+{{ capped('nr-scroll', 10, 'repro', 'Reproduction') }}
 {% else %}
 <p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>
 {% endif %}
@@ -151,7 +196,7 @@ verified them on hardware.</p>
 <td class="num"><b class="bounty">{{ PT_CONSOLE }}</b> pts</td></tr>
 {% endfor %}
 </tbody></table></div>
-{{ capped('hw-scroll', 20) }}
+{{ capped('hw-scroll', 10, 'hardware', 'Hardware verification') }}
 {% else %}
 <p class="emptynote">Nothing waiting: every run with an input movie has been played back on hardware.</p>
 {% endif %}

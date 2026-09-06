@@ -610,6 +610,19 @@ input.bad{border-color:#DC2626!important}
 .bcat{display:block;font-family:ui-monospace,monospace;font-size:.72rem;color:var(--accent-text)}
 .bsys{font-size:.84rem;color:var(--muted)}
 .bdate{white-space:nowrap}
+/* Pagination controls: responsive, accessible, matching TAR design system */
+.pag-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0;flex-wrap:wrap;font-size:.86rem}
+.pag-info{font-family:ui-monospace,monospace;font-size:.8rem;color:var(--faint)}
+.pag-nav{display:inline-flex;align-items:center;gap:6px}
+.pag-btn{padding:6px 12px;border:2px solid var(--hairs);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:.82rem;cursor:pointer}
+.pag-btn:hover:not(:disabled){border-color:var(--accent-text);color:var(--ink)}
+.pag-btn:disabled{opacity:.4;cursor:not-allowed}
+.pag-btn.cur{background:rgba(34,197,94,.12);border-color:var(--accent-text);color:var(--ink);font-weight:700}
+.pag-cur{font-family:ui-monospace,monospace;font-size:.82rem;color:var(--ink);padding:0 4px}
+.pag-size{display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,monospace;font-size:.78rem;color:var(--faint)}
+.pag-size select{padding:4px 26px 4px 8px;background-position:right 8px center;border:2px solid var(--hair);border-radius:6px;background-color:var(--bg);color:var(--ink);font:inherit;font-size:.82rem}
+.pag-size select:focus{outline:none;border-color:var(--accent-text)}
+.pag-browse-link{margin:12px 0 20px;display:inline-block}
 /* the visit tally: small, grey, an eye and a number */
 .visits{display:inline-flex;align-items:center;font-family:ui-monospace,monospace;font-size:.74rem;color:var(--faint);padding:3px 2px;cursor:default}
 .eyeic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2}

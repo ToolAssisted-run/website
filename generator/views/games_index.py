@@ -86,7 +86,7 @@ for skey in sorted(by_sys):
                                and e['user'].lower() not in shown_sys}, key=str.lower)
     sbody = tpl('games_system.html', sname=sname, skey=skey, sgames=sgames, sruns=sruns,
                 sysexperts=sysexperts, site_experts=site_experts_sys,
-                srows=ranked_rows(sruns), emulatordata=emulators, **HELPERS)
+                emulatordata=emulators, **HELPERS)
     sdir = OUT / 'systems' / skey
     sdir.mkdir(parents=True, exist_ok=True)
     sbest = best_thumb(sruns)
@@ -123,21 +123,12 @@ if live_groups:
             | {e.lower() for e in site_experts})
         # The permission list must include direct group and site scopes even
         # when this group has no games from which to derive coverage.
-        # The move form lists every game not already here, with the group each
-        # would leave.
-        placed_in = {k: grx['title'] for grx in live_groups
-                     for k in grx.get('games', []) if grx['key'] != gr['key']}
         gact_data = {'group': gr['key'], 'experts': group_permissions,
-                     'editorZone': True,
-                     'movable': [{'key': k, 'title': games[k]['title'],
-                                  'group': placed_in.get(k, '')}
-                                 for k in sorted(games,
-                                                 key=lambda k: games[k]['title'].lower())
-                                 if k not in gr.get('games', [])]}
+                     'editorZone': True}
         gbody = tpl('games_group.html', gr=gr, ggames=ggames, grunts=grunts,
                     gexperts=group_experts, site_experts=site_experts,
                     synthetic=bool(gr.get('synthetic')),
-                    rows=ranked_rows(grunts), gact_data=gact_data, **HELPERS)
+                    gact_data=gact_data, **HELPERS)
         gdir = OUT / 'groups' / gr['key']
         gdir.mkdir(parents=True, exist_ok=True)
         gnsys = nsystems(ggames)

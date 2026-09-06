@@ -54,50 +54,54 @@ data-last="{{ 1 if gr.get('synthetic') else 0 }}" href="../groups/{{ gr['key'] }
 <span><span class="starglyph">★</span>{{ stars_of(grunts) }}</span>{{ card_views(views_of(grunts)) }}</span></span></a>
 {% endmacro %}
 
-{% macro records_table(rows, heading, empty) %}
-{# The ranked runs of a whole system or group, one row each; rows arrive
-   sorted by game title then category. #}
-{% if rows %}
-<h2>{{ heading }}</h2>
-{% set hw_any = rows|selectattr('_game.system', 'in', HW_SYSTEMS)|list|length > 0 %}
-<div class="tblwrap"><table class="rtab"><thead><tr><th>Game</th><th>Category</th><th>Author</th>
-<th class="num"></th><th class="num">Stars</th>
-<th class="ctr">Rep</th><th class="ctr">Ver</th>{% if hw_any %}<th class="ctr">Con</th>{% endif %}</tr></thead>
-<tbody>
-{% for r in rows %}
-{% set rs_, vs_ = eff_state(r) %}
-<tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r['id'] }}/'"><td><a href="../../games/{{ r['_game']['key'] }}/">{{ r['_game']['title'] }}</a></td>
-<td>{{ cat_label(r) }}</td>
-<td>{% for a in r['authors'] %}{{ author_chip(a['user'], '../../') }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
-<td class="num"><a href="../../runs/{{ r['id'] }}/">{{ primary_metric_html(r) }}</a></td>
-<td class="num"><span class="starglyph">★</span>{{ nlikes(r) }}</td>
-<td class="ctr">{{ tick(rs_) }}</td><td class="ctr">{{ tick(vs_) }}</td>{% if hw_any %}<td class="ctr">{{ console_tick(r) }}</td>{% endif %}</tr>
-{% endfor %}
-</tbody></table></div>
-<p class="legend">{{ FULL_TICK }} verified &nbsp;
-{{ NONE_TICK }} pending</p>
+{% macro records_table(runs_or_count, heading, empty, browse_href=None) %}
+{# On system and group pages, the table is replaced by the direct link to /browse/
+   showing the run count. #}
+{% set n = runs_or_count|length if runs_or_count is iterable else runs_or_count %}
+{% if n > 0 %}
+{% if browse_href %}
+<p class="pag-browse-link"><a class="btn quiet" href="{{ browse_href }}">Browse all {{ n }} run{{ 's' if n != 1 else '' }} →</a></p>
+{% endif %}
 {% else %}
-<p class="authline">{{ empty }}</p>
+<p class="emptynote">{{ empty }}</p>
 {% endif %}
 {% endmacro %}
 
-
 {% macro library_controls() %}
-{# sort and filter for a library of game cards (a group or a system page):
-   by stars, views, title or release date; unofficial games can be hidden.
-   The cards carry the facts as data attributes; the script below reorders. #}
-<div class="dimrow libctl"><span class="dimsub nogap"><span class="dimname">Sort</span>
-<button class="dimopt lsort on" data-mode="stars"><span class="starglyph">★</span> Stars</button>
-<button class="dimopt lsort" data-mode="views">Views</button>
-<button class="dimopt lsort" data-mode="title">By title</button>
-<button class="dimopt lsort" data-mode="released">Release date</button></span>
-<label class="dimsub libhide"><input type="checkbox" id="hide-unofficial" autocomplete="off"> <span>Hide unofficial games</span></label></div>
+{# The sort / filter bar shared by the systems and groups pages:
+   sorts by ★ stars, visits, release date; can hide unofficial games. #}
+<div class="libbar">
+  <div class="libsort">
+    <span class="liblabel">Sort:</span>
+    <button type="button" class="btn quiet lsort on" data-mode="stars">★ Stars</button>
+    {% if visits_known %}<button type="button" class="btn quiet lsort" data-mode="views">{{ EYE_ICON }} Views</button>{% endif %}
+    <button type="button" class="btn quiet lsort" data-mode="released">Release date</button>
+    <button type="button" class="btn quiet lsort" data-mode="title">Title</button>
+  </div>
+  <label class="libhide check" title="Hides games flagged unofficial"><input type="checkbox" id="hide-unofficial"> Hide unofficial</label>
+</div>
 <script>
-// the controls stand above the grid, so this runs before the grid exists:
-// wait for the document, like every inline script that reaches forward (#40)
+// client-side sort and unofficial-toggle for the library grid
 document.addEventListener('DOMContentLoaded', function(){
-  var grid = document.querySelector('.grid'), mode = 'stars';
+  var mode = 'stars';
+  var grid = document.querySelector('.grid');
   if (!grid) return;
+
+  var pagBox = document.getElementById('lib-pag');
+  if (!pagBox) {
+    pagBox = document.createElement('div');
+    pagBox.id = 'lib-pag';
+    pagBox.className = 'pag-wrap';
+    grid.parentNode.insertBefore(pagBox, grid.nextSibling);
+  }
+
+  var SIZES = [12, 24, 36, 48];
+  var pageSize = 12, curPage = 1;
+  try {
+    var s = parseInt(localStorage.getItem('tar-pagesize-library'), 10);
+    if (SIZES.indexOf(s) >= 0) pageSize = s;
+  } catch(e){}
+
   function order(a, b){
     if (mode === 'stars') return b.dataset.stars - a.dataset.stars;
     if (mode === 'views') return (b.dataset.views || 0) - (a.dataset.views || 0);
@@ -108,19 +112,85 @@ document.addEventListener('DOMContentLoaded', function(){
     }
     return a.dataset.title.localeCompare(b.dataset.title);
   }
-  function apply(){
-    Array.prototype.slice.call(grid.children).sort(order).forEach(function(c){ grid.appendChild(c); });
+
+  function renderPagination(total){
+    if (!pagBox) return;
+    if (total <= 0) { pagBox.innerHTML = ''; return; }
+    var totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (curPage > totalPages) curPage = totalPages;
+    if (curPage < 1) curPage = 1;
+
+    var start = (curPage - 1) * pageSize;
+    var startIdx = total === 0 ? 0 : start + 1;
+    var endIdx = Math.min(start + pageSize, total);
+    var sizeOpts = SIZES.map(function(sz){
+      return '<option value="' + sz + '"' + (sz === pageSize ? ' selected' : '') + '>' + sz + '</option>';
+    }).join('');
+
+    pagBox.innerHTML = '<nav class="pag-bar" aria-label="Game library pagination">' +
+      '<div class="pag-info">Showing ' + startIdx + '–' + endIdx + ' of ' + total + ' games</div>' +
+      '<div class="pag-nav">' +
+      '<button type="button" class="pag-btn prev-btn"' + (curPage <= 1 ? ' disabled' : '') + '>← Prev</button>' +
+      '<span class="pag-cur">Page ' + curPage + ' of ' + totalPages + '</span>' +
+      '<button type="button" class="pag-btn next-btn"' + (curPage >= totalPages ? ' disabled' : '') + '>Next →</button>' +
+      '</div>' +
+      '<label class="pag-size">Per page: <select class="size-sel">' + sizeOpts + '</select></label>' +
+      '</nav>';
+
+    var prev = pagBox.querySelector('.prev-btn');
+    if (prev) prev.addEventListener('click', function(){
+      if (curPage > 1) { curPage--; apply(false); }
+    });
+    var next = pagBox.querySelector('.next-btn');
+    if (next) next.addEventListener('click', function(){
+      if (curPage < totalPages) { curPage++; apply(false); }
+    });
+    var sel = pagBox.querySelector('.size-sel');
+    if (sel) sel.addEventListener('change', function(){
+      var ns = parseInt(sel.value, 10);
+      if (SIZES.indexOf(ns) >= 0) {
+        pageSize = ns;
+        try { localStorage.setItem('tar-pagesize-library', String(pageSize)); } catch(e){}
+        curPage = 1;
+        apply(false);
+      }
+    });
+  }
+
+  function apply(resetPage){
+    if (resetPage) curPage = 1;
+    var cards = Array.prototype.slice.call(grid.children);
+    cards.sort(order).forEach(function(c){ grid.appendChild(c); });
     document.querySelectorAll('.lsort').forEach(function(b){ b.classList.toggle('on', b.dataset.mode === mode); });
     var hide = document.getElementById('hide-unofficial').checked;
-    grid.querySelectorAll('.card').forEach(function(c){ c.hidden = hide && c.dataset.unofficial === '1'; });
+    var visibleCards = cards.filter(function(c){
+      var isUnofficial = c.dataset.unofficial === '1';
+      return !(hide && isUnofficial);
+    });
+
+    var total = visibleCards.length;
+    var totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (curPage > totalPages) curPage = totalPages;
+    if (curPage < 1) curPage = 1;
+
+    var start = (curPage - 1) * pageSize;
+    var end = start + pageSize;
+
+    cards.forEach(function(c){
+      var idx = visibleCards.indexOf(c);
+      c.hidden = idx === -1 || idx < start || idx >= end;
+    });
+
+    renderPagination(total);
   }
+
   document.querySelectorAll('.lsort').forEach(function(b){
-    b.addEventListener('click', function(){ mode = b.dataset.mode; apply(); });
+    b.addEventListener('click', function(){ mode = b.dataset.mode; apply(true); });
   });
-  document.getElementById('hide-unofficial').addEventListener('change', apply);
+  document.getElementById('hide-unofficial').addEventListener('change', function(){ apply(true); });
   // a reload can bring the box back ticked (browsers restore form state):
   // the grid must agree with the box from the first paint
-  apply();
+  apply(false);
 });
 </script>
 {% endmacro %}

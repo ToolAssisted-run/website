@@ -20,7 +20,7 @@
 {% endif %}
 
 {% if not synthetic %}
-{{ records_table(rows, 'Records across the group', 'No ranked run in this group yet.') }}
+{{ records_table(grunts|length, 'Records across the group', 'No runs in this group yet.', browse_href='../../browse/?grp=' + gr['key']) }}
 <script type="application/json" id="groupactdata">{{ json_blob(gact_data) }}</script>
 <div id="groupacts" class="actzone expertmenu" hidden>
 <h2>Expert menu</h2>

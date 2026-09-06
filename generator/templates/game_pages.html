@@ -85,7 +85,7 @@
 </tbody></table></div>
 {% endif %}
 {% if c.history %}
-<h3 class="histh">History: earlier runs superseded by the same authors</h3><div class="tblwrap"><table><tbody>
+<h3 class="histh">History: earlier runs superseded by the same authors</h3><div class="tblwrap"><table class="sortable paginated" data-pagesize-key="game-history" data-item-label="historical run"><thead><tr><th class="rank"></th><th>Author</th><th class="num">Frames</th><th class="num">Behind</th><th class="num"><span class="starglyph">★</span></th><th>Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th>{% if hw %}<th class="ctr">Console</th>{% endif %}</tr></thead><tbody>
 {% for r, dtxt in c.history %}
 <tr {{ row.onclick(r, rel) }}><td class="rank">·</td><td>{{ row.authors(r, rel) }}</td>
 {{ row.frames_cell(r, rel) }}
@@ -107,7 +107,7 @@
 <section class="unclsect"><h2>Unclassified</h2>
 <p class="rules">Entertainment, experiments, playarounds. No defined goal; each run describes
 its own. Never verified; ranked purely by ★ likes.</p>
-<div class="tblwrap"><table><thead><tr><th>#</th><th>Author</th><th>Goal</th><th class="num"><span class="starglyph">★</span></th>
+<div class="tblwrap"><table class="sortable paginated" data-pagesize-key="game-unclass" data-item-label="run"><thead><tr><th>#</th><th>Author</th><th>Goal</th><th class="num"><span class="starglyph">★</span></th>
 <th class="num">Frames</th><th class="num">Time</th><th>Date</th><th class="ctr">Repro</th>{% if hw %}<th class="ctr">Console</th>{% endif %}</tr></thead>
 <tbody>
 {% for r in uncl_runs %}
