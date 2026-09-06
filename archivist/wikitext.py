@@ -213,6 +213,21 @@ def _autolink(m):
         return _image(url, []) + tail
     return f'<a href="{url}">{url}</a>' + tail
 
+_RE_BOLD = re.compile(r'__(.+?)__')
+_RE_EMPH = re.compile(r"''(.+?)''")
+_RE_CODE = re.compile(r'\{\{(.+?)\}\}')
+_RE_STRIKE = re.compile(r'---(.+?)---')
+_RE_QUOTE = re.compile(r'««(.+?)»»')
+_RE_SUP = re.compile(r'⸢⸢(.+?)⸣⸣')
+_RE_SUB = re.compile(r'⸤⸤(.+?)⸥⸥')
+_RE_SMALL = re.compile(r'\(\(([^()]+?)\)\)')
+
+_RE_IF_ZERO = re.compile(r'\[if:0\].*?\[endif\]', flags=re.S | re.I)
+_RE_BRACKET = re.compile(r'\[([^\[\]\x00]+)\]')
+_RE_SUPPRESSED_URL = re.compile(r'!(' + _URL + ')')
+_RE_BARE_URL = re.compile(r'(?<![\w/=\x00])(' + _URL + ')')
+_RE_PLACEHOLDER = re.compile(r'\x00(\d+)\x00')
+
 def inline(s, refs=lambda s: s):
     """Inline markup over one run of text. Links, images and modules are cut
     out first, into placeholders, so emphasis never reaches inside a URL and
@@ -224,36 +239,58 @@ def inline(s, refs=lambda s: s):
         tokens.append(h)
         return f'\x00{len(tokens) - 1}\x00'
 
-    s = re.sub(r'\[if:0\].*?\[endif\]', '', s, flags=re.S | re.I)
-    s = s.replace('[[', hold('[')).replace(']]', hold(']'))
+    if '[if:0]' in s or '[IF:0]' in s:
+        s = _RE_IF_ZERO.sub('', s)
+    if '[[' in s:
+        s = s.replace('[[', hold('['))
+    if ']]' in s:
+        s = s.replace(']]', hold(']'))
 
     def bracket(m):
         h = _bracket(m.group(1))
         return m.group(0) if h is None else hold(h)
-    s = re.sub(r'\[([^\[\]\x00]+)\]', bracket, s)
+
+    if '[' in s:
+        s = _RE_BRACKET.sub(bracket, s)
     # bare URLs: not inside a placeholder (already cut out), not preceded by
     # '!' (the suppression mark, which drops out), not glued to a word
-    s = re.sub(r'!(' + _URL + ')', lambda m: hold(m.group(1)), s)
-    s = re.sub(r'(?<![\w/=\x00])(' + _URL + ')', lambda m: hold(_autolink(m)), s)
+    if '!' in s and ('http' in s or 'www' in s):
+        s = _RE_SUPPRESSED_URL.sub(lambda m: hold(m.group(1)), s)
+    if 'http' in s or 'www' in s:
+        s = _RE_BARE_URL.sub(lambda m: hold(_autolink(m)), s)
     s = refs(s)
-    s = s.replace('%%%', '<br>')
+    if '%%%' in s:
+        s = s.replace('%%%', '<br>')
     # '''' is the breaker: emphasis never spans it, so a run of underscores
     # in ASCII art can be cut in two and stay underscores
-    s = ''.join(_emphasis(seg) for seg in s.split("''''"))
-    return re.sub(r'\x00(\d+)\x00', lambda m: tokens[int(m.group(1))], s)
+    if "''''" in s:
+        s = ''.join(_emphasis(seg) for seg in s.split("''''"))
+    else:
+        s = _emphasis(s)
+    if tokens:
+        s = _RE_PLACEHOLDER.sub(lambda m: tokens[int(m.group(1))], s)
+    return s
 
 def _emphasis(s):
-    s = re.sub(r'__(.+?)__', r'<b>\1</b>', s)
-    s = re.sub(r"''(.+?)''", r'<em>\1</em>', s)
-    s = re.sub(r'\{\{(.+?)\}\}', r'<code>\1</code>', s)
-    s = re.sub(r'---(.+?)---', r'<s>\1</s>', s)
-    s = re.sub(r'««(.+?)»»', r'<q>\1</q>', s)
-    s = re.sub(r'⸢⸢(.+?)⸣⸣', r'<sup>\1</sup>', s)
-    s = re.sub(r'⸤⸤(.+?)⸥⸥', r'<sub>\1</sub>', s)
-    for _ in range(3):   # ((small)) nests
-        s, n = re.subn(r'\(\(([^()]+?)\)\)', r'<small>\1</small>', s)
-        if not n:
-            break
+    if '__' in s:
+        s = _RE_BOLD.sub(r'<b>\1</b>', s)
+    if "''" in s:
+        s = _RE_EMPH.sub(r'<em>\1</em>', s)
+    if '{{' in s:
+        s = _RE_CODE.sub(r'<code>\1</code>', s)
+    if '---' in s:
+        s = _RE_STRIKE.sub(r'<s>\1</s>', s)
+    if '««' in s:
+        s = _RE_QUOTE.sub(r'<q>\1</q>', s)
+    if '⸢⸢' in s:
+        s = _RE_SUP.sub(r'<sup>\1</sup>', s)
+    if '⸤⸤' in s:
+        s = _RE_SUB.sub(r'<sub>\1</sub>', s)
+    if '((' in s:
+        for _ in range(3):   # ((small)) nests
+            s, n = _RE_SMALL.subn(r'<small>\1</small>', s)
+            if not n:
+                break
     return s
 
 # ----------------------------------------------------------------- blocks ----

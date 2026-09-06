@@ -74,54 +74,59 @@ async function launchBrowser() {
 }
 const browser = await launchBrowser();
 const out = {};
-const page = await browser.newPage();
 
 async function look(url, width, view) {
-  await page.setViewport({ width, height: 900 });
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  if (view) await page.evaluate((v) => {
-    const b = document.querySelector('[data-view="' + v + '"]');
-    if (b) b.click();
-  }, view);
-  await new Promise((r) => setTimeout(r, 400));
-  return page.evaluate(() => {
-    const box = (el) => { const r = el.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height) }; };
-    const tiles = [...document.querySelectorAll('.tile')].map(box);
-    const collages = [...document.querySelectorAll('.collage')]
-      .filter((c) => c.getClientRects().length > 0)
-      .map((c) => ({
-      n: Number(c.dataset.n), frame: box(c),
-      tiles: [...c.querySelectorAll('.tile')].map(box),
-    }));
-    // anything a reader is meant to see, measured: a zero-height box that
-    // holds an image is the shape the mosaic bug took. A hidden view has no
-    // client rects at all, and is not what this is looking for.
-    const shown = (el) => el.getClientRects().length > 0;
-    const collapsed = [...document.querySelectorAll('.card, .thumb, .tile, .grid, .policy, .implist')]
-      .filter((el) => shown(el) && el.getBoundingClientRect().height === 0)
-      .map((el) => el.className + '#' + (el.id || ''));
-    // the top bar: one row at every width, or it folded into the menu
-    // button. Wrapping into two is the failure this measures.
-    const navEl = document.querySelector('.nav');
-    const toggleEl = document.getElementById('navtoggle');
-    const nav = navEl ? {
-      h: Math.round(navEl.getBoundingClientRect().height),
-      folded: toggleEl ? getComputedStyle(toggleEl).display !== 'none' : false,
-      linksShown: shown(document.getElementById('navlinks')),
-    } : null;
-    return {
-      docWidth: document.documentElement.scrollWidth,
-      viewport: window.innerWidth,
-      tiles, collages, collapsed, nav,
-      cards: [...document.querySelectorAll('.card')].filter(shown).length,
-    };
-  });
+  const page = await browser.newPage();
+  try {
+    await page.setViewport({ width, height: 900 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if (view) await page.evaluate((v) => {
+      const b = document.querySelector('[data-view="' + v + '"]');
+      if (b) b.click();
+    }, view);
+    await new Promise((r) => setTimeout(r, 400));
+    return await page.evaluate(() => {
+      const box = (el) => { const r = el.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) }; };
+      const tiles = [...document.querySelectorAll('.tile')].map(box);
+      const collages = [...document.querySelectorAll('.collage')]
+        .filter((c) => c.getClientRects().length > 0)
+        .map((c) => ({
+        n: Number(c.dataset.n), frame: box(c),
+        tiles: [...c.querySelectorAll('.tile')].map(box),
+      }));
+      // anything a reader is meant to see, measured: a zero-height box that
+      // holds an image is the shape the mosaic bug took. A hidden view has no
+      // client rects at all, and is not what this is looking for.
+      const shown = (el) => el.getClientRects().length > 0;
+      const collapsed = [...document.querySelectorAll('.card, .thumb, .tile, .grid, .policy, .implist')]
+        .filter((el) => shown(el) && el.getBoundingClientRect().height === 0)
+        .map((el) => el.className + '#' + (el.id || ''));
+      // the top bar: one row at every width, or it folded into the menu
+      // button. Wrapping into two is the failure this measures.
+      const navEl = document.querySelector('.nav');
+      const toggleEl = document.getElementById('navtoggle');
+      const nav = navEl ? {
+        h: Math.round(navEl.getBoundingClientRect().height),
+        folded: toggleEl ? getComputedStyle(toggleEl).display !== 'none' : false,
+        linksShown: shown(document.getElementById('navlinks')),
+      } : null;
+      return {
+        docWidth: document.documentElement.scrollWidth,
+        viewport: window.innerWidth,
+        tiles, collages, collapsed, nav,
+        cards: [...document.querySelectorAll('.card')].filter(shown).length,
+      };
+    });
+  } finally {
+    await page.close();
+  }
 }
 
-for (const job of JSON.parse(process.argv[2])) {
+const jobs = JSON.parse(process.argv[2]);
+await Promise.all(jobs.map(async (job) => {
   out[job.name] = await look(job.url, job.width, job.view);
-}
+}));
 console.log(JSON.stringify(out));
 await browser.close();
 """
@@ -142,6 +147,17 @@ def find_chrome():
         found = shutil.which(name)
         if found:
             return found
+    if sys.platform == 'win32':
+        win_candidates = [
+            os.path.expandvars(r'%ProgramFiles%\Google\Chrome\Application\chrome.exe'),
+            os.path.expandvars(r'%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe'),
+            os.path.expandvars(r'%LocalAppData%\Google\Chrome\Application\chrome.exe'),
+            os.path.expandvars(r'%ProgramFiles%\Microsoft\Edge\Application\msedge.exe'),
+            os.path.expandvars(r'%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe'),
+        ]
+        for candidate in win_candidates:
+            if os.path.isfile(candidate):
+                return candidate
     cache = pathlib.Path.home() / '.cache' / 'puppeteer'
     for candidate in sorted(cache.rglob('chrome-headless-shell')) + sorted(cache.rglob('chrome')):
         if candidate.is_file() and os.access(candidate, os.X_OK):

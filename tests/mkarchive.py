@@ -158,6 +158,53 @@ def lighten(root, keep_under=1024 * 1024):
     return freed
 
 
+def copy_lightened(src, dst, keep_under=1024 * 1024):
+    """Copy an archive while writing minimal placeholders for movies over keep_under.
+
+    Avoids copying hundreds of megabytes of binary movie files across disk only to
+    immediately replace them with placeholders.
+    """
+    import shutil
+    src = pathlib.Path(src)
+    dst = pathlib.Path(dst)
+
+    def _copy(s, d):
+        sp = pathlib.Path(s)
+        if sp.suffix.lower() in MOVIE_EXTS and sp.stat().st_size > keep_under:
+            with open(d, 'wb') as f:
+                f.write(b'PK\x03\x04 placeholder for a movie the tests never read')
+        else:
+            shutil.copy2(s, d)
+
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns('.git'), copy_function=_copy)
+
+
+def temp_dir():
+    """A TemporaryDirectory that picks a location with enough free space.
+
+    If the system default temp directory is low on space (< 2 GB) but the repository's
+    drive has more space, places the temporary directory under .tmp in the repo.
+    """
+    import os
+    import shutil
+    import tempfile
+    override = os.environ.get('TAR_TEST_TMP')
+    if override:
+        return tempfile.TemporaryDirectory(dir=override)
+    try:
+        _, _, temp_free = shutil.disk_usage(tempfile.gettempdir())
+        if temp_free < 2 * 1024 * 1024 * 1024:
+            repo_root = pathlib.Path(__file__).resolve().parent.parent
+            _, _, repo_free = shutil.disk_usage(str(repo_root))
+            if repo_free > temp_free:
+                scratch = repo_root / '.tmp'
+                scratch.mkdir(exist_ok=True)
+                return tempfile.TemporaryDirectory(dir=str(scratch))
+    except Exception:
+        pass
+    return tempfile.TemporaryDirectory()
+
+
 def run_spec(rid, game='nes/testgame', goal='fastest', authors=('Ada',),
              frames=6000, **extra):
     """One run; `extra` overrides or adds any run.json field."""

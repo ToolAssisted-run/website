@@ -131,15 +131,28 @@ def checkout_branch():
         before = None
     sh('git', 'fetch', '-q', 'origin')
     try:
-        sh('git', 'checkout', '-q', '-f', '-B', BRANCH, f'origin/{BRANCH}')
+        remote_target = f'origin/{BRANCH}'
+        remote_head = sh('git', 'rev-parse', remote_target).stdout.strip()
     except subprocess.CalledProcessError:
-        sh('git', 'checkout', '-q', '-f', '-B', BRANCH, 'origin/main')
-    # discard anything a failed request left in the worktree, so the next
-    # commit carries only what this request writes
-    sh('git', 'clean', '-qfd')
+        remote_target = 'origin/main'
+        try:
+            remote_head = sh('git', 'rev-parse', remote_target).stdout.strip()
+        except subprocess.CalledProcessError:
+            remote_head = None
+
+    worktree_dirty = bool(sh('git', 'status', '--porcelain').stdout.strip())
+    if before is None or before != remote_head or worktree_dirty:
+        try:
+            sh('git', 'checkout', '-q', '-f', '-B', BRANCH, remote_target)
+        except subprocess.CalledProcessError:
+            sh('git', 'checkout', '-q', '-f', '-B', BRANCH, 'origin/main')
+        # discard anything a failed request left in the worktree, so the next
+        # commit carries only what this request writes
+        sh('git', 'clean', '-qfd')
+
     # content that arrived from elsewhere (a manual push, another writer)
     # deserves a fresh site just as much as content committed here
-    if before is not None and sh('git', 'rev-parse', 'HEAD').stdout.strip() != before:
+    if before is not None and remote_head is not None and remote_head != before:
         _serial_cache['n'] = None
         import sitebuild
         sitebuild.request_build()
@@ -206,7 +219,7 @@ def _touched_keys():
     """
     keys = set()
     for line in sh('git', 'status', '--porcelain').stdout.splitlines():
-        path = line[3:].strip().strip('"').split(' -> ')[-1]
+        path = line[3:].strip().strip('"').split(' -> ')[-1].replace('\\', '/')
         if not path:
             continue
         keys.add(path)
@@ -245,6 +258,7 @@ def validate_worktree():
     try:
         r = subprocess.run([sys.executable, str(script)], cwd=ARCHIVE,
                            capture_output=True, text=True,
+                           encoding='utf-8', errors='replace',
                            timeout=VALIDATE_TIMEOUT)
     except (OSError, subprocess.SubprocessError) as e:
         LOG.warning('archive validator could not run (%s): the write goes '
@@ -260,7 +274,7 @@ def validate_worktree():
         return None
     problems = [l.strip() for l in said.splitlines() if l.strip().startswith('\u2717')]
     keys = _touched_keys()
-    mine = [l for l in problems if any(k in l for k in keys)]
+    mine = [l for l in problems if any(k in l.replace('\\', '/') for k in keys)]
     theirs = [l for l in problems if l not in mine]
     if theirs:
         LOG.warning('the archive carries %d problem(s) this write did not '

@@ -50,11 +50,10 @@ def make_run(tmp, rid, frames, status, extra):
 
 
 def main():
-    with tempfile.TemporaryDirectory() as td:
+    with mkarchive.temp_dir() as td:
         tmp = pathlib.Path(td) / 'archive'
         out = pathlib.Path(td) / 'out'
-        shutil.copytree(ARCHIVE, tmp, ignore=shutil.ignore_patterns('.git'))
-        mkarchive.lighten(tmp)
+        mkarchive.copy_lightened(ARCHIVE, tmp)
         # authors/ is the member list: everyone who acts on a run is a member,
         # and a copy of an archive predating that rule carries records that no
         # longer belong to anybody

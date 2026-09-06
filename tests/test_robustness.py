@@ -30,8 +30,14 @@ import mkarchive  # noqa: E402
 from test_security import call, free_port, KEY   # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-REAL_ARCHIVE = pathlib.Path(sys.argv[1] if len(sys.argv) > 1
-                            else pathlib.Path.home() / 'ToolAssisted-archive')
+if len(sys.argv) > 1:
+    REAL_ARCHIVE = pathlib.Path(sys.argv[1])
+elif (pathlib.Path.home() / 'ToolAssisted-archive').exists():
+    REAL_ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
+elif (pathlib.Path.home() / '~' / 'ToolAssisted-archive').exists():
+    REAL_ARCHIVE = pathlib.Path.home() / '~' / 'ToolAssisted-archive'
+else:
+    REAL_ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
 JPG = b'\xff\xd8\xff' + b'\0' * 60
 
 failures = []
@@ -52,7 +58,7 @@ def other_pushes(other, filename, text):
     """Somebody else commits to the same branch, from their own clone."""
     git('fetch', '-q', 'origin', cwd=other)
     git('reset', '-q', '--hard', 'origin/main', cwd=other)
-    (other / filename).write_text(text)
+    (other / filename).write_text(text, encoding='utf-8')
     git('add', '-A', cwd=other)
     git('-c', 'user.name=o', '-c', 'user.email=o@o', 'commit', '-qm',
         f'other work: {filename}', cwd=other)
@@ -61,7 +67,7 @@ def other_pushes(other, filename, text):
 
 def main():
     import http.server
-    with tempfile.TemporaryDirectory() as td:
+    with mkarchive.temp_dir() as td:
         td = pathlib.Path(td)
         seed = td / 'seed'
         mkarchive.make_archive(seed, [
@@ -102,14 +108,18 @@ def main():
 
         port = free_port()
         import os
-        env = dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
+        env = dict(os.environ) if os.name == 'nt' else dict(PATH='/usr/bin:/bin')
+        env.update(dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
                    GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='',
                    CLAIMS_FILE=str(td / 'claims.json'),
                    CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
                    THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
                    SESSION_SECRET='x', SELF_URL=f'http://127.0.0.1:{port}',
                    SITE_ORIGIN='https://toolassisted.run',
-                   PATH='/usr/bin:/bin', HOME=str(td))
+                   ARCHIVE_REFRESH_SECONDS='1',
+                   HOME=str(td)))
+        if os.name != 'nt':
+            env['PATH'] = '/usr/bin:/bin'
         if 'PYTHONPATH' in os.environ:
             env['PYTHONPATH'] = os.environ['PYTHONPATH']
         log = (td / 'log').open('w')
@@ -256,7 +266,15 @@ def main():
                not (check / 'CONFLICT.md').exists() or (check / 'CONCURRENT.md').exists(),
                'unexpected worktree leftovers were pushed')
         finally:
-            proc.terminate()
+            try:
+                proc.terminate()
+                proc.wait(timeout=5)
+            except Exception:
+                pass
+            try:
+                log.close()
+            except Exception:
+                pass
             httpd.shutdown()
 
     print('---', len(failures), 'failures')

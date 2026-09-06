@@ -125,12 +125,11 @@ def main():
         sys.exit('flask not importable — set PYTHONPATH to a dir containing it '
                  '(pip install --target <dir> flask)')
 
-    with tempfile.TemporaryDirectory() as td:
+    with mkarchive.temp_dir() as td:
         td = pathlib.Path(td)
         # scratch remote seeded from the real archive + one native run
         seed = td / 'seed'
-        shutil.copytree(ARCHIVE, seed, ignore=shutil.ignore_patterns('.git'))
-        mkarchive.lighten(seed)
+        mkarchive.copy_lightened(ARCHIVE, seed)
         # authors/ holds members only; a copy of an archive that predates that
         # rule would fail its own validator before the suite tested anything
         for af in (seed / 'authors').glob('*.json'):
@@ -240,14 +239,17 @@ def main():
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF99'}],
             'submitted': '2026-08-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
         subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=seed, check=True)
+        subprocess.run(['git', 'config', 'core.autocrlf', 'false'], cwd=seed, check=True)
         subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t',
                         'add', '-A'], cwd=seed, check=True)
         subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t',
                         'commit', '-qm', 'seed'], cwd=seed, check=True)
         origin = td / 'origin.git'
         subprocess.run(['git', 'clone', '-q', '--bare', str(seed), str(origin)], check=True)
+        shutil.rmtree(seed, ignore_errors=True)
         work = td / 'work'
         subprocess.run(['git', 'clone', '-q', str(origin), str(work)], check=True)
+        subprocess.run(['git', 'config', 'core.autocrlf', 'false'], cwd=work, check=True)
         subprocess.run(['git', 'config', 'user.name', 'archivist-test'], cwd=work, check=True)
         subprocess.run(['git', 'config', 'user.email', 't@t'], cwd=work, check=True)
 
@@ -566,6 +568,7 @@ def main():
                         # repo, into the sandbox - hermetic, like everything here
                         WEBSITE_DIR=str(REPO), SITE_DIR=str(td / 'site'),
                         DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET='testsessionsecret',
+                        PYTHONUTF8='1',
                         SELF_URL=f'http://127.0.0.1:{port}', SITE_ORIGIN='https://toolassisted.run',
                         HOME=str(td)))
         log_file = (td / 'log').open('w')
@@ -2000,6 +2003,7 @@ def main():
             subprocess.run(['git', 'commit', '-qm', 'grant outside the archivist'],
                            cwd=outside, check=True)
             subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=outside, check=True)
+            shutil.rmtree(outside, ignore_errors=True)
             c, r, _ = call(U + '/api/expert/appoint',
                            {'key': KEY, 'expert': 'OutsideExpert', 'user': 'TestAuthor',
                             'scope': 'nes/pinball', 'dry_run': '1',

@@ -133,9 +133,9 @@ def module_url(assets_dir, module):
 
 def run_page(node, assets_dir, td, label, ids, module='app.js'):
     script = td / f'run-{label}.mjs'
-    script.write_text(STUB.replace('MODULE_URL_HERE', json.dumps(module_url(assets_dir, module))))
+    script.write_text(STUB.replace('MODULE_URL_HERE', json.dumps(module_url(assets_dir, module))), encoding='utf-8')
     r = subprocess.run([node, str(script), json.dumps(ids)],
-                       capture_output=True, text=True, timeout=120)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
     if r.returncode != 0:
         return None, r.stderr[-500:]
     try:
@@ -290,12 +290,12 @@ def dom_of(html):
 
 def run_real_page(node, assets_dir, td, label, html, session, events=(), module='app.js'):
     script = td / f'page-{label}.mjs'
-    script.write_text(PAGE_STUB.replace('MODULE_URL_HERE', json.dumps(module_url(assets_dir, module))))
+    script.write_text(PAGE_STUB.replace('MODULE_URL_HERE', json.dumps(module_url(assets_dir, module))), encoding='utf-8')
     dom = td / f'dom-{label}.json'
-    dom.write_text(json.dumps(dom_of(html)))
+    dom.write_text(json.dumps(dom_of(html)), encoding='utf-8')
     r = subprocess.run([node, str(script), str(dom), json.dumps(session),
                         json.dumps([list(e) for e in events])],
-                       capture_output=True, text=True, timeout=120)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
     if r.returncode != 0:
         return None, r.stderr[-500:]
     try:
@@ -306,7 +306,7 @@ def run_real_page(node, assets_dir, td, label, html, session, events=(), module=
 
 def main():
     node = shutil.which('node')
-    with tempfile.TemporaryDirectory() as td:
+    with mkarchive.temp_dir() as td:
         td = pathlib.Path(td)
         arch = mkarchive.make_archive(td / 'a', [
             mkarchive.run_spec('M900801', frames=1000, authors=['Ada'],
@@ -713,8 +713,9 @@ results.scoreAsc = tbody.rows.map(r => r.id).join(',');
 results.scoreAscClass = ths[1].classes.has('sort-asc');
 
 console.log(JSON.stringify(results));
-""")
-        sr = subprocess.run([node, str(sort_test)], capture_output=True, text=True, timeout=30)
+""", encoding='utf-8')
+        sr = subprocess.run([node, str(sort_test)], capture_output=True, text=True,
+                            encoding='utf-8', errors='replace', timeout=30)
         ck('table sorting script runs under node', sr.returncode == 0, sr.stderr[-300:])
         if sr.returncode == 0:
             sres = json.loads(sr.stdout.strip().splitlines()[-1])

@@ -28,8 +28,14 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import mkarchive  # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-REAL_ARCHIVE = pathlib.Path(sys.argv[1] if len(sys.argv) > 1
-                            else pathlib.Path.home() / 'ToolAssisted-archive')
+if len(sys.argv) > 1:
+    REAL_ARCHIVE = pathlib.Path(sys.argv[1])
+elif (pathlib.Path.home() / 'ToolAssisted-archive').exists():
+    REAL_ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
+elif (pathlib.Path.home() / '~' / 'ToolAssisted-archive').exists():
+    REAL_ARCHIVE = pathlib.Path.home() / '~' / 'ToolAssisted-archive'
+else:
+    REAL_ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
 
 # Element ids and storage keys app.js looks up; each must exist in the built
 # site (or in style.css) or the feature is silently dead.
@@ -81,22 +87,69 @@ def build(archive, out, ref='main'):
 SPECIAL = {'404.html'}
 
 
+_page_cache = {}
+_targets_cache = {}
+
+
+def get_pages(out):
+    """Return dict of {Path: html_text} for all html pages in out."""
+    key = str(out.resolve())
+    if key not in _page_cache:
+        html_files = sorted(p for p in out.rglob('*.html')
+                            if p.name not in SPECIAL and p.parent.name != 'mock')
+        _page_cache[key] = {p: p.read_text(encoding='utf-8') for p in html_files}
+    return _page_cache[key]
+
+
 def pages(out):
     # /mock/ is a self-contained design preview for console-bound review; it
     # carries no site chrome, so the chrome invariants do not apply to it
-    return sorted(p for p in out.rglob('*.html')
-                  if p.name not in SPECIAL and p.parent.name != 'mock')
+    return list(get_pages(out).keys())
+
+
+def get_valid_targets(out):
+    key = str(out.resolve())
+    if key not in _targets_cache:
+        valid = set()
+        for p in out.rglob('*'):
+            rel = p.relative_to(out).as_posix()
+            if p.is_file():
+                valid.add(rel)
+                if p.name == 'index.html':
+                    p_dir = p.parent.relative_to(out).as_posix()
+                    valid.add(p_dir)
+                    valid.add(p_dir + '/')
+        if (out / 'index.html').is_file():
+            valid.add('')
+            valid.add('/')
+            valid.add('./')
+        _targets_cache[key] = valid
+    return _targets_cache[key]
 
 
 def dead_links(out):
     """Every internal href/src must resolve to a file (or dir/index.html)."""
     dead = []
-    for page in pages(out):
-        html = page.read_text()
+    valid = get_valid_targets(out)
+    all_pages = get_pages(out)
+    import posixpath
+    for page, html in all_pages.items():
+        page_dir = page.parent.relative_to(out).as_posix()
         for m in re.finditer(r'(?:href|src)="([^"]+)"', html):
             url = m.group(1).split('#')[0].split('?')[0]
             if not url or url.startswith(('http://', 'https://', 'mailto:', 'data:', '//')):
                 continue
+            clean = url.lstrip('/')
+            if url.startswith('/'):
+                t_rel = clean.rstrip('/')
+                if clean in valid or t_rel in valid or (t_rel + '/index.html') in valid or (clean + 'index.html') in valid:
+                    continue
+            else:
+                norm = posixpath.normpath(posixpath.join(page_dir, url)) if page_dir != '.' else posixpath.normpath(url)
+                if not (norm.startswith('../') or norm == '..'):
+                    norm_dir = norm.rstrip('/')
+                    if norm in valid or norm_dir in valid or (norm_dir + '/index.html') in valid:
+                        continue
             base = out if url.startswith('/') else page.parent
             target = (base / url.lstrip('/')).resolve()
             if not (target.is_file() or (target / 'index.html').is_file()):
@@ -105,24 +158,30 @@ def dead_links(out):
 
 
 def check_structure(out, label):
-    stray = [p.name for p in pages(out) if p.name != 'index.html']
+    all_pages = get_pages(out)
+    valid = get_valid_targets(out)
+    stray = [p.name for p in all_pages if p.name != 'index.html']
     ck(f'{label}: every page is folder/index.html', not stray, str(stray[:3]))
     ck(f'{label}: .htaccess shipped', (out / '.htaccess').is_file())
     dead = dead_links(out)
     ck(f'{label}: no dead internal links', not dead, f'{len(dead)}: {dead[:4]}')
     missing_assets = set()
-    for page in pages(out):
-        for m in re.finditer(r'(?:href|src)="([^"]*assets/[^"?]+)', page.read_text()):
-            if not (page.parent / m.group(1)).resolve().is_file():
-                missing_assets.add(m.group(1))
+    import posixpath
+    for page, html in all_pages.items():
+        page_dir = page.parent.relative_to(out).as_posix()
+        for m in re.finditer(r'(?:href|src)="([^"]*assets/[^"?]+)', html):
+            ref = m.group(1)
+            norm = posixpath.normpath(posixpath.join(page_dir, ref)) if page_dir != '.' else posixpath.normpath(ref)
+            if norm not in valid:
+                if not (page.parent / ref).resolve().is_file():
+                    missing_assets.add(ref)
     ck(f'{label}: referenced assets exist', not missing_assets, str(sorted(missing_assets)[:3]))
 
 
 def check_cache_busting(out, label):
     tokens = set()
     missing = []
-    for page in pages(out):
-        html = page.read_text()
+    for page, html in get_pages(out).items():
         css = re.search(r'style\.css\?v=([^"]+)', html)
         js = re.findall(r'<script type="module" src="([^"]+)"', html)
         if not (css and js):
@@ -173,22 +232,48 @@ def check_inline_scripts(out, label):
         print(f'SKIP {label}: inline scripts parse (node not installed)')
         return
     blocks = {}
-    for page in pages(out):
+    for page, html in get_pages(out).items():
         for block in re.findall(
                 r'<script(?![^>]*\bsrc=)(?![^>]*\btype=)[^>]*>(.*?)</script>',
-                page.read_text(), re.S):
+                html, re.S):
             if block.strip():
                 blocks.setdefault(block, page.parent.name)
     bad = []
+    checker = r"""
+import vm from 'node:vm';
+import fs from 'node:fs';
+
+const blocks = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
+const bad = [];
+for (const [block, where] of blocks) {
+  try {
+    new vm.Script(block);
+  } catch (e) {
+    bad.push(`${where}: ${e.message}`);
+  }
+}
+process.stdout.write(JSON.stringify(bad));
+"""
     with tempfile.TemporaryDirectory() as jd:
-        # a plain .js file, so node parses it exactly as a browser parses a
-        # page script: no --input-type, nothing version-specific
-        f = pathlib.Path(jd) / 'block.js'
-        for block, where in blocks.items():
-            f.write_text(block)
-            r = subprocess.run([node, '--check', str(f)], capture_output=True, text=True)
-            if r.returncode:
-                bad.append(f'{where}: {r.stderr.strip().splitlines()[-1][:90]}')
+        jd_path = pathlib.Path(jd)
+        script_file = jd_path / 'checker.mjs'
+        data_file = jd_path / 'blocks.json'
+        script_file.write_text(checker, encoding='utf-8')
+        data_file.write_text(json.dumps(list(blocks.items())), encoding='utf-8')
+        r = subprocess.run([node, str(script_file), str(data_file)], capture_output=True, text=True)
+        if r.returncode == 0:
+            try:
+                bad = json.loads(r.stdout)
+            except Exception:
+                bad = [f'checker parse error: {r.stdout[:100]}']
+        else:
+            bad = []
+            f = jd_path / 'block.js'
+            for block, where in blocks.items():
+                f.write_text(block, encoding='utf-8')
+                r2 = subprocess.run([node, '--check', str(f)], capture_output=True, text=True)
+                if r2.returncode:
+                    bad.append(f'{where}: {r2.stderr.strip().splitlines()[-1][:90]}')
     ck(f'{label}: every inline script parses ({len(blocks)} distinct)', not bad,
        str(bad[:2]))
 
@@ -351,7 +436,7 @@ def main():
         check_cache_busting(out, 'controlled')
         check_inline_scripts(out, 'controlled')
 
-        all_html = {p: p.read_text() for p in pages(out)}
+        all_html = get_pages(out)
         joined = '\n'.join(all_html.values())
 
         # ---------- escaping ----------
@@ -1302,19 +1387,19 @@ def main():
         # because the ES-module split left its wiring behind in app.js:
         # a page with an id nothing on it reads is a dead page.
         for html_file in sorted(out.rglob('index.html')):
-            markup = html_file.read_text()
+            markup = html_file.read_text(encoding='utf-8')
             ids = set(re.findall(r'id="(f-[a-z0-9-]+)"', markup))
             if not ids:
                 continue
             mods = re.findall(r'<script type="module" src="[^"]*?(page-[a-z-]+\.js)', markup)
-            code = ''.join((out / 'assets' / m).read_text()
+            code = ''.join((out / 'assets' / m).read_text(encoding='utf-8')
                            for m in mods if (out / 'assets' / m).exists()) + js
             where = html_file.relative_to(out).parent.as_posix() or '/'
             ck(f'{where}: its forms are wired to a module',
                any(i in code for i in ids) or "'-wrap'" in code,
                f'ids {sorted(ids)[:4]} unknown to {mods or "no module"}')
 
-        css = (out / 'assets' / 'style.css').read_text()
+        css = (out / 'assets' / 'style.css').read_text(encoding='utf-8')
         missing_contract = [i for i in CONTRACT if i not in joined and i not in css]
         ck('server/client element contract intact', not missing_contract,
            str(missing_contract))

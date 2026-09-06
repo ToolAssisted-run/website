@@ -24,8 +24,14 @@ import tempfile
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import mkarchive  # noqa: E402
 
-REAL_ARCHIVE = pathlib.Path(sys.argv[1] if len(sys.argv) > 1
-                            else pathlib.Path.home() / 'ToolAssisted-archive')
+if len(sys.argv) > 1:
+    REAL_ARCHIVE = pathlib.Path(sys.argv[1])
+elif (pathlib.Path.home() / 'ToolAssisted-archive').exists():
+    REAL_ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
+elif (pathlib.Path.home() / '~' / 'ToolAssisted-archive').exists():
+    REAL_ARCHIVE = pathlib.Path.home() / '~' / 'ToolAssisted-archive'
+else:
+    REAL_ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
 PNG = mkarchive.PNG
 ROM_SHA1 = hashlib.sha1(b'romlike bytes').hexdigest()
 
@@ -506,15 +512,27 @@ def main():
             print('---', len(failures), 'failures')
             sys.exit(1)
 
-        for i, (name, mutate, expect) in enumerate(CASES):
+        import os
+        from concurrent.futures import ThreadPoolExecutor
+
+        def execute_case(item):
+            i, (name, mutate, expect) = item
             work = td / f'case{i}'
             shutil.copytree(base, work)
-            mutate(work)
-            code, out = run_validate(work)
-            ok = code == 1 and expect in out
-            ck(f'rejects: {name}', ok,
-               f'exit={code} expected {expect!r} in output; got: {out.strip()[-200:]}')
-            shutil.rmtree(work)
+            try:
+                mutate(work)
+                code, out = run_validate(work)
+                ok = code == 1 and expect in out
+                return name, ok, f'exit={code} expected {expect!r} in output; got: {out.strip()[-200:]}'
+            finally:
+                shutil.rmtree(work, ignore_errors=True)
+
+        max_workers = min(8, os.cpu_count() or 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            results = list(ex.map(execute_case, enumerate(CASES)))
+
+        for name, ok, detail in results:
+            ck(f'rejects: {name}', ok, detail)
 
         # an act recorded under a name later renamed away is still a member's
         # act: the record moved, the person did not
@@ -535,9 +553,12 @@ def main():
         stub = work / 'stub'
         stub.mkdir()
         (stub / 'jsonschema.py').write_text('raise ImportError("simulated absence")\n')
+        nodep_env = dict(os.environ)
+        nodep_env['PYTHONPATH'] = str(stub)
+        if os.name != 'nt':
+            nodep_env['PATH'] = '/usr/bin:/bin'
         r = subprocess.run([sys.executable, str(work / 'validate.py')],
-                           capture_output=True, text=True,
-                           env={'PATH': '/usr/bin:/bin', 'PYTHONPATH': str(stub)})
+                           capture_output=True, text=True, env=nodep_env)
         ck('missing jsonschema fails loudly', r.returncode != 0
            and 'jsonschema' in (r.stdout + r.stderr), (r.stdout + r.stderr)[-200:])
 

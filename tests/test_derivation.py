@@ -75,7 +75,7 @@ def main():
     today = datetime.date.today()
     d = lambda n: (today - datetime.timedelta(days=n)).isoformat()   # noqa: E731
 
-    with tempfile.TemporaryDirectory() as td:
+    with mkarchive.temp_dir() as td:
         td = pathlib.Path(td)
 
         # ---------------- status / ranking matrix ----------------
@@ -236,7 +236,7 @@ def main():
         arch = mkarchive.make_archive(td / 'a7', pend_runs)
         out = td / 'o7'
         build(arch, out)
-        home = (out / 'index.html').read_text()
+        home = (out / 'index.html').read_text(encoding='utf-8')
         # the strip shows likes across the archive (and views where known);
         # the pending count stayed a derivation but left the front page
         m = re.search(r'<div class="stat"><b><span class="starglyph">★</span>([\d,]+)</b><span>likes</span>', home)
@@ -549,7 +549,7 @@ def main():
         r = build(arch, out)
         ck('metrics build succeeds', r.returncode == 0, r.stderr[-400:])
         if r.returncode == 0:
-            game = (out / 'games/nes/scored/index.html').read_text()
+            game = (out / 'games/nes/scored/index.html').read_text(encoding='utf-8')
             order = [rid for rid in rows_of(game.split('Pending:')[0])
                      if rid.startswith('M9003')]
             first_of = {rid: order.index(rid) for rid in dict.fromkeys(order)}

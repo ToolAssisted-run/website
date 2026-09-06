@@ -112,7 +112,7 @@ console.log(JSON.stringify(snippets.map(renderNotes)));
 
 
 def main():
-    with tempfile.TemporaryDirectory() as td:
+    with mkarchive.temp_dir() as td:
         td = pathlib.Path(td)
         server, out = server_render(td, CORPUS)
         ck('server rendered every snippet', all(s.strip() for s in server),
@@ -127,7 +127,7 @@ def main():
         for (name, text), s in zip(CORPUS, server):
             ns, nw = normalize(s), normalize(wikitext.wiki_html(text))
             ck(f'parity: {name}', ns == nw, f'site={ns[:110]!r} shared={nw[:110]!r}')
-        all_js = '\n'.join(p.read_text() for p in (out / 'assets').glob('*.js'))
+        all_js = '\n'.join(p.read_text(encoding='utf-8') for p in (out / 'assets').glob('*.js'))
         ck('the client carries no renderer of its own',
            'function renderNotes' not in all_js and 'function inlineMd' not in all_js)
         ck('the preview asks the archivist', "'/api/preview'" in all_js)
