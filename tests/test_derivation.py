@@ -342,8 +342,8 @@ def main():
         ck('no Most liked shelf without a single star', 'Most liked' not in home)
         index_js = (out / 'browse/index.html').read_text()
         m = re.search(r'"id": "M900362".*?"date": "([\d-]+)"', index_js, re.S)
-        ck('browse dates an imported run by its arrival, not its publication',
-           bool(m) and m.group(1) == d(0), m.group(1) if m else 'not found')
+        ck('browse dates an imported run by its board date, matching leaderboards',
+           bool(m) and m.group(1) == '2015-01-01', m.group(1) if m else 'not found')
 
         # git history is the ground truth for arrival: importedAt is date-only,
         # so a day of imports would otherwise tie and fall back to publication

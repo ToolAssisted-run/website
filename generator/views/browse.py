@@ -1,7 +1,6 @@
 """View: browse (renders on import; see views/__init__)."""
 from config import OUT
 from model import (
-    archived_at,
     board_date,
     cat_label,
     eff_state,
