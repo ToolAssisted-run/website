@@ -59,6 +59,7 @@ flowchart LR
 | [`tests/`](tests/) | Hermetic Test Suites | Rigorous test suites covering movie parsers, generator invariants, security policies, and layout fidelity. |
 | [`infra/`](infra/) | Infrastructure | Discourse forum themes, server configurations, and operational scripts. |
 | [`tools/`](tools/) | Utilities | Automation and diagnostic tools (zap, validation helpers, benchmarks). |
+| [`serve_local.py`](serve_local.py) | Dev Server | Local development server with live reload, archive discovery, and archivist API mocks. |
 
 ---
 
@@ -83,25 +84,33 @@ flowchart LR
 
 ### Quick Start
 
-Run the integrated development server:
+Run the integrated development server (starts in logged-out mode by default):
 
 ```bash
-# Start server as site-wide expert 'GMP'
-python serve.py
-
-# Automatically rebuild the site before starting
-python serve.py --rebuild
-
-# Start with a specific archive path
-python serve.py --archive-dir ../ToolAssisted-archive
-
-# Test different member permissions
-python serve.py --user eien86
-python serve.py --logged-out
+python serve_local.py
 ```
 
+Command-line flags can be combined freely depending on what you are testing:
+
+```bash
+# Example: rebuild site, point to local archive, and log in as site-wide expert GMP
+python serve_local.py --rebuild --archive ../ToolAssisted-archive --user GMP
+
+# Example: start logged in as a specific user on a custom port and launch the browser
+python serve_local.py --user eien86 --port 8080 --open
+```
+
+| Flag | Description |
+|---|---|
+| `-u`, `--user <name>` | Explicitly log in as a member (e.g. `--user eien86` or `--user GMP`) |
+| `-b`, `--rebuild` | Rebuild static HTML from archive data before serving |
+| `-a`, `--archive <path>` | Path to archive checkout (default: auto-detected in parent or home folder) |
+| `-p`, `--port <port>` | Port to listen on (default: `8000`) |
+| `-o`, `--open` | Open site in default browser on launch |
+| `--logged-out` | Explicitly enforce logged-out mode (already default) |
+
 > [!TIP]
-> `serve.py` includes a built-in mock archivist API, so you can test expert tools, category creation, and run inspection locally without requiring remote server access.
+> `serve_local.py` includes a built-in mock archivist API, so you can test expert tools, category creation, and run inspection locally without requiring remote server access.
 
 </details>
 
