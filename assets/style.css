@@ -36,7 +36,7 @@ a{color:inherit}
 :root[data-theme=dark] .logo-light{display:none}
 :root[data-theme=dark] .logo-dark{display:block}
 .navlinks{display:flex;gap:2px}
-.nl{padding:6px 11px;border-radius:8px;text-decoration:none;font-size:.9rem;color:var(--muted);font-weight:500}
+.nl{padding:6px 11px;border-radius:8px;text-decoration:none;font-size:.9rem;color:var(--muted);font-weight:500;white-space:nowrap}
 .nl:hover{background:var(--panel);color:var(--ink)}
 .nl.on{color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--accent)}
 .navsep{width:2px;height:20px;background:var(--hair);margin:0 6px;align-self:center}

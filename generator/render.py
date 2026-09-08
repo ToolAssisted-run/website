@@ -495,7 +495,7 @@ FOUNDER_NAMES_JS = json.dumps(sorted({ev['user'].lower()
 NAV_LINKS = [('browse/', 'Runs'), ('games/', 'Games'), ('authors/', 'Members'),
              ('contribute/', 'Contribute'), ('tools/', 'Tools'), ('submit/', 'Submit'),
              ('|', ''),   # separator: the everyday in-site links end here
-             ('about/', 'About us'), (FORUM, 'Forum'), ('https://discord.gg/VsKDT9XB6u', 'Discord')]
+             ('about/', 'About Us'), (FORUM, 'Forum'), ('https://discord.gg/VsKDT9XB6u', 'Discord')]
 
 def dl_members(exclude=()):
     """Members as a datalist, minus the ones the form would refuse anyway.
