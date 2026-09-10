@@ -22,7 +22,7 @@ MOVIE_MAX = 32 * 1024 * 1024   # the same cap the archivist applies at submit
 import zipfile
 
 SYSTEM_NAMES = {
-    'A2600': 'Atari 2600', 'A7800': 'Atari 7800', 'NES': 'Nintendo Entertainment System',
+    'A2600': 'Atari 2600', 'A5200': 'Atari 5200', 'A7800': 'Atari 7800', 'NES': 'Nintendo Entertainment System',
     'SNES': 'Super Nintendo Entertainment System', 'N64': 'Nintendo 64',
     'GB': 'Game Boy', 'GBC': 'Game Boy Color', 'GBA': 'Game Boy Advance',
     'DS': 'Nintendo DS', 'Genesis': 'Sega Genesis', 'SMS': 'Sega Master System',
@@ -55,11 +55,12 @@ EXACT_FPS = {
     'dreamcast': 59.94005994005994, 'xbox': 59.94005994005994,
     'ps3': 59.94005994005994,
     'symbian': 60.0,   # EKA2L1 declares 60/1 for the handset
+    'a5200': 59.9227510135505,   # the Atari 8-bit clock, as the 2600's
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
-                'ps2', 'psp', 'ps3', 'xbox', 'symbian',
+                'ps2', 'psp', 'ps3', 'xbox', 'symbian', 'a5200',
                 'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
 
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}
