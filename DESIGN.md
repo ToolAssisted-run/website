@@ -968,7 +968,10 @@ archivist, module responsibilities). What matters designwise:
   games&q=`, a page of matches from a 20 s in-memory index), so no page
   carries the whole member or game list (#56); the group chips pickers fill
   their list the same way. Small registered sets (groups, systems, the
-  roster) stay embedded. **A picker never offers what would be refused**:
+  roster) stay embedded; their `<select>` dropdown pickers mirror the
+  themed visual treatment of `.gamelist` (customizable `appearance: base-select`,
+  `var(--hairs)` border, 10 px radius, Signal Green highlight) with standard
+  native fallback. **A picker never offers what would be refused**:
   the page keeps the eligibility rule (who already speaks for the scope, who
   is seated, which games are ungrouped) and filters the matches by it; grant
   lists offer who lacks, remove lists who holds. Free text only for things

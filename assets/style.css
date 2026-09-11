@@ -87,6 +87,71 @@ select {
   background-position: right 14px center;
   background-size: 12px 12px;
 }
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+
+  select::picker-icon {
+    display: none;
+  }
+
+  ::picker(select) {
+    background: var(--bg);
+    border: 2.5px solid var(--hairs);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 4px;
+    margin-top: 4px;
+    color: var(--ink);
+    max-height: 280px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--hairs) transparent;
+  }
+
+  select option {
+    padding: 8px 12px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--ink);
+    margin-bottom: 1px;
+  }
+
+  select option:hover,
+  select option:focus {
+    background: var(--panel);
+    color: var(--ink);
+  }
+
+  select option:checked {
+    background: var(--panel);
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+
+  select option:disabled {
+    color: var(--faint);
+    cursor: not-allowed;
+    background: transparent;
+  }
+
+  select option::checkmark {
+    display: none;
+  }
+
+  select optgroup {
+    font-weight: 600;
+    color: var(--muted);
+    padding: 6px 12px 2px;
+    font-size: 0.78rem;
+    font-family: inherit;
+  }
+}
 a {
   color: inherit;
 }
