@@ -1,5 +1,11 @@
 // toolAssisted.run — dedicated search page client script.
-import { escapeHtml, rel, versionQuery, createPaginator, scoreString } from './app.js';
+import {
+  escapeHtml,
+  rel,
+  versionQuery,
+  createPaginator,
+  scoreString,
+} from './app.js';
 
 var searchIndex = null;
 var fetchPromise = null;
@@ -9,15 +15,15 @@ function loadIndex() {
   if (!fetchPromise) {
     var url = (rel || '') + 'assets/search-index.json' + (versionQuery || '');
     fetchPromise = fetch(url)
-      .then(function(r){
+      .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
-      .then(function(data){
+      .then(function (data) {
         searchIndex = data;
         return data;
       })
-      .catch(function(err){
+      .catch(function (err) {
         fetchPromise = null;
         throw err;
       });
@@ -32,85 +38,147 @@ function querySearchIndex(data, rawQuery) {
   }
 
   // 1. Systems: match title or slug, sorted by match strength
-  var systems = (data.systems || []).map(function(sys){
-    var sName = scoreString(sys.n, needle);
-    var sKey = scoreString(sys.k, needle) * 1.2;
-    return { item: sys, score: Math.max(sName, sKey) };
-  }).filter(function(x){ return x.score > 0; })
-    .sort(function(a, b){ return b.score - a.score || a.item.n.localeCompare(b.item.n); })
-    .map(function(x){ return x.item; });
+  var systems = (data.systems || [])
+    .map(function (sys) {
+      var sName = scoreString(sys.n, needle);
+      var sKey = scoreString(sys.k, needle) * 1.2;
+      return { item: sys, score: Math.max(sName, sKey) };
+    })
+    .filter(function (x) {
+      return x.score > 0;
+    })
+    .sort(function (a, b) {
+      return b.score - a.score || a.item.n.localeCompare(b.item.n);
+    })
+    .map(function (x) {
+      return x.item;
+    });
 
   // 2. Game groups: match title or title of any game in group, sorted by match strength
-  var groups = (data.groups || []).map(function(gr){
-    var sTitle = scoreString(gr.t, needle);
-    var sMembers = 0;
-    if (gr.gt && gr.gt.length) {
-      for (var i = 0; i < gr.gt.length; i++) {
-        var sm = scoreString(gr.gt[i], needle);
-        if (sm > sMembers) sMembers = sm;
+  var groups = (data.groups || [])
+    .map(function (gr) {
+      var sTitle = scoreString(gr.t, needle);
+      var sMembers = 0;
+      if (gr.gt && gr.gt.length) {
+        for (var i = 0; i < gr.gt.length; i++) {
+          var sm = scoreString(gr.gt[i], needle);
+          if (sm > sMembers) sMembers = sm;
+        }
       }
-    }
-    var sKey = scoreString(gr.k, needle);
-    return { item: gr, score: Math.max(sTitle, sMembers * 0.75, sKey * 0.8) };
-  }).filter(function(x){ return x.score > 0; })
-    .sort(function(a, b){ return b.score - a.score || (b.item.gc || b.item.c || 0) - (a.item.gc || a.item.c || 0) || a.item.t.localeCompare(b.item.t); })
-    .map(function(x){ return x.item; });
+      var sKey = scoreString(gr.k, needle);
+      return { item: gr, score: Math.max(sTitle, sMembers * 0.75, sKey * 0.8) };
+    })
+    .filter(function (x) {
+      return x.score > 0;
+    })
+    .sort(function (a, b) {
+      return (
+        b.score - a.score ||
+        (b.item.gc || b.item.c || 0) - (a.item.gc || a.item.c || 0) ||
+        a.item.t.localeCompare(b.item.t)
+      );
+    })
+    .map(function (x) {
+      return x.item;
+    });
 
   // 3. Games: match title and group title, sorted by match strength
-  var games = (data.games || []).map(function(g){
-    var sTitle = scoreString(g.t, needle);
-    var sGroups = 0;
-    if (g.g && g.g.length) {
-      for (var i = 0; i < g.g.length; i++) {
-        var sg = scoreString(g.g[i], needle);
-        if (sg > sGroups) sGroups = sg;
+  var games = (data.games || [])
+    .map(function (g) {
+      var sTitle = scoreString(g.t, needle);
+      var sGroups = 0;
+      if (g.g && g.g.length) {
+        for (var i = 0; i < g.g.length; i++) {
+          var sg = scoreString(g.g[i], needle);
+          if (sg > sGroups) sGroups = sg;
+        }
       }
-    }
-    var sKey = scoreString(g.k, needle);
-    return { item: g, score: Math.max(sTitle, sGroups * 0.75, sKey * 0.8) };
-  }).filter(function(x){ return x.score > 0; })
-    .sort(function(a, b){ return b.score - a.score || a.item.t.localeCompare(b.item.t); })
-    .map(function(x){ return x.item; });
+      var sKey = scoreString(g.k, needle);
+      return { item: g, score: Math.max(sTitle, sGroups * 0.75, sKey * 0.8) };
+    })
+    .filter(function (x) {
+      return x.score > 0;
+    })
+    .sort(function (a, b) {
+      return b.score - a.score || a.item.t.localeCompare(b.item.t);
+    })
+    .map(function (x) {
+      return x.item;
+    });
 
   // 4. Authors: match username only, sorted by match strength
-  var authors = (data.authors || []).map(function(a){
-    return { item: a, score: scoreString(a.u, needle) };
-  }).filter(function(x){ return x.score > 0; })
-    .sort(function(a, b){ return b.score - a.score || (b.item.r || 0) - (a.item.r || 0) || a.item.u.localeCompare(b.item.u); })
-    .map(function(x){ return x.item; });
+  var authors = (data.authors || [])
+    .map(function (a) {
+      return { item: a, score: scoreString(a.u, needle) };
+    })
+    .filter(function (x) {
+      return x.score > 0;
+    })
+    .sort(function (a, b) {
+      return (
+        b.score - a.score ||
+        (b.item.r || 0) - (a.item.r || 0) ||
+        a.item.u.localeCompare(b.item.u)
+      );
+    })
+    .map(function (x) {
+      return x.item;
+    });
 
   // 5. Runs: match title, cat, author username, run ID, metric, sorted by match strength
-  var runs = (data.runs || []).map(function(r){
-    var sTitle = scoreString(r.t, needle);
-    var sCat = scoreString(r.c, needle);
-    var sAuthors = 0;
-    if (r.a && r.a.length) {
-      for (var i = 0; i < r.a.length; i++) {
-        var sa = scoreString(r.a[i], needle);
-        if (sa > sAuthors) sAuthors = sa;
+  var runs = (data.runs || [])
+    .map(function (r) {
+      var sTitle = scoreString(r.t, needle);
+      var sCat = scoreString(r.c, needle);
+      var sAuthors = 0;
+      if (r.a && r.a.length) {
+        for (var i = 0; i < r.a.length; i++) {
+          var sa = scoreString(r.a[i], needle);
+          if (sa > sAuthors) sAuthors = sa;
+        }
       }
-    }
-    var sId = (r.id && r.id.toLowerCase() === needle) ? 1000 : (r.id && r.id.toLowerCase().indexOf(needle) === 0 ? 600 : 0);
-    return { item: r, score: Math.max(sTitle, sCat * 0.8, sAuthors * 0.85, sId) };
-  }).filter(function(x){ return x.score > 0; })
-    .sort(function(a, b){ return b.score - a.score || (b.item.stars || 0) - (a.item.stars || 0) || String(b.item.d).localeCompare(String(a.item.d)); })
-    .map(function(x){ return x.item; });
+      var sId =
+        r.id && r.id.toLowerCase() === needle
+          ? 1000
+          : r.id && r.id.toLowerCase().indexOf(needle) === 0
+            ? 600
+            : 0;
+      return {
+        item: r,
+        score: Math.max(sTitle, sCat * 0.8, sAuthors * 0.85, sId),
+      };
+    })
+    .filter(function (x) {
+      return x.score > 0;
+    })
+    .sort(function (a, b) {
+      return (
+        b.score - a.score ||
+        (b.item.stars || 0) - (a.item.stars || 0) ||
+        String(b.item.d).localeCompare(String(a.item.d))
+      );
+    })
+    .map(function (x) {
+      return x.item;
+    });
 
   return {
     games: games,
     groups: groups,
     systems: systems,
     authors: authors,
-    runs: runs
+    runs: runs,
   };
 }
 
-function chipHtml(state){
-  return {
-    verified: '<span class="chip verchip">Verified</span>',
-    unclassified: '<span class="chip unclchip">Unclassified</span>',
-    pending: '<span class="chip pendchip">Pending</span>'
-  }[state] || '';
+function chipHtml(state) {
+  return (
+    {
+      verified: '<span class="chip verchip">Verified</span>',
+      unclassified: '<span class="chip unclchip">Unclassified</span>',
+      pending: '<span class="chip pendchip">Pending</span>',
+    }[state] || ''
+  );
 }
 
 function initSearchPage() {
@@ -151,7 +219,11 @@ function initSearchPage() {
 
   function syncUrl(q, tab) {
     try {
-      if (typeof location !== 'undefined' && typeof history !== 'undefined' && history.replaceState) {
+      if (
+        typeof location !== 'undefined' &&
+        typeof history !== 'undefined' &&
+        history.replaceState
+      ) {
         var u = new URL(location.href);
         if (q) u.searchParams.set('q', q);
         else u.searchParams.delete('q');
@@ -159,12 +231,12 @@ function initSearchPage() {
         else u.searchParams.delete('tab');
         history.replaceState(null, '', u.toString());
       }
-    } catch(e){}
+    } catch (e) {}
   }
 
   function setTab(tab) {
     activeTab = tab || 'all';
-    document.querySelectorAll('.stab').forEach(function(btn){
+    document.querySelectorAll('.stab').forEach(function (btn) {
       var match = btn.dataset.tab === activeTab;
       btn.classList.toggle('on', match);
       btn.setAttribute('aria-selected', match ? 'true' : 'false');
@@ -173,75 +245,177 @@ function initSearchPage() {
     syncUrl(input ? input.value.trim() : '', activeTab);
   }
 
-  var currentResults = { games: [], groups: [], systems: [], authors: [], runs: [] };
+  var currentResults = {
+    games: [],
+    groups: [],
+    systems: [],
+    authors: [],
+    runs: [],
+  };
 
   function renderSystems(page, size) {
     if (!resSystems) return;
     var start = (page - 1) * size;
     var slice = currentResults.systems.slice(start, start + size);
-    resSystems.innerHTML = slice.map(function(sys){
-      return '<a class="search-card search-card-system" href="' + (rel || '') + 'systems/' + escapeHtml(sys.k) + '/">' +
-        '<div class="search-card-title">' + escapeHtml(sys.n) + '</div>' +
-        '<div class="search-card-sub">' + (sys.gc || 0) + ' game' + (sys.gc === 1 ? '' : 's') + ' · ' + (sys.rc || 0) + ' run' + (sys.rc === 1 ? '' : 's') + '</div>' +
-        '</a>';
-    }).join('');
+    resSystems.innerHTML = slice
+      .map(function (sys) {
+        return (
+          '<a class="search-card search-card-system" href="' +
+          (rel || '') +
+          'systems/' +
+          escapeHtml(sys.k) +
+          '/">' +
+          '<div class="search-card-title">' +
+          escapeHtml(sys.n) +
+          '</div>' +
+          '<div class="search-card-sub">' +
+          (sys.gc || 0) +
+          ' game' +
+          (sys.gc === 1 ? '' : 's') +
+          ' · ' +
+          (sys.rc || 0) +
+          ' run' +
+          (sys.rc === 1 ? '' : 's') +
+          '</div>' +
+          '</a>'
+        );
+      })
+      .join('');
   }
 
   function renderGroups(page, size) {
     if (!resGroups) return;
     var start = (page - 1) * size;
     var slice = currentResults.groups.slice(start, start + size);
-    resGroups.innerHTML = slice.map(function(gr){
-      return '<a class="search-card search-card-group" href="' + (rel || '') + 'groups/' + escapeHtml(gr.k) + '/">' +
-        '<div class="search-card-title">' + escapeHtml(gr.t) + '</div>' +
-        '<div class="search-card-sub">' + (gr.gc || gr.c || 0) + ' game' + ((gr.gc || gr.c) === 1 ? '' : 's') + ' · ' + (gr.rc || 0) + ' run' + (gr.rc === 1 ? '' : 's') + '</div>' +
-        '</a>';
-    }).join('');
+    resGroups.innerHTML = slice
+      .map(function (gr) {
+        return (
+          '<a class="search-card search-card-group" href="' +
+          (rel || '') +
+          'groups/' +
+          escapeHtml(gr.k) +
+          '/">' +
+          '<div class="search-card-title">' +
+          escapeHtml(gr.t) +
+          '</div>' +
+          '<div class="search-card-sub">' +
+          (gr.gc || gr.c || 0) +
+          ' game' +
+          ((gr.gc || gr.c) === 1 ? '' : 's') +
+          ' · ' +
+          (gr.rc || 0) +
+          ' run' +
+          (gr.rc === 1 ? '' : 's') +
+          '</div>' +
+          '</a>'
+        );
+      })
+      .join('');
   }
 
   function renderGames(page, size) {
     if (!resGames) return;
     var start = (page - 1) * size;
     var slice = currentResults.games.slice(start, start + size);
-    resGames.innerHTML = slice.map(function(g){
-      var grpHtml = (g.g && g.g.length)
-        ? '<div class="search-card-partof" title="part of ' + escapeHtml(g.g[0]) + '">part of ' + escapeHtml(g.g[0]) + '</div>'
-        : '';
-      return '<a class="search-card search-card-game" href="' + (rel || '') + 'games/' + escapeHtml(g.k) + '/">' +
-        '<div class="search-card-title">' + escapeHtml(g.t) + '</div>' +
-        grpHtml +
-        '<div class="search-card-sys"><span class="chip" title="' + escapeHtml(g.sn) + '">' + escapeHtml(g.sn) + '</span></div>' +
-        '</a>';
-    }).join('');
+    resGames.innerHTML = slice
+      .map(function (g) {
+        var grpHtml =
+          g.g && g.g.length
+            ? '<div class="search-card-partof" title="part of ' +
+              escapeHtml(g.g[0]) +
+              '">part of ' +
+              escapeHtml(g.g[0]) +
+              '</div>'
+            : '';
+        return (
+          '<a class="search-card search-card-game" href="' +
+          (rel || '') +
+          'games/' +
+          escapeHtml(g.k) +
+          '/">' +
+          '<div class="search-card-title">' +
+          escapeHtml(g.t) +
+          '</div>' +
+          grpHtml +
+          '<div class="search-card-sys"><span class="chip" title="' +
+          escapeHtml(g.sn) +
+          '">' +
+          escapeHtml(g.sn) +
+          '</span></div>' +
+          '</a>'
+        );
+      })
+      .join('');
   }
 
   function renderAuthors(page, size) {
     if (!resAuthors) return;
     var start = (page - 1) * size;
     var slice = currentResults.authors.slice(start, start + size);
-    resAuthors.innerHTML = slice.map(function(a){
-      return '<a class="search-card search-card-author" href="' + (rel || '') + 'authors/' + escapeHtml(a.p) + '/">' +
-        '<div class="search-card-title">@' + escapeHtml(a.u) + '</div>' +
-        '<div class="search-card-sub">' + a.r + ' run' + (a.r === 1 ? '' : 's') + (a.s > 0 ? ' · ★' + a.s : '') + '</div>' +
-        '</a>';
-    }).join('');
+    resAuthors.innerHTML = slice
+      .map(function (a) {
+        return (
+          '<a class="search-card search-card-author" href="' +
+          (rel || '') +
+          'authors/' +
+          escapeHtml(a.p) +
+          '/">' +
+          '<div class="search-card-title">@' +
+          escapeHtml(a.u) +
+          '</div>' +
+          '<div class="search-card-sub">' +
+          a.r +
+          ' run' +
+          (a.r === 1 ? '' : 's') +
+          (a.s > 0 ? ' · ★' + a.s : '') +
+          '</div>' +
+          '</a>'
+        );
+      })
+      .join('');
   }
 
   function renderRuns(page, size) {
     if (!resRuns) return;
     var start = (page - 1) * size;
     var slice = currentResults.runs.slice(start, start + size);
-    resRuns.innerHTML = slice.map(function(r){
-      return '<tr onclick="location=\'' + (rel || '') + 'runs/' + escapeHtml(r.id) + '/\'">' +
-        '<td><b>' + escapeHtml(r.t) + '</b><span class="bcat">' + escapeHtml(r.c) + '</span></td>' +
-        '<td class="bsys">' + escapeHtml(r.sn) + '</td>' +
-        '<td>' + escapeHtml(r.a.join(', ')) + '</td>' +
-        '<td class="bsys">' + escapeHtml(r.m) + '</td>' +
-        '<td class="num">' + r.res + '</td>' +
-        '<td class="num"><span class="starglyph">★</span>' + r.stars + '</td>' +
-        '<td class="bsys bdate">' + escapeHtml(r.d) + '</td>' +
-        '<td>' + chipHtml(r.st) + '</td></tr>';
-    }).join('');
+    resRuns.innerHTML = slice
+      .map(function (r) {
+        return (
+          '<tr onclick="location=\'' +
+          (rel || '') +
+          'runs/' +
+          escapeHtml(r.id) +
+          '/\'">' +
+          '<td><b>' +
+          escapeHtml(r.t) +
+          '</b><span class="bcat">' +
+          escapeHtml(r.c) +
+          '</span></td>' +
+          '<td class="bsys">' +
+          escapeHtml(r.sn) +
+          '</td>' +
+          '<td>' +
+          escapeHtml(r.a.join(', ')) +
+          '</td>' +
+          '<td class="bsys">' +
+          escapeHtml(r.m) +
+          '</td>' +
+          '<td class="num">' +
+          r.res +
+          '</td>' +
+          '<td class="num"><span class="starglyph">★</span>' +
+          r.stars +
+          '</td>' +
+          '<td class="bsys bdate">' +
+          escapeHtml(r.d) +
+          '</td>' +
+          '<td>' +
+          chipHtml(r.st) +
+          '</td></tr>'
+        );
+      })
+      .join('');
   }
 
   var pagSystems = createPaginator({
@@ -250,7 +424,9 @@ function initSearchPage() {
     sizes: [12, 24, 36, 48],
     defaultSize: 12,
     itemLabel: 'system',
-    onChange: function(p, s){ renderSystems(p, s); }
+    onChange: function (p, s) {
+      renderSystems(p, s);
+    },
   });
 
   var pagGroups = createPaginator({
@@ -259,7 +435,9 @@ function initSearchPage() {
     sizes: [12, 24, 36, 48],
     defaultSize: 12,
     itemLabel: 'game group',
-    onChange: function(p, s){ renderGroups(p, s); }
+    onChange: function (p, s) {
+      renderGroups(p, s);
+    },
   });
 
   var pagGames = createPaginator({
@@ -268,7 +446,9 @@ function initSearchPage() {
     sizes: [12, 24, 36, 48],
     defaultSize: 12,
     itemLabel: 'game',
-    onChange: function(p, s){ renderGames(p, s); }
+    onChange: function (p, s) {
+      renderGames(p, s);
+    },
   });
 
   var pagAuthors = createPaginator({
@@ -277,7 +457,9 @@ function initSearchPage() {
     sizes: [12, 24, 36, 48],
     defaultSize: 12,
     itemLabel: 'author',
-    onChange: function(p, s){ renderAuthors(p, s); }
+    onChange: function (p, s) {
+      renderAuthors(p, s);
+    },
   });
 
   var pagRuns = createPaginator({
@@ -286,7 +468,9 @@ function initSearchPage() {
     sizes: [10, 20, 30, 40, 50],
     defaultSize: 10,
     itemLabel: 'run',
-    onChange: function(p, s){ renderRuns(p, s); }
+    onChange: function (p, s) {
+      renderRuns(p, s);
+    },
   });
 
   function renderSections() {
@@ -299,9 +483,12 @@ function initSearchPage() {
     }
 
     emptyEl.hidden = true;
-    var totalMatches = currentResults.games.length + currentResults.groups.length +
-                       currentResults.systems.length + currentResults.authors.length +
-                       currentResults.runs.length;
+    var totalMatches =
+      currentResults.games.length +
+      currentResults.groups.length +
+      currentResults.systems.length +
+      currentResults.authors.length +
+      currentResults.runs.length;
 
     if (totalMatches === 0) {
       noResultsEl.hidden = false;
@@ -315,63 +502,93 @@ function initSearchPage() {
 
     // Visibility per tab
     var showAll = activeTab === 'all';
-    secSystems.hidden = !( (showAll || activeTab === 'systems') && currentResults.systems.length > 0 );
-    secGroups.hidden = !( (showAll || activeTab === 'groups') && currentResults.groups.length > 0 );
-    secGames.hidden = !( (showAll || activeTab === 'games') && currentResults.games.length > 0 );
-    secAuthors.hidden = !( (showAll || activeTab === 'authors') && currentResults.authors.length > 0 );
-    secRuns.hidden = !( (showAll || activeTab === 'runs') && currentResults.runs.length > 0 );
+    secSystems.hidden = !(
+      (showAll || activeTab === 'systems') &&
+      currentResults.systems.length > 0
+    );
+    secGroups.hidden = !(
+      (showAll || activeTab === 'groups') &&
+      currentResults.groups.length > 0
+    );
+    secGames.hidden = !(
+      (showAll || activeTab === 'games') &&
+      currentResults.games.length > 0
+    );
+    secAuthors.hidden = !(
+      (showAll || activeTab === 'authors') &&
+      currentResults.authors.length > 0
+    );
+    secRuns.hidden = !(
+      (showAll || activeTab === 'runs') &&
+      currentResults.runs.length > 0
+    );
   }
 
   function executeSearch() {
     var q = input ? input.value.trim() : '';
     if (!q) {
-      currentResults = { games: [], groups: [], systems: [], authors: [], runs: [] };
+      currentResults = {
+        games: [],
+        groups: [],
+        systems: [],
+        authors: [],
+        runs: [],
+      };
       updateCounts(0, 0, 0, 0, 0);
-      pagSystems.setTotal(0); pagSystems.setPage(1);
-      pagGroups.setTotal(0); pagGroups.setPage(1);
-      pagGames.setTotal(0); pagGames.setPage(1);
-      pagAuthors.setTotal(0); pagAuthors.setPage(1);
-      pagRuns.setTotal(0); pagRuns.setPage(1);
+      pagSystems.setTotal(0);
+      pagSystems.setPage(1);
+      pagGroups.setTotal(0);
+      pagGroups.setPage(1);
+      pagGames.setTotal(0);
+      pagGames.setPage(1);
+      pagAuthors.setTotal(0);
+      pagAuthors.setPage(1);
+      pagRuns.setTotal(0);
+      pagRuns.setPage(1);
       renderSections();
       syncUrl('', activeTab);
       return;
     }
 
     loadingEl.hidden = false;
-    loadIndex().then(function(data){
-      loadingEl.hidden = true;
-      currentResults = querySearchIndex(data, q);
+    loadIndex()
+      .then(function (data) {
+        loadingEl.hidden = true;
+        currentResults = querySearchIndex(data, q);
 
-      updateCounts(
-        currentResults.games.length,
-        currentResults.groups.length,
-        currentResults.systems.length,
-        currentResults.authors.length,
-        currentResults.runs.length
-      );
+        updateCounts(
+          currentResults.games.length,
+          currentResults.groups.length,
+          currentResults.systems.length,
+          currentResults.authors.length,
+          currentResults.runs.length
+        );
 
-      if (runsBrowseLink) {
-        runsBrowseLink.href = (rel || '') + 'browse/?q=' + encodeURIComponent(q);
-      }
+        if (runsBrowseLink) {
+          runsBrowseLink.href =
+            (rel || '') + 'browse/?q=' + encodeURIComponent(q);
+        }
 
-      pagSystems.setTotal(currentResults.systems.length);
-      pagSystems.setPage(1);
-      pagGroups.setTotal(currentResults.groups.length);
-      pagGroups.setPage(1);
-      pagGames.setTotal(currentResults.games.length);
-      pagGames.setPage(1);
-      pagAuthors.setTotal(currentResults.authors.length);
-      pagAuthors.setPage(1);
-      pagRuns.setTotal(currentResults.runs.length);
-      pagRuns.setPage(1);
+        pagSystems.setTotal(currentResults.systems.length);
+        pagSystems.setPage(1);
+        pagGroups.setTotal(currentResults.groups.length);
+        pagGroups.setPage(1);
+        pagGames.setTotal(currentResults.games.length);
+        pagGames.setPage(1);
+        pagAuthors.setTotal(currentResults.authors.length);
+        pagAuthors.setPage(1);
+        pagRuns.setTotal(currentResults.runs.length);
+        pagRuns.setPage(1);
 
-      renderSections();
-      syncUrl(q, activeTab);
-    }).catch(function(err){
-      loadingEl.hidden = true;
-      noResultsEl.hidden = false;
-      noResultsEl.textContent = 'Failed to load search data. Please try again.';
-    });
+        renderSections();
+        syncUrl(q, activeTab);
+      })
+      .catch(function (err) {
+        loadingEl.hidden = true;
+        noResultsEl.hidden = false;
+        noResultsEl.textContent =
+          'Failed to load search data. Please try again.';
+      });
   }
 
   function updateCounts(ngames, ngroups, nsystems, nauthors, nruns) {
@@ -404,7 +621,7 @@ function initSearchPage() {
   }
 
   if (tabsContainer) {
-    tabsContainer.addEventListener('click', function(ev){
+    tabsContainer.addEventListener('click', function (ev) {
       var btn = ev.target.closest('.stab');
       if (btn && btn.dataset.tab) {
         setTab(btn.dataset.tab);
@@ -418,8 +635,8 @@ function initSearchPage() {
 
   // Pre-load on focus
   if (input) {
-    input.addEventListener('focus', function(){
-      loadIndex().catch(function(){});
+    input.addEventListener('focus', function () {
+      loadIndex().catch(function () {});
     });
   }
 

@@ -54,3 +54,4 @@ Working rules:
   console "not-applicable". "pending" (missing a
   gate), "Imported" (seeded TASVideos import; formerly "Legacy"), "experts" (scoped moderators), "archivist"
   (the intake bot). Never describe the site as running emulation server-side.
+- Code formatting: all JS and CSS assets (`assets/`) must adhere to `biome.json`. Run `biome format --write` whenever modifying frontend code.

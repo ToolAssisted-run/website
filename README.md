@@ -81,6 +81,7 @@ flowchart LR
 ### Prerequisites
 - Python 3.10 or newer
 - Git checkout of [`ToolAssisted-run/archive`](https://github.com/ToolAssisted-run/archive) (placed in `~/ToolAssisted-archive` or next to this repository)
+- Node.js (for running frontend tests and formatting via Biome)
 
 ### Quick Start
 

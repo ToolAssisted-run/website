@@ -1,6 +1,15 @@
 // toolAssisted.run — tools page client module:
 // site-wide expert and editor curation of the authoritative TAS tools catalog
-import { mePromise, el, setMark, post, viewAsCoverage, viewAsActive, waitBuilt, escapeHtml } from './app.js';
+import {
+  mePromise,
+  el,
+  setMark,
+  post,
+  viewAsCoverage,
+  viewAsActive,
+  waitBuilt,
+  escapeHtml,
+} from './app.js';
 
 var expertMenu = document.getElementById('toolexpertmenu');
 var emuDataEl = document.getElementById('toolemudata');
@@ -10,7 +19,7 @@ if (expertMenu && emuDataEl) {
   var catalog = null;
   try {
     catalog = JSON.parse(emuDataEl.textContent);
-  } catch(e) {
+  } catch (e) {
     catalog = { systems: {}, catalog: [] };
   }
   catalog.systems = catalog.systems || {};
@@ -19,31 +28,47 @@ if (expertMenu && emuDataEl) {
   var siteExperts = [];
   try {
     if (siteExpertsEl) siteExperts = JSON.parse(siteExpertsEl.textContent);
-  } catch(e) {}
+  } catch (e) {}
 
-  mePromise.then(function(d){
+  mePromise.then(function (d) {
     if (!d || !d.loggedIn) {
       if (expertMenu) expertMenu.hidden = true;
-      document.querySelectorAll('.tool-act-col, .cat-add-btn').forEach(function(elem){
-        elem.hidden = true;
-      });
+      document
+        .querySelectorAll('.tool-act-col, .cat-add-btn')
+        .forEach(function (elem) {
+          elem.hidden = true;
+        });
       return;
     }
     var who = (d.user || '').toLowerCase();
     var T = window.TAR || {};
 
     // Gated strictly to site-wide experts and editors (respecting View As role switcher)
-    var siteExpertsLower = (siteExperts || []).map(function(x){ return (x || '').toLowerCase(); });
+    var siteExpertsLower = (siteExperts || []).map(function (x) {
+      return (x || '').toLowerCase();
+    });
     var effectiveSiteExperts = viewAsCoverage(siteExpertsLower, who);
-    var isSiteExpert = effectiveSiteExperts.map(function(x){ return (x || '').toLowerCase(); }).indexOf(who) >= 0;
-    var isEditor = (!viewAsActive() || viewAsActive() === 'editor') &&
-                   (T.editors || []).map(function(x){ return (x || '').toLowerCase(); }).indexOf(who) >= 0;
+    var isSiteExpert =
+      effectiveSiteExperts
+        .map(function (x) {
+          return (x || '').toLowerCase();
+        })
+        .indexOf(who) >= 0;
+    var isEditor =
+      (!viewAsActive() || viewAsActive() === 'editor') &&
+      (T.editors || [])
+        .map(function (x) {
+          return (x || '').toLowerCase();
+        })
+        .indexOf(who) >= 0;
 
     if (!isSiteExpert && !isEditor) {
       if (expertMenu) expertMenu.hidden = true;
-      document.querySelectorAll('.tool-act-col, .cat-add-btn').forEach(function(elem){
-        elem.hidden = true;
-      });
+      document
+        .querySelectorAll('.tool-act-col, .cat-add-btn')
+        .forEach(function (elem) {
+          elem.hidden = true;
+        });
       return;
     }
 
@@ -51,24 +76,32 @@ if (expertMenu && emuDataEl) {
       expertMenu.hidden = false;
       if (!isSiteExpert && isEditor) {
         var h2 = expertMenu.querySelector('h2');
-        if (h2 && /Expert menu/.test(h2.textContent)) h2.textContent = 'Editor menu';
+        if (h2 && /Expert menu/.test(h2.textContent))
+          h2.textContent = 'Editor menu';
       }
     }
 
     // Unhide actions column and Add buttons for authorized users
-    document.querySelectorAll('.tool-act-col, .cat-add-btn').forEach(function(elem){
-      elem.hidden = false;
-    });
+    document
+      .querySelectorAll('.tool-act-col, .cat-add-btn')
+      .forEach(function (elem) {
+        elem.hidden = false;
+      });
 
-    if (location.hash === '#toolexpertmenu' || location.hash === '#cat-savebar') {
-      try { expertMenu.scrollIntoView({ behavior: 'smooth' }); } catch(e) {}
+    if (
+      location.hash === '#toolexpertmenu' ||
+      location.hash === '#cat-savebar'
+    ) {
+      try {
+        expertMenu.scrollIntoView({ behavior: 'smooth' });
+      } catch (e) {}
     }
 
     initCatalogCurator();
   });
 }
 
-function initCatalogCurator(){
+function initCatalogCurator() {
   var rawList = (catalog && (catalog.catalog || catalog.presets)) || [];
   var originalCatalog = JSON.parse(JSON.stringify(rawList));
   var currentTools = JSON.parse(JSON.stringify(rawList));
@@ -76,13 +109,13 @@ function initCatalogCurator(){
   var toolsById = {};
   var originalById = {};
 
-  function reindex(){
+  function reindex() {
     toolsById = {};
-    currentTools.forEach(function(t){
+    currentTools.forEach(function (t) {
       if (t && t.id) toolsById[t.id.toLowerCase()] = t;
     });
     originalById = {};
-    originalCatalog.forEach(function(t){
+    originalCatalog.forEach(function (t) {
       if (t && t.id) originalById[t.id.toLowerCase()] = t;
     });
   }
@@ -119,7 +152,7 @@ function initCatalogCurator(){
   var applyBtn = document.getElementById('cat-tool-apply');
   var openAddBtn = document.getElementById('cat-open-add-btn');
 
-  function updateKindVisibility(){
+  function updateKindVisibility() {
     var k = toolKind ? toolKind.value : 'emulator';
     if (k === 'game_tool') {
       if (wrapGame) wrapGame.hidden = false;
@@ -135,11 +168,13 @@ function initCatalogCurator(){
   }
   if (toolKind) toolKind.addEventListener('change', updateKindVisibility);
 
-  function openAddDialog(defaultKind){
+  function openAddDialog(defaultKind) {
     if (!dlg) return;
     if (toolErr) toolErr.hidden = true;
     if (dlgTitle) dlgTitle.textContent = 'Add tool to catalog';
-    if (dlgDesc) dlgDesc.textContent = 'Define a new TAS tool to be supported in the site-wide catalog.';
+    if (dlgDesc)
+      dlgDesc.textContent =
+        'Define a new TAS tool to be supported in the site-wide catalog.';
     if (toolMode) toolMode.value = 'add';
 
     if (toolId) {
@@ -162,11 +197,16 @@ function initCatalogCurator(){
     else dlg.setAttribute('open', '');
   }
 
-  function openEditDialog(tool){
+  function openEditDialog(tool) {
     if (!dlg || !tool) return;
     if (toolErr) toolErr.hidden = true;
-    if (dlgTitle) dlgTitle.textContent = 'Edit TAS tool: ' + (tool.name || tool.id);
-    if (dlgDesc) dlgDesc.textContent = 'Update properties and configuration for ' + (tool.name || tool.id) + '.';
+    if (dlgTitle)
+      dlgTitle.textContent = 'Edit TAS tool: ' + (tool.name || tool.id);
+    if (dlgDesc)
+      dlgDesc.textContent =
+        'Update properties and configuration for ' +
+        (tool.name || tool.id) +
+        '.';
     if (toolMode) toolMode.value = 'edit';
 
     if (toolId) {
@@ -182,7 +222,7 @@ function initCatalogCurator(){
     if (toolAliases) toolAliases.value = (tool.aliases || []).join(', ');
     if (toolMulti) toolMulti.checked = !!tool.multi;
     if (toolCores) toolCores.checked = !!tool.has_cores;
-    if (toolParsed) toolParsed.checked = (tool.parsed !== false);
+    if (toolParsed) toolParsed.checked = tool.parsed !== false;
 
     updateKindVisibility();
     if (typeof dlg.showModal === 'function') dlg.showModal();
@@ -190,38 +230,41 @@ function initCatalogCurator(){
   }
 
   if (openAddBtn) {
-    openAddBtn.addEventListener('click', function(e){
+    openAddBtn.addEventListener('click', function (e) {
       e.preventDefault();
       openAddDialog('emulator');
     });
   }
 
-  document.querySelectorAll('.cat-add-btn').forEach(function(b){
-    b.addEventListener('click', function(e){
+  document.querySelectorAll('.cat-add-btn').forEach(function (b) {
+    b.addEventListener('click', function (e) {
       e.preventDefault();
       openAddDialog(b.getAttribute('data-kind') || 'emulator');
     });
   });
 
   if (cancelBtn && dlg) {
-    cancelBtn.addEventListener('click', function(e){
+    cancelBtn.addEventListener('click', function (e) {
       e.preventDefault();
       if (typeof dlg.close === 'function') dlg.close();
       else dlg.removeAttribute('open');
     });
   }
 
-  var IC_EDIT = '<svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
-  var IC_REMOVE = '<svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
-  var IC_RESTORE = '<svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>';
+  var IC_EDIT =
+    '<svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+  var IC_REMOVE =
+    '<svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+  var IC_RESTORE =
+    '<svg class="tool-btn-ic" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>';
 
-  function wireRow(row){
+  function wireRow(row) {
     var tid = (row.getAttribute('data-tool-id') || '').toLowerCase();
     if (!tid) return;
     var editBtn = row.querySelector('.cat-edit-btn');
     if (editBtn && !editBtn._wired) {
       editBtn._wired = true;
-      editBtn.addEventListener('click', function(e){
+      editBtn.addEventListener('click', function (e) {
         e.preventDefault();
         if (editBtn.disabled) return;
         var t = toolsById[tid];
@@ -231,12 +274,14 @@ function initCatalogCurator(){
     var delBtn = row.querySelector('.cat-del-btn');
     if (delBtn && !delBtn._wired) {
       delBtn._wired = true;
-      delBtn.addEventListener('click', function(e){
+      delBtn.addEventListener('click', function (e) {
         e.preventDefault();
         var t = toolsById[tid];
         if (!t) return;
         if (t._isNew) {
-          currentTools = currentTools.filter(function(x){ return x.id.toLowerCase() !== tid; });
+          currentTools = currentTools.filter(function (x) {
+            return x.id.toLowerCase() !== tid;
+          });
           row.remove();
           reindex();
           refresh();
@@ -269,7 +314,7 @@ function initCatalogCurator(){
   document.querySelectorAll('tr[data-tool-id]').forEach(wireRow);
 
   if (applyBtn && dlg) {
-    applyBtn.addEventListener('click', function(e){
+    applyBtn.addEventListener('click', function (e) {
       e.preventDefault();
       if (toolErr) toolErr.hidden = true;
 
@@ -280,11 +325,17 @@ function initCatalogCurator(){
       var tgame = (toolGame.value || '').trim();
       var tsysdisp = (toolSysDisp ? toolSysDisp.value : '').trim();
       var tfmts = (toolFormats.value || '').trim();
-      var taliases = (toolAliases.value || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+      var taliases = (toolAliases.value || '')
+        .split(',')
+        .map(function (s) {
+          return s.trim();
+        })
+        .filter(Boolean);
 
       if (!tid || !/^[a-z0-9._-]+$/.test(tid)) {
         if (toolErr) {
-          toolErr.textContent = 'Tool ID must be lowercase alphanumeric with hyphens, periods, or underscores.';
+          toolErr.textContent =
+            'Tool ID must be lowercase alphanumeric with hyphens, periods, or underscores.';
           toolErr.hidden = false;
         }
         return;
@@ -298,7 +349,8 @@ function initCatalogCurator(){
       }
       if (tkind === 'game_tool' && !tgame) {
         if (toolErr) {
-          toolErr.textContent = 'Target game / engine name is required for game-specific tools.';
+          toolErr.textContent =
+            'Target game / engine name is required for game-specific tools.';
           toolErr.hidden = false;
         }
         return;
@@ -306,10 +358,13 @@ function initCatalogCurator(){
 
       var mode = toolMode.value;
       if (mode === 'add') {
-        var existing = currentTools.find(function(x){ return x.id.toLowerCase() === tid; });
+        var existing = currentTools.find(function (x) {
+          return x.id.toLowerCase() === tid;
+        });
         if (existing) {
           if (toolErr) {
-            toolErr.textContent = 'A tool with ID "' + tid + '" already exists in the catalog.';
+            toolErr.textContent =
+              'A tool with ID "' + tid + '" already exists in the catalog.';
             toolErr.hidden = false;
           }
           return;
@@ -320,7 +375,7 @@ function initCatalogCurator(){
           kind: tkind,
           url: turl,
           parsed: !!toolParsed.checked,
-          _isNew: true
+          _isNew: true,
         };
         if (tkind === 'game_tool') {
           newTool.game = tgame;
@@ -379,7 +434,10 @@ function initCatalogCurator(){
           tr.appendChild(col3);
 
           var col4 = el('td', 'num');
-          col4.innerHTML = newTool.parsed !== false ? '<span class="tick-yes">\u2713</span>' : '<span class="tick-no">\u2014</span>';
+          col4.innerHTML =
+            newTool.parsed !== false
+              ? '<span class="tick-yes">\u2713</span>'
+              : '<span class="tick-no">\u2014</span>';
           tr.appendChild(col4);
 
           var col5 = el('td', 'tool-act-col num');
@@ -404,7 +462,9 @@ function initCatalogCurator(){
           wireRow(tr);
         }
       } else {
-        var targetTool = currentTools.find(function(x){ return x.id.toLowerCase() === tid; });
+        var targetTool = currentTools.find(function (x) {
+          return x.id.toLowerCase() === tid;
+        });
         if (targetTool) {
           targetTool.name = tname;
           targetTool.kind = tkind;
@@ -435,7 +495,16 @@ function initCatalogCurator(){
           var row = document.querySelector('tr[data-tool-id="' + tid + '"]');
           if (row && row.cells.length >= 4) {
             // Col 0: Name
-            row.cells[0].innerHTML = '<b>' + (targetTool.url ? '<a href="' + escapeHtml(targetTool.url) + '">' + escapeHtml(targetTool.name) + '</a>' : escapeHtml(targetTool.name)) + '</b>';
+            row.cells[0].innerHTML =
+              '<b>' +
+              (targetTool.url
+                ? '<a href="' +
+                  escapeHtml(targetTool.url) +
+                  '">' +
+                  escapeHtml(targetTool.name) +
+                  '</a>'
+                : escapeHtml(targetTool.name)) +
+              '</b>';
             // Col 1: System / Game
             if (targetTool.kind === 'game_tool') {
               row.cells[1].textContent = targetTool.game || '';
@@ -448,21 +517,31 @@ function initCatalogCurator(){
             }
             // Col 2: Format
             var curFmt = targetTool.formats || targetTool.format || '';
-            row.cells[2].innerHTML = curFmt ? '<code>' + escapeHtml(curFmt) + '</code>' : '';
+            row.cells[2].innerHTML = curFmt
+              ? '<code>' + escapeHtml(curFmt) + '</code>'
+              : '';
             // Col 3: Parsed
-            row.cells[3].innerHTML = targetTool.parsed !== false ? '<span class="tick-yes">\u2713</span>' : '<span class="tick-no">\u2014</span>';
+            row.cells[3].innerHTML =
+              targetTool.parsed !== false
+                ? '<span class="tick-yes">\u2713</span>'
+                : '<span class="tick-no">\u2014</span>';
 
             // Mark modified if changed from original
             var orig = originalById[tid];
             var isModified = false;
             if (orig) {
-              if (orig.name !== targetTool.name || orig.url !== targetTool.url ||
-                  (orig.formats || orig.format || '') !== (targetTool.formats || targetTool.format || '') ||
-                  (targetTool.game && orig.game !== targetTool.game) ||
-                  (orig.systems_display || '') !== (targetTool.systems_display || '') ||
-                  (targetTool.parsed !== false) !== (orig.parsed !== false) ||
-                  !!targetTool.multi !== !!orig.multi ||
-                  !!targetTool.has_cores !== !!orig.has_cores) {
+              if (
+                orig.name !== targetTool.name ||
+                orig.url !== targetTool.url ||
+                (orig.formats || orig.format || '') !==
+                  (targetTool.formats || targetTool.format || '') ||
+                (targetTool.game && orig.game !== targetTool.game) ||
+                (orig.systems_display || '') !==
+                  (targetTool.systems_display || '') ||
+                (targetTool.parsed !== false) !== (orig.parsed !== false) ||
+                !!targetTool.multi !== !!orig.multi ||
+                !!targetTool.has_cores !== !!orig.has_cores
+              ) {
                 isModified = true;
               }
             }
@@ -481,40 +560,56 @@ function initCatalogCurator(){
 
   var dirty = false;
 
-  function computeDiff(){
+  function computeDiff() {
     var ops = [];
-    currentTools.forEach(function(t){
+    currentTools.forEach(function (t) {
       var tid = t.id.toLowerCase();
       if (t._isNew) {
-        var kLabel = t.kind === 'legacy' ? 'old format' : (t.kind === 'game_tool' ? 'game tool' : 'emulator');
+        var kLabel =
+          t.kind === 'legacy'
+            ? 'old format'
+            : t.kind === 'game_tool'
+              ? 'game tool'
+              : 'emulator';
         ops.push({
           type: 'add',
           id: t.id,
-          what: 'Added ' + (t.name || t.id) + ' (' + t.id + ', ' + kLabel + ')'
+          what: 'Added ' + (t.name || t.id) + ' (' + t.id + ', ' + kLabel + ')',
         });
       } else if (t._deleted) {
         ops.push({
           type: 'delete',
           id: t.id,
-          what: 'Removed ' + (t.name || t.id) + ' (' + t.id + ')'
+          what: 'Removed ' + (t.name || t.id) + ' (' + t.id + ')',
         });
       } else {
         var orig = originalById[tid];
         if (orig) {
           var changes = [];
-          if ((t.name || '') !== (orig.name || '')) changes.push('name \u2192 "' + t.name + '"');
-          if ((t.kind || 'emulator') !== (orig.kind || 'emulator')) changes.push('category \u2192 ' + (t.kind === 'legacy' ? 'old format' : t.kind));
+          if ((t.name || '') !== (orig.name || ''))
+            changes.push('name \u2192 "' + t.name + '"');
+          if ((t.kind || 'emulator') !== (orig.kind || 'emulator'))
+            changes.push(
+              'category \u2192 ' + (t.kind === 'legacy' ? 'old format' : t.kind)
+            );
           if ((t.url || '') !== (orig.url || '')) changes.push('url');
-          if ((t.game || '') !== (orig.game || '')) changes.push('game \u2192 "' + t.game + '"');
+          if ((t.game || '') !== (orig.game || ''))
+            changes.push('game \u2192 "' + t.game + '"');
           if ((t.systems_display || '') !== (orig.systems_display || '')) {
-            changes.push('systems display override \u2192 ' + (t.systems_display ? '"' + t.systems_display + '"' : 'auto'));
+            changes.push(
+              'systems display override \u2192 ' +
+                (t.systems_display ? '"' + t.systems_display + '"' : 'auto')
+            );
           }
           var tFmt = t.formats || t.format || '';
           var oFmt = orig.formats || orig.format || '';
           if (tFmt !== oFmt) changes.push('format \u2192 "' + tFmt + '"');
-          if (!!t.multi !== !!orig.multi) changes.push('multi-system: ' + (t.multi ? 'yes' : 'no'));
-          if (!!t.has_cores !== !!orig.has_cores) changes.push('cores: ' + (t.has_cores ? 'yes' : 'no'));
-          if ((t.parsed !== false) !== (orig.parsed !== false)) changes.push('parsed: ' + (t.parsed ? 'yes' : 'no'));
+          if (!!t.multi !== !!orig.multi)
+            changes.push('multi-system: ' + (t.multi ? 'yes' : 'no'));
+          if (!!t.has_cores !== !!orig.has_cores)
+            changes.push('cores: ' + (t.has_cores ? 'yes' : 'no'));
+          if ((t.parsed !== false) !== (orig.parsed !== false))
+            changes.push('parsed: ' + (t.parsed ? 'yes' : 'no'));
           var tAliases = (t.aliases || []).slice().sort().join(',');
           var oAliases = (orig.aliases || []).slice().sort().join(',');
           if (tAliases !== oAliases) changes.push('aliases');
@@ -523,20 +618,28 @@ function initCatalogCurator(){
             ops.push({
               type: 'modify',
               id: t.id,
-              what: 'Updated ' + (t.name || t.id) + ' (' + t.id + '): ' + changes.join(', ')
+              what:
+                'Updated ' +
+                (t.name || t.id) +
+                ' (' +
+                t.id +
+                '): ' +
+                changes.join(', '),
             });
           }
         }
       }
     });
 
-    originalCatalog.forEach(function(orig){
-      var found = currentTools.find(function(x){ return x.id.toLowerCase() === orig.id.toLowerCase(); });
+    originalCatalog.forEach(function (orig) {
+      var found = currentTools.find(function (x) {
+        return x.id.toLowerCase() === orig.id.toLowerCase();
+      });
       if (!found) {
         ops.push({
           type: 'delete',
           id: orig.id,
-          what: 'Removed ' + (orig.name || orig.id) + ' (' + orig.id + ')'
+          what: 'Removed ' + (orig.name || orig.id) + ' (' + orig.id + ')',
         });
       }
     });
@@ -544,7 +647,7 @@ function initCatalogCurator(){
     return ops;
   }
 
-  function refresh(){
+  function refresh() {
     var ops = computeDiff();
     dirty = ops.length > 0;
     if (!pendingEl) return;
@@ -556,11 +659,19 @@ function initCatalogCurator(){
       }
       if (saveBtn) saveBtn.disabled = true;
     } else {
-      pendingEl.textContent = ops.length + ' change' + (ops.length === 1 ? '' : 's') + ' pending: ' +
-        ops.map(function(o){ return o.what; }).join('; ');
+      pendingEl.textContent =
+        ops.length +
+        ' change' +
+        (ops.length === 1 ? '' : 's') +
+        ' pending: ' +
+        ops
+          .map(function (o) {
+            return o.what;
+          })
+          .join('; ');
       if (pendingListEl) {
         pendingListEl.innerHTML = '';
-        ops.forEach(function(o){
+        ops.forEach(function (o) {
           var li = el('li', '', o.what);
           pendingListEl.appendChild(li);
         });
@@ -572,13 +683,14 @@ function initCatalogCurator(){
 
   // Save changes via POST /api/emulators/edit
   if (saveBtn) {
-    saveBtn.addEventListener('click', function(e){
+    saveBtn.addEventListener('click', function (e) {
       e.preventDefault();
       if (msg) msg.hidden = true;
       var reason = (reasonInp ? reasonInp.value : '').trim();
       if (reason.length < 8) {
         if (msg) {
-          msg.textContent = 'Please provide a public reason of at least 8 characters explaining the changes.';
+          msg.textContent =
+            'Please provide a public reason of at least 8 characters explaining the changes.';
           msg.hidden = false;
         }
         if (reasonInp) reasonInp.focus();
@@ -591,24 +703,32 @@ function initCatalogCurator(){
       saveBtn.disabled = true;
       setMark(mark, 'busy', 'Saving catalog changes…');
 
-      var cleanCatalog = currentTools.filter(function(t){ return !t._deleted; }).map(function(t){
-        var clone = JSON.parse(JSON.stringify(t));
-        delete clone._isNew;
-        delete clone._deleted;
-        return clone;
-      });
+      var cleanCatalog = currentTools
+        .filter(function (t) {
+          return !t._deleted;
+        })
+        .map(function (t) {
+          var clone = JSON.parse(JSON.stringify(t));
+          delete clone._isNew;
+          delete clone._deleted;
+          return clone;
+        });
 
       var payload = {
         system: 'default',
         catalog: JSON.stringify(cleanCatalog),
-        reason: reason
+        reason: reason,
       };
 
       post('/api/emulators/edit', payload)
-        .then(function(res){
+        .then(function (res) {
           saveBtn.disabled = false;
           if (!res || !res.ok) {
-            setMark(mark, 'err', (res && res.error) || 'Could not save catalog changes.');
+            setMark(
+              mark,
+              'err',
+              (res && res.error) || 'Could not save catalog changes.'
+            );
             if (msg) {
               msg.textContent = (res && res.error) || 'Error saving changes.';
               msg.hidden = false;
@@ -618,11 +738,11 @@ function initCatalogCurator(){
           dirty = false;
           setMark(mark, 'ok', 'Saved ✓ Rebuilding site…');
           if (reasonInp) reasonInp.value = '';
-          waitBuilt(res.serial || 'latest', function(){
+          waitBuilt(res.serial || 'latest', function () {
             location.reload();
           });
         })
-        .catch(function(err){
+        .catch(function (err) {
           saveBtn.disabled = false;
           setMark(mark, 'err', err.message || 'Network error.');
           if (msg) {
@@ -633,7 +753,7 @@ function initCatalogCurator(){
     });
   }
 
-  window.addEventListener('beforeunload', function(ev){
+  window.addEventListener('beforeunload', function (ev) {
     if (!dirty) return;
     ev.preventDefault();
     ev.returnValue = '';

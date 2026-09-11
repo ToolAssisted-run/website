@@ -11,8 +11,10 @@ function initRunVideoFloat() {
   const frame = player && player.querySelector('iframe');
   if (!stage || !player || !frame) return;
   const inlineRect = player.getBoundingClientRect();
-  const playerAspect = inlineRect.width > 0 && inlineRect.height > 0
-    ? inlineRect.width / inlineRect.height : 16 / 9;
+  const playerAspect =
+    inlineRect.width > 0 && inlineRect.height > 0
+      ? inlineRect.width / inlineRect.height
+      : 16 / 9;
 
   const anchor = document.createElement('div');
   const shell = document.createElement('div');
@@ -20,12 +22,12 @@ function initRunVideoFloat() {
   const title = document.createElement('span');
   const close = document.createElement('button');
   const grips = [
-    ['top-left', {left: true, top: true}],
-    ['top-right', {right: true, top: true}],
-    ['bottom-left', {left: true, bottom: true}],
-    ['bottom-right', {right: true, bottom: true}]
+    ['top-left', { left: true, top: true }],
+    ['top-right', { right: true, top: true }],
+    ['bottom-left', { left: true, bottom: true }],
+    ['bottom-right', { right: true, bottom: true }],
   ];
-  const defaults = {width: 0, height: 0, right: 18, bottom: 18};
+  const defaults = { width: 0, height: 0, right: 18, bottom: 18 };
   let floating = false;
   let activated = false;
   let closed = false;
@@ -47,10 +49,10 @@ function initRunVideoFloat() {
   player.parentNode.insertBefore(anchor, player);
   player.parentNode.insertBefore(shell, player);
   shell.append(bar, player);
-  grips.forEach(function(item) {
+  grips.forEach(function (item) {
     const grip = document.createElement('span');
     grip.className = 'run-video-float-grip ' + item[0];
-    grip.addEventListener('pointerdown', function(ev) {
+    grip.addEventListener('pointerdown', function (ev) {
       resizeStart(ev, item[1]);
     });
     shell.appendChild(grip);
@@ -72,7 +74,8 @@ function initRunVideoFloat() {
     const aside = document.querySelector('.cols > aside');
     const width = aside ? aside.getBoundingClientRect().width : 290;
     defaults.width = Math.max(MIN_WIDTH, Math.round(width));
-    defaults.height = Math.round(defaults.width / playerAspect) + FRAME_CHROME_HEIGHT;
+    defaults.height =
+      Math.round(defaults.width / playerAspect) + FRAME_CHROME_HEIGHT;
   }
 
   function resetGeometry() {
@@ -106,7 +109,7 @@ function initRunVideoFloat() {
       left: shell.style.left,
       top: shell.style.top,
       right: shell.style.right,
-      bottom: shell.style.bottom
+      bottom: shell.style.bottom,
     };
   }
 
@@ -119,18 +122,21 @@ function initRunVideoFloat() {
       resetGeometry();
       return;
     }
-    Object.keys(savedGeometry).forEach(function(key) {
+    Object.keys(savedGeometry).forEach(function (key) {
       shell.style[key] = savedGeometry[key];
     });
   }
 
   function pause() {
     if (provider === 'youtube') {
-      frame.contentWindow.postMessage(JSON.stringify({event: 'command', func: 'pauseVideo', args: []}), '*');
+      frame.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
+        '*'
+      );
     } else if (provider === 'vimeo') {
-      frame.contentWindow.postMessage({method: 'pause'}, '*');
+      frame.contentWindow.postMessage({ method: 'pause' }, '*');
     } else if (provider === 'dailymotion') {
-      frame.contentWindow.postMessage(JSON.stringify({method: 'pause'}), '*');
+      frame.contentWindow.postMessage(JSON.stringify({ method: 'pause' }), '*');
     }
   }
 
@@ -189,18 +195,33 @@ function initRunVideoFloat() {
   function messageIsPlay(data) {
     if (!data) return false;
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch (e) { return /playing|play/i.test(data); }
+      try {
+        data = JSON.parse(data);
+      } catch (e) {
+        return /playing|play/i.test(data);
+      }
     }
-    return data.event === 'play' || data.event === 'playing' ||
-      data.info === 1 || data.method === 'playProgress' ||
-      data.playerState === 1 || data.event === 'video_play';
+    return (
+      data.event === 'play' ||
+      data.event === 'playing' ||
+      data.info === 1 ||
+      data.method === 'playProgress' ||
+      data.playerState === 1 ||
+      data.event === 'video_play'
+    );
   }
 
   function subscribeToProviderEvents() {
     if (provider === 'youtube') {
-      frame.contentWindow.postMessage(JSON.stringify({event: 'listening', id: 'run-player'}), '*');
+      frame.contentWindow.postMessage(
+        JSON.stringify({ event: 'listening', id: 'run-player' }),
+        '*'
+      );
     } else if (provider === 'vimeo') {
-      frame.contentWindow.postMessage({method: 'addEventListener', value: 'play'}, '*');
+      frame.contentWindow.postMessage(
+        { method: 'addEventListener', value: 'play' },
+        '*'
+      );
     }
   }
 
@@ -245,16 +266,20 @@ function initRunVideoFloat() {
       const dy = moveEv.clientY - startY;
       const widthDelta = edges.left ? -dx : edges.right ? dx : 0;
       const heightWidthDelta = (edges.top ? -dy : dy) * playerAspect;
-      const delta = Math.abs(widthDelta) >= Math.abs(heightWidthDelta)
-        ? widthDelta : heightWidthDelta;
+      const delta =
+        Math.abs(widthDelta) >= Math.abs(heightWidthDelta)
+          ? widthDelta
+          : heightWidthDelta;
       const minWidth = Math.max(MIN_WIDTH, defaults.width - MAX_DELTA);
       const maxWidth = (defaults.width + MAX_DELTA) * MAX_SIZE_MULTIPLIER;
       const width = Math.max(minWidth, Math.min(maxWidth, startWidth + delta));
       const height = Math.round(width / playerAspect) + FRAME_CHROME_HEIGHT;
       shell.style.width = Math.round(width) + 'px';
       shell.style.height = Math.round(height) + 'px';
-      if (edges.left) shell.style.left = Math.round(startLeft + startWidth - width) + 'px';
-      if (edges.top) shell.style.top = Math.round(startTop + startHeight - height) + 'px';
+      if (edges.left)
+        shell.style.left = Math.round(startLeft + startWidth - width) + 'px';
+      if (edges.top)
+        shell.style.top = Math.round(startTop + startHeight - height) + 'px';
       if (edges.left || edges.top) {
         shell.style.right = '';
         shell.style.bottom = '';
@@ -265,7 +290,7 @@ function initRunVideoFloat() {
       window.removeEventListener('pointerup', stop);
     }
     window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', stop, {once: true});
+    window.addEventListener('pointerup', stop, { once: true });
   }
 
   function dragStart(ev) {
@@ -275,10 +300,14 @@ function initRunVideoFloat() {
     const offsetX = ev.clientX - rect.left;
     const offsetY = ev.clientY - rect.top;
     function move(moveEv) {
-      const left = Math.max(0, Math.min(window.innerWidth - rect.width,
-        moveEv.clientX - offsetX));
-      const top = Math.max(0, Math.min(window.innerHeight - rect.height,
-        moveEv.clientY - offsetY));
+      const left = Math.max(
+        0,
+        Math.min(window.innerWidth - rect.width, moveEv.clientX - offsetX)
+      );
+      const top = Math.max(
+        0,
+        Math.min(window.innerHeight - rect.height, moveEv.clientY - offsetY)
+      );
       shell.style.left = Math.round(left) + 'px';
       shell.style.top = Math.round(top) + 'px';
       shell.style.right = '';
@@ -289,10 +318,10 @@ function initRunVideoFloat() {
       window.removeEventListener('pointerup', stop);
     }
     window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', stop, {once: true});
+    window.addEventListener('pointerup', stop, { once: true });
   }
 
-  close.addEventListener('click', function() {
+  close.addEventListener('click', function () {
     pause();
     closed = true;
     savedGeometry = null;
@@ -301,21 +330,22 @@ function initRunVideoFloat() {
   bar.addEventListener('pointerdown', dragStart);
   frame.addEventListener('load', subscribeToProviderEvents);
   subscribeToProviderEvents();
-  player.addEventListener('pointerenter', function() {
+  player.addEventListener('pointerenter', function () {
     pointerOverPlayer = true;
   });
-  player.addEventListener('pointerleave', function() {
+  player.addEventListener('pointerleave', function () {
     pointerOverPlayer = false;
   });
   player.addEventListener('pointerdown', activateFallback);
-  window.addEventListener('blur', function() {
-    if (pointerOverPlayer || document.activeElement === frame) activateFallback();
+  window.addEventListener('blur', function () {
+    if (pointerOverPlayer || document.activeElement === frame)
+      activateFallback();
   });
-  window.addEventListener('message', function(ev) {
+  window.addEventListener('message', function (ev) {
     if (ev.source === frame.contentWindow && messageIsPlay(ev.data)) onPlay();
   });
-  window.addEventListener('scroll', maybeFloat, {passive: true});
-  window.addEventListener('resize', function() {
+  window.addEventListener('scroll', maybeFloat, { passive: true });
+  window.addEventListener('resize', function () {
     if (floating) {
       shell.hidden = isLandscapeMobile();
       if (isDesktop()) {
@@ -331,7 +361,7 @@ function initRunVideoFloat() {
       maybeFloat();
     }
   });
-  window.matchMedia(PORTRAIT_QUERY).addEventListener('change', function() {
+  window.matchMedia(PORTRAIT_QUERY).addEventListener('change', function () {
     if (floating) {
       shell.hidden = isLandscapeMobile();
     }
