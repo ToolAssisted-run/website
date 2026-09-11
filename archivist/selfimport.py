@@ -32,7 +32,7 @@ SYSTEM_NAMES = {
     'C64': 'Commodore 64', 'DOS': 'DOS',
     'PC': 'PC', 'Amiga': 'Amiga', '3DO': '3DO', 'Arcade': 'Arcade',
     'MSX': 'MSX', 'PCE': 'PC Engine / TurboGrafx-16', 'WSWAN': 'WonderSwan',
-    'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'VBoy': 'Virtual Boy',
+    'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'NeoGeo': 'Neo Geo AES', 'VBoy': 'Virtual Boy',
     'Coleco': 'ColecoVision', 'INTV': 'Intellivision', 'Dreamcast': 'Sega Dreamcast',
     'GC': 'GameCube', 'Wii': 'Wii', 'Windows': 'Windows', 'Linux': 'Linux',
     'ZXS': 'ZX Spectrum', 'A800': 'Atari 800', 'Apple2': 'Apple II',
@@ -56,11 +56,14 @@ EXACT_FPS = {
     'ps3': 59.94005994005994,
     'symbian': 60.0,   # EKA2L1 declares 60/1 for the handset
     'a5200': 59.9227510135505,   # the Atari 8-bit clock, as the 2600's
+    'neogeo': 59.18560606060606,   # ares hints 6000000/(384*264)
+    'ngp': 59.95023661999317,      # ares hints 6144000/(515*199)
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
                 'ps2', 'psp', 'ps3', 'xbox', 'symbian', 'a5200',
+                'neogeo', 'ngp',
                 'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
 
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}

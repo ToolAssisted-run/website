@@ -110,7 +110,13 @@ BIZ_TO_TASV = {'gen': 'genesis', 'sat': 'saturn', 'dgb': 'gb', 'gb3x': 'gb',
                'gb4x': 'gb', 'gbl': 'gb', 'gbal': 'gba', 'a26': 'a2600',
                'a78': 'a7800', 'uze': 'uzebox', 'vb': 'vboy',
                'zxspectrum': 'zxs', 'nds': 'ds',
-               'dc': 'dreamcast'}      # Chimera writes the Dreamcast as DC
+               'dc': 'dreamcast',      # Chimera writes the Dreamcast as DC
+               # ares names each of its machines its own way, and a project
+               # made on one carries that name: these are the ones the archive
+               # keeps under a different key
+               'ng': 'neogeo', 'ngpc': 'ngp', 'a52': 'a5200', 'ps1': 'psx',
+               'sfc': 'snes', 'cv': 'coleco', 'ws': 'wswan', 'wsc': 'wswan',
+               'mcd': 'segacd'}
 CYCLE_BASED_CORES = {'subgbhawk': 4194304, 'gambatte': 2097152}
 VALID_CLOCK_RATES = {'4194304', '2097152', '5369318.18181818', '5320342.5',
                      '33868800', '21477272.7272727', '21281370', '16777216'}
