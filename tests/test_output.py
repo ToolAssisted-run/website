@@ -77,7 +77,7 @@ def build(archive, out, ref='main'):
     env = dict(os.environ, ARCHIVE_REF=ref)
     r = subprocess.run([sys.executable, str(REPO / 'generator/build.py'),
                         str(archive), str(out)],
-                       capture_output=True, text=True, env=env)
+                       capture_output=True, text=True, encoding='utf-8', env=env)
     return r
 
 
@@ -260,7 +260,7 @@ process.stdout.write(JSON.stringify(bad));
         data_file = jd_path / 'blocks.json'
         script_file.write_text(checker, encoding='utf-8')
         data_file.write_text(json.dumps(list(blocks.items())), encoding='utf-8')
-        r = subprocess.run([node, str(script_file), str(data_file)], capture_output=True, text=True)
+        r = subprocess.run([node, str(script_file), str(data_file)], capture_output=True, text=True, encoding='utf-8')
         if r.returncode == 0:
             try:
                 bad = json.loads(r.stdout)
@@ -271,7 +271,7 @@ process.stdout.write(JSON.stringify(bad));
             f = jd_path / 'block.js'
             for block, where in blocks.items():
                 f.write_text(block, encoding='utf-8')
-                r2 = subprocess.run([node, '--check', str(f)], capture_output=True, text=True)
+                r2 = subprocess.run([node, '--check', str(f)], capture_output=True, text=True, encoding='utf-8')
                 if r2.returncode:
                     bad.append(f'{where}: {r2.stderr.strip().splitlines()[-1][:90]}')
     ck(f'{label}: every inline script parses ({len(blocks)} distinct)', not bad,
@@ -281,10 +281,10 @@ process.stdout.write(JSON.stringify(bad));
 def check_stylesheet_rules():
     """Layout rules that a screenshot proved necessary (#45): a fact value
     never widens its box."""
-    css = (REPO / 'assets' / 'style.css').read_text()
-    dd = re.search(r'\.factbox dd\{([^}]*)\}', css)
+    css = (REPO / 'assets' / 'style.css').read_text(encoding='utf-8')
+    dd = re.search(r'\.factbox\s+dd\s*\{([^}]*)\}', css)
     ck('fact values shrink and wrap instead of overflowing (#45)',
-       dd and 'min-width:0' in dd.group(1) and 'overflow-wrap:anywhere' in dd.group(1))
+       bool(dd and re.search(r'min-width:\s*0', dd.group(1)) and re.search(r'overflow-wrap:\s*anywhere', dd.group(1))))
 
 
 def check_markup_lives_in_templates():
@@ -631,7 +631,7 @@ def main():
         nf = out / '404.html'
         ck('a 404 page is built', nf.is_file())
         if nf.is_file():
-            h404 = nf.read_text()
+            h404 = nf.read_text(encoding='utf-8')
             ck('the 404 page is self-contained',
                not re.search(r'(?:href|src)="(?!/|https|#)', h404)
                and 'style.css' not in h404,
@@ -646,11 +646,11 @@ def main():
         for name in ('YouTube', 'Niconico', 'Bilibili'):
             ck(f'the submit page names {name} as an accepted platform', name in subp)
         ck('the submit page no longer claims YouTube only',
-           'Encode link (YouTube' not in subp)
+            'Encode link (YouTube' not in subp)
         # the encode-host check is the submit page's alone now (page-submit.js);
         # check every shipped client script, not just the shared app.js
-        js = (out / 'assets' / 'app.js').read_text()
-        client_js = '\n'.join(p.read_text() for p in (out / 'assets').glob('*.js'))
+        js = (out / 'assets' / 'app.js').read_text(encoding='utf-8')
+        client_js = '\n'.join(p.read_text(encoding='utf-8') for p in (out / 'assets').glob('*.js'))
         ck('the client host list comes from the registry',
            'nicovideo.jp' in client_js and 'bilibili.com' in client_js
            and 'youtu.be' in client_js)
@@ -878,22 +878,22 @@ def main():
            home.index('statstrip') < home.index('heronews'))
         ck('nav offers a menu button', 'id="navtoggle"' in home
            and 'aria-expanded="false"' in home)
-        css_txt = (out / 'assets' / 'style.css').read_text()
+        css_txt = (out / 'assets' / 'style.css').read_text(encoding='utf-8')
         ck('a narrow window stacks the hero',
-           '.herogrid{grid-template-columns:1fr}' in css_txt.replace('\n', ''))
+           bool(re.search(r'\.herogrid\s*\{[^}]*grid-template-columns:\s*1fr', css_txt)))
         ck('a narrow window hides the nav links behind the button',
-           '.nav .navlinks,.nav .navsearch{display:none}' in css_txt.replace('\n', ''))
+           bool(re.search(r'\.nav\s+\.navlinks\s*,\s*\.nav\s+\.navsearch\s*\{[^}]*display:\s*none', css_txt)))
         ck('the menu button is desktop-hidden by default',
-           '.navtoggle{display:none' in css_txt)
-        flat = css_txt.replace('\n', '')
+           bool(re.search(r'\.navtoggle\s*\{[^}]*display:\s*none', css_txt)))
         ck('hero buttons get short labels on a phone',
-           '.wide{display:none}.narrow{display:inline}' in flat
-           and '.narrow{display:none}' in flat)
+           bool(re.search(r'\.narrow\s*\{[^}]*display:\s*none', css_txt)
+                and re.search(r'\.wide\s*\{[^}]*display:\s*none', css_txt)
+                and re.search(r'\.narrow\s*\{[^}]*display:\s*inline', css_txt)))
         ck('both label variants ship in the markup',
            'class="wide">Browse the archive<' in home
            and 'class="narrow">Browse<' in home)
         ck('the statistics become a grid on a phone',
-           '.statstrip{display:grid;grid-template-columns:repeat(3,1fr)' in flat)
+           bool(re.search(r'\.statstrip\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(3,\s*1fr\)', css_txt)))
 
         # ---------- tables are structurally sound ----------
         # adding a column is easy to get half-right: header updated, one row
@@ -1087,13 +1087,13 @@ def main():
            and '"@type": "BreadcrumbList"' in all_html[out / 'runs' / 'M900101' / 'index.html'])
         ck('run titles say TAS, the system, the time and the authors',
            re.search(r'<title>[^<]*\(NES\) TAS in [^<]* by ', all_html[out / 'runs' / 'M900101' / 'index.html']) is not None)
-        smap = (out / 'sitemap.xml').read_text()
+        smap = (out / 'sitemap.xml').read_text(encoding='utf-8')
         ck('the sitemap lists exactly the indexable pages',
            smap.count('<url>') == len(pub) and 'submit/' not in smap and '/edit/' not in smap,
            f'{smap.count("<url>")} vs {len(pub)}')
         ck('robots.txt points at the sitemap and fences the tooling',
-           'Sitemap: https://toolassisted.run/sitemap.xml' in (out / 'robots.txt').read_text()
-           and 'Disallow: /submit/' in (out / 'robots.txt').read_text())
+           'Sitemap: https://toolassisted.run/sitemap.xml' in (out / 'robots.txt').read_text(encoding='utf-8')
+           and 'Disallow: /submit/' in (out / 'robots.txt').read_text(encoding='utf-8'))
         gidx = all_html[out / 'games' / 'index.html']
         ck('the list view sorts by any column',
            gidx.count('data-key="') in (5, 6) and 'data-runs=' in gidx
@@ -1194,7 +1194,7 @@ def main():
            'id="f-rundelete-wrap" hidden' in runp_
            and 'Delete this run' in runp_, runp_[:200])
         editp_ = all_html.get(out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html') \
-            or (out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html').read_text()
+            or (out / 'games' / 'nes' / 'testgame' / 'edit' / 'index.html').read_text(encoding='utf-8')
         ck('every game has its editor page, gated and data-carrying',
            'id="gameeditdata"' in editp_ and 'id="ge-gate"' in editp_
            and 'id="ge-addcat"' in editp_)
@@ -1336,7 +1336,7 @@ def main():
         # RUN here, not just syntax-checked.
         node0 = shutil.which('node')
         if node0:
-            bh = (out / 'browse' / 'index.html').read_text()
+            bh = (out / 'browse' / 'index.html').read_text(encoding='utf-8')
             m0 = re.search(r'<script>\n?(var RUNS = .*?)</script>', bh, re.S)
             stub = (
                 'const els = {};\n'
@@ -1349,7 +1349,7 @@ def main():
                                  + '\nconsole.log(JSON.stringify({rows: els.brows.innerHTML.length,'
                                    ' broken: /undefined|null|NaN/.test(els.brows.innerHTML),'
                                    ' count: els.bcount.textContent}))'],
-                                capture_output=True, text=True, timeout=60)
+                                capture_output=True, text=True, encoding='utf-8', timeout=60)
             ck('the browse script renders without throwing', r0.returncode == 0,
                r0.stderr[-300:])
             if r0.returncode == 0:
@@ -1409,7 +1409,7 @@ const res = {
 console.log(JSON.stringify(res));
 """
             rm = subprocess.run([node0, '--input-type=module', '-e', match_test_code],
-                                capture_output=True, text=True, timeout=10)
+                                capture_output=True, text=True, encoding='utf-8', timeout=10)
             if rm.returncode == 0 and rm.stdout.strip():
                 r_json = json.loads(rm.stdout.strip().splitlines()[-1])
                 ck('search matching logic conforms across games, groups, systems, authors, runs',
@@ -1419,7 +1419,7 @@ console.log(JSON.stringify(res));
                    False, rm.stderr[-300:])
 
         # ---------- client app ----------
-        js = (out / 'assets' / 'app.js').read_text()
+        js = (out / 'assets' / 'app.js').read_text(encoding='utf-8')
         node = shutil.which('node')
         client_scripts = sorted((out / 'assets').glob('*.js'))
         if node:
@@ -1429,7 +1429,7 @@ console.log(JSON.stringify(res));
             # page-*.js), not just the one file that used to hold everything.
             for script in client_scripts:
                 chk = subprocess.run([node, '--input-type=module', '--check'],
-                                     input=script.read_text(), capture_output=True, text=True)
+                                     input=script.read_text(encoding='utf-8'), capture_output=True, text=True, encoding='utf-8')
                 ck(f'{script.name}: node --check', chk.returncode == 0, chk.stderr[-300:])
         else:
             # crude fallback for machines without node: catches the failure
@@ -1437,7 +1437,7 @@ console.log(JSON.stringify(res));
             # the emitted JS), at the cost of false alarms on regex literals
             print('NOTE client scripts: node not installed, using the heuristic check')
             for script in client_scripts:
-                odd, brace, paren = js_integrity(script.read_text())
+                odd, brace, paren = js_integrity(script.read_text(encoding='utf-8'))
                 ck(f'{script.name}: no broken string literals (heuristic)',
                    not odd, f'lines {odd[:3]}')
                 ck(f'{script.name}: balanced braces', brace == 0, str(brace))
