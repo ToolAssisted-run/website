@@ -363,7 +363,9 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
         byIdS('t-h').value = Math.floor(ms / 3600000) || '';
         byIdS('t-m').value = Math.floor(ms / 60000) % 60;
         byIdS('t-s').value = Math.floor(ms / 1000) % 60;
-        byIdS('t-ms').value = ms % 1000;
+        byIdS('t-ms').value = String(ms % 1000).padStart(3, '0');
+        msUserEdited = false;
+        hideMsPopup();
       }
       function pad2(n){ return (n < 10 ? '0' : '') + n; }
       function composeTime(){
@@ -373,15 +375,144 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           var n = parseInt(seg.value, 10) || 0;
           var max = parseInt(seg.getAttribute('max') || seg.dataset.max || '999', 10);
           n = Math.max(0, Math.min(max, n));
-          if (String(n) !== seg.value) seg.value = n;
+          if (seg.id === 't-ms') {
+            if (n > max || n < 0) seg.value = String(Math.max(0, Math.min(max, n))).padStart(3, '0');
+          } else {
+            if (String(n) !== seg.value) seg.value = n;
+          }
           return n;
         });
         var h = v[0], m = v[1], s = v[2], ms = v[3];
         var body = pad2(m) + ':' + pad2(s) + '.' + ('00' + ms).slice(-3);
         timeField.value = (h + m + s + ms) === 0 ? '' : (h > 0 ? h + ':' : '') + body;
+        if (msPop && !msPop.hidden && msActiveLead && msActiveTrail) {
+          msOptLead.textContent = formatTimeOpt(msActiveLead);
+          msOptTrail.textContent = formatTimeOpt(msActiveTrail);
+        }
+      }
+      function markTimeManual(){
+        var sel = document.getElementById('s-timeimport');
+        var warn = document.getElementById('s-enc-timewarn');
+        if (warn) warn.hidden = true;
+        if (sel) {
+          var hasAny = timeSegments.some(function(s){ return s && s.value.trim() !== ''; });
+          sel.value = hasAny ? 'manual' : '';
+        }
       }
       timeSegments.forEach(function(seg){
-        if (seg) seg.addEventListener('input', composeTime);
+        if (seg) seg.addEventListener('input', function(){
+          markTimeManual();
+          composeTime();
+        });
+      });
+
+      var tMsInput = byIdS('t-ms');
+      var msPop = document.getElementById('ms-confirm-pop');
+      var msOptLead = document.getElementById('ms-opt-lead');
+      var msOptTrail = document.getElementById('ms-opt-trail');
+      var msUserEdited = false;
+      var msActiveLead = '';
+      var msActiveTrail = '';
+
+      function formatTimeOpt(msStr){
+        var h = parseInt(byIdS('t-h') ? byIdS('t-h').value : 0, 10) || 0;
+        var m = parseInt(byIdS('t-m') ? byIdS('t-m').value : 0, 10) || 0;
+        var s = parseInt(byIdS('t-s') ? byIdS('t-s').value : 0, 10) || 0;
+        var str = pad2(m) + 'm ' + pad2(s) + 's ' + msStr + 'ms';
+        if (h > 0) str = (h < 10 ? '0' + h : h) + 'h ' + str;
+        return str;
+      }
+
+      function showMsPopup(raw){
+        if (!msPop || !msOptLead || !msOptTrail) return;
+        var r = String(raw || '').trim();
+        if (!/^\d{1,2}$/.test(r)) return;
+        msActiveLead = r.padStart(3, '0');
+        msActiveTrail = r.padEnd(3, '0');
+        if (msActiveLead === msActiveTrail) {
+          hideMsPopup();
+          return;
+        }
+        msOptLead.textContent = formatTimeOpt(msActiveLead);
+        msOptTrail.textContent = formatTimeOpt(msActiveTrail);
+        msPop.hidden = false;
+      }
+
+      function hideMsPopup(){
+        if (msPop) msPop.hidden = true;
+      }
+
+      if (tMsInput) {
+        tMsInput.addEventListener('input', function(){
+          msUserEdited = true;
+          var raw = tMsInput.value.trim();
+          if (!/^\d{1,2}$/.test(raw) || raw === '0' || raw === '00') {
+            hideMsPopup();
+            return;
+          }
+          showMsPopup(raw);
+        });
+
+        tMsInput.addEventListener('blur', function(){
+          if (!msUserEdited) return;
+          var raw = tMsInput.value.trim();
+          if (/^\d{1,2}$/.test(raw)) {
+            var lead = raw.padStart(3, '0');
+            var trail = raw.padEnd(3, '0');
+            if (lead !== trail) {
+              tMsInput.value = lead;
+              markTimeManual();
+              composeTime();
+              showMsPopup(raw);
+            } else {
+              tMsInput.value = '000';
+              markTimeManual();
+              composeTime();
+              hideMsPopup();
+            }
+          }
+          msUserEdited = false;
+        });
+      }
+
+      if (msOptLead) {
+        msOptLead.addEventListener('mousedown', function(e){ e.preventDefault(); });
+        msOptLead.addEventListener('click', function(e){
+          e.stopPropagation();
+          if (tMsInput && msActiveLead) {
+            tMsInput.value = msActiveLead;
+            markTimeManual();
+            composeTime();
+          }
+          msUserEdited = false;
+          hideMsPopup();
+        });
+      }
+
+      if (msOptTrail) {
+        msOptTrail.addEventListener('mousedown', function(e){ e.preventDefault(); });
+        msOptTrail.addEventListener('click', function(e){
+          e.stopPropagation();
+          if (tMsInput && msActiveTrail) {
+            tMsInput.value = msActiveTrail;
+            markTimeManual();
+            composeTime();
+          }
+          msUserEdited = false;
+          hideMsPopup();
+        });
+      }
+
+      document.addEventListener('click', function(e){
+        if (!msPop || msPop.hidden) return;
+        if (msPop.contains(e.target) || e.target === tMsInput) return;
+        hideMsPopup();
+      });
+
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && msPop && !msPop.hidden) {
+          hideMsPopup();
+        }
       });
       var gameSelect = document.getElementById('s-game'), goalSelect = document.getElementById('s-goal');
       // the category's stated metrics: fields appear on category pick, in
@@ -432,7 +563,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
               var t = Math.max(0, parseFloat(secs) || 0);
               var h = Math.floor(t / 3600), mnt = Math.floor((t % 3600) / 60), sec = Math.floor(t % 60);
               var ms = Math.round((t - Math.floor(t)) * 1000);
-              segs[0].value = h || ''; segs[1].value = mnt; segs[2].value = sec; segs[3].value = ms || '';
+              segs[0].value = h || ''; segs[1].value = mnt; segs[2].value = sec; segs[3].value = (typeof ms === 'number' && !isNaN(ms)) ? String(ms).padStart(3, '0') : '';
               compose();
             };
             metricFields.appendChild(wrap);
@@ -1556,7 +1687,7 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
           var src = importSources();
           var any = false;
           Array.prototype.forEach.call(timeImportSel.options, function(o){
-            if (!o.value) return;
+            if (!o.value || o.value === 'manual') return;
             var sec = src[o.value];
             o.disabled = !sec;
             o.hidden = !sec;   // a removed movie takes its option away entirely
@@ -1579,10 +1710,19 @@ import { api, rel, versionQuery, mePromise, escapeHtml, el, setMark, waitBuilt,
                                 : 'Enabled when the movie file could be parsed';
         });
       }
+      var encTimeWarn = document.getElementById('s-enc-timewarn');
       if (timeImportSel) timeImportSel.addEventListener('change', function(){
-        var sec = importSources()[timeImportSel.value];
-        timeImportSel.value = '';
-        if (!sec) return;
+        var srcKey = timeImportSel.value;
+        if (!srcKey || srcKey === 'manual') return;
+        var sec = importSources()[srcKey];
+        if (!sec) {
+          timeImportSel.value = '';
+          return;
+        }
+        if (encTimeWarn) {
+          encTimeWarn.hidden = (srcKey !== 'encode');
+        }
+        timeImportSel.value = srcKey;
         setTime(sec);
         composeTime();
         paintPanels();

@@ -166,9 +166,21 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   </div>
   <select class="btn quiet impsel" id="s-timeimport" disabled>
     <option value="">Import from…</option>
+    <option value="manual" disabled hidden>User defined</option>
     <option value="movie" disabled>the movie file</option>
     <option value="encode" disabled>the video encode</option>
   </select>
+  </div>
+  <p class="rules fullw timewarn" id="s-enc-timewarn" hidden>
+    ⚠ Video encodes tend to include some part after the movie ends, like ending cutscenes or credits. Be sure to check and adjust the run time if needed.
+  </p>
+  <div id="ms-confirm-pop" class="ms-confirm-pop" hidden>
+    <span class="ms-confirm-title">CONFIRM MILLISECONDS</span>
+    <div class="ms-confirm-btns">
+      <button type="button" class="ms-btn" id="ms-opt-lead"></button>
+      <span class="ms-or">or</span>
+      <button type="button" class="ms-btn" id="ms-opt-trail"></button>
+    </div>
   </div>
   <input type="hidden" name="time" id="s-time">
   </div>
