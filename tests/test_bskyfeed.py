@@ -13,6 +13,7 @@ Usage: tests/test_bskyfeed.py
 """
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -84,11 +85,14 @@ def main():
         ck('the feed is read from the public AT Protocol endpoint',
            'public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed' in js)
         css = (REPO / 'assets/style.css').read_text(encoding='utf-8')
-        feed_rule = css[css.index('.bskyfeed{'):css.index('.bpost{')]
-        news_rule = css[css.index('.heronews{'):css.index('.heronews h2')]
+        feed_match = re.search(r'\.bskyfeed\s*\{([^}]+)\}', css)
+        news_match = re.search(r'\.heronews\s*\{([^}]+)\}', css)
+        feed_rule = feed_match.group(1) if feed_match else ''
+        news_rule = news_match.group(1) if news_match else ''
         ck('the news window is a bounded scroll box, not a growing column',
-           'overflow-y:auto' in feed_rule and 'min-height:100%' in news_rule
-           and 'height:0' in news_rule, (feed_rule + news_rule)[:160])
+           bool(re.search(r'overflow-y:\s*auto', feed_rule)
+                and re.search(r'min-height:\s*100%', news_rule)
+                and re.search(r'height:\s*0', news_rule)), (feed_rule + news_rule)[:160])
         ck('no client-side cap: older posts are a scroll away',
            'items.slice(0, 3)' not in js)
 
