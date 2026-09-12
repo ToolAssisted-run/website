@@ -45,7 +45,7 @@
    person it is about, at the bottom of their own page #}
 <section><details class="secfold menufold"><summary><h2>Roles
 ({{ role_rows|length }})</h2></summary>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th></th><th>Role</th><th>By</th><th>Reason</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="author-roles" data-item-label="role"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Action</th><th>Role</th><th>By</th><th>Reason</th></tr></thead>
 <tbody>{% for ev in role_rows %}
 <tr><td>{{ moment(ev.get('at') or ev.date) }}</td><td>{% if ev.action == 'granted' %}<span class="chip verchip">Granted</span>{% else %}<span class="chip pendchip">Removed</span>{% endif %}</td><td>{{ ev.what }}</td><td>{% if ev.by == 'founder' %}the founder{% elif ev.by == 'committee' %}a Committee vote{% else %}{{ member_chip(ev.by_name, '../../') }}{% endif %}</td><td>{{ inline(ev.reason, '../../') }}{% if ev.get('proof') %} · <a href="{{ ev.proof }}">where it was decided</a>{% endif %}</td></tr>
 {% endfor %}</tbody></table></div>

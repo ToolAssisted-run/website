@@ -24,7 +24,7 @@
 {% if gr_edits %}
 <section id="edits"><h2>Group revisions ({{ totals.edits }})</h2>
 <p class="authline">Metadata and member game changes made to this group: title and moved games. Every revision says who, what changed, and why.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="group-log-edits" data-item-label="revision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in gr_edits %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, rel) }}</td>
@@ -98,7 +98,7 @@
 <section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
 {% if gr_mods %}
 <p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="group-log-mods" data-item-label="action"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason, r_ in gr_mods %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
 <td>{{ run_link(r_) }}</td>
@@ -116,7 +116,7 @@
 {% if gr_removals %}
 <section id="removals"><h2>Removal requests</h2>
 <p class="authline">Historical removal requests asked and answered for this group.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Asked by</th><th>Reason</th><th>Status</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="group-log-removals" data-item-label="request"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Asked by</th><th>Reason</th><th>Status</th></tr></thead><tbody>
 {% for rem in gr_removals %}
 <tr><td>{{ moment(rem.get('at') or rem.date) }}</td>
 <td>{{ member_chip(rem.by, rel) }}</td>
@@ -130,7 +130,7 @@
 {# ---- ratification / decision (historical) ---- #}
 {% if gr.get('ratifiedBy') or gr.get('rejected') %}
 <section id="ratification"><h2>Historical decision</h2>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="group-log-ratification" data-item-label="decision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
 {% if gr.get('ratifiedBy') %}
 <tr><td>{{ moment(gr.get('ratifiedAtTime') or gr.get('ratifiedAt', '')) }}</td>
 <td>{{ member_chip(gr.ratifiedBy, rel) }}</td>

@@ -1229,6 +1229,62 @@ def main():
            and 'Authors revise their own runs' in all_html[
                out / 'policy' / 'site-log' / 'index.html'])
 
+        # ---------- run log pages (/runs/<id>/logs/) ----------
+        ck('run page links to its run log', 'logs/">view run log' in r101)
+        r101_log = all_html[out / 'runs' / 'M900101' / 'logs' / 'index.html']
+        ck('run log page carries edits heading with count', '<h2>Edits (2)' in r101_log)
+        ck('run log page records edit details and reasons',
+           'the old encode was taken down' in r101_log and 'https://youtu.be/new' in r101_log)
+        ck('run log page links back to run', '<a href="../">← Back to run</a>' in r101_log)
+        r107_log = all_html[out / 'runs' / 'M900107' / 'logs' / 'index.html']
+        ck('unrevised run log has clean empty state for edits',
+           'This run has not been revised since archival' in r107_log)
+
+        # ---------- game log pages (/games/<sys>/<slug>/logs/) ----------
+        ck('game page links to its game log', 'logs/">view game log' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
+        ck('game page expert menu links to game log', 'href="logs/">View game log</a>' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
+        g_log = all_html[out / 'games' / 'nes' / 'testgame' / 'logs' / 'index.html']
+        ck('game log page links back to game', '<a href="../">← Back to game</a>' in g_log)
+        ck('game log page carries game revisions heading', '<h2>Game revisions' in g_log)
+        ck('game log page carries category revisions heading', '<h2>Category revisions' in g_log)
+        ck('game log page carries run reports heading', '<h2>Run reports' in g_log)
+        ck('game log page carries disputes and cases heading', '<h2>Disputes and cases' in g_log)
+        ck('game log page carries moderation actions heading', '<h2>Moderation actions' in g_log)
+
+        # ---------- group log pages (/groups/<key>/logs/) ----------
+        ck('group page links to its group log', 'logs/">view group log' in all_html[out / 'groups' / 'test-family' / 'index.html'])
+        ck('group page expert menu links to group log', 'href="logs/">View group log</a>' in all_html[out / 'groups' / 'test-family' / 'index.html'])
+        grp_log = all_html[out / 'groups' / 'test-family' / 'logs' / 'index.html']
+        ck('group log page links back to group', '<a href="../">← Back to group</a>' in grp_log)
+        ck('group log page carries group revisions heading', '<h2>Group revisions' in grp_log)
+        ck('group log page carries run reports heading', '<h2>Run reports' in grp_log)
+        ck('group log page carries disputes and cases heading', '<h2>Disputes and cases' in grp_log)
+        ck('group log page carries moderation actions heading', '<h2>Moderation actions' in grp_log)
+
+        # ---------- system log pages (/systems/<key>/logs/) ----------
+        ck('system page links to its system log', 'logs/">view system log' in all_html[out / 'systems' / 'dos' / 'index.html'])
+        ck('system page expert menu links to system log', 'href="logs/">View system log</a>' in all_html[out / 'systems' / 'dos' / 'index.html'])
+        sys_log = all_html[out / 'systems' / 'dos' / 'logs' / 'index.html']
+        ck('system log page links back to system', '<a href="../">← Back to system</a>' in sys_log)
+        ck('system log page carries system revisions heading', '<h2>System revisions' in sys_log)
+        ck('system log page carries run reports heading', '<h2>Run reports' in sys_log)
+        ck('system log page carries disputes and cases heading', '<h2>Disputes and cases' in sys_log)
+        ck('system log page carries moderation actions heading', '<h2>Moderation actions' in sys_log)
+
+        # ---------- member log pages (/authors/<slug>/logs/) ----------
+        ck('author page links to member log', 'logs/">view member log' in all_html[out / 'authors' / 'ada' / 'index.html'])
+        mem_log = all_html[out / 'authors' / 'ada' / 'logs' / 'index.html']
+        ck('member log page links back to profile', '<a href="../">← Back to profile</a>' in mem_log)
+        ck('member log page carries breadcrumb', 'Members' in mem_log and 'Log' in mem_log)
+        ck('member log page carries role history heading', '<h2>Role history' in mem_log)
+        ck('member log page carries moderation on account heading', '<h2>Moderation on account' in mem_log)
+        ck('member log page carries reports on authored runs heading', '<h2>Reports on authored runs' in mem_log)
+        ck('member log page carries disputes on authored runs heading', '<h2>Disputes and cases on authored runs' in mem_log)
+        ck('member log page carries revisions by member heading', '<h2>Revisions by member' in mem_log)
+        ck('member log page carries moderation by member heading', '<h2>Moderation by member' in mem_log)
+        ck('member log page carries reports filed and resolved heading', '<h2>Reports filed and resolved' in mem_log)
+        ck('member log page carries disputes opened and voted heading', '<h2>Disputes opened and voted' in mem_log)
+
         # ---------- the site log ----------
         # It stopped being only about moderation: roles, identities, reports,
         # withdrawals and moderation are all acts of authority over somebody

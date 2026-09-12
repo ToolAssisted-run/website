@@ -1144,8 +1144,18 @@ export function armSortableTable(table) {
       table.classList.contains('paginated')) ||
     key
   ) {
-    var pagBox = el('div', 'pag-wrap');
-    if (wrap.parentNode && typeof wrap.parentNode.insertBefore === 'function') {
+    var existingPag = wrap.nextElementSibling;
+    var pagBox =
+      existingPag &&
+      existingPag.classList &&
+      existingPag.classList.contains('pag-wrap')
+        ? existingPag
+        : el('div', 'pag-wrap');
+    if (
+      !pagBox.parentNode &&
+      wrap.parentNode &&
+      typeof wrap.parentNode.insertBefore === 'function'
+    ) {
       wrap.parentNode.insertBefore(pagBox, wrap.nextSibling);
     }
     var itemLabel =
@@ -1775,7 +1785,11 @@ export function initNavSearch() {
 
 export function initSortableTables() {
   if (typeof document === 'undefined') return;
-  document.querySelectorAll('table.sortable').forEach(armSortableTable);
+  document
+    .querySelectorAll(
+      'table.sortable, table.paginated, .tblwrap[data-pagesize-key] table, table[data-pagesize-key]'
+    )
+    .forEach(armSortableTable);
 }
 
 function initApp() {

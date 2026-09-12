@@ -24,7 +24,7 @@
 {% if sys_edits %}
 <section id="edits"><h2>System revisions ({{ totals.edits }})</h2>
 <p class="authline">Metadata and emulator curation changes made to this system: presets, quick chips, and mapped tools. Every revision says who, what changed, and why.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="system-log-edits" data-item-label="revision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in sys_edits %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, rel) }}</td>
@@ -80,7 +80,7 @@
 <section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
 {% if sys_mods %}
 <p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="system-log-mods" data-item-label="action"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason, r_ in sys_mods %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
 <td>{{ run_link(r_) }}</td>

@@ -73,7 +73,7 @@
 
 {% if role_rows %}
 <section id="roles"><h2>Role history ({{ totals.roles }})</h2>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th></th><th>Role</th><th>By</th><th>Reason</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="member-log-roles" data-item-label="role"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Action</th><th>Role</th><th>By</th><th>Reason</th></tr></thead>
 <tbody>{% for ev in role_rows %}
 <tr><td>{{ moment(ev.get('at') or ev.date) }}</td><td>{% if ev.action == 'granted' %}<span class="chip verchip">Granted</span>{% else %}<span class="chip pendchip">Removed</span>{% endif %}</td><td>{{ ev.what }}</td><td>{% if ev.by == 'founder' %}the founder{% elif ev.by == 'committee' %}a Committee vote{% else %}{{ member_chip(ev.by_name, rel) }}{% endif %}</td><td>{{ inline(ev.reason, rel) }}{% if ev.get('proof') %} · <a href="{{ ev.proof }}">where it was decided</a>{% endif %}</td></tr>
 {% endfor %}</tbody></table></div>
@@ -87,7 +87,7 @@
 <section id="mods-on"><h2>Moderation on account ({{ totals.mods_on }})</h2>
 {% if mods_on %}
 <p class="authline">Actions taken by experts on verifications or reproductions authored by {{ a.username }}.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Run</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="member-log-mods-on" data-item-label="action"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Action</th><th>Run</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason, r_ in mods_on %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
 <td>Invalidated a {{ kind }}</td>
@@ -145,7 +145,7 @@
 {% if edits_by %}
 <section id="edits-by"><h2>Revisions by member ({{ totals.edits_by }})</h2>
 <p class="authline">Archive revisions made by {{ a.username }}: metadata edits, category changes, and group membership updates.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Target</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="member-log-edits" data-item-label="revision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Target</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in edits_by %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td>
@@ -187,7 +187,7 @@
 <section id="mods-by"><h2>Moderation by member ({{ totals.mods_by }})</h2>
 {% if mods_by %}
 <p class="authline">Moderation invalidations executed by {{ a.username }}. Every action is logged in the open with its public reason.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Action</th><th>Target</th><th>Run</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="member-log-mods-by" data-item-label="action"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Action</th><th>Target</th><th>Run</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason, r_ in mods_by %}
 <tr><td>{{ moment(d) }}</td>
 <td>Invalidated a {{ kind }}</td>
@@ -280,7 +280,7 @@
 {% if attestations_by %}
 <section id="attestations-by"><h2>Identity attestations ({{ totals.attestations_by }})</h2>
 <p class="authline">Members whose identity was attested by {{ a.username }}:</p>
-<div class="tblwrap"><table><thead><tr><th>Member</th><th>Attested on</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="member-log-attestations" data-item-label="member"><table class="sortable paginated"><thead><tr><th>Member</th><th class="sort-desc">Attested on</th></tr></thead><tbody>
 {% for other in attestations_by %}
 <tr><td>{{ member_chip(other.username, rel) }}</td><td>{{ moment(other.get('attestedAt') or other.get('joined', '')) }}</td></tr>
 {% endfor %}

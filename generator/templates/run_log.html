@@ -23,7 +23,7 @@
 {% if r_edits %}
 <section id="edits"><h2>Edits ({{ totals.edits }})</h2>
 <p class="authline">Authors revise their own runs; experts may correct anything inside their jurisdiction, member content included, and answer for it. Every revision says who, what it was, what it became, and why.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="run-log-edits" data-item-label="edit"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in r_edits %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, '../../../') }}</td>
@@ -79,7 +79,7 @@
 <section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
 {% if r_mods %}
 <p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="run-log-mods" data-item-label="action"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Action</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason in r_mods %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, '../../../') }}</td>
 <td>Invalidated a {{ kind }} by {{ member_chip(target, '../../../') }}</td>
@@ -95,7 +95,7 @@
 {% if r_withdrawn %}
 <section id="withdrawn"><h2>Withdrawal and erasure</h2>
 <p class="authline">A withdrawn run keeps its record as an honest tombstone rather than a 404.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Role</th><th>Status</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="run-log-withdrawn" data-item-label="withdrawal"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>By</th><th>Role</th><th>Status</th><th>Reason</th></tr></thead><tbody>
 <tr><td>{{ moment(r_withdrawn.get('at') or r_withdrawn.get('date', '')) }}</td>
 <td>{{ member_chip(r_withdrawn.by, '../../../') }}</td>
 <td>{{ r_withdrawn.get('role', 'author') }}</td>
@@ -108,13 +108,13 @@
 {# ---- origin / archival details ---- #}
 {% set submitter = r.get('imported', {}).get('importedBy') or r.get('submittedBy') or (r.authors[0].user if r.authors else '') %}
 <section id="origin"><h2>Archival origin</h2>
-<div class="tblwrap"><table><tbody>
-<tr><th>Archived</th><td>{{ moment(r.submitted) if r.submitted else 'Unknown' }}</td></tr>
+<div class="tblwrap"><table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
+<tr><td><b>Archived</b></td><td>{{ moment(r.submitted) if r.submitted else 'Unknown' }}</td></tr>
 {% if submitter %}
-<tr><th>Submitter</th><td>{{ author_chip(submitter, '../../../') }}</td></tr>
+<tr><td><b>Submitter</b></td><td>{{ author_chip(submitter, '../../../') }}</td></tr>
 {% endif %}
 {% if r.get('movie') %}
-<tr><th>Movie file</th><td>{{ r.movie.file }} ({{ r.movie.frames }} frames{% if r.movie.get('fps') %}, {{ r.movie.fps }} fps{% endif %})</td></tr>
+<tr><td><b>Movie file</b></td><td>{{ r.movie.file }} ({{ r.movie.frames }} frames{% if r.movie.get('fps') %}, {{ r.movie.fps }} fps{% endif %})</td></tr>
 {% endif %}
 </tbody></table></div>
 </section>

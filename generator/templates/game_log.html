@@ -26,7 +26,7 @@
 {% if g_edits %}
 <section id="edits"><h2>Game revisions ({{ totals.game_edits }})</h2>
 <p class="authline">Metadata and configuration edits made to this game: title, rules, release dates, and links. Every revision says who, what changed, and why.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="game-log-edits" data-item-label="revision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in g_edits %}
 <tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, rel) }}</td>
@@ -43,7 +43,7 @@
 {% if c_edits %}
 <section id="categories"><h2>Category revisions ({{ totals.cat_edits }})</h2>
 <p class="authline">Category additions, removals, rules, order, and custom metric changes. Every change requires an expert or creator reason and is tracked in git.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Category</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<div class="tblwrap" data-pagesize-key="game-log-cat-edits" data-item-label="revision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>By</th><th>Category</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
 <tbody>
 {% for e in c_edits %}
 {% set cat_key = e.key.split(':', 1)[1] if ':' in e.key else e.key %}
@@ -109,7 +109,7 @@
 <section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
 {% if g_mods %}
 <p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="game-log-mods" data-item-label="action"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
 {% for d, by, kind, target, reason, r_ in g_mods %}
 <tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
 <td>{{ run_link(r_) }}</td>
@@ -126,7 +126,7 @@
 {% if g_withdrawn %}
 <section id="withdrawn"><h2>Withdrawals ({{ totals.withdrawn }})</h2>
 <p class="authline">Runs withdrawn from this game keep their record as an honest tombstone rather than a 404.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Run</th><th>By</th><th>Role</th><th>Status</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="game-log-withdrawn" data-item-label="withdrawal"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Run</th><th>By</th><th>Role</th><th>Status</th><th>Reason</th></tr></thead><tbody>
 {% for w, r_ in g_withdrawn %}
 <tr><td>{{ moment(w.get('at') or w.get('date', '')) }}</td>
 <td>{{ run_link(r_) }}</td>
@@ -143,7 +143,7 @@
 {% if g_removals %}
 <section id="removals"><h2>Removal requests</h2>
 <p class="authline">Historical removal requests asked and answered for this game.</p>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Asked by</th><th>Reason</th><th>Status</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="game-log-removals" data-item-label="request"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Asked by</th><th>Reason</th><th>Status</th></tr></thead><tbody>
 {% for rem in g_removals %}
 <tr><td>{{ moment(rem.get('at') or rem.date) }}</td>
 <td>{{ member_chip(rem.by, rel) }}</td>
@@ -157,7 +157,7 @@
 {# ---- ratification / decision (historical) ---- #}
 {% if g.get('ratifiedBy') or g.get('rejected') %}
 <section id="ratification"><h2>Historical decision</h2>
-<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+<div class="tblwrap" data-pagesize-key="game-log-ratification" data-item-label="decision"><table class="sortable paginated"><thead><tr><th class="sort-desc">Date</th><th>Expert</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
 {% if g.get('ratifiedBy') %}
 <tr><td>{{ moment(g.get('ratifiedAtTime') or g.get('ratifiedAt', '')) }}</td>
 <td>{{ member_chip(g.ratifiedBy, rel) }}</td>
