@@ -31,14 +31,17 @@ SYSTEM_NAMES = {
     'PS3': 'PlayStation 3', 'Xbox': 'Xbox', 'Symbian': 'Symbian (N-Gage)',
     'C64': 'Commodore 64', 'DOS': 'DOS',
     'PC': 'PC', 'Amiga': 'Amiga', '3DO': '3DO', 'Arcade': 'Arcade',
-    'MSX': 'MSX', 'PCE': 'PC Engine / TurboGrafx-16', 'WSWAN': 'WonderSwan',
+    'MSX': 'MSX', 'MSX2': 'MSX2', 'PCE': 'PC Engine / TurboGrafx-16',
+    'SG': 'Sega SG-1000', 'BSX': 'Satellaview',
+    'MCD32X': 'Sega CD 32X', 'WSWAN': 'WonderSwan',
     'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'NeoGeo': 'Neo Geo AES', 'VBoy': 'Virtual Boy',
     'Coleco': 'ColecoVision', 'INTV': 'Intellivision', 'Dreamcast': 'Sega Dreamcast',
     'GC': 'GameCube', 'Wii': 'Wii', 'Windows': 'Windows', 'Linux': 'Linux',
     'ZXS': 'ZX Spectrum', 'A800': 'Atari 800', 'Apple2': 'Apple II',
     'X68K': 'Sharp X68000', 'PC88': 'NEC PC-8801', 'PC98': 'NEC PC-9801',
     'FDS': 'Famicom Disk System', 'SGX': 'SuperGrafx', 'Vectrex': 'Vectrex',
-    'O2': 'Odyssey 2', 'Uzebox': 'Uzebox', 'TI83': 'TI-83', 'SG1000': 'SG-1000',
+    'O2': 'Odyssey 2', 'Uzebox': 'Uzebox', 'TI83': 'TI-83',
+    'SG1000': 'Sega SG-1000',
     '32X': 'Sega 32X', 'SegaCD': 'Sega CD', 'PCECD': 'PC Engine CD',
 }
 EXACT_FPS = {
@@ -58,12 +61,16 @@ EXACT_FPS = {
     'a5200': 59.9227510135505,   # the Atari 8-bit clock, as the 2600's
     'neogeo': 59.18560606060606,   # ares hints 6000000/(384*264)
     'ngp': 59.95023661999317,      # ares hints 6144000/(515*199)
+    # each shares its video timing with a machine already here
+    'sg1000': 59.922751013551, '32x': 59.922751013551,
+    'segacd32x': 59.922751013550524, 'bsx': 60.0988118623484,
+    'sgx': 59.8261054534819, 'msx2': 59.9227510135505,
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
                 'ps2', 'psp', 'ps3', 'xbox', 'symbian', 'a5200',
-                'neogeo', 'ngp',
+                'neogeo', 'ngp', 'bsx', '32x', 'segacd32x', 'msx2',
                 'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
 
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}
