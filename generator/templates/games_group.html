@@ -11,7 +11,13 @@
 {% if not synthetic and gexperts %}
 <p class="authline authline-experts"><span class="exp-label">Experts:</span><span class="scopegrid">{{ scope_badge('Group', gexperts, '../../') }}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}</span></p>
 {% endif %}
-</div></header>
+</div>
+{% if not synthetic %}
+<div class="hbtns">
+  <a class="srclink" href="logs/">view group log →</a>
+</div>
+{% endif %}
+</header>
 {% if ggames %}
 {{ library_controls() }}
 <div class="grid">{% for g in ggames %}{{ game_card(g, '../../games/', with_system=True) }}{% endfor %}</div>
@@ -25,6 +31,7 @@
 <div id="groupacts" class="actzone expertmenu" hidden>
 <h2>Expert menu</h2>
 <p class="rules">Only experts whose scope covers this group, and editors, see this box; every action here is logged in the open.</p>
+<p class="statline"><a class="actbtn-link" href="logs/">View group log</a> History of revisions, membership changes, reports and moderation.</p>
 <details class="actform"><summary>Move games into this group</summary>
 <form id="f-groupmove">
 <p class="rules">Tick any games and they move into this group, each leaving whatever group held it; a game belongs to one group. A brand-new game is made on the create page instead.</p>

@@ -1,0 +1,94 @@
+{# The system log at /systems/<key>/logs/: every act of authority and change to this system. #}
+{% macro status_chip(status, chips) %}
+{% set cls, label = chips[status] %}
+<span class="chip{% if cls %} {{ cls }}{% endif %}">{{ label }}</span>
+{%- endmacro %}
+{% macro run_link(r) %}<a href="{{ rel }}runs/{{ r.id }}/">{{ r._game.title }} · {{ r.id }} ({{ cat_label(r) }})</a>{% endmacro %}
+<header class="ghead"><div>
+  <div class="chips"><span class="chip">{{ sgames|length }} game{{ 's' if sgames|length != 1 else '' }}</span>
+  <span class="chip">{{ all_system_runs|length }} run{{ 's' if all_system_runs|length != 1 else '' }}</span>
+  <span class="chip starchip"><span class="starglyph">★</span> {{ stars_of(sruns) }}</span>{{ chip_views(views_of(sruns)) }}</div>
+  <h1>Log · {{ sname }} (System)</h1>
+  {% if sysexperts %}
+  <p class="authline authline-experts"><span class="exp-label">Experts:</span><span class="scopegrid">{{ scope_badge('System', sysexperts, rel) }}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}</span></p>
+  {% endif %}
+  <p class="rules fullw">Everything done to this system: emulator curation, quick chips, tool mappings, reports, disputes, and moderation actions across its games. Every entry states who acted, when, and why. The full raw history lives in git and in the archive repository.</p>
+  <p class="statline"><a href="../">← Back to system</a> · <a href="#edits">System revisions ({{ totals.edits }})</a> · <a href="#reports">Reports ({{ totals.reports }})</a> · <a href="#cases">Cases ({{ totals.cases }})</a> · <a href="#moderation">Moderation ({{ totals.mods }})</a></p>
+</div>
+<div class="hbtns">
+  <a class="srclink" href="../">← back to system page</a>
+</div>
+</header>
+
+{# ---- system revisions ---- #}
+{% if sys_edits %}
+<section id="edits"><h2>System revisions ({{ totals.edits }})</h2>
+<p class="authline">Metadata and emulator curation changes made to this system: presets, quick chips, and mapped tools. Every revision says who, what changed, and why.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<tbody>
+{% for e in sys_edits %}
+<tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, rel) }}</td>
+<td><b>{{ e.field }}</b></td>
+<td><div class="diff-summary"><del class="diff-inline diff-del">{{ e.get('from') or '(empty)' }}</del> <span class="diff-arrow" aria-hidden="true">→</span> <ins class="diff-inline diff-add">{{ e.get('to') or '(empty)' }}</ins></div></td>
+<td>{{ inline(e.reason, rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div></section>
+{% else %}
+<section id="edits"><h2>System revisions</h2><p class="emptynote">This system has not been revised since creation.</p></section>
+{% endif %}
+
+{# ---- run reports across system games ---- #}
+{% if sys_reports %}
+<section id="reports"><h2>Run reports ({{ totals.reports }})</h2><div class="roster">
+{% for rep, r_ in sys_reports %}
+<div class="act" id="R{{ rep.id }}">
+<div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="actmeta">{{ moment(rep.get('at') or rep.date) }} · by {{ rep.by }}</span></div>
+<p class="actnote">{{ REPORT_LABELS.get(rep.kind, rep.kind) }} · {{ run_link(r_) }}
+{% if rep.get('details') %}: {{ inline(rep.get('details'), rel) }}{% endif %}</p>
+{% if rep.status != 'open' %}
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+{% endif %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="reports"><h2>Run reports</h2><p class="emptynote">No reports have been filed against runs on this system.</p></section>
+{% endif %}
+
+{# ---- disputes and cases across system games ---- #}
+{% if sys_cases %}
+<section id="cases"><h2>Disputes and cases ({{ totals.cases }})</h2><div class="roster">
+{% for c, r_ in sys_cases %}
+<div class="act" id="case-{{ c.id }}"><div class="acthead"><b>Case {{ c.id }}</b>
+{% if c.status == 'open' %}<span class="chip pendchip">Open</span>
+{% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
+{% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
+<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(c.reason, rel) }}</p>
+{% for v in c.get('reaffirmations', []) %}
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+{% endfor %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="cases"><h2>Disputes and cases</h2><p class="emptynote">No disputes or cases have been opened for runs on this system.</p></section>
+{% endif %}
+
+{# ---- moderation log across system games ---- #}
+<section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
+{% if sys_mods %}
+<p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+{% for d, by, kind, target, reason, r_ in sys_mods %}
+<tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
+<td>{{ run_link(r_) }}</td>
+<td>Invalidated a {{ kind }} by {{ member_chip(target, rel) }}</td>
+<td>{{ inline(reason, rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% else %}
+<p class="emptynote">No moderation actions have been taken on runs on this system.</p>
+{% endif %}
+</section>

@@ -6,6 +6,7 @@ from model import (
     nvisits,
     cat_label,
     covering_experts,
+    edits_of,
     experts_reg,
     games,
     group_games,
@@ -17,6 +18,7 @@ from model import (
     nlikes,
     systems,
     emulators,
+    withdrawn_by_game,
 )
 from render import (
     SITE_URL,
@@ -74,6 +76,66 @@ by_sys = {}
 for key, g in games.items():
     by_sys.setdefault(g['system'], []).append(g)
 
+def render_system_log(skey, sname, sgames, sruns, sysexperts, site_experts):
+    sdir = OUT / 'systems' / skey / 'logs'
+    sdir.mkdir(parents=True, exist_ok=True)
+    lrel = '../../../'
+
+    sys_edits = (edits_of.get(('system', skey.lower()), [])
+                 + [e for e in edits_of.get(('system', skey), [])
+                    if e not in edits_of.get(('system', skey.lower()), [])])
+    sys_edits = sorted(sys_edits, key=lambda e: e.get('at') or e.get('date', ''), reverse=True)
+
+    w_runs = [r for g in sgames for r in withdrawn_by_game.get(g['key'], [])]
+    all_system_runs = sruns + w_runs
+
+    sys_reports = sorted(
+        ((rep, r_) for r_ in all_system_runs for rep in r_.get('reports', [])),
+        key=lambda x: x[0].get('at') or x[0].get('date', ''), reverse=True
+    )
+    sys_reports.sort(key=lambda x: x[0].get('status') != 'open')
+
+    sys_cases = [(c, r_) for r_ in all_system_runs for c in r_.get('cases', [])]
+    sys_cases.sort(key=lambda x: x[0].get('date') or x[0].get('opened', ''), reverse=True)
+    sys_cases.sort(key=lambda x: x[0].get('status') != 'open')
+
+    sys_mods = []
+    for r_ in all_system_runs:
+        for kind, roster in [
+            ('reproduction', 'reproductions'),
+            ('verification', 'verifications'),
+            ('console verification', 'consoleVerifications'),
+        ]:
+            for a in r_.get(roster, []):
+                inv = a.get('invalidated')
+                if inv and inv.get('by') != 'case' and inv.get('cause') != 'edit' and inv['by'].lower() != a['user'].lower():
+                    sys_mods.append((inv.get('at') or inv.get('date', ''), inv['by'], kind, a['user'], inv.get('reason', ''), r_))
+    sys_mods.sort(key=lambda e: e[0], reverse=True)
+
+    totals = {
+        'edits': len(sys_edits),
+        'reports': len(sys_reports),
+        'cases': len(sys_cases),
+        'mods': len(sys_mods),
+    }
+
+    body = tpl('system_log.html', skey=skey, sname=sname, rel=lrel, sgames=sgames, sruns=sruns,
+               all_system_runs=all_system_runs, sysexperts=sysexperts,
+               site_experts=site_experts, sys_edits=sys_edits,
+               sys_reports=sys_reports, sys_cases=sys_cases, sys_mods=sys_mods,
+               totals=totals, stars_of=stars_of, views_of=views_of)
+    crumb = tpl('system_log_crumb.html', sname=sname, rel=lrel).strip()
+    title = f'Log · {sname} (System)'
+    seo_desc = f'Audit log, system revisions, reports, disputes, and moderation history for {sname} on toolAssisted.run.'
+    ld = [breadcrumb_ld([('Games', 'games/'), (sname, f'systems/{skey}/'),
+                          ('Log', f'systems/{skey}/logs/')])]
+    (sdir / 'index.html').write_text(
+        page(title, body, lrel, crumb, 'Games', wide=True,
+             seo={'path': f'systems/{skey}/logs/', 'description': seo_desc, 'ld': ld}),
+        encoding='utf-8'
+    )
+
+
 # ---- system pages: a system's whole library, exactly like a group page ----
 (OUT / 'systems').mkdir(parents=True, exist_ok=True)
 for skey in sorted(by_sys):
@@ -101,6 +163,74 @@ for skey in sorted(by_sys):
              'image': (SITE_URL + thumb_url(sbest)) if sbest else None,
              'ld': [breadcrumb_ld([('Games', 'games/'),
                                    (sname, f'systems/{skey}/')])]} ), encoding='utf-8')
+    render_system_log(skey, sname, sgames, sruns, sysexperts, site_experts_sys)
+
+
+
+def render_group_log(gr, ggames, grunts, group_experts, site_experts, synthetic):
+    gdir = OUT / 'groups' / gr['key'] / 'logs'
+    gdir.mkdir(parents=True, exist_ok=True)
+    lrel = '../../../'
+
+    gr_edits = (edits_of.get(('group', gr['key'].lower()), [])
+                + [e for e in edits_of.get(('group', gr['key']), [])
+                   if e not in edits_of.get(('group', gr['key'].lower()), [])])
+    gr_edits = sorted(gr_edits, key=lambda e: e.get('at') or e.get('date', ''), reverse=True)
+
+    w_runs = [r for g in ggames for r in withdrawn_by_game.get(g['key'], [])]
+    all_group_runs = grunts + w_runs
+
+    gr_reports = sorted(
+        ((rep, r_) for r_ in all_group_runs for rep in r_.get('reports', [])),
+        key=lambda x: x[0].get('at') or x[0].get('date', ''), reverse=True
+    )
+    gr_reports.sort(key=lambda x: x[0].get('status') != 'open')
+
+    gr_cases = [(c, r_) for r_ in all_group_runs for c in r_.get('cases', [])]
+    gr_cases.sort(key=lambda x: x[0].get('date') or x[0].get('opened', ''), reverse=True)
+    gr_cases.sort(key=lambda x: x[0].get('status') != 'open')
+
+    gr_mods = []
+    for r_ in all_group_runs:
+        for kind, roster in [
+            ('reproduction', 'reproductions'),
+            ('verification', 'verifications'),
+            ('console verification', 'consoleVerifications'),
+        ]:
+            for a in r_.get(roster, []):
+                inv = a.get('invalidated')
+                if inv and inv.get('by') != 'case' and inv.get('cause') != 'edit' and inv['by'].lower() != a['user'].lower():
+                    gr_mods.append((inv.get('at') or inv.get('date', ''), inv['by'], kind, a['user'], inv.get('reason', ''), r_))
+    gr_mods.sort(key=lambda e: e[0], reverse=True)
+
+    gr_removals = sorted(gr.get('removalRequests', []),
+                         key=lambda x: (x.get('status') != 'open', x.get('at') or x.get('date', '')),
+                         reverse=True)
+
+    totals = {
+        'edits': len(gr_edits),
+        'reports': len(gr_reports),
+        'cases': len(gr_cases),
+        'mods': len(gr_mods),
+    }
+
+    body = tpl('group_log.html', gr=gr, rel=lrel, ggames=ggames, grunts=grunts,
+               all_group_runs=all_group_runs, gexperts=group_experts,
+               site_experts=site_experts, synthetic=synthetic,
+               gr_edits=gr_edits, gr_reports=gr_reports, gr_cases=gr_cases,
+               gr_mods=gr_mods, gr_removals=gr_removals,
+               totals=totals, stars_of=stars_of)
+    crumb = tpl('group_log_crumb.html', gr=gr, rel=lrel).strip()
+    title = f'Log · {gr["title"]} (Group)'
+    seo_desc = f'Audit log, group revisions, reports, disputes, and moderation history for {gr["title"]} group on toolAssisted.run.'
+    ld = [breadcrumb_ld([('Games', 'games/'), (gr['title'], f'groups/{gr["key"]}/'),
+                          ('Log', f'groups/{gr["key"]}/logs/')])]
+    (gdir / 'index.html').write_text(
+        page(title, body, lrel, crumb, 'Games', wide=True,
+             seo={'path': f'groups/{gr["key"]}/logs/', 'description': seo_desc, 'ld': ld}),
+        encoding='utf-8'
+    )
+
 
 if live_groups:
     (OUT / 'groups').mkdir(parents=True, exist_ok=True)
@@ -144,6 +274,8 @@ if live_groups:
                  'ld': [breadcrumb_ld([('Games', 'games/'),
                                        (gr['title'], f'groups/{gr["key"]}/')])]},
              scripts=['page-library.js']), encoding='utf-8')
+        render_group_log(gr, ggames, grunts, group_experts, site_experts, bool(gr.get('synthetic')))
+
 
 # the list view: every game alphabetically, with the groups that hold it
 list_games = [(g, [gr for gr in groups_by_game.get(g['key'], []) if has_page(gr)])

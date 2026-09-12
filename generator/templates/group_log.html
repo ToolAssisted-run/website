@@ -1,0 +1,148 @@
+{# The group log at /groups/<key>/logs/: every act of authority and change to this game group. #}
+{% macro status_chip(status, chips) %}
+{% set cls, label = chips[status] %}
+<span class="chip{% if cls %} {{ cls }}{% endif %}">{{ label }}</span>
+{%- endmacro %}
+{% macro run_link(r) %}<a href="{{ rel }}runs/{{ r.id }}/">{{ r._game.title }} · {{ r.id }} ({{ cat_label(r) }})</a>{% endmacro %}
+<header class="ghead"><div>
+  <div class="chips"><span class="chip">{{ ggames|length }} game{{ 's' if ggames|length != 1 else '' }}</span>
+  <span class="chip">{{ all_group_runs|length }} run{{ 's' if all_group_runs|length != 1 else '' }}</span>
+  <span class="chip starchip"><span class="starglyph">★</span> {{ stars_of(grunts) }}</span></div>
+  <h1>Log · {{ gr['title'] }} (Group)</h1>
+  {% if not synthetic and gexperts %}
+  <p class="authline authline-experts"><span class="exp-label">Experts:</span><span class="scopegrid">{{ scope_badge('Group', gexperts, rel) }}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}</span></p>
+  {% endif %}
+  <p class="rules fullw">Everything done to this game group: revisions, member games, reports, disputes, and moderation actions across its games. Every entry states who acted, when, and why. The full raw history lives in git and in the archive repository.</p>
+  <p class="statline"><a href="../">← Back to group</a> · <a href="#edits">Group revisions ({{ totals.edits }})</a> · <a href="#reports">Reports ({{ totals.reports }})</a> · <a href="#cases">Cases ({{ totals.cases }})</a> · <a href="#moderation">Moderation ({{ totals.mods }})</a>{% if gr_removals %} · <a href="#removals">Removal requests</a>{% endif %}{% if gr.get('ratifiedBy') or gr.get('rejected') %} · <a href="#ratification">Ratification</a>{% endif %}</p>
+</div>
+<div class="hbtns">
+  <a class="srclink" href="../">← back to group page</a>
+</div>
+</header>
+
+{# ---- group revisions ---- #}
+{% if gr_edits %}
+<section id="edits"><h2>Group revisions ({{ totals.edits }})</h2>
+<p class="authline">Metadata and member game changes made to this group: title and moved games. Every revision says who, what changed, and why.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<tbody>
+{% for e in gr_edits %}
+<tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, rel) }}</td>
+<td><b>{{ e.field }}</b></td>
+<td>
+{% if e.field == 'games' %}
+{% set d = diff_games(e.get('from', ''), e.get('to', ''), e.get('reason', '')) %}
+{% if d.removed or d.added %}
+<div class="diff-list">
+  {% for item in d.removed %}
+  <del class="diff-item diff-del"><span class="diff-sign" aria-hidden="true">−</span>{% if item.key in games %}<a href="{{ rel }}games/{{ item.key }}/">{{ games[item.key].title }} ({{ games[item.key].system.upper() }})</a>{% else %}<span>{{ item.key }}</span>{% endif %}<span class="diff-tag">{% if item.to_group and item.to_group in groups_by_key %}moved to {{ groups_by_key[item.to_group].title }}{% elif item.to_group %}moved to {{ item.to_group }}{% else %}moved out{% endif %}</span></del>
+  {% endfor %}
+  {% for item in d.added %}
+  <ins class="diff-item diff-add"><span class="diff-sign" aria-hidden="true">+</span>{% if item.key in games %}<a href="{{ rel }}games/{{ item.key }}/">{{ games[item.key].title }} ({{ games[item.key].system.upper() }})</a>{% else %}<span>{{ item.key }}</span>{% endif %}<span class="diff-tag">{% if item.from_group and item.from_group in groups_by_key %}moved in from {{ groups_by_key[item.from_group].title }}{% elif item.from_group %}moved in from {{ item.from_group }}{% else %}moved in{% endif %}</span></ins>
+  {% endfor %}
+</div>
+{% else %}
+<p class="actnote">{{ e.get('from') or '(empty)' }} → {{ e.get('to') or '(empty)' }}</p>
+{% endif %}
+{% else %}
+<div class="diff-summary"><del class="diff-inline diff-del">{{ e.get('from') or '(empty)' }}</del> <span class="diff-arrow" aria-hidden="true">→</span> <ins class="diff-inline diff-add">{{ e.get('to') or '(empty)' }}</ins></div>
+{% endif %}
+</td>
+<td>{{ inline(e.reason, rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div></section>
+{% else %}
+<section id="edits"><h2>Group revisions</h2><p class="emptynote">This group has not been revised since creation.</p></section>
+{% endif %}
+
+{# ---- run reports across group games ---- #}
+{% if gr_reports %}
+<section id="reports"><h2>Run reports ({{ totals.reports }})</h2><div class="roster">
+{% for rep, r_ in gr_reports %}
+<div class="act" id="R{{ rep.id }}">
+<div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="actmeta">{{ moment(rep.get('at') or rep.date) }} · by {{ rep.by }}</span></div>
+<p class="actnote">{{ REPORT_LABELS.get(rep.kind, rep.kind) }} · {{ run_link(r_) }}
+{% if rep.get('details') %}: {{ inline(rep.get('details'), rel) }}{% endif %}</p>
+{% if rep.status != 'open' %}
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+{% endif %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="reports"><h2>Run reports</h2><p class="emptynote">No reports have been filed against runs in this group.</p></section>
+{% endif %}
+
+{# ---- disputes and cases across group games ---- #}
+{% if gr_cases %}
+<section id="cases"><h2>Disputes and cases ({{ totals.cases }})</h2><div class="roster">
+{% for c, r_ in gr_cases %}
+<div class="act" id="case-{{ c.id }}"><div class="acthead"><b>Case {{ c.id }}</b>
+{% if c.status == 'open' %}<span class="chip pendchip">Open</span>
+{% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
+{% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
+<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(c.reason, rel) }}</p>
+{% for v in c.get('reaffirmations', []) %}
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+{% endfor %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="cases"><h2>Disputes and cases</h2><p class="emptynote">No disputes or cases have been opened for runs in this group.</p></section>
+{% endif %}
+
+{# ---- moderation log across group games ---- #}
+<section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
+{% if gr_mods %}
+<p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Run</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+{% for d, by, kind, target, reason, r_ in gr_mods %}
+<tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
+<td>{{ run_link(r_) }}</td>
+<td>Invalidated a {{ kind }} by {{ member_chip(target, rel) }}</td>
+<td>{{ inline(reason, rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% else %}
+<p class="emptynote">No moderation actions have been taken on runs in this group.</p>
+{% endif %}
+</section>
+
+
+{# ---- removal requests (historical) ---- #}
+{% if gr_removals %}
+<section id="removals"><h2>Removal requests</h2>
+<p class="authline">Historical removal requests asked and answered for this group.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Asked by</th><th>Reason</th><th>Status</th></tr></thead><tbody>
+{% for rem in gr_removals %}
+<tr><td>{{ moment(rem.get('at') or rem.date) }}</td>
+<td>{{ member_chip(rem.by, rel) }}</td>
+<td>{{ inline(rem.reason, rel) }}</td>
+<td>{{ status_chip(rem.status, REMOVAL_CHIPS) }}{% if rem.get('decidedBy') %} by {{ member_chip(rem.decidedBy, rel) }} on {{ rem.get('decidedAt') or '' }}{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></div>
+</section>
+{% endif %}
+
+{# ---- ratification / decision (historical) ---- #}
+{% if gr.get('ratifiedBy') or gr.get('rejected') %}
+<section id="ratification"><h2>Historical decision</h2>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+{% if gr.get('ratifiedBy') %}
+<tr><td>{{ moment(gr.get('ratifiedAtTime') or gr.get('ratifiedAt', '')) }}</td>
+<td>{{ member_chip(gr.ratifiedBy, rel) }}</td>
+<td><span class="chip verchip">Ratified</span></td>
+<td>Established and distinct game group</td></tr>
+{% endif %}
+{% if gr.get('rejected') %}
+<tr><td>{{ moment(gr.rejected.get('at') or gr.rejected.get('date', '')) }}</td>
+<td>{{ member_chip(gr.rejected.by, rel) }}</td>
+<td><span class="chip pendchip">Refused</span></td>
+<td>{{ inline(gr.rejected.get('reason', ''), rel) }}</td></tr>
+{% endif %}
+</tbody></table></div>
+</section>
+{% endif %}

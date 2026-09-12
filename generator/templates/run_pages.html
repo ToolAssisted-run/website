@@ -17,6 +17,7 @@
        happens on the submit page, in edit mode #}
     <span id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></span></div>
     {% if r.get('videoOnly') %}<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>{% endif %}
+    <a class="srclink" href="logs/">view run log →</a>
     <a class="srclink" href="https://github.com/ToolAssisted-run/archive/tree/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}">view run folder in the archive →</a>
     <a class="srclink" href="https://github.com/ToolAssisted-run/archive/commits/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}"
        title="every change to this run, in git, reversible">view history{% if nrev %} · {{ nrev }} revision{% if nrev != 1 %}s{% endif %}{% endif %} →</a>
@@ -231,7 +232,7 @@ Log in (top right) to reply from here.</p></section>
     {% if cstate == 'imported' %}<p class="statline"><span class="tick console">✓</span> Console verified at <a href="{{ imported.get('source', '') }}">a trusted site</a>{% if ncons %}, and by {{ nmembers(ncons) }} here{% endif %}</p>
     {% elif ncons %}<p class="statline"><span class="tick console">✓</span> Console verified by {{ nmembers(ncons) }}</p>
     {% elif not is_leg and hw %}<p class="statline">{{ NONE_TICK }} Console verification: none yet (optional)</p>{% endif %}</div>
-  {% if n_open_reports %}<div class="factbox"><h4>Reports</h4><p class="statline">⚑ {{ n_open_reports }} open · <a href="../../policy/site-log/#reports">site log</a></p></div>{% endif %}
+  {% if n_open_reports %}<div class="factbox"><h4>Reports</h4><p class="statline">⚑ {{ n_open_reports }} open · <a href="logs/#reports">run log</a></p></div>{% endif %}
   <details class="actform reportbox" id="reportbox" hidden><summary>⚑ Report this run</summary>
   <form id="f-report">
     <label>Reason</label><select name="kind">

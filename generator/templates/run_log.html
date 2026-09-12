@@ -1,0 +1,120 @@
+{# The run log at /runs/<id>/logs/: every act of authority and change to this run. #}
+{% macro status_chip(status, chips) %}
+{% set cls, label = chips[status] %}
+<span class="chip{% if cls %} {{ cls }}{% endif %}">{{ label }}</span>
+{%- endmacro %}
+<header class="ghead"><div>
+  <div class="chips"><span class="chip">{{ systems[g['system']]['name'] }}</span>
+  <span class="chip">{{ cl }}</span>{{ state_chip(r) }}{% if r.get('videoOnly') %}<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>{% endif %}</div>
+  <h1>Log · {{ g['title'] }} ({{ r['id'] }})</h1>
+  <p class="authline">by {% for a in r['authors'] %}{% if not loop.first %} · {% endif %}{{ author_chip(a['user'], '../../../') }}{% endfor %}</p>
+  {% if r.get('goalDescription') %}<p class="gdesc">“{{ r['goalDescription'] }}”</p>{% endif %}
+  <p class="rules fullw">Everything done to this run after it was archived: revisions, reports, disputes, and moderation actions. Every entry states who acted, when, and why. The full raw history lives in git and in the archive repository.</p>
+  <p class="statline"><a href="../">← Back to run</a> · <a href="#edits">Edits ({{ totals.edits }})</a> · <a href="#reports">Reports ({{ totals.reports }})</a> · <a href="#cases">Cases ({{ totals.cases }})</a> · <a href="#moderation">Moderation ({{ totals.mods }})</a>{% if r_withdrawn %} · <a href="#withdrawn">Withdrawal</a>{% endif %} · <a href="#origin">Origin</a></p>
+</div>
+<div class="hbtns">
+  <a class="srclink" href="../">← back to run page</a>
+  <a class="srclink" href="https://github.com/ToolAssisted-run/archive/tree/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}">view run folder in the archive →</a>
+  <a class="srclink" href="https://github.com/ToolAssisted-run/archive/commits/{{ ARCHIVE_REF }}/games/{{ g['key'] }}/runs/{{ r['id'] }}">view git commits →</a>
+</div>
+</header>
+
+{# ---- edits: git carries the diff, this carries the account ---- #}
+{% if r_edits %}
+<section id="edits"><h2>Edits ({{ totals.edits }})</h2>
+<p class="authline">Authors revise their own runs; experts may correct anything inside their jurisdiction, member content included, and answer for it. Every revision says who, what it was, what it became, and why.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<tbody>
+{% for e in r_edits %}
+<tr><td>{{ moment(e.get('at') or e.date) }}</td><td>{{ member_chip(e.by, '../../../') }}</td>
+<td><b>{{ e.field }}</b></td>
+<td><div class="diff-summary"><del class="diff-inline diff-del">{{ e.get('from') or '(empty)' }}</del> <span class="diff-arrow" aria-hidden="true">→</span> <ins class="diff-inline diff-add">{{ e.get('to') or '(empty)' }}</ins></div></td>
+<td>{{ inline(e.reason, '../../../') }}</td></tr>
+{% endfor %}
+</tbody></table></div></section>
+{% else %}
+<section id="edits"><h2>Edits</h2><p class="emptynote">This run has not been revised since archival.</p></section>
+{% endif %}
+
+{# ---- run reports: open ones first, then newest arrival first ---- #}
+{% if r_reports %}
+<section id="reports"><h2>Reports ({{ totals.reports }})</h2><div class="roster">
+{% for rep in r_reports %}
+<div class="act" id="R{{ rep.id }}">
+<div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="actmeta">{{ moment(rep.get('at') or rep.date) }} · by {{ rep.by }}</span></div>
+<p class="actnote">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}
+{% if rep.get('details') %}: {{ inline(rep.get('details'), '../../../') }}{% endif %}</p>
+{% if rep.status != 'open' %}
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), '../../../') }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', '../../../') }}</p>
+{% endif %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="reports"><h2>Reports</h2><p class="emptynote">No reports have been filed against this run.</p></section>
+{% endif %}
+
+{# ---- cases: disputes and voting ---- #}
+{% if r_cases %}
+<section id="cases"><h2>Disputes and cases ({{ totals.cases }})</h2><div class="roster">
+{% for c in r_cases %}
+<div class="act" id="case-{{ c.id }}"><div class="acthead"><b>Case {{ c.id }}</b>
+{% if c.status == 'open' %}<span class="chip pendchip">Open</span>
+{% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
+{% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
+<span class="actmeta">opened by {{ member_chip(c.openedBy, '../../../') }} · {{ c.date or c.get('opened', '') }}</span></div>
+<p class="actnote">{{ inline(c.reason, '../../../') }}</p>
+{% for v in c.get('reaffirmations', []) %}
+<p class="statline">{{ member_chip(v.user, '../../../') }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, '../../../') }}{% endif %}</p>
+{% endfor %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="cases"><h2>Disputes and cases</h2><p class="emptynote">No disputes or cases have been opened for this run.</p></section>
+{% endif %}
+
+{# ---- moderation log: invalidations of somebody else's word ---- #}
+<section id="moderation"><h2>Moderation actions ({{ totals.mods }})</h2>
+{% if r_mods %}
+<p class="authline">Moderation in moderation: every action is justified, states its reason, is appealable, and is logged here in the open.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Reason</th></tr></thead><tbody>
+{% for d, by, kind, target, reason in r_mods %}
+<tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, '../../../') }}</td>
+<td>Invalidated a {{ kind }} by {{ member_chip(target, '../../../') }}</td>
+<td>{{ inline(reason, '../../../') }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% else %}
+<p class="emptynote">No moderation actions have been taken on this run.</p>
+{% endif %}
+</section>
+
+{# ---- withdrawal and erasure (if applicable) ---- #}
+{% if r_withdrawn %}
+<section id="withdrawn"><h2>Withdrawal and erasure</h2>
+<p class="authline">A withdrawn run keeps its record as an honest tombstone rather than a 404.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>By</th><th>Role</th><th>Status</th><th>Reason</th></tr></thead><tbody>
+<tr><td>{{ moment(r_withdrawn.get('at') or r_withdrawn.get('date', '')) }}</td>
+<td>{{ member_chip(r_withdrawn.by, '../../../') }}</td>
+<td>{{ r_withdrawn.get('role', 'author') }}</td>
+<td>{% if r_withdrawn.get('contentRemoved') %}<span class="chip pendchip">movie file erased</span>{% else %}withdrawn{% endif %}</td>
+<td>{{ inline(r_withdrawn.get('reason') or '', '../../../') }}</td></tr>
+</tbody></table></div>
+</section>
+{% endif %}
+
+{# ---- origin / archival details ---- #}
+{% set submitter = r.get('imported', {}).get('importedBy') or r.get('submittedBy') or (r.authors[0].user if r.authors else '') %}
+<section id="origin"><h2>Archival origin</h2>
+<div class="tblwrap"><table><tbody>
+<tr><th>Archived</th><td>{{ moment(r.submitted) if r.submitted else 'Unknown' }}</td></tr>
+{% if submitter %}
+<tr><th>Submitter</th><td>{{ author_chip(submitter, '../../../') }}</td></tr>
+{% endif %}
+{% if r.get('movie') %}
+<tr><th>Movie file</th><td>{{ r.movie.file }} ({{ r.movie.frames }} frames{% if r.movie.get('fps') %}, {{ r.movie.fps }} fps{% endif %})</td></tr>
+{% endif %}
+</tbody></table></div>
+</section>

@@ -9,7 +9,11 @@
 group each belongs to.</p>
 {% if sysexperts %}
 <p class="authline authline-experts"><span class="exp-label">Experts:</span><span class="scopegrid">{{ scope_badge('System', sysexperts, '../../') }}{% if site_experts %} <span class="actmeta scopetail" title="{{ site_experts|join(', ') }}">+{{ site_experts|length }} site-wide</span>{% endif %}</span></p>
-{% endif %}</div></header>
+{% endif %}</div>
+<div class="hbtns">
+  <a class="srclink" href="logs/">view system log →</a>
+</div>
+</header>
 {{ library_controls() }}
 <div class="grid">{% for g in sgames %}{{ game_card(g, '../../games/') }}{% endfor %}</div>
 
@@ -17,7 +21,7 @@ group each belongs to.</p>
 
 <div id="sysexpertmenu" class="actzone expertmenu" hidden>
 <h2>Expert menu</h2>
-<p class="rules">Only experts whose scope covers this system, site-wide experts, and editors see this box; every action here is logged in the open.</p>
+<p class="rules"><a href="logs/">View system log</a> · Only experts whose scope covers this system, site-wide experts, and editors see this box; every action here is logged in the open.</p>
 
 <details class="actform actforms" id="sys-emu-curate" open>
   <summary style="display:none"></summary>

@@ -21,6 +21,7 @@ from model import (
     run_seconds,
     runs,
     systems,
+    withdrawn_runs,
 )
 from render import SITE_URL, breadcrumb_ld, page, primary_metric_text, run_clock, thumb_url, tpl
 
@@ -87,6 +88,75 @@ def reel_for(r):
         take(_fallback_viewed)                    # most viewed
         take(_fallback_recent)                    # most recent
     return picked
+
+REPORT_LABELS = {
+    'missing-content-warnings': 'Missing content warnings',
+    'spam-malicious': 'Spam / malicious / deceitful',
+    'miscredited': 'Not credited correctly',
+    'licensing': 'Licensing / copyright problem',
+    'other': 'Other',
+}
+REPORT_CHIPS = {
+    'open': ('pendchip', 'Open'),
+    'resolved': ('verchip', 'Resolved'),
+    'dismissed': ('', 'Dismissed'),
+}
+
+
+def render_run_log(r):
+    g = r['_game']
+    cl = cat_label(r)
+    # Scalable O(1) dictionary lookup by (kind, key)
+    r_edits = sorted(
+        edits_of.get(('run', r['id']), []),
+        key=lambda e: e.get('at') or e.get('date', ''),
+        reverse=True,
+    )
+    r_reports = sorted(
+        r.get('reports', []),
+        key=lambda rep: (rep.get('status') != 'open', rep.get('at') or rep.get('date', ''), rep['id']),
+    )
+    r_cases = sorted(
+        r.get('cases', []),
+        key=lambda c: (c.get('status') != 'open', c.get('date') or c.get('opened', '')),
+        reverse=True,
+    )
+    r_mods = []
+    for kind, roster in [
+        ('reproduction', 'reproductions'),
+        ('verification', 'verifications'),
+        ('console verification', 'consoleVerifications'),
+    ]:
+        for a in r.get(roster, []):
+            inv = a.get('invalidated')
+            if inv and inv.get('by') != 'case' and inv.get('cause') != 'edit' and inv['by'].lower() != a['user'].lower():
+                r_mods.append((inv.get('at') or inv.get('date', ''), inv['by'], kind, a['user'], inv.get('reason', '')))
+    r_mods.sort(key=lambda e: e[0], reverse=True)
+    r_withdrawn = r.get('withdrawn')
+    totals = {
+        'edits': len(r_edits),
+        'reports': len(r_reports),
+        'cases': len(r_cases),
+        'mods': len(r_mods),
+    }
+    body = tpl('run_log.html', r=r, g=g, cl=cl,
+               r_edits=r_edits, r_reports=r_reports, r_cases=r_cases,
+               r_mods=r_mods, r_withdrawn=r_withdrawn, totals=totals,
+               REPORT_LABELS=REPORT_LABELS, REPORT_CHIPS=REPORT_CHIPS)
+    crumb = tpl('run_log_crumb.html', r=r, g=g).strip()
+    log_dir = OUT / 'runs' / r['id'] / 'logs'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    sysname = systems[g['system']]['name']
+    title = f'Log · {g["title"]} ({g["system"].upper()}) · {r["id"]}'
+    seo_desc = f'Audit log, revisions, reports, and moderation history for {g["title"]} TAS ({r["id"]}) on toolAssisted.run.'
+    ld = [breadcrumb_ld([('Games', 'games/'), (sysname, f'systems/{g["system"]}/'),
+                         (g['title'], f'games/{g["key"]}/'), (f'{cl} ({r["id"]})', f'runs/{r["id"]}/'),
+                         ('Log', f'runs/{r["id"]}/logs/')])]
+    (log_dir / 'index.html').write_text(
+        page(title, body, '../../../', crumb, 'Runs', wide=True,
+             seo={'path': f'runs/{r["id"]}/logs/', 'description': seo_desc, 'ld': ld}),
+        encoding='utf-8'
+    )
 
 
 for r in runs:
@@ -215,3 +285,8 @@ for r in runs:
              seo={'path': f'runs/{r["id"]}/', 'description': seo_desc,
                   'image': (SITE_URL + tu) if tu else None, 'type': 'video.other' if enc else 'article',
                   'ld': ld}, scripts=['page-run.js'], styles=['page-run-video-float.css']), encoding='utf-8')
+    render_run_log(r)
+
+
+for r in withdrawn_runs:
+    render_run_log(r)

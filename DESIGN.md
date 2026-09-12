@@ -542,7 +542,9 @@ This is what keeps replacing a video link from touching the scoring.
 - Every edit, both kinds, is an event in `edits.json` (who/from/to/why;
   author revisions auto-reason "The author's own revision.") and reversible
   through git. Run pages carry a small "change history · N revisions" link to
-  the folder's commit history. **What may never be edited by anyone through
+  the folder's commit history, and each run has its own audit log at
+  `/runs/<id>/logs/` detailing its full history of edits, reports, cases,
+  and moderation actions. **What may never be edited by anyone through
   us**: the author list beyond the author's own logged self-edit path (who
   made a thing is moderation's question), and forum posts. Bulk sweeps over
   member content are forbidden absolutely; problems with member content go
@@ -593,6 +595,15 @@ This is what keeps replacing a video link from touching the scoring.
   no governance acts: deletion lives on the game page's Expert menu alone.
 - Every game and group page ends with the **Expert menu** (§9) holding the
   governance acts for those entitled; content editing lives on the editor.
+- **The game log** (`/games/<key>/logs/`, linked from the game page header and the
+  Expert menu), **the group log** (`/groups/<key>/logs/`, linked from the
+  group header and Expert menu), **the system log** (`/systems/<key>/logs/`,
+  linked from the system header and Expert menu), and **the member log**
+  (`/authors/<slug>/logs/`, linked from the member profile header): dedicated audit logs displaying the unabridged
+  history of metadata revisions, curation or membership changes, run reports,
+  cases, and moderation actions across all runs in that scope. Member logs record both
+  actions on the account (roles, identity attestations, reports, cases, and moderation targeting the member's runs or contributions)
+  and actions by the account (revisions, moderation invalidations, reports filed and resolved, disputes opened and voted).
 
 ### Game properties
 
@@ -1240,7 +1251,11 @@ archivist, module responsibilities). What matters designwise:
 entries so a quiet section still reads, at most 50, and anything still open
 whatever its age); the headings carry the full-history totals, and the page
 says where the complete record lives (the archive repository and its git
-log), so the page never grows with the archive.
+log), so the page never grows with the archive. Complementing the site log,
+dedicated audit logs provide unabridged history scoped to individual entities:
+runs at `/runs/<id>/logs/`, games at `/games/<key>/logs/`, groups at
+`/groups/<key>/logs/`, systems at `/systems/<key>/logs/`, and members at
+`/authors/<slug>/logs/`.
 
 **Write pacing (log-flooding defence)**: every member-triggered write is a
 commit, a rebuild and often a log entry, so the archivist paces writes per

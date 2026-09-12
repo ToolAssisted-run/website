@@ -1,0 +1,289 @@
+{# Member log page: audits actions on the account and actions by the account. #}
+{% macro status_chip(status, chips) %}
+{% set cls, label = chips.get(status, ('', status)) %}
+<span class="chip{% if cls %} {{ cls }}{% endif %}">{{ label }}</span>
+{%- endmacro %}
+{% macro run_link(r) %}<a href="{{ rel }}runs/{{ r.id }}/">{{ r._game.title }} · {{ r.id }} ({{ cat_label(r) }})</a>{% endmacro %}
+{% macro edit_target_link(e) %}
+{% if e.kind == 'run' %}
+  {% set r_ = runs_by_id.get(e.key) %}
+  {% if r_ %}
+    <a href="{{ rel }}runs/{{ r_.id }}/">{{ r_._game.title }} ({{ r_.id }})</a>
+  {% else %}
+    <span>Run {{ e.key }}</span>
+  {% endif %}
+{% elif e.kind == 'game' %}
+  {% set g_ = games.get(e.key) %}
+  {% if g_ %}
+    <a href="{{ rel }}games/{{ g_.key }}/">{{ g_.title }}</a>
+  {% else %}
+    <span>Game {{ e.key }}</span>
+  {% endif %}
+{% elif e.kind == 'category' %}
+  {% set parts = e.key.split(':', 1) %}
+  {% set g_ = games.get(parts[0]) %}
+  {% if g_ %}
+    <a href="{{ rel }}games/{{ g_.key }}/">{{ g_.title }}</a> ({{ parts[1] if parts|length > 1 else '' }})
+  {% else %}
+    <span>Category {{ e.key }}</span>
+  {% endif %}
+{% elif e.kind == 'group' %}
+  {% set gr_ = groups_by_key.get(e.key) %}
+  {% if gr_ %}
+    <a href="{{ rel }}groups/{{ gr_.key }}/">{{ gr_.title }}</a>
+  {% else %}
+    <span>Group {{ e.key }}</span>
+  {% endif %}
+{% elif e.kind == 'system' %}
+  {% set s_ = systems.get(e.key) %}
+  {% if s_ %}
+    <a href="{{ rel }}systems/{{ e.key }}/">{{ s_.name or e.key }}</a>
+  {% else %}
+    <span>System {{ e.key }}</span>
+  {% endif %}
+{% else %}
+  <span>{{ e.kind }} {{ e.key }}</span>
+{% endif %}
+{% endmacro %}
+<header class="ghead"><div>
+  <h1>Log · {{ a.username }} {{ '🇨🇭' if a.get('country') == 'CH' else '' }}</h1>
+  {% if role_badges(a.username) %}<div class="chips rolechips">{{ role_badges(a.username) }}</div>{% endif %}
+  <p class="rules fullw">Account and action history for {{ a.username }}: role changes, identity attestations, revisions, reports, disputes, and moderation actions. Covers both actions affecting this account and actions taken by this account. The full raw history lives in git and the archive repository.</p>
+  <p class="statline"><a href="../">← Back to profile</a> · <b>On account:</b> <a href="#roles">Roles ({{ totals.roles }})</a> · <a href="#mods-on">Moderation ({{ totals.mods_on }})</a> · <a href="#reports-on">Reports on runs ({{ totals.reports_on }})</a> · <a href="#cases-on">Disputes on runs ({{ totals.cases_on }})</a> · <b>By member:</b> <a href="#edits-by">Revisions ({{ totals.edits_by }})</a> · <a href="#mods-by">Moderation ({{ totals.mods_by }})</a> · <a href="#reports-by">Reports ({{ totals.reports_by }})</a> · <a href="#cases-by">Disputes ({{ totals.cases_by }})</a>{% if totals.attestations_by %} · <a href="#attestations-by">Attestations ({{ totals.attestations_by }})</a>{% endif %}</p>
+</div>
+<div class="hbtns">
+  <a class="srclink" href="../">← back to profile</a>
+</div>
+</header>
+<div class="statstrip">
+<div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
+<div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>
+{% if visits_known %}<div class="stat"><b>{{ EYE_ICON }}{{ '{:,}'.format(st.views) }}</b><span>views</span></div>{% endif %}
+<div class="stat"><b>{{ st.contrib }}</b><span>contributor score</span></div>
+</div>
+
+{# ==================== PART 1: ACTIONS ON ACCOUNT ==================== #}
+
+{# ---- Roles and Identity ---- #}
+{% if a.get('claimMethod') == 'attested' and a.get('attestedBy') %}
+<section id="identity"><h2>Identity</h2>
+<p class="statline"><b>Identity attestation:</b> Account claimed via attestation by {{ member_chip(a.attestedBy, rel) }}{% if a.get('attestedAt') %} on {{ moment(a.attestedAt) }}{% endif %}.</p>
+</section>
+{% endif %}
+
+{% if role_rows %}
+<section id="roles"><h2>Role history ({{ totals.roles }})</h2>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th></th><th>Role</th><th>By</th><th>Reason</th></tr></thead>
+<tbody>{% for ev in role_rows %}
+<tr><td>{{ moment(ev.get('at') or ev.date) }}</td><td>{% if ev.action == 'granted' %}<span class="chip verchip">Granted</span>{% else %}<span class="chip pendchip">Removed</span>{% endif %}</td><td>{{ ev.what }}</td><td>{% if ev.by == 'founder' %}the founder{% elif ev.by == 'committee' %}a Committee vote{% else %}{{ member_chip(ev.by_name, rel) }}{% endif %}</td><td>{{ inline(ev.reason, rel) }}{% if ev.get('proof') %} · <a href="{{ ev.proof }}">where it was decided</a>{% endif %}</td></tr>
+{% endfor %}</tbody></table></div>
+<p class="legend">Every grant and every removal, with the reason given at the time. Roles are not a status somebody has always had: this is where that is visible.</p>
+</section>
+{% else %}
+<section id="roles"><h2>Role history</h2><p class="emptynote">No role changes recorded for this account.</p></section>
+{% endif %}
+
+{# ---- Moderation on account ---- #}
+<section id="mods-on"><h2>Moderation on account ({{ totals.mods_on }})</h2>
+{% if mods_on %}
+<p class="authline">Actions taken by experts on verifications or reproductions authored by {{ a.username }}.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Expert</th><th>Action</th><th>Run</th><th>Reason</th></tr></thead><tbody>
+{% for d, by, kind, target, reason, r_ in mods_on %}
+<tr><td>{{ moment(d) }}</td><td>{{ member_chip(by, rel) }}</td>
+<td>Invalidated a {{ kind }}</td>
+<td>{{ run_link(r_) }}</td>
+<td>{{ inline(reason, rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% else %}
+<p class="emptynote">No moderation actions have been taken against contributions by {{ a.username }}.</p>
+{% endif %}
+</section>
+
+{# ---- Reports on authored runs ---- #}
+{% if reports_on %}
+<section id="reports-on"><h2>Reports on authored runs ({{ totals.reports_on }})</h2><div class="roster">
+{% for rep, r_ in reports_on %}
+<div class="act" id="R{{ rep.id }}">
+<div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="chip">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}</span>
+<span class="actmeta">filed by {{ member_chip(rep.by, rel) }} · {{ rep.date }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(rep.details, rel) }}</p>
+{% if rep.get('resolvedBy') %}
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+{% endif %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="reports-on"><h2>Reports on authored runs</h2><p class="emptynote">No reports have been filed against runs authored by {{ a.username }}.</p></section>
+{% endif %}
+
+{# ---- Disputes on authored runs ---- #}
+{% if cases_on %}
+<section id="cases-on"><h2>Disputes and cases on authored runs ({{ totals.cases_on }})</h2><div class="roster">
+{% for c, r_ in cases_on %}
+<div class="act" id="case-{{ c.id }}"><div class="acthead"><b>Case {{ c.id }}</b>
+{% if c.status == 'open' %}<span class="chip pendchip">Open</span>
+{% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
+{% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
+<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(c.reason, rel) }}</p>
+{% for v in c.get('reaffirmations', []) %}
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+{% endfor %}
+</div>
+{% endfor %}
+</div></section>
+{% else %}
+<section id="cases-on"><h2>Disputes and cases on authored runs</h2><p class="emptynote">No disputes or cases have been opened for runs authored by {{ a.username }}.</p></section>
+{% endif %}
+
+{# ==================== PART 2: ACTIONS BY ACCOUNT ==================== #}
+
+{# ---- Revisions by member ---- #}
+{% if edits_by %}
+<section id="edits-by"><h2>Revisions by member ({{ totals.edits_by }})</h2>
+<p class="authline">Archive revisions made by {{ a.username }}: metadata edits, category changes, and group membership updates.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Target</th><th>Field</th><th>Change</th><th>Why</th></tr></thead>
+<tbody>
+{% for e in edits_by %}
+<tr><td>{{ moment(e.get('at') or e.date) }}</td>
+<td>{{ edit_target_link(e) }}</td>
+<td><b>{{ e.field }}</b></td>
+<td>
+{% if e.field == 'games' and e.kind == 'group' %}
+{% set d = diff_games(e.get('from', ''), e.get('to', ''), e.get('reason', '')) %}
+{% if d.removed or d.added %}
+<div class="diff-list">
+  {% for item in d.removed %}
+  <del class="diff-item diff-del"><span class="diff-sign" aria-hidden="true">−</span>{% if item.key in games %}<a href="{{ rel }}games/{{ item.key }}/">{{ games[item.key].title }} ({{ games[item.key].system.upper() }})</a>{% else %}<span>{{ item.key }}</span>{% endif %}<span class="diff-tag">{% if item.to_group and item.to_group in groups_by_key %}moved to {{ groups_by_key[item.to_group].title }}{% elif item.to_group %}moved to {{ item.to_group }}{% else %}moved out{% endif %}</span></del>
+  {% endfor %}
+  {% for item in d.added %}
+  <ins class="diff-item diff-add"><span class="diff-sign" aria-hidden="true">+</span>{% if item.key in games %}<a href="{{ rel }}games/{{ item.key }}/">{{ games[item.key].title }} ({{ games[item.key].system.upper() }})</a>{% else %}<span>{{ item.key }}</span>{% endif %}<span class="diff-tag">{% if item.from_group and item.from_group in groups_by_key %}moved in from {{ groups_by_key[item.from_group].title }}{% elif item.from_group %}moved in from {{ item.from_group }}{% else %}moved in{% endif %}</span></ins>
+  {% endfor %}
+</div>
+{% else %}
+<p class="actnote">{{ e.get('from') or '(empty)' }} → {{ e.get('to') or '(empty)' }}</p>
+{% endif %}
+{% elif e.field == 'added' and e.kind == 'category' %}
+<ins class="diff-item diff-add"><span class="diff-sign" aria-hidden="true">+</span> {{ e.get('to') or 'added' }}</ins>
+{% elif e.field == 'removed' and e.kind == 'category' %}
+<del class="diff-item diff-del"><span class="diff-sign" aria-hidden="true">−</span> {{ e.get('from') or 'removed' }}</del>
+{% elif e.get('from') is not none or e.get('to') is not none %}
+<div class="diff-summary"><del class="diff-inline diff-del">{{ e.get('from') or '(empty)' }}</del> <span class="diff-arrow" aria-hidden="true">→</span> <ins class="diff-inline diff-add">{{ e.get('to') or '(empty)' }}</ins></div>
+{% else %}
+<span>{{ e.summary or '' }}</span>
+{% endif %}
+</td>
+<td>{{ inline(e.reason or e.summary or '', rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div></section>
+{% else %}
+<section id="edits-by"><h2>Revisions by member</h2><p class="emptynote">No archive revisions made by {{ a.username }}.</p></section>
+{% endif %}
+
+{# ---- Moderation by member ---- #}
+<section id="mods-by"><h2>Moderation by member ({{ totals.mods_by }})</h2>
+{% if mods_by %}
+<p class="authline">Moderation invalidations executed by {{ a.username }}. Every action is logged in the open with its public reason.</p>
+<div class="tblwrap"><table><thead><tr><th>Date</th><th>Action</th><th>Target</th><th>Run</th><th>Reason</th></tr></thead><tbody>
+{% for d, by, kind, target, reason, r_ in mods_by %}
+<tr><td>{{ moment(d) }}</td>
+<td>Invalidated a {{ kind }}</td>
+<td>{{ member_chip(target, rel) }}</td>
+<td>{{ run_link(r_) }}</td>
+<td>{{ inline(reason, rel) }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% else %}
+<p class="emptynote">No moderation actions executed by {{ a.username }}.</p>
+{% endif %}
+</section>
+
+{# ---- Reports filed and resolved ---- #}
+{% if reports_by or reports_resolved_by %}
+<section id="reports-by"><h2>Reports filed and resolved ({{ totals.reports_by }})</h2>
+{% if reports_by %}
+<h3>Reports filed ({{ reports_by|length }})</h3>
+<div class="roster">
+{% for rep, r_ in reports_by %}
+<div class="act" id="R{{ rep.id }}">
+<div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="chip">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}</span>
+<span class="actmeta">{{ rep.date }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(rep.details, rel) }}</p>
+{% if rep.get('resolvedBy') %}
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+{% if reports_resolved_by %}
+<h3>Reports resolved as expert ({{ reports_resolved_by|length }})</h3>
+<div class="roster">
+{% for rep, r_ in reports_resolved_by %}
+<div class="act" id="R-res-{{ rep.id }}">
+<div class="acthead"><b>R{{ rep.id }}</b> {{ status_chip(rep.status, REPORT_CHIPS) }}
+<span class="chip">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}</span>
+<span class="actmeta">filed by {{ member_chip(rep.by, rel) }} · {{ rep.date }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(rep.details, rel) }}</p>
+<p class="statline">Resolution on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+</section>
+{% else %}
+<section id="reports-by"><h2>Reports filed and resolved</h2><p class="emptynote">No reports filed or resolved by {{ a.username }}.</p></section>
+{% endif %}
+
+{# ---- Disputes opened and voted ---- #}
+{% if cases_opened_by or cases_voted_by %}
+<section id="cases-by"><h2>Disputes opened and voted ({{ totals.cases_by }})</h2>
+{% if cases_opened_by %}
+<h3>Disputes opened ({{ cases_opened_by|length }})</h3>
+<div class="roster">
+{% for c, r_ in cases_opened_by %}
+<div class="act" id="case-op-{{ c.id }}"><div class="acthead"><b>Case {{ c.id }}</b>
+{% if c.status == 'open' %}<span class="chip pendchip">Open</span>
+{% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
+{% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
+<span class="actmeta">{{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<p class="actnote">{{ inline(c.reason, rel) }}</p>
+{% for v in c.get('reaffirmations', []) %}
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+{% endfor %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+{% if cases_voted_by %}
+<h3>Dispute reaffirmations and withdrawals ({{ cases_voted_by|length }})</h3>
+<div class="roster">
+{% for v, c, r_ in cases_voted_by %}
+<div class="act"><div class="acthead"><b>Case {{ c.id }}</b>
+<span class="chip{% if v.reaffirm %} verchip{% else %} pendchip{% endif %}">{{ 'Reaffirmed' if v.reaffirm else 'Withdrew' }}</span>
+<span class="actmeta">{{ v.date }} · {{ run_link(r_) }}</span></div>
+{% if v.get('notes') %}<p class="actnote">{{ inline(v.notes, rel) }}</p>{% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+</section>
+{% else %}
+<section id="cases-by"><h2>Disputes opened and voted</h2><p class="emptynote">No disputes opened or voted on by {{ a.username }}.</p></section>
+{% endif %}
+
+{# ---- Identity attestations made by member ---- #}
+{% if attestations_by %}
+<section id="attestations-by"><h2>Identity attestations ({{ totals.attestations_by }})</h2>
+<p class="authline">Members whose identity was attested by {{ a.username }}:</p>
+<div class="tblwrap"><table><thead><tr><th>Member</th><th>Attested on</th></tr></thead><tbody>
+{% for other in attestations_by %}
+<tr><td>{{ member_chip(other.username, rel) }}</td><td>{{ moment(other.get('attestedAt') or other.get('joined', '')) }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+</section>
+{% endif %}

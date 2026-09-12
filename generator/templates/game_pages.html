@@ -28,7 +28,9 @@
 <div class="btnrow">{% if g.get('discord') %}<a class="btn quiet ext" href="{{ g['discord'] }}" target="_blank" rel="noopener noreferrer">Community Discord ↗</a>{% endif %}
 {% if g.get('website') %}<a class="btn quiet ext" href="{{ g['website'] }}" target="_blank" rel="noopener noreferrer">Community website ↗</a>{% endif %}
 {% if g.get('rta') %}<a class="btn quiet ext" href="{{ g['rta'] }}" target="_blank" rel="noopener noreferrer">RTA leaderboards ↗</a>{% endif %}</div>
-{% endif %}</div></header>
+{% endif %}
+<a class="srclink" href="logs/">view game log →</a>
+</div></header>
 {% if multi %}
 {# selector: one row of buttons per dimension; the goal dimension is called
    a Category everywhere in the UI, whatever old data named it #}
@@ -203,6 +205,7 @@ its own. Never verified; ranked purely by ★ likes.</p>
 <p class="rules">Only experts whose scope covers this game, and editors, see this box; every action here is logged in the open.</p>
 <details class="actform actforms" open><summary style="display:none"></summary>
 <p class="statline"><a class="actbtn-link" href="edit/">Edit this game</a> Title, thumbnail and categories are edited on their own page.</p>
+<p class="statline"><a class="actbtn-link" href="logs/">View game log</a> History of revisions, category changes, reports and moderation.</p>
 <details class="actform"><summary>Delete this game</summary>
 <form id="f-gamedelete">
   <p class="rules">Outright: the game goes, and every run in it is deleted with it; each deletion lands in the public log. For a genuine work in the wrong game, move the run instead of deleting the game. Your reason is public and permanent.</p>
