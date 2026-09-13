@@ -17,4 +17,6 @@ body = tpl('claim_import_claim.html', site_experts=site_experts)
 body = tpl('claim_import_import.html')
 (OUT / 'import').mkdir(exist_ok=True)
 (OUT / 'import' / 'index.html').write_text(page('Import my runs', body, '../',
-    seo={'path': 'import/', 'noindex': True}, scripts=['page-import.js']), encoding='utf-8')
+    seo={'path': 'import/', 'noindex': True},
+    scripts=['page-import.js'],
+    styles=['page-import.css']), encoding='utf-8')

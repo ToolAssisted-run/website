@@ -72,6 +72,7 @@ body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=
 (OUT / 'tools' / 'index.html').write_text(page(
     'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',
     scripts=['page-core.js', 'page-tools.js'],
+    styles=['page-tools.css'],
     seo={'path': 'tools/',
          'description': ('Emulators with rerecording and movie formats, plus game-specific '
                          'tool-assisted speedrun tools, each linked to its home.')}), encoding='utf-8')

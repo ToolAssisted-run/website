@@ -54,4 +54,5 @@ Working rules:
   console "not-applicable". "pending" (missing a
   gate), "Imported" (seeded TASVideos import; formerly "Legacy"), "experts" (scoped moderators), "archivist"
   (the intake bot). Never describe the site as running emulation server-side.
+- Styles architecture: `assets/style.css` carries base tokens, resets, shared components, nav, footer, cards, tables, and hero/feed. Page-specific styles belong in individual page CSS files (`assets/page-*.css`) and rare feature styles in dedicated CSS files (e.g. `page-run-video-float.css`), linked via the view's `styles=[...]` parameter.
 - Code formatting: all JS and CSS assets (`assets/`) must adhere to `biome.json`. Run `biome format --write` whenever modifying frontend code.

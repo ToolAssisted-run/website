@@ -33,8 +33,8 @@ never derived state** (who verified what, when; never "this run is ranked").
   checkout that persists them.
 
 **View** — how it looks.
-- `assets/app.js`, page-specific `assets/page-*.js`, and `assets/style.css`: the
-  frontend, real files, shipped verbatim (except the `ENCODE_HOSTS`/
+- `assets/app.js`, page-specific `assets/page-*.js`, `assets/style.css`, and
+  page-specific `assets/page-*.css`: the frontend, real files, shipped verbatim (except the `ENCODE_HOSTS`/
   `ENCODE_NAMES` provider substitution, applied to whichever script actually
   names them). `app.js` is shared and page-agnostic only (nav, account menu,
   view-as, the type-to-find picker, busy/note/mark, file rows, the metrics
@@ -43,7 +43,12 @@ never derived state** (who verified what, when; never "this run is ranked").
   `page-submit.js`, `page-create.js`, `page-panels.js`, `page-member.js`,
   `page-import.js`), each with an explicit `import { … } from './app.js'` for
   the shared bindings it uses and wired in by the generator's `scripts=` on
-  the templates that need it. Client code reads embedded `application/json`
+  the templates that need it. Similarly, `style.css` carries shared design tokens,
+  chrome, components, and layout; page-exclusive rules live in dedicated per-page
+  stylesheets (`page-search.css`, `page-submit.css`, `page-game-edit.css`,
+  `page-run.css`, `page-tools.css`, `page-about.css`, `page-system.css`,
+  `page-import.css`, `page-game.css`) and feature stylesheets (`page-run-video-float.css`),
+  wired in by `styles=` on `page()`. Client code reads embedded `application/json`
   blobs and talks to the archivist's JSON API; it never scrapes pages.
 - `generator/templates/*.html`: the markup, Jinja2, one template per page
   (plus `_*.html` macro files for shared fragments and `base.html` for the

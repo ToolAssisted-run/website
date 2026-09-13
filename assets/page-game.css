@@ -1,0 +1,8 @@
+/* toolAssisted.run — game page rules dialog stylesheet.
+   Shipped verbatim by the generator. */
+/* the rules dialog on game pages (#60) */
+.rulesbtn {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+}

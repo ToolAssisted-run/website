@@ -116,6 +116,7 @@ body = tpl('search.html')
 (OUT / 'search' / 'index.html').write_text(page(
     'Search archive', body, '../', '', '',
     scripts=['page-search.js'],
+    styles=['page-search.css'],
     seo={'path': 'search/',
          'description': 'Search toolAssisted.run for games, game groups, systems, runs, and authors.'}),
     encoding='utf-8'

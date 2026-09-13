@@ -155,6 +155,7 @@ for skey in sorted(by_sys):
     (sdir / 'index.html').write_text(page(
         f'{sname} TAS runs and leaderboards', sbody, '../../', crumb(sname), 'Games',
         scripts=['page-core.js', 'page-system.js'],
+        styles=['page-system.css'],
         seo={'path': f'systems/{skey}/',
              'description': (f'Tool-assisted speedruns on {sname}: '
                              f'{plural(len(sgames), "game")}, '

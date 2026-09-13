@@ -1,0 +1,98 @@
+/* toolAssisted.run — system page emulator curation stylesheet.
+   Shipped verbatim by the generator. */
+/* system page emulator curation inside expertmenu */
+.sys-curate-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1.5px solid var(--hair);
+}
+
+.sys-curate-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.sys-curate-section h4 {
+  font-size: 0.95rem;
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.sys-curate-section .rules {
+  margin-bottom: 8px;
+}
+
+.sys-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.sys-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.sys-tool-card {
+  background: var(--bg);
+  border: 2.5px solid var(--hair);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+
+.sys-tool-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sys-tool-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.sys-tool-title code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--faint);
+  border: 1px solid var(--hairs);
+}
+
+@media (max-width: 600px) {
+  .sys-tool-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sys-qc-chip-x {
+  margin-left: 5px;
+  cursor: pointer;
+  opacity: 0.65;
+  font-weight: bold;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+.sys-qc-chip-x:hover {
+  opacity: 1;
+  color: #dc2626;
+}

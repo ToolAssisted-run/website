@@ -1,0 +1,653 @@
+/* toolAssisted.run — submit page stylesheet.
+   Shipped verbatim by the generator. */
+.movierow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.movierow input[type="file"] {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.notewarn {
+  color: #2563eb;
+}
+
+/* the submit form is the page's whole job, so it gets the page's whole width;
+   the notes box and the preview under it are what benefit most */
+#submitform {
+  max-width: none;
+}
+
+#submitform textarea {
+  min-height: 220px;
+}
+
+.authchips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.authchips:not(:empty) {
+  margin-bottom: 6px;
+}
+
+.authchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 3px 6px 3px 10px;
+  border-radius: 7px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 2.5px solid rgba(34, 197, 94, 0.45);
+}
+
+.authx {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+.authx:hover {
+  color: #dc2626;
+}
+
+.authpick input,
+.gamepick input {
+  border: 0;
+  background: none;
+  width: 100%;
+  padding: 4px 6px;
+}
+
+.authpick input:focus,
+.gamepick input:focus {
+  outline: none;
+}
+
+.authlist,
+.gamelist {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 30;
+  background: var(--bg);
+  border: 2.5px solid var(--hairs);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.authopt {
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.authopt:hover {
+  background: var(--panel);
+}
+
+.authnew {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.cwrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 18px;
+  margin-top: 6px;
+}
+
+.cwlab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.cwlab input {
+  width: auto;
+}
+
+#s-preview {
+  margin-top: 18px;
+  border-top: 3px solid var(--hair);
+  padding-top: 12px;
+}
+
+.previewhead {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 12px;
+}
+
+#s-preview-btn {
+  margin-top: 14px;
+}
+
+.consent {
+  margin-top: 16px;
+  align-items: flex-start;
+  background: rgba(34, 197, 94, 0.06);
+  border: 2.5px solid rgba(34, 197, 94, 0.35);
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+
+.consent input {
+  margin-top: 3px;
+}
+
+.consent a {
+  color: var(--accent-text);
+}
+
+.enccheck {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.enccheck img {
+  width: 168px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2.5px solid var(--hair);
+}
+
+.enc-good {
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.enc-bad {
+  color: #dc2626;
+  font-size: 0.88rem;
+}
+
+.enc-wait {
+  color: var(--faint);
+  font-size: 0.88rem;
+}
+
+/* selector + "not there? create" question, side by side */
+.pickrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pickrow .gamepick,
+.pickrow select {
+  flex: 1;
+  min-width: min(320px, 100%);
+}
+
+.createq {
+  font-size: 0.85rem;
+  color: var(--faint);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.createq .btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.createq [aria-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.timerow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.timerow > input[type="number"] {
+  flex: 1;
+  min-width: 120px;
+  max-width: 260px;
+}
+
+.timerow .btn,
+.timerow .impsel {
+  flex: none;
+}
+
+.actform select.impsel,
+.impsel {
+  appearance: auto;
+  padding-right: 8px;
+  width: auto;
+  flex: none;
+}
+
+.timerow .timepick {
+  flex: none;
+}
+
+.timepick {
+  display: flex;
+  gap: 10px;
+}
+
+.tseg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tseg input {
+  width: 5.5ch;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  border: 2.5px solid var(--hair);
+  border-radius: 9px;
+  padding: 8px 4px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.tseg input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.tseg label {
+  font-size: 0.74rem;
+  color: var(--faint);
+  font-family: ui-monospace, monospace;
+}
+
+.tseg input::-webkit-outer-spin-button,
+.tseg input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tseg input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ms-confirm-pop {
+  margin-top: 10px;
+  margin-bottom: 6px;
+  background: var(--panel);
+  border: 2.5px solid #d97706;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  box-shadow: var(--shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ms-confirm-pop {
+    border-color: #f59e0b;
+    background: #182339;
+  }
+}
+
+:root[data-theme="dark"] .ms-confirm-pop {
+  border-color: #f59e0b;
+  background: #182339;
+}
+
+.ms-confirm-title {
+  font-family: ui-monospace, monospace;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #d97706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ms-confirm-title {
+    color: #fbbf24;
+  }
+}
+
+:root[data-theme="dark"] .ms-confirm-title {
+  color: #fbbf24;
+}
+
+.ms-confirm-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ms-btn {
+  background: #f59e0b;
+  color: #04140a;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.86rem;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.ms-btn:hover {
+  filter: brightness(1.08);
+}
+
+.ms-btn:active {
+  filter: brightness(0.94);
+}
+
+.ms-or {
+  font-size: 0.86rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.timewarn {
+  margin-top: 10px;
+  margin-bottom: 6px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 2px solid rgba(217, 119, 6, 0.35);
+  color: #d97706;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .timewarn {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+  }
+}
+
+:root[data-theme="dark"] .timewarn {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+}
+
+/* the submit draft line: saved-at stamp on the left, Clear on the right */
+.draftbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ground);
+  padding: 6px 0;
+}
+
+.draftnote {
+  font-family: ui-monospace, monospace;
+  font-size: 0.74rem;
+  color: var(--faint);
+  margin: 0;
+}
+
+.draftbar .btn {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.submitrow {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+/* the submit form's panels: each unfolds once the one before is complete */
+.panel {
+  margin: 0 0 14px;
+}
+
+.panel .ptitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.pnum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid var(--accent);
+  color: var(--accent-text);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.panel .pwaits {
+  display: none;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--faint);
+}
+
+.panel.folded {
+  opacity: 0.6;
+}
+
+.panel.folded .pbody {
+  display: none;
+}
+
+.panel.folded .pwaits {
+  display: block;
+}
+
+.panel.folded .pnum {
+  border-color: var(--hairs);
+  color: var(--faint);
+}
+
+.panel.done .pnum {
+  background: var(--accent);
+  color: #04140a;
+}
+
+.panel.broken .pnum {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: transparent;
+}
+
+.needline {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.epanel {
+  border-top: 2.5px solid var(--hair);
+  margin-top: 14px;
+  padding-top: 10px;
+}
+
+.epanel .ptitle {
+  font-size: 0.95rem;
+  margin: 0 0 4px;
+}
+
+.subrowed textarea {
+  flex: 2;
+  min-width: 12rem;
+  resize: vertical;
+}
+
+/* emulator preset assistant on submit form */
+.emu-assist {
+  margin: 8px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emu-assist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.emu-preset-select {
+  padding: 7px 10px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  background: var(--panel);
+  color: var(--ink);
+  border: 2px solid var(--hairs);
+  border-radius: 8px;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.emu-preset-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.emu-chip {
+  font-size: 0.76rem;
+  font-family: ui-monospace, monospace;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1.5px solid var(--hairs);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  line-height: 1.2;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.emu-chip:hover {
+  border-color: var(--accent-text);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.emu-chip.active {
+  border-color: var(--accent);
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.emu-chip-core {
+  border-style: dashed;
+}
+
+.emu-chip-add-core,
+.emu-chip-add-ver {
+  border-style: dashed;
+  color: var(--faint);
+}
+
+.emu-chip-add-core:hover,
+.emu-chip-add-ver:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.emu-core-input,
+.emu-version-input {
+  font-size: 0.76rem;
+  font-family: ui-monospace, monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1.5px solid var(--accent);
+  background: var(--panel);
+  color: var(--ink);
+  outline: none;
+  line-height: 1.2;
+  min-width: 7.5rem;
+}
+
+.emu-quick-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.emu-manage-link {
+  font-size: 0.76rem;
+  color: var(--accent-text);
+  text-decoration: none;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.emu-manage-link:hover {
+  border-color: var(--accent);
+  background: rgba(34, 197, 94, 0.08);
+  text-decoration: none;
+}
+
+.emu-curate-section {
+  margin: 14px 0 10px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1.5px solid var(--hairs);
+  border-radius: 8px;
+}
+
+.emu-curate-section h3 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}

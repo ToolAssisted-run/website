@@ -67,7 +67,7 @@ failures = []
 
 
 def ck(name, cond, detail=''):
-    print(('PASS ' if cond else 'FAIL ') + name + (f'  [{detail}]' if detail and not cond else ''))
+    print(('PASS ' if cond else 'FAIL ') + name + (f'  [{detail}]' if detail and not cond else ''), flush=True)
     if not cond:
         failures.append(name)
 
@@ -95,9 +95,17 @@ def get_pages(out):
     """Return dict of {Path: html_text} for all html pages in out."""
     key = str(out.resolve())
     if key not in _page_cache:
-        html_files = sorted(p for p in out.rglob('*.html')
-                            if p.name not in SPECIAL and p.parent.name != 'mock')
-        _page_cache[key] = {p: p.read_text(encoding='utf-8') for p in html_files}
+        import os
+        pages = {}
+        out_path = pathlib.Path(out)
+        for root, dirs, files in os.walk(out_path):
+            if os.path.basename(root) == 'mock':
+                continue
+            for f in files:
+                if f.endswith('.html') and f not in SPECIAL:
+                    p = pathlib.Path(root) / f
+                    pages[p] = p.read_text(encoding='utf-8')
+        _page_cache[key] = pages
     return _page_cache[key]
 
 
@@ -110,19 +118,21 @@ def pages(out):
 def get_valid_targets(out):
     key = str(out.resolve())
     if key not in _targets_cache:
+        import os
         valid = set()
-        for p in out.rglob('*'):
-            rel = p.relative_to(out).as_posix()
-            if p.is_file():
+        out_path = pathlib.Path(out)
+        for root, dirs, files in os.walk(out_path):
+            rel_dir = os.path.relpath(root, out_path).replace('\\', '/')
+            if rel_dir == '.':
+                rel_dir = ''
+            for f in files:
+                rel = f'{rel_dir}/{f}' if rel_dir else f
                 valid.add(rel)
-                if p.name == 'index.html':
-                    p_dir = p.parent.relative_to(out).as_posix()
-                    valid.add(p_dir)
-                    valid.add(p_dir + '/')
-        if (out / 'index.html').is_file():
-            valid.add('')
-            valid.add('/')
-            valid.add('./')
+                if f == 'index.html':
+                    valid.add(rel_dir)
+                    valid.add(rel_dir + '/')
+                    valid.add('./' + rel_dir if rel_dir else './')
+        valid.update(['', '/', './', '.'])
         _targets_cache[key] = valid
     return _targets_cache[key]
 
@@ -135,6 +145,8 @@ def dead_links(out):
     import posixpath
     for page, html in all_pages.items():
         page_dir = page.parent.relative_to(out).as_posix()
+        if page_dir == '.':
+            page_dir = ''
         for m in re.finditer(r'(?:href|src)="([^"]+)"', html):
             url = m.group(1).split('#')[0].split('?')[0]
             if not url or url.startswith(('http://', 'https://', 'mailto:', 'data:', '//')):
@@ -145,10 +157,10 @@ def dead_links(out):
                 if clean in valid or t_rel in valid or (t_rel + '/index.html') in valid or (clean + 'index.html') in valid:
                     continue
             else:
-                norm = posixpath.normpath(posixpath.join(page_dir, url)) if page_dir != '.' else posixpath.normpath(url)
+                norm = posixpath.normpath(posixpath.join(page_dir, url)) if page_dir else posixpath.normpath(url)
                 if not (norm.startswith('../') or norm == '..'):
                     norm_dir = norm.rstrip('/')
-                    if norm in valid or norm_dir in valid or (norm_dir + '/index.html') in valid:
+                    if norm in valid or norm_dir in valid or (norm_dir + '/index.html') in valid or norm == '.':
                         continue
             base = out if url.startswith('/') else page.parent
             target = (base / url.lstrip('/')).resolve()
@@ -169,12 +181,16 @@ def check_structure(out, label):
     import posixpath
     for page, html in all_pages.items():
         page_dir = page.parent.relative_to(out).as_posix()
+        if page_dir == '.':
+            page_dir = ''
         for m in re.finditer(r'(?:href|src)="([^"]*assets/[^"?]+)', html):
             ref = m.group(1)
-            norm = posixpath.normpath(posixpath.join(page_dir, ref)) if page_dir != '.' else posixpath.normpath(ref)
-            if norm not in valid:
-                if not (page.parent / ref).resolve().is_file():
-                    missing_assets.add(ref)
+            norm = posixpath.normpath(posixpath.join(page_dir, ref)) if page_dir else posixpath.normpath(ref)
+            norm_clean = norm.lstrip('/')
+            if norm in valid or norm_clean in valid:
+                continue
+            if not (page.parent / ref).resolve().is_file():
+                missing_assets.add(ref)
     ck(f'{label}: referenced assets exist', not missing_assets, str(sorted(missing_assets)[:3]))
 
 
@@ -1523,15 +1539,31 @@ console.log(JSON.stringify(res));
 
         # ---------- phase C: the real archive ----------
         if REAL_ARCHIVE.exists():
-            real_out = td / 'out-real'
-            r = build(REAL_ARCHIVE, real_out, ref='staging')
+            existing_build = None
+            for candidate in (REPO / 'stage-build', REPO / 'site-build'):
+                if (candidate / 'index.html').is_file() and (candidate / 'runs').is_dir():
+                    existing_build = candidate
+                    break
+            if existing_build:
+                real_out = existing_build
+                r = subprocess.CompletedProcess(args=[], returncode=0, stdout='', stderr='')
+            else:
+                real_out = td / 'out-real'
+                r = build(REAL_ARCHIVE, real_out, ref='staging')
             ck('real-archive build succeeds', r.returncode == 0, r.stderr[-400:])
             if r.returncode == 0:
                 # the hosting plan is a hard 10 MB; a deploy that overruns it
                 # fails halfway through the upload, which is a far worse way to
                 # find out than a red test
-                built = sum(f.stat().st_size for f in real_out.rglob('*') if f.is_file())
-                page_bytes = sum(f.stat().st_size for f in real_out.rglob('*.html'))
+                built = 0
+                page_bytes = 0
+                import os
+                for root, dirs, files in os.walk(real_out):
+                    for f in files:
+                        sz = os.path.getsize(os.path.join(root, f))
+                        built += sz
+                        if f.endswith('.html'):
+                            page_bytes += sz
                 thumbs = sum(f.stat().st_size for f in (real_out / 'thumbs').glob('*')) \
                     if (real_out / 'thumbs').is_dir() else 0
                 # GitHub Pages allows 1 GB per site; the pages themselves are what

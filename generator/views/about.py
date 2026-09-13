@@ -24,6 +24,7 @@ body = tpl('about.html', group_example=group_example, game_example=game_example)
 (OUT / 'about').mkdir(exist_ok=True)
 (OUT / 'about' / 'index.html').write_text(page(
     'About us', body, '../', '', 'About Us',
+    styles=['page-about.css'],
     seo={'path': 'about/',
          'description': ('toolAssisted.run archives and showcases tool-assisted '
                          'speedruns: who we are, how to submit a run, and how '

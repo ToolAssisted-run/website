@@ -1,0 +1,191 @@
+/* toolAssisted.run — dedicated /search/ page stylesheet.
+   Shipped verbatim by the generator. */
+/* ---- dedicated /search/ page ---- */
+.search-wrap {
+  margin-top: 16px;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1.05rem;
+  border: 2.5px solid var(--hair);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--accent-text);
+}
+
+.search-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0 24px;
+  border-bottom: 2px solid var(--hair);
+  padding-bottom: 12px;
+}
+
+.stab {
+  padding: 6px 14px;
+  border: 2px solid var(--hair);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stab .scnt {
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--hair);
+}
+
+.stab.on {
+  border-color: var(--accent-text);
+  background: var(--bg);
+  color: var(--accent-text);
+}
+
+.stab.on .scnt {
+  border-color: var(--accent-text);
+  background: var(--panel);
+  color: var(--accent-text);
+}
+
+.search-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--faint);
+}
+
+.search-sec {
+  margin-bottom: 32px;
+}
+
+.search-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.search-sec-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-sec-title .scnt {
+  font-size: 0.88rem;
+  color: var(--faint);
+  font-weight: 400;
+}
+
+.search-browse-link {
+  font-size: 0.86rem;
+  color: var(--accent-text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.search-browse-link:hover {
+  text-decoration: underline;
+}
+
+.search-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.search-grid-systems,
+.search-grid-groups,
+.search-grid-authors {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.search-grid-games {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.search-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 2px solid var(--hair);
+  border-radius: 8px;
+  background: var(--panel);
+  text-decoration: none;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.search-card:hover {
+  border-color: var(--accent-text);
+}
+
+.search-card-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  overflow-wrap: break-word;
+  color: var(--ink);
+}
+
+.search-card-group .search-card-title {
+  font-style: italic;
+  color: var(--ink);
+}
+
+.search-card-sub {
+  font-size: 0.8rem;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.search-card-partof {
+  font-size: 0.82rem;
+  color: var(--faint);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.search-card-sys {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.search-card-sys .chip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
