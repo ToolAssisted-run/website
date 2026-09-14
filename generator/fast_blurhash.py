@@ -199,9 +199,12 @@ def _encode_pure_python(img, w: int, h: int, x_comp: int, y_comp: int) -> str:
     return "".join(result)
 
 
-# Default persistent disk cache location: website/.cache/blurhash.json
+# Default persistent disk cache locations
 DEFAULT_CACHE_PATH = pathlib.Path(__file__).resolve().parent.parent / ".cache" / "blurhash.json"
 CACHE_PATH = pathlib.Path(os.environ.get("BLURHASH_CACHE_PATH", str(DEFAULT_CACHE_PATH)))
+
+USER_CACHE_PATH = pathlib.Path.home() / ".cache" / "toolassisted" / "blurhash.json"
+SYSTEM_CACHE_PATH = pathlib.Path("/opt/archivist/.cache/blurhash.json")
 
 _DISK_CACHE: dict[str, dict[str, str]] = {}
 _DISK_CACHE_LOADED = False
@@ -214,29 +217,35 @@ def load_disk_cache():
     if _DISK_CACHE_LOADED:
         return
     _DISK_CACHE_LOADED = True
-    if CACHE_PATH.is_file():
-        try:
-            import json
+    _DISK_CACHE = {}
+    import json
 
-            _DISK_CACHE = json.loads(CACHE_PATH.read_text("utf-8"))
-        except Exception:
-            _DISK_CACHE = {}
+    for p in (SYSTEM_CACHE_PATH, USER_CACHE_PATH, CACHE_PATH):
+        if p.is_file():
+            try:
+                data = json.loads(p.read_text("utf-8"))
+                if isinstance(data, dict):
+                    _DISK_CACHE.update(data)
+            except Exception:
+                pass
 
 
 def save_disk_cache():
     global _DISK_CACHE_DIRTY
     if not _DISK_CACHE_DIRTY:
         return
-    try:
-        import json
+    import json
 
-        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = CACHE_PATH.with_suffix(".tmp")
-        tmp.write_text(json.dumps(_DISK_CACHE, separators=(",", ":")), encoding="utf-8")
-        tmp.replace(CACHE_PATH)
-        _DISK_CACHE_DIRTY = False
-    except Exception:
-        pass
+    blob = json.dumps(_DISK_CACHE, separators=(",", ":"))
+    for p in (CACHE_PATH, USER_CACHE_PATH, SYSTEM_CACHE_PATH):
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_suffix(".tmp")
+            tmp.write_text(blob, encoding="utf-8")
+            tmp.replace(p)
+        except Exception:
+            pass
+    _DISK_CACHE_DIRTY = False
 
 
 atexit.register(save_disk_cache)
@@ -270,16 +279,80 @@ def _ensure_pil() -> bool:
         return True
     except ImportError:
         pass
+
+    deps_dir = pathlib.Path.home() / ".cache" / "toolassisted" / "deps"
+    pil_dir = deps_dir / "PIL"
+    if pil_dir.is_dir():
+        if str(deps_dir) not in sys.path:
+            sys.path.insert(0, str(deps_dir))
+        try:
+            from PIL import Image
+
+            HAS_PIL = True
+            return True
+        except ImportError:
+            pass
+
     try:
         import subprocess
         import sys
 
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages", "pillow", "numpy"],
+            [sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages", "pillow"],
             check=False,
             capture_output=True,
             timeout=30,
         )
+        from PIL import Image
+
+        HAS_PIL = True
+        return True
+    except Exception:
+        pass
+
+    try:
+        import io
+        import json
+        import platform
+        import sys
+        import urllib.request
+        import zipfile
+
+        req = urllib.request.Request(
+            "https://pypi.org/pypi/pillow/json",
+            headers={"User-Agent": "toolassisted-builder"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        py_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        machine = platform.machine().lower()
+        wheel_url = None
+        for f in data.get("urls", []):
+            fn = f.get("filename", "")
+            if fn.endswith(".whl") and py_tag in fn:
+                if sys.platform.startswith("linux") and ("manylinux" in fn or "musllinux" in fn):
+                    if ("x86_64" in fn and "x86_64" in machine) or ("aarch64" in fn and "aarch64" in machine):
+                        wheel_url = f["url"]
+                        break
+                elif sys.platform == "win32" and "win_amd64" in fn:
+                    wheel_url = f["url"]
+                    break
+
+        if not wheel_url:
+            return False
+
+        deps_dir.mkdir(parents=True, exist_ok=True)
+        req = urllib.request.Request(wheel_url, headers={"User-Agent": "toolassisted-builder"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            whl_bytes = resp.read()
+
+        with zipfile.ZipFile(io.BytesIO(whl_bytes)) as zf:
+            zf.extractall(deps_dir)
+
+        if str(deps_dir) not in sys.path:
+            sys.path.insert(0, str(deps_dir))
+
         from PIL import Image
 
         HAS_PIL = True
@@ -363,9 +436,26 @@ def decode_83(s: str) -> int:
 _DATA_URL_CACHE: dict[tuple[str, int, int], str] = {}
 
 
+def _rgb_to_png_data_url(w: int, h: int, rgb_bytes: bytes) -> str:
+    import struct
+    import zlib
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    raw = b"".join(b"\x00" + rgb_bytes[y * w * 3 : (y + 1) * w * 3] for y in range(h))
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw, 9))
+        + chunk(b"IEND", b"")
+    )
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+
+
 def blurhash_to_data_url(bh: str | None, width: int = 16, height: int = 9) -> str | None:
     """Decode a Blurhash string into a compact data URL (16x9 WebP/PNG) for instant first-paint placeholders."""
-    if not bh or not isinstance(bh, str) or len(bh) < 6 or not HAS_PIL:
+    if not bh or not isinstance(bh, str) or len(bh) < 6:
         return None
     cache_key = (bh, width, height)
     if cache_key in _DATA_URL_CACHE:
@@ -416,7 +506,7 @@ def blurhash_to_data_url(bh: str | None, width: int = 16, height: int = 9) -> st
             v = np.clip(pixels, 0.0, 1.0)
             srgb = np.where(v <= 0.0031308, v * 12.92, 1.055 * (v ** (1.0 / 2.4)) - 0.055)
             srgb = (srgb * 255.0 + 0.5).astype(np.uint8)
-            img = Image.fromarray(srgb, "RGB")
+            raw_bytes = srgb.tobytes()
         else:
             factors = [[(0.0, 0.0, 0.0) for _ in range(x_comp)] for _ in range(y_comp)]
             factors[0][0] = (dc_r, dc_g, dc_b)
@@ -456,20 +546,22 @@ def blurhash_to_data_url(bh: str | None, width: int = 16, height: int = 9) -> st
                     raw[idx + 1] = linear_to_srgb(g)
                     raw[idx + 2] = linear_to_srgb(b)
                     idx += 3
-            img = Image.frombytes("RGB", (width, height), bytes(raw))
+            raw_bytes = bytes(raw)
 
-        buf = io.BytesIO()
-        try:
-            img.save(buf, format="WEBP", quality=50)
-            mime = "image/webp"
-        except Exception:
-            buf.seek(0)
-            buf.truncate()
-            img.save(buf, format="PNG")
-            mime = "image/png"
+        if HAS_PIL:
+            try:
+                img = Image.frombytes("RGB", (width, height), raw_bytes)
+                buf = io.BytesIO()
+                img.save(buf, format="WEBP", quality=50)
+                b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+                durl = f"data:image/webp;base64,{b64}"
+                _DATA_URL_CACHE[cache_key] = durl
+                return durl
+            except Exception:
+                pass
 
-        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-        durl = f"data:{mime};base64,{b64}"
+        # Zero-dependency pure Python PNG fallback
+        durl = _rgb_to_png_data_url(width, height, raw_bytes)
         _DATA_URL_CACHE[cache_key] = durl
         return durl
     except Exception:

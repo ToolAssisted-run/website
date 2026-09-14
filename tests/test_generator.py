@@ -127,7 +127,7 @@ def main():
             print(r.stderr[-2000:])
             sys.exit(1)
 
-        rd = lambda p: (out / p).read_text()
+        rd = lambda p: (out / p).read_text(encoding='utf-8')
         home = rd('index.html')
         ren = rd('runs/M900004/index.html')
         ck('wiki-relative links resolve to the site the notes were written on',
