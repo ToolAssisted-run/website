@@ -203,7 +203,14 @@ def _encode_pure_python(img, w: int, h: int, x_comp: int, y_comp: int) -> str:
 DEFAULT_CACHE_PATH = pathlib.Path(__file__).resolve().parent.parent / ".cache" / "blurhash.json"
 CACHE_PATH = pathlib.Path(os.environ.get("BLURHASH_CACHE_PATH", str(DEFAULT_CACHE_PATH)))
 
-USER_CACHE_PATH = pathlib.Path.home() / ".cache" / "toolassisted" / "blurhash.json"
+def _safe_home() -> pathlib.Path:
+    try:
+        return pathlib.Path.home()
+    except Exception:
+        return pathlib.Path("/tmp")
+
+
+USER_CACHE_PATH = _safe_home() / ".cache" / "toolassisted" / "blurhash.json"
 SYSTEM_CACHE_PATH = pathlib.Path("/opt/archivist/.cache/blurhash.json")
 
 _DISK_CACHE: dict[str, dict[str, str]] = {}
@@ -287,37 +294,37 @@ def _ensure_pil() -> bool:
     except ImportError:
         pass
 
-    deps_dir = pathlib.Path.home() / ".cache" / "toolassisted" / "deps"
-    pil_dir = deps_dir / "PIL"
-    if pil_dir.is_dir():
-        if str(deps_dir) not in sys.path:
-            sys.path.insert(0, str(deps_dir))
+    try:
+        deps_dir = _safe_home() / ".cache" / "toolassisted" / "deps"
+        pil_dir = deps_dir / "PIL"
+        if pil_dir.is_dir():
+            if str(deps_dir) not in sys.path:
+                sys.path.insert(0, str(deps_dir))
+            try:
+                from PIL import Image
+
+                HAS_PIL = True
+                return True
+            except ImportError:
+                pass
+
         try:
+            import subprocess
+            import sys
+
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages", "pillow"],
+                check=False,
+                capture_output=True,
+                timeout=30,
+            )
             from PIL import Image
 
             HAS_PIL = True
             return True
-        except ImportError:
+        except Exception:
             pass
 
-    try:
-        import subprocess
-        import sys
-
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages", "pillow"],
-            check=False,
-            capture_output=True,
-            timeout=30,
-        )
-        from PIL import Image
-
-        HAS_PIL = True
-        return True
-    except Exception:
-        pass
-
-    try:
         import io
         import json
         import platform
@@ -370,17 +377,17 @@ def _ensure_pil() -> bool:
 
 def encode_blurhash_file(path, x_comp: int = 4, y_comp: int = 3) -> str | None:
     """Encode an image file path to Blurhash, cached by the file's content hash."""
-    load_disk_cache()
-    chash = get_file_content_hash(path)
-    if chash and chash in _DISK_CACHE:
-        entry = _DISK_CACHE[chash]
-        if "bh" in entry:
-            return entry["bh"]
-
-    if not _ensure_pil():
-        return None
-
     try:
+        load_disk_cache()
+        chash = get_file_content_hash(path)
+        if chash and chash in _DISK_CACHE:
+            entry = _DISK_CACHE[chash]
+            if "bh" in entry:
+                return entry["bh"]
+
+        if not _ensure_pil():
+            return None
+
         p = pathlib.Path(path)
         if not p.is_file():
             return None
@@ -406,26 +413,29 @@ def encode_blurhash_file(path, x_comp: int = 4, y_comp: int = 3) -> str | None:
 
 def get_data_url_for_file(path, bh: str | None = None) -> str | None:
     """Get or compute 16x9 WebP Data URL for an image file, cached by content hash."""
-    load_disk_cache()
-    chash = get_file_content_hash(path)
-    if chash and chash in _DISK_CACHE and "durl" in _DISK_CACHE[chash]:
-        return _DISK_CACHE[chash]["durl"]
+    try:
+        load_disk_cache()
+        chash = get_file_content_hash(path)
+        if chash and chash in _DISK_CACHE and "durl" in _DISK_CACHE[chash]:
+            return _DISK_CACHE[chash]["durl"]
 
-    if not bh:
-        bh = encode_blurhash_file(path)
-    if not bh:
+        if not bh:
+            bh = encode_blurhash_file(path)
+        if not bh:
+            return None
+
+        durl = blurhash_to_data_url(bh)
+        if durl and chash:
+            global _DISK_CACHE_DIRTY
+            if chash not in _DISK_CACHE:
+                _DISK_CACHE[chash] = {}
+            _DISK_CACHE[chash]["durl"] = durl
+            if "bh" not in _DISK_CACHE[chash]:
+                _DISK_CACHE[chash]["bh"] = bh
+            _DISK_CACHE_DIRTY = True
+        return durl
+    except Exception:
         return None
-
-    durl = blurhash_to_data_url(bh)
-    if durl and chash:
-        global _DISK_CACHE_DIRTY
-        if chash not in _DISK_CACHE:
-            _DISK_CACHE[chash] = {}
-        _DISK_CACHE[chash]["durl"] = durl
-        if "bh" not in _DISK_CACHE[chash]:
-            _DISK_CACHE[chash]["bh"] = bh
-        _DISK_CACHE_DIRTY = True
-    return durl
 
 
 BASE83_REV = {c: i for i, c in enumerate(BASE83_CHARS)}

@@ -417,16 +417,25 @@ def thumb_blurhash(r):
     if not t or '_dir' not in r:
         return None
     src = r['_dir'] / t
-    return encode_blurhash_file(src)
+    if not src.is_file():
+        return None
+    try:
+        return encode_blurhash_file(src)
+    except Exception:
+        return None
 
 def game_blurhash(g):
     """Return Blurhash string for a game's thumbnail face, falling back to newest run."""
     t = g.get('thumbnail')
     if t:
         src = ARCHIVE / 'games' / g['key'] / t
-        bh = encode_blurhash_file(src)
-        if bh:
-            return bh
+        if src.is_file():
+            try:
+                bh = encode_blurhash_file(src)
+                if bh:
+                    return bh
+            except Exception:
+                pass
     for r in g.get('runs', []):
         if r.get('thumbnail'):
             bh = thumb_blurhash(r)
@@ -439,7 +448,12 @@ def shot_blurhash(r, rel_path):
     if '_dir' not in r:
         return None
     src = r['_dir'] / rel_path
-    return encode_blurhash_file(src)
+    if not src.is_file():
+        return None
+    try:
+        return encode_blurhash_file(src)
+    except Exception:
+        return None
 
 def thumb_data_url(r):
     """Return data URL (16x9 WebP LQIP) decoded from run thumbnail Blurhash, or None."""
@@ -447,16 +461,25 @@ def thumb_data_url(r):
     if not t or '_dir' not in r:
         return None
     src = r['_dir'] / t
-    return get_data_url_for_file(src, bh=thumb_blurhash(r))
+    if not src.is_file():
+        return None
+    try:
+        return get_data_url_for_file(src, bh=thumb_blurhash(r))
+    except Exception:
+        return None
 
 def game_data_url(g):
     """Return data URL (16x9 WebP LQIP) decoded from game face Blurhash, or None."""
     t = g.get('thumbnail')
     if t:
         src = ARCHIVE / 'games' / g['key'] / t
-        durl = get_data_url_for_file(src)
-        if durl:
-            return durl
+        if src.is_file():
+            try:
+                durl = get_data_url_for_file(src)
+                if durl:
+                    return durl
+            except Exception:
+                pass
     for r in g.get('runs', []):
         if r.get('thumbnail'):
             durl = thumb_data_url(r)
@@ -469,7 +492,12 @@ def shot_data_url(r, rel_path):
     if '_dir' not in r:
         return None
     src = r['_dir'] / rel_path
-    return get_data_url_for_file(src)
+    if not src.is_file():
+        return None
+    try:
+        return get_data_url_for_file(src)
+    except Exception:
+        return None
 
 def thumb_alt(r):
     """What the thumbnail is, for image search and screen readers."""
