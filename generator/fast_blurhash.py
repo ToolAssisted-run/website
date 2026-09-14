@@ -275,106 +275,6 @@ def get_file_content_hash(path: pathlib.Path | str) -> str | None:
         return None
 
 
-_PIL_ATTEMPTED = False
-
-
-def _ensure_pil() -> bool:
-    global HAS_PIL, Image, _PIL_ATTEMPTED
-    if HAS_PIL:
-        return True
-    if _PIL_ATTEMPTED:
-        return False
-    _PIL_ATTEMPTED = True
-
-    try:
-        from PIL import Image
-
-        HAS_PIL = True
-        return True
-    except ImportError:
-        pass
-
-    try:
-        deps_dir = _safe_home() / ".cache" / "toolassisted" / "deps"
-        pil_dir = deps_dir / "PIL"
-        if pil_dir.is_dir():
-            if str(deps_dir) not in sys.path:
-                sys.path.insert(0, str(deps_dir))
-            try:
-                from PIL import Image
-
-                HAS_PIL = True
-                return True
-            except ImportError:
-                pass
-
-        try:
-            import subprocess
-            import sys
-
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages", "pillow"],
-                check=False,
-                capture_output=True,
-                timeout=30,
-            )
-            from PIL import Image
-
-            HAS_PIL = True
-            return True
-        except Exception:
-            pass
-
-        import io
-        import json
-        import platform
-        import sys
-        import urllib.request
-        import zipfile
-
-        req = urllib.request.Request(
-            "https://pypi.org/pypi/pillow/json",
-            headers={"User-Agent": "toolassisted-builder"},
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-
-        py_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
-        machine = platform.machine().lower()
-        wheel_url = None
-        for f in data.get("urls", []):
-            fn = f.get("filename", "")
-            if fn.endswith(".whl") and py_tag in fn:
-                if sys.platform.startswith("linux") and ("manylinux" in fn or "musllinux" in fn):
-                    if ("x86_64" in fn and "x86_64" in machine) or ("aarch64" in fn and "aarch64" in machine):
-                        wheel_url = f["url"]
-                        break
-                elif sys.platform == "win32" and "win_amd64" in fn:
-                    wheel_url = f["url"]
-                    break
-
-        if not wheel_url:
-            return False
-
-        deps_dir.mkdir(parents=True, exist_ok=True)
-        req = urllib.request.Request(wheel_url, headers={"User-Agent": "toolassisted-builder"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            whl_bytes = resp.read()
-
-        with zipfile.ZipFile(io.BytesIO(whl_bytes)) as zf:
-            zf.extractall(deps_dir)
-
-        if str(deps_dir) not in sys.path:
-            sys.path.insert(0, str(deps_dir))
-
-        from PIL import Image
-
-        HAS_PIL = True
-        return True
-    except Exception:
-        return False
-
-
 def encode_blurhash_file(path, x_comp: int = 4, y_comp: int = 3) -> str | None:
     """Encode an image file path to Blurhash, cached by the file's content hash."""
     try:
@@ -385,7 +285,7 @@ def encode_blurhash_file(path, x_comp: int = 4, y_comp: int = 3) -> str | None:
             if "bh" in entry:
                 return entry["bh"]
 
-        if not _ensure_pil():
+        if not HAS_PIL:
             return None
 
         p = pathlib.Path(path)

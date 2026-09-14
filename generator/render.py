@@ -11,15 +11,10 @@ import json
 import pathlib
 import re
 import shutil
-import subprocess
-import sys
 import urllib.parse
 import jinja2
 from markupsafe import Markup
-try:
-    from fast_blurhash import encode_blurhash_file, blurhash_to_data_url, get_data_url_for_file
-except ImportError:
-    from generator.fast_blurhash import encode_blurhash_file, blurhash_to_data_url, get_data_url_for_file
+from fast_blurhash import encode_blurhash_file, blurhash_to_data_url, get_data_url_for_file
 import model
 from config import (
     ARCHIVE,
