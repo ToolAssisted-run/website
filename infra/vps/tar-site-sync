@@ -6,11 +6,22 @@
 # the restart's startup build republishes the site with the latest archive.
 set -euo pipefail
 
-# 0. Environment & credentials
-[ -f /etc/archivist.env ] && . /etc/archivist.env
-unset GIT_SSH_COMMAND   # each checkout has its own core.sshCommand (website_deploy_key /
-                        # archive_deploy_key) — don't let archivist.env's archive-only
-                        # write key clobber it for both repos
+# 0. Credentials. Each checkout carries its own core.sshCommand (the website
+# a read-only deploy key, the archive the archivist's own), which beats any
+# GIT_SSH_COMMAND in the environment, so one key never speaks for both repos.
+# /etc/archivist.env is NOT sourced here: it is a systemd EnvironmentFile, and
+# a line like `GIT_SSH_COMMAND=ssh -i /path -o ...` means "run -i" to a shell.
+unset GIT_SSH_COMMAND
+
+# An archive checkout with no key of its own cannot fetch at all: git then
+# runs as root with no identity and GitHub answers "Permission denied
+# (publickey)", which stopped every deploy on 2026-09-14. Give it the
+# archivist's key, once, rather than requiring a hand-configured host.
+if [ -d /opt/archivist/archive/.git ] && [ -f /opt/archivist/deploy_key ] \
+   && ! git -C /opt/archivist/archive config --local --get core.sshCommand >/dev/null; then
+    git -C /opt/archivist/archive config --local core.sshCommand \
+        'ssh -i /opt/archivist/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+fi
 
 # 1. Update the archive repository checkout if present
 if [ -d /opt/archivist/archive/.git ]; then
@@ -35,10 +46,19 @@ rm -rf /opt/archivist/templates 2>/dev/null || true
 cp -r archivist/templates /opt/archivist/templates 2>/dev/null || true
 pip3 install --quiet --break-system-packages pillow numpy 2>/dev/null || pip3 install --quiet pillow numpy 2>/dev/null || true
 
-# 3. Self-update this sync script if changed in repository
-if [ -f /opt/archivist/website/infra/vps/tar-site-sync ]; then
-    cp /opt/archivist/website/infra/vps/tar-site-sync /usr/local/bin/tar-site-sync 2>/dev/null || true
-    chmod +x /usr/local/bin/tar-site-sync 2>/dev/null || true
+# 3. Self-update this sync script if changed in repository.
+# Through a rename, never a copy: bash reads a script as it runs it, so
+# writing into the file it is reading makes it carry on at the same byte
+# offset in the new text and run the middle of a word ("line 35: e: command
+# not found", and the restart below never happened). A rename leaves this
+# process reading the inode it started with, and the next run gets the new one.
+new_sync=/opt/archivist/website/infra/vps/tar-site-sync
+if [ -f "$new_sync" ] && ! cmp -s "$new_sync" /usr/local/bin/tar-site-sync; then
+    tmp=$(mktemp /usr/local/bin/.tar-site-sync.XXXXXX) || tmp=
+    if [ -n "$tmp" ]; then
+        cat "$new_sync" > "$tmp" && chmod 755 "$tmp" \
+            && mv -f "$tmp" /usr/local/bin/tar-site-sync || rm -f "$tmp"
+    fi
 fi
 
 systemctl restart archivist
