@@ -99,7 +99,15 @@ jobs:
           fetch-depth: 0   # the generator reads arrival times from git history
 
       - name: Install test dependencies
-        run: pip install --quiet flask jsonschema
+        run: pip install --quiet flask jsonschema pillow numpy
+
+      - name: Cache Blurhash
+        uses: actions/cache@v4
+        with:
+          path: website/.cache/blurhash.json
+          key: blurhash-${{ runner.os }}-${{ hashFiles('archive/games/**/thumbnail.*', 'archive/games/**/thumb.*') }}
+          restore-keys: |
+            blurhash-${{ runner.os }}-
 
       - uses: actions/setup-node@v4      # for app.js syntax checking
         with:
@@ -177,7 +185,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install test dependencies
-        run: pip install --quiet flask jsonschema
+        run: pip install --quiet flask jsonschema pillow numpy
 
       - name: Archivist tests
         # The suite launches the archivist with a stripped env (fresh HOME), so
@@ -241,6 +249,17 @@ jobs:
           path: archive
           ref: main
           fetch-depth: 0   # the generator reads arrival times from git history
+
+      - name: Install build dependencies
+        run: pip install --quiet pillow numpy
+
+      - name: Cache Blurhash
+        uses: actions/cache@v4
+        with:
+          path: website/.cache/blurhash.json
+          key: blurhash-${{ runner.os }}-${{ hashFiles('archive/games/**/thumbnail.*', 'archive/games/**/thumb.*') }}
+          restore-keys: |
+            blurhash-${{ runner.os }}-
 
       - name: Build site from archive
         env:

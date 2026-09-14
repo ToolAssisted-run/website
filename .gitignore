@@ -1,4 +1,6 @@
 stage-build/
+site-build/
+.cache/
 
 # Python bytecode from the test suites
 __pycache__/

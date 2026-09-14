@@ -17,9 +17,9 @@ import urllib.parse
 import jinja2
 from markupsafe import Markup
 try:
-    from fast_blurhash import encode_blurhash_file, blurhash_to_data_url
+    from fast_blurhash import encode_blurhash_file, blurhash_to_data_url, get_data_url_for_file
 except ImportError:
-    from generator.fast_blurhash import encode_blurhash_file, blurhash_to_data_url
+    from generator.fast_blurhash import encode_blurhash_file, blurhash_to_data_url, get_data_url_for_file
 import model
 from config import (
     ARCHIVE,
@@ -414,7 +414,7 @@ def thumb_url(r):
 def thumb_blurhash(r):
     """Return Blurhash string for a run's thumbnail, or None."""
     t = r.get('thumbnail')
-    if not t:
+    if not t or '_dir' not in r:
         return None
     src = r['_dir'] / t
     return encode_blurhash_file(src)
@@ -436,23 +436,40 @@ def game_blurhash(g):
 
 def shot_blurhash(r, rel_path):
     """Return Blurhash string for a proof screenshot, or None."""
+    if '_dir' not in r:
+        return None
     src = r['_dir'] / rel_path
     return encode_blurhash_file(src)
 
 def thumb_data_url(r):
     """Return data URL (16x9 WebP LQIP) decoded from run thumbnail Blurhash, or None."""
-    bh = thumb_blurhash(r)
-    return blurhash_to_data_url(bh) if bh else None
+    t = r.get('thumbnail')
+    if not t or '_dir' not in r:
+        return None
+    src = r['_dir'] / t
+    return get_data_url_for_file(src, bh=thumb_blurhash(r))
 
 def game_data_url(g):
     """Return data URL (16x9 WebP LQIP) decoded from game face Blurhash, or None."""
-    bh = game_blurhash(g)
-    return blurhash_to_data_url(bh) if bh else None
+    t = g.get('thumbnail')
+    if t:
+        src = ARCHIVE / 'games' / g['key'] / t
+        durl = get_data_url_for_file(src)
+        if durl:
+            return durl
+    for r in g.get('runs', []):
+        if r.get('thumbnail'):
+            durl = thumb_data_url(r)
+            if durl:
+                return durl
+    return None
 
 def shot_data_url(r, rel_path):
     """Return data URL decoded from screenshot Blurhash, or None."""
-    bh = shot_blurhash(r, rel_path)
-    return blurhash_to_data_url(bh) if bh else None
+    if '_dir' not in r:
+        return None
+    src = r['_dir'] / rel_path
+    return get_data_url_for_file(src)
 
 def thumb_alt(r):
     """What the thumbnail is, for image search and screen readers."""

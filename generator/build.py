@@ -142,3 +142,6 @@ _today = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
     + 'Disallow: /games/*/edit/\n'
     + f'Sitemap: {SITE}/sitemap.xml\n', encoding='utf-8')
 print(f'sitemap: {len(_entries)} urls')
+
+from fast_blurhash import save_disk_cache
+save_disk_cache()

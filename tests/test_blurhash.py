@@ -95,6 +95,26 @@ def test_blurhash_to_data_url():
     ck("invalid blurhash returns None", fast_blurhash.blurhash_to_data_url("short") is None)
 
 
+def test_content_hash_invalidation():
+    with tempfile.TemporaryDirectory() as td:
+        p = pathlib.Path(td) / "image.png"
+        img1 = Image.new("RGB", (64, 64), color=(255, 0, 0))
+        img1.save(p)
+
+        bh1 = fast_blurhash.encode_blurhash_file(p)
+        durl1 = fast_blurhash.get_data_url_for_file(p)
+        ck("initial image encodes blurhash and data url", bool(bh1 and durl1))
+
+        # Update the image content (e.g. from red to blue)
+        img2 = Image.new("RGB", (64, 64), color=(0, 0, 255))
+        img2.save(p)
+
+        bh2 = fast_blurhash.encode_blurhash_file(p)
+        durl2 = fast_blurhash.get_data_url_for_file(p)
+        ck("content change automatically invalidates cache and yields new blurhash", bh1 != bh2)
+        ck("content change yields new data URL", durl1 != durl2)
+
+
 def main():
     test_encoder_solid()
     test_encoder_gradient()
@@ -102,6 +122,7 @@ def main():
     test_file_cache()
     test_corrupt_or_mock_images()
     test_blurhash_to_data_url()
+    test_content_hash_invalidation()
 
     print("---", len(failures), "failures")
     sys.exit(1 if failures else 0)

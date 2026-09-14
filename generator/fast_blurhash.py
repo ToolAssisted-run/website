@@ -9,7 +9,9 @@ Optimizations applied:
 5. In-memory and disk cache keyed by (file_path, mtime, size).
 6. Graceful handling of corrupt, missing, or mock test fixture images.
 """
+import atexit
 import base64
+import hashlib
 import io
 import math
 import os
@@ -197,30 +199,153 @@ def _encode_pure_python(img, w: int, h: int, x_comp: int, y_comp: int) -> str:
     return "".join(result)
 
 
-# In-memory cache: (abs_path_str, mtime, size) -> blurhash
-_BLURHASH_CACHE = {}
+# Default persistent disk cache location: website/.cache/blurhash.json
+DEFAULT_CACHE_PATH = pathlib.Path(__file__).resolve().parent.parent / ".cache" / "blurhash.json"
+CACHE_PATH = pathlib.Path(os.environ.get("BLURHASH_CACHE_PATH", str(DEFAULT_CACHE_PATH)))
+
+_DISK_CACHE: dict[str, dict[str, str]] = {}
+_DISK_CACHE_LOADED = False
+_DISK_CACHE_DIRTY = False
+_STAT_CACHE: dict[tuple[str, float, int], str] = {}
 
 
-def encode_blurhash_file(path, x_comp: int = 4, y_comp: int = 3) -> str | None:
-    """Encode an image file path to Blurhash, returning None on error."""
-    if not HAS_PIL:
-        return None
+def load_disk_cache():
+    global _DISK_CACHE, _DISK_CACHE_LOADED
+    if _DISK_CACHE_LOADED:
+        return
+    _DISK_CACHE_LOADED = True
+    if CACHE_PATH.is_file():
+        try:
+            import json
+
+            _DISK_CACHE = json.loads(CACHE_PATH.read_text("utf-8"))
+        except Exception:
+            _DISK_CACHE = {}
+
+
+def save_disk_cache():
+    global _DISK_CACHE_DIRTY
+    if not _DISK_CACHE_DIRTY:
+        return
+    try:
+        import json
+
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CACHE_PATH.with_suffix(".tmp")
+        tmp.write_text(json.dumps(_DISK_CACHE, separators=(",", ":")), encoding="utf-8")
+        tmp.replace(CACHE_PATH)
+        _DISK_CACHE_DIRTY = False
+    except Exception:
+        pass
+
+
+atexit.register(save_disk_cache)
+
+
+def get_file_content_hash(path: pathlib.Path | str) -> str | None:
+    """Compute a fast content hash (blake2b 16 bytes) of an image file, cached by stat."""
     try:
         p = pathlib.Path(path)
         if not p.is_file():
             return None
         st = p.stat()
-        cache_key = (str(p.resolve()), st.st_mtime, st.st_size, x_comp, y_comp)
-        if cache_key in _BLURHASH_CACHE:
-            return _BLURHASH_CACHE[cache_key]
+        stat_key = (str(p.resolve()), st.st_mtime, st.st_size)
+        if stat_key in _STAT_CACHE:
+            return _STAT_CACHE[stat_key]
+        h = hashlib.blake2b(p.read_bytes(), digest_size=16).hexdigest()
+        _STAT_CACHE[stat_key] = h
+        return h
+    except Exception:
+        return None
+
+
+def _ensure_pil() -> bool:
+    global HAS_PIL, Image
+    if HAS_PIL:
+        return True
+    try:
+        from PIL import Image
+
+        HAS_PIL = True
+        return True
+    except ImportError:
+        pass
+    try:
+        import subprocess
+        import sys
+
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages", "pillow", "numpy"],
+            check=False,
+            capture_output=True,
+            timeout=30,
+        )
+        from PIL import Image
+
+        HAS_PIL = True
+        return True
+    except Exception:
+        return False
+
+
+def encode_blurhash_file(path, x_comp: int = 4, y_comp: int = 3) -> str | None:
+    """Encode an image file path to Blurhash, cached by the file's content hash."""
+    load_disk_cache()
+    chash = get_file_content_hash(path)
+    if chash and chash in _DISK_CACHE:
+        entry = _DISK_CACHE[chash]
+        if "bh" in entry:
+            return entry["bh"]
+
+    if not _ensure_pil():
+        return None
+
+    try:
+        p = pathlib.Path(path)
+        if not p.is_file():
+            return None
 
         with Image.open(p) as img:
             bh = encode_blurhash_from_image(img, x_comp, y_comp)
-            _BLURHASH_CACHE[cache_key] = bh
-            return bh
+
+        if bh and chash:
+            global _DISK_CACHE_DIRTY
+            if chash not in _DISK_CACHE:
+                _DISK_CACHE[chash] = {}
+            _DISK_CACHE[chash]["bh"] = bh
+            if "durl" not in _DISK_CACHE[chash]:
+                durl = blurhash_to_data_url(bh)
+                if durl:
+                    _DISK_CACHE[chash]["durl"] = durl
+            _DISK_CACHE_DIRTY = True
+        return bh
     except Exception:
         # Gracefully tolerate mock bytes (e.g. tests/mkarchive.py synthetic PNGs) or unreadable images
         return None
+
+
+def get_data_url_for_file(path, bh: str | None = None) -> str | None:
+    """Get or compute 16x9 WebP Data URL for an image file, cached by content hash."""
+    load_disk_cache()
+    chash = get_file_content_hash(path)
+    if chash and chash in _DISK_CACHE and "durl" in _DISK_CACHE[chash]:
+        return _DISK_CACHE[chash]["durl"]
+
+    if not bh:
+        bh = encode_blurhash_file(path)
+    if not bh:
+        return None
+
+    durl = blurhash_to_data_url(bh)
+    if durl and chash:
+        global _DISK_CACHE_DIRTY
+        if chash not in _DISK_CACHE:
+            _DISK_CACHE[chash] = {}
+        _DISK_CACHE[chash]["durl"] = durl
+        if "bh" not in _DISK_CACHE[chash]:
+            _DISK_CACHE[chash]["bh"] = bh
+        _DISK_CACHE_DIRTY = True
+    return durl
 
 
 BASE83_REV = {c: i for i, c in enumerate(BASE83_CHARS)}

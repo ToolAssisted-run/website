@@ -919,7 +919,10 @@ archivist, module responsibilities). What matters designwise:
   tile containers, alongside `data-blurhash="..."` on the image tags. Full
   images fade in cleanly on load via frame-quantized steps (`steps(3)`), with
   client-side canvas decoding retained as a progressive enhancement for dynamic
-  elements.
+  elements. A persistent build cache (`.cache/blurhash.json`, retained across CI
+  builds via GitHub Actions cache) stores results keyed by each image's 16-byte
+  content hash, ensuring instant incremental builds while automatically
+  regenerating placeholders whenever an image changes.
 - **Encodes come from six platforms** (YouTube, Niconico, Bilibili, Vimeo,
   Dailymotion, Internet Archive), registered once in
   `archivist/providers.py`: hosts + id pattern (both must match) + embed URL
