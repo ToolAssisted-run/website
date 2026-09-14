@@ -13,13 +13,6 @@
   margin: 0 0 14px;
 }
 
-/* the attribution stands under the section, said quietly */
-.chimeranote {
-  font-size: 0.82rem;
-  color: var(--faint);
-  margin: 14px 0 0;
-}
-
 .chimeradl {
   display: flex;
   align-items: center;
