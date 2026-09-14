@@ -1197,25 +1197,29 @@ archivist, module responsibilities). What matters designwise:
 - **Everything works on the archive's `main`**. The old `staging` branch
   was merged in (a two-parent commit whose tree is staging's; nothing left
   behind) and stays **frozen** so old forum links into it keep resolving.
-- **Deploying anything** = push to main. The `sync-vps` job in `deploy.yml`
-  runs after the full suite passes and reaches the VPS through a
+- **Deploying anything** = push to main or archive updates. The `sync-vps` job in
+  `deploy.yml` runs after the full suite passes (or when tests are skipped for
+  archive signals and scheduled backstops) and reaches the VPS through a
   forced-command SSH key (`VPS_SYNC_KEY` secret) that can only ever run
-  `/usr/local/bin/tar-site-sync`: pull the website checkout at
-  `/opt/archivist/website` (over **SSH with a read-only deploy key**,
-  `/opt/archivist/website_deploy_key`, set as that checkout's own
+  `/usr/local/bin/tar-site-sync`: pull both the website checkout at
+  `/opt/archivist/website` and the archive checkout at `/opt/archivist/archive`
+  (both over **SSH with read-only deploy keys**, `/opt/archivist/website_deploy_key`
+  and `/opt/archivist/archive_deploy_key`, set as the checkouts' own
   `core.sshCommand`: GitHub began answering the host's anonymous HTTPS
   git-upload-pack with 401, so every deploy failed at the pull while the
-  same URL still advertised its refs), copy **all** of `archivist/*.py` to
-  `/opt/archivist/`, restart the archivist (whose startup build republishes
-  the site). **A second, independent door**: GitHub's own webhook reaches
+  same URL still advertised its refs), update `/usr/local/bin/tar-site-sync`
+  from the repo, copy **all** of `archivist/*.py` to `/opt/archivist/`, and
+  restart the archivist (whose startup build republishes the site and runs the
+  backfill). **A second, independent door**: GitHub's own webhook reaches
   `POST /api/hooks/github` on the archivist, HMAC-verified
   (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`). It opens on exactly the
-  condition CI's own job does — a **successful `Build and deploy` run,
+  condition code pushes need — a **successful `Build and deploy` run,
   triggered by a push to main** (`workflow_run` completed) — and it
   deploys **that run's commit**, passed to the script as its argument, so
   main racing ahead to a red commit cannot ride along. A bare push only
   logs that work is coming; red runs, other branches, and the schedule and
-  archive-content runs (both skip the suite) deploy nothing. The script
+  archive-content runs (both skip the suite) deploy nothing through this
+  webhook door (they deploy via CI's `sync-vps` job directly). The script
   runs in a transient systemd unit, since it ends by restarting the
   archivist and would otherwise kill its own parent; repeat calls inside
   20 s fold together. It exists because Actions is not always there: a

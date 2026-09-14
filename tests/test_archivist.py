@@ -32,7 +32,14 @@ import urllib.request
 import zipfile
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-ARCHIVE = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path.home() / 'ToolAssisted-archive')
+if len(sys.argv) > 1:
+    ARCHIVE = pathlib.Path(sys.argv[1])
+elif (pathlib.Path.home() / 'ToolAssisted-archive').exists():
+    ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
+elif (pathlib.Path.home() / '~' / 'ToolAssisted-archive').exists():
+    ARCHIVE = pathlib.Path.home() / '~' / 'ToolAssisted-archive'
+else:
+    ARCHIVE = pathlib.Path.home() / 'ToolAssisted-archive'
 PNG = b'\x89PNG\r\n\x1a\n' + b'\0' * 50
 KEY = 'testkey'
 

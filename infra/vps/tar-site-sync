@@ -1,9 +1,22 @@
 #!/bin/bash
-# The live origin's code deploy, run by CI (deploy.yml, job sync-vps) through
-# a forced-command SSH key after the full test suite has passed on main.
-# Pulls the website checkout, installs the archivist, restarts it; the
-# restart's startup build republishes the site with the new generator.
+# The live origin's code and content deploy, run by CI (deploy.yml, job sync-vps)
+# through a forced-command SSH key after the full test suite has passed on main,
+# or when archive content dispatches / scheduled rebuilds trigger.
+# Pulls the website and archive checkouts, installs the archivist, restarts it;
+# the restart's startup build republishes the site with the latest archive.
 set -euo pipefail
+
+# 1. Update the archive repository checkout if present
+if [ -d /opt/archivist/archive/.git ]; then
+    cd /opt/archivist/archive
+    git rebase --abort 2>/dev/null || true
+    git merge --abort 2>/dev/null || true
+    git fetch -q origin
+    git reset -q --hard origin/main
+    git clean -qfd
+fi
+
+# 2. Update website checkout and archivist modules
 cd /opt/archivist/website
 git fetch -q origin
 git reset -q --hard origin/main
@@ -13,5 +26,15 @@ cp archivist/*.py /opt/archivist/
 rm -rf /opt/archivist/templates
 cp -r archivist/templates /opt/archivist/templates
 pip3 install --quiet pillow numpy 2>/dev/null || true
+
+# 3. Self-update this sync script if changed in repository
+if [ -f /opt/archivist/website/infra/vps/tar-site-sync ]; then
+    cp /opt/archivist/website/infra/vps/tar-site-sync /usr/local/bin/tar-site-sync
+    chmod +x /usr/local/bin/tar-site-sync
+fi
+
 systemctl restart archivist
-echo "synced to $(git rev-parse --short HEAD): $(git log -1 --format=%s)"
+echo "synced website to $(cd /opt/archivist/website && git rev-parse --short HEAD): $(cd /opt/archivist/website && git log -1 --format=%s)"
+if [ -d /opt/archivist/archive/.git ]; then
+    echo "archive at $(cd /opt/archivist/archive && git rev-parse --short HEAD): $(cd /opt/archivist/archive && git log -1 --format=%s)"
+fi
