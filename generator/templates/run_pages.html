@@ -30,7 +30,9 @@
 <div class="player" id="run-player"><iframe src="{{ pv['embed'] }}" title="Run encode" allowfullscreen></iframe></div>
 <p class="srcnote">External embedded video, not hosted at toolAssisted.run · <a href="{{ enc['url'] }}">watch on {{ pv['name'] }}</a></p>
 {% elif thumb_url(r) %}
-<div class="poster"><img src="{{ thumb_url(r) }}" alt="run thumbnail"></div>
+{% set rbh = thumb_blurhash(r) %}
+{% set rdurl = thumb_data_url(r) %}
+<div class="poster"{% if rdurl %} style="background-image:url('{{ rdurl }}');background-size:cover;"{% endif %}><img {% if rbh %}data-blurhash="{{ rbh }}" {% endif %}src="{{ thumb_url(r) }}" alt="run thumbnail" onload="this.classList.add('blurhash-loaded')"></div>
 <p class="srcnote">Thumbnail derived from the encode</p>
 {% endif %}
 {% endset %}
@@ -50,7 +52,9 @@
   <div class="stage-player" id="run-stage-player">
     {% if 'sexual' in warns and vid|trim %}
     <template id="nsfwreal">{{ vid }}</template>
-    <div class="nsfw-gate" id="nsfwgate">{% if thumb_url(r) %}<img class="nsfwblur" src="{{ thumb_url(r) }}" alt="">{% endif %}
+    {% set rbh = thumb_blurhash(r) %}
+    {% set rdurl = thumb_data_url(r) %}
+    <div class="nsfw-gate" id="nsfwgate"{% if rdurl %} style="background-image:url('{{ rdurl }}');background-size:cover;"{% endif %}>{% if thumb_url(r) %}<img class="nsfwblur" {% if rbh %}data-blurhash="{{ rbh }}" {% endif %}src="{{ thumb_url(r) }}" alt="" onload="this.classList.add('blurhash-loaded')">{% endif %}
     <div class="nsfw-overlay"><p>This run is flagged for sexual content.</p>
     <button id="nsfwok" class="btn">I confirm I am 18 or older</button></div></div>
     {% else %}

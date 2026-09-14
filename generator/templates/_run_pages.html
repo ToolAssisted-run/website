@@ -6,7 +6,7 @@
 {% endmacro %}
 
 {% macro shot(r, act, alt) %}
-{% if act.get('screenshot') %}<a class="shot" href="{{ shot_url(r, act['screenshot']) }}"><img src="{{ shot_url(r, act['screenshot']) }}" {% if alt %}alt="{{ alt }}" loading="lazy"{% else %}loading="lazy" alt=""{% endif %}></a>{% endif %}
+{% if act.get('screenshot') %}{% set sbh = shot_blurhash(r, act['screenshot']) %}{% set sdurl = shot_data_url(r, act['screenshot']) %}<a class="shot" href="{{ shot_url(r, act['screenshot']) }}"{% if sdurl %} style="background-image:url('{{ sdurl }}');background-size:cover;"{% endif %}><img {% if sbh %}data-blurhash="{{ sbh }}" {% endif %}src="{{ shot_url(r, act['screenshot']) }}" {% if alt %}alt="{{ alt }}" loading="lazy"{% else %}loading="lazy" alt=""{% endif %} onload="this.classList.add('blurhash-loaded')"></a>{% endif %}
 {% endmacro %}
 
 {# kind: 'repro' (markdown notes, ending screenshot, emulator), 'verify' (inline notes),

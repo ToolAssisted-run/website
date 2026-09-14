@@ -5,7 +5,9 @@
 {% set newest = newest_thumb(g) %}
 <a class="card" data-stars="{{ stars_of(g['runs']) }}" data-views="{{ views_of(g['runs']) }}" data-title="{{ g['title'] }}" data-released="{{ g.get('released', '') }}"{% if g.get('unofficial') %} data-unofficial="1"{% endif %} href="{{ prefix }}{{ g['key'] }}/">
 {% if own %}
-<span class="thumb"><span class="sys">{{ g['system'].upper() }}</span><img src="/thumbs/{{ own }}" alt="" loading="lazy"></span>
+{% set gbh = game_blurhash(g) %}
+{% set gdurl = game_data_url(g) %}
+<span class="thumb"{% if gdurl %} style="background-image:url('{{ gdurl }}');background-size:cover;"{% endif %}><span class="sys">{{ g['system'].upper() }}</span><img {% if gbh %}data-blurhash="{{ gbh }}" {% endif %}src="/thumbs/{{ own }}" alt="" loading="lazy" onload="this.classList.add('blurhash-loaded')"></span>
 {% elif newest %}
 {{ thumb_html(newest) }}
 {% else %}
@@ -25,7 +27,7 @@
 <span class="thumb"><span class="sys">{{ ggames[0]['system'].upper() if ggames else 'NEW' }}</span></span>
 {% else %}
 {% set ns = namespace(nsfw=false) %}
-<span class="thumb collage" data-n="{{ tiles|length }}">{% for r in tiles %}{% if 'sexual' in r.get('contentWarnings', []) %}{% set ns.nsfw = true %}{% endif %}<span class="tile"><img class="{{ 'nsfwblur' if 'sexual' in r.get('contentWarnings', []) else '' }}" src="{{ thumb_url(r) }}" alt="" loading="lazy"></span>{% endfor %}{% if ns.nsfw %}<span class="nsfw18">18+</span>{% endif %}</span>
+<span class="thumb collage" data-n="{{ tiles|length }}">{% for r in tiles %}{% if 'sexual' in r.get('contentWarnings', []) %}{% set ns.nsfw = true %}{% endif %}{% set tbh = thumb_blurhash(r) %}{% set tdurl = thumb_data_url(r) %}<span class="tile"{% if tdurl %} style="background-image:url('{{ tdurl }}');background-size:cover;"{% endif %}><img class="{{ 'nsfwblur' if 'sexual' in r.get('contentWarnings', []) else '' }}" {% if tbh %}data-blurhash="{{ tbh }}" {% endif %}src="{{ thumb_url(r) }}" alt="" loading="lazy" onload="this.classList.add('blurhash-loaded')"></span>{% endfor %}{% if ns.nsfw %}<span class="nsfw18">18+</span>{% endif %}</span>
 {% endif %}
 {% endmacro %}
 

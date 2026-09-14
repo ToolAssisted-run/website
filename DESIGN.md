@@ -910,6 +910,16 @@ archivist, module responsibilities). What matters designwise:
 - **The site serves its own images**: thumbnails at `/thumbs/`, proof
   screenshots at `/shots/` (raw.githubusercontent 429s a page with hundreds
   of hotlinks). Movie downloads stay on raw, one click at a time.
+  Images carry Blurhash placeholders precomputed at build time via a vectorized
+  discrete cosine transform with cached lookup tables and precomputed basis
+  matrices (Uploadcare faster blurhash optimizations). To eliminate placeholder
+  pop-in and ensure instant first-paint placeholders with zero network requests
+  or script delay, the build embeds a compact 16x9 WebP data URL (~100 bytes)
+  directly into the inline background CSS of thumbnail, poster, and collage
+  tile containers, alongside `data-blurhash="..."` on the image tags. Full
+  images fade in cleanly on load via frame-quantized steps (`steps(3)`), with
+  client-side canvas decoding retained as a progressive enhancement for dynamic
+  elements.
 - **Encodes come from six platforms** (YouTube, Niconico, Bilibili, Vimeo,
   Dailymotion, Internet Archive), registered once in
   `archivist/providers.py`: hosts + id pattern (both must match) + embed URL

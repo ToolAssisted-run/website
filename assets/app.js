@@ -1792,12 +1792,204 @@ export function initSortableTables() {
     .forEach(armSortableTable);
 }
 
+// ---- Blurhash image placeholder rendering ----
+var B83 =
+  '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~';
+
+function decode83(str) {
+  var val = 0;
+  for (var i = 0; i < str.length; i++) {
+    val = val * 83 + B83.indexOf(str[i]);
+  }
+  return val;
+}
+
+function sRGBToLinear(v) {
+  v = v / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+function linearTosRGB(v) {
+  v = Math.max(0, Math.min(1, v));
+  return v <= 0.0031308
+    ? Math.round(v * 12.92 * 255)
+    : Math.round((1.055 * Math.pow(v, 1 / 2.4) - 0.055) * 255);
+}
+
+function signPow(v, exp) {
+  return Math.sign(v) * Math.pow(Math.abs(v), exp);
+}
+
+export function decodeBlurHashToCanvas(blurhash, canvas) {
+  if (!blurhash || blurhash.length < 6) return;
+  var sizeFlag = decode83(blurhash[0]);
+  var numY = Math.floor(sizeFlag / 9) + 1;
+  var numX = (sizeFlag % 9) + 1;
+  var quantisedMaxValue = decode83(blurhash[1]);
+  var maxValue = (quantisedMaxValue + 1) / 166;
+
+  var colors = new Array(numX * numY);
+  var dcVal = decode83(blurhash.substring(2, 6));
+  colors[0] = [
+    sRGBToLinear(dcVal >> 16),
+    sRGBToLinear((dcVal >> 8) & 255),
+    sRGBToLinear(dcVal & 255),
+  ];
+
+  for (var i = 1; i < numX * numY; i++) {
+    var val = decode83(blurhash.substring(4 + i * 2, 6 + i * 2));
+    var qr = Math.floor(val / (19 * 19));
+    var qg = Math.floor(val / 19) % 19;
+    var qb = val % 19;
+    colors[i] = [
+      signPow((qr - 9) / 9, 2.0) * maxValue,
+      signPow((qg - 9) / 9, 2.0) * maxValue,
+      signPow((qb - 9) / 9, 2.0) * maxValue,
+    ];
+  }
+
+  var width = canvas.width;
+  var height = canvas.height;
+  var ctx = canvas.getContext ? canvas.getContext('2d') : null;
+  if (!ctx) return;
+  var imageData = ctx.createImageData(width, height);
+  var pixels = imageData.data;
+
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      var r = 0,
+        g = 0,
+        b = 0;
+      for (var j = 0; j < numY; j++) {
+        for (var ci = 0; ci < numX; ci++) {
+          var basis =
+            Math.cos((Math.PI * x * ci) / width) *
+            Math.cos((Math.PI * y * j) / height);
+          var color = colors[ci + j * numX];
+          r += color[0] * basis;
+          g += color[1] * basis;
+          b += color[2] * basis;
+        }
+      }
+      var idx = (y * width + x) * 4;
+      pixels[idx] = linearTosRGB(r);
+      pixels[idx + 1] = linearTosRGB(g);
+      pixels[idx + 2] = linearTosRGB(b);
+      pixels[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+export function setupBlurhash(img) {
+  if (img.dataset && img.dataset.bhInit) return;
+  if (img.dataset) img.dataset.bhInit = '1';
+
+  var hash = img.getAttribute('data-blurhash');
+  if (!hash) return;
+
+  if (img.complete && img.naturalWidth > 0) {
+    img.classList.add('blurhash-loaded');
+    return;
+  }
+
+  function onDone() {
+    img.removeEventListener('load', onDone);
+    img.removeEventListener('error', onDone);
+    img.classList.remove('blurhash-loading');
+    img.classList.add('blurhash-loaded');
+  }
+
+  img.addEventListener('load', onDone);
+  img.addEventListener('error', onDone);
+
+  // If container or img already has pre-rendered background data URL, skip canvas
+  var parentStyle =
+    img.parentNode && typeof img.parentNode.getAttribute === 'function'
+      ? img.parentNode.getAttribute('style') || ''
+      : '';
+  var imgStyle =
+    typeof img.getAttribute === 'function'
+      ? img.getAttribute('style') || ''
+      : '';
+  if (
+    parentStyle.indexOf('data:image') !== -1 ||
+    imgStyle.indexOf('data:image') !== -1
+  ) {
+    return;
+  }
+
+  var canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 18;
+  var extraClass = '';
+  if (img.classList.contains('gface')) {
+    extraClass += ' gface';
+    if (img.classList.contains('gface-desk')) extraClass += ' gface-desk';
+    if (img.classList.contains('gface-mob')) extraClass += ' gface-mob';
+  }
+  canvas.className = 'blurhash-canvas' + extraClass;
+  try {
+    decodeBlurHashToCanvas(hash, canvas);
+  } catch (e) {
+    return;
+  }
+
+  if (img.parentNode) {
+    img.parentNode.insertBefore(canvas, img);
+  }
+  img.classList.add('blurhash-loading');
+
+  function onCanvasDone() {
+    img.removeEventListener('load', onCanvasDone);
+    img.removeEventListener('error', onCanvasDone);
+    canvas.classList.add('is-hidden');
+    setTimeout(function () {
+      if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    }, 150);
+  }
+
+  img.addEventListener('load', onCanvasDone);
+  img.addEventListener('error', onCanvasDone);
+}
+
+export function initBlurhashes(root) {
+  if (typeof document === 'undefined') return;
+  var imgs = (root || document).querySelectorAll('img[data-blurhash]');
+  for (var i = 0; i < imgs.length; i++) {
+    setupBlurhash(imgs[i]);
+  }
+}
+
 function initApp() {
   initSortableTables();
   initNavSearch();
+  initBlurhashes();
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    var mo = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        for (var j = 0; j < m.addedNodes.length; j++) {
+          var node = m.addedNodes[j];
+          if (node.nodeType === 1) {
+            if (node.tagName === 'IMG' && node.getAttribute('data-blurhash')) {
+              setupBlurhash(node);
+            } else if (node.querySelectorAll) {
+              var sub = node.querySelectorAll('img[data-blurhash]');
+              for (var k = 0; k < sub.length; k++) setupBlurhash(sub[k]);
+            }
+          }
+        }
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
 }
 
 if (typeof document !== 'undefined') {
+  if (document.body) {
+    initBlurhashes();
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
   } else {

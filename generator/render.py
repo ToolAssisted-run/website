@@ -16,6 +16,10 @@ import sys
 import urllib.parse
 import jinja2
 from markupsafe import Markup
+try:
+    from fast_blurhash import encode_blurhash_file, blurhash_to_data_url
+except ImportError:
+    from generator.fast_blurhash import encode_blurhash_file, blurhash_to_data_url
 import model
 from config import (
     ARCHIVE,
@@ -287,7 +291,11 @@ def resolve_refs(s, rel):
                      + (f' in {pm}' if pm != '—' else '')
                      + f" by {', '.join(a['user'] for a in r['authors'])}")
             tu = thumb_url(r)
-            card = (f'<span class="refcard"><img src="{esc(tu)}" loading="lazy" alt=""></span>'
+            bh = thumb_blurhash(r)
+            bh_attr = f' data-blurhash="{esc(bh)}"' if bh else ''
+            durl = thumb_data_url(r) if bh else ''
+            style_attr = f' style="background-image:url(&#39;{durl}&#39;);background-size:cover;"' if durl else ''
+            card = (f'<span class="refcard"{style_attr}><img{bh_attr} src="{esc(tu)}" loading="lazy" alt="" onload="this.classList.add(&#39;blurhash-loaded&#39;)"></span>'
                     if tu else '')
             return f'<a class="runref" href="{rel}runs/{rid}/">{html.escape(label)}{card}</a>'
         if tasv_fallback:
@@ -403,6 +411,49 @@ def thumb_url(r):
         return f'/thumbs/{shipped}'
     return f'{ARCHIVE_RAW}/games/{r["_game"]["key"]}/runs/{r["id"]}/{t}'
 
+def thumb_blurhash(r):
+    """Return Blurhash string for a run's thumbnail, or None."""
+    t = r.get('thumbnail')
+    if not t:
+        return None
+    src = r['_dir'] / t
+    return encode_blurhash_file(src)
+
+def game_blurhash(g):
+    """Return Blurhash string for a game's thumbnail face, falling back to newest run."""
+    t = g.get('thumbnail')
+    if t:
+        src = ARCHIVE / 'games' / g['key'] / t
+        bh = encode_blurhash_file(src)
+        if bh:
+            return bh
+    for r in g.get('runs', []):
+        if r.get('thumbnail'):
+            bh = thumb_blurhash(r)
+            if bh:
+                return bh
+    return None
+
+def shot_blurhash(r, rel_path):
+    """Return Blurhash string for a proof screenshot, or None."""
+    src = r['_dir'] / rel_path
+    return encode_blurhash_file(src)
+
+def thumb_data_url(r):
+    """Return data URL (16x9 WebP LQIP) decoded from run thumbnail Blurhash, or None."""
+    bh = thumb_blurhash(r)
+    return blurhash_to_data_url(bh) if bh else None
+
+def game_data_url(g):
+    """Return data URL (16x9 WebP LQIP) decoded from game face Blurhash, or None."""
+    bh = game_blurhash(g)
+    return blurhash_to_data_url(bh) if bh else None
+
+def shot_data_url(r, rel_path):
+    """Return data URL decoded from screenshot Blurhash, or None."""
+    bh = shot_blurhash(r, rel_path)
+    return blurhash_to_data_url(bh) if bh else None
+
 def thumb_alt(r):
     """What the thumbnail is, for image search and screen readers."""
     g = r['_game']
@@ -415,10 +466,14 @@ def thumb_html(r, dur=''):
     Sexual-content flags blur it behind the 18+ gate."""
     tu = thumb_url(r)
     nsfw = 'sexual' in r.get('contentWarnings', [])
-    img = (f'<img class="{"nsfwblur" if nsfw else ""}" src="{esc(tu)}" alt="{esc(thumb_alt(r))}" loading="lazy">'
+    bh = thumb_blurhash(r)
+    bh_attr = f' data-blurhash="{esc(bh)}"' if bh else ''
+    durl = thumb_data_url(r) if bh else None
+    style_attr = f' style="background-image:url(&#39;{durl}&#39;);background-size:cover;"' if durl else ''
+    img = (f'<img class="{"nsfwblur" if nsfw else ""}"{bh_attr} src="{esc(tu)}" alt="{esc(thumb_alt(r))}" loading="lazy" onload="this.classList.add(&#39;blurhash-loaded&#39;)">'
            if tu else '')
     badge = '<span class="nsfw18">18+</span>' if nsfw else ''
-    return (f'<span class="thumb"><span class="sys">{esc(r["_game"]["system"].upper())}</span>'
+    return (f'<span class="thumb"{style_attr}><span class="sys">{esc(r["_game"]["system"].upper())}</span>'
             f'{img}{badge}{dur}</span>')
 
 def console_tick(r):
@@ -595,7 +650,8 @@ _HTML_HELPERS = (
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
     'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
-    'thumb_alt shot_url breadcrumb_ld').split()
+    'thumb_alt shot_url breadcrumb_ld thumb_blurhash game_blurhash shot_blurhash '
+    'thumb_data_url game_data_url shot_data_url').split()
 _HTML_CONSTANTS = 'METRICS_ED FULL_TICK NONE_TICK EYE_ICON'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
                    'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
