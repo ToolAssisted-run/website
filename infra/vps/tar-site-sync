@@ -25,7 +25,7 @@ cp archivist/*.py /opt/archivist/
 # the archivist's own page templates ride along with its code
 rm -rf /opt/archivist/templates
 cp -r archivist/templates /opt/archivist/templates
-pip3 install --quiet pillow numpy 2>/dev/null || true
+pip3 install --quiet --break-system-packages pillow numpy 2>/dev/null || pip3 install --quiet pillow numpy 2>/dev/null || true
 
 # 3. Self-update this sync script if changed in repository
 if [ -f /opt/archivist/website/infra/vps/tar-site-sync ]; then

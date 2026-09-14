@@ -430,6 +430,31 @@ def act_common(form):
         return fail(f'notes exceed {ACT_NOTES_MAX} characters'), None, None, None
     return None, run_dir, run, user
 
+@app.get('/api/health')
+def health():
+    """Observable health status of the live origin and its background site builder."""
+    import sitebuild
+    return jsonify({
+        'ok': True,
+        'build': sitebuild._last,
+        'serial': current_serial(),
+        'archive': str(ARCHIVE),
+    })
+
+@app.post('/api/build/rebuild')
+def trigger_rebuild():
+    """Operator endpoint to refresh archive and trigger an immediate site rebuild."""
+    key = request.headers.get('X-Submit-Key') or request.form.get('key') or (request.get_json(silent=True) or {}).get('key')
+    if not hmac.compare_digest(str(key or ''), str(SUBMIT_KEY)):
+        return fail('forbidden', 403)
+    import sitebuild
+    try:
+        refresh_archive(0)
+    except Exception as exc:                                   # noqa: BLE001
+        LOG.warning('rebuild archive refresh failed: %s', exc)
+    sitebuild.request_build()
+    return jsonify({'ok': True, 'syncing': True})
+
 @app.get('/')
 def form():
     """The archivist's own minimal HTML page: submit, reproduce and verify

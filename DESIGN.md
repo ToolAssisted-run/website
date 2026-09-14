@@ -894,7 +894,8 @@ archivist, module responsibilities). What matters designwise:
   symlink that host nginx serves. **Act-to-published is about a second**;
   the read lock holds the tree still during the build, a burst of commits
   coalesces into one rebuild, and a failed build keeps the previous site
-  serving. Content arriving from elsewhere is caught by the refresh loop
+  serving (builder state and errors are observable via `GET /api/health`).
+  Content arriving from elsewhere is caught by the refresh loop
   (HEAD moved → rebuild). **GitHub Pages remains the hot standby**: the
   same push still fires the website's `deploy.yml` dispatch
   (`WEBSITE_DISPATCH_TOKEN`; `reason=archive-content` skips the code-test

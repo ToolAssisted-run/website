@@ -268,10 +268,17 @@ def get_file_content_hash(path: pathlib.Path | str) -> str | None:
         return None
 
 
+_PIL_ATTEMPTED = False
+
+
 def _ensure_pil() -> bool:
-    global HAS_PIL, Image
+    global HAS_PIL, Image, _PIL_ATTEMPTED
     if HAS_PIL:
         return True
+    if _PIL_ATTEMPTED:
+        return False
+    _PIL_ATTEMPTED = True
+
     try:
         from PIL import Image
 

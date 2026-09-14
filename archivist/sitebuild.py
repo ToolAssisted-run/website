@@ -157,12 +157,33 @@ def _worker():
             LOG.warning('site build failed, previous build keeps serving: %s', e)
 
 
+def _sync_infra_scripts():
+    """Keep /usr/local/bin/tar-site-sync matching the repository."""
+    src = WEBSITE_DIR / 'infra' / 'vps' / 'tar-site-sync'
+    dest = pathlib.Path('/usr/local/bin/tar-site-sync')
+    if src.is_file():
+        try:
+            content = src.read_bytes()
+            if not dest.exists() or dest.read_bytes() != content:
+                dest.write_bytes(content)
+                dest.chmod(0o755)
+                LOG.info('updated /usr/local/bin/tar-site-sync from %s', src)
+        except Exception as exc:                               # noqa: BLE001
+            LOG.warning('could not update /usr/local/bin/tar-site-sync: %s', exc)
+
+
 def start():
     """Start the builder thread and schedule the first build. A no-op
     without a website checkout, so tests and local runs stay hermetic."""
     if not enabled():
         LOG.info('site builder off: no website checkout at %s', WEBSITE_DIR)
         return
+    _sync_infra_scripts()
+    try:
+        from gitstore import refresh_archive
+        refresh_archive(0)
+    except Exception as exc:                                   # noqa: BLE001
+        LOG.warning('startup archive refresh failed: %s', exc)
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     threading.Thread(target=_worker, daemon=True).start()
     _wake.set()   # the site this process starts serving should be current
