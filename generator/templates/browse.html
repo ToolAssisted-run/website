@@ -44,7 +44,21 @@ function chip(state){
           pending:'<span class="chip pendchip">Pending</span>'}[state];
 }
 
-var formatDate = (window.TAR && window.TAR.formatDate) || function(s){ return s || ''; };
+var formatDate = (typeof window !== 'undefined' && window.TAR && window.TAR.formatDate) || function(s){
+  if (!s) return '';
+  var parts = String(s).trim().split('T')[0].split(' ')[0].split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    var m = parseInt(parts[1], 10);
+    var months = (typeof window !== 'undefined' && window.TAR && window.TAR.months) || [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    if (m >= 1 && m <= 12) {
+      var d = parts[2].length === 1 ? '0' + parts[2] : parts[2];
+      return d + '-' + months[m - 1] + '-' + parts[0];
+    }
+  }
+  return s;
+};
 
 function syncUrl(){
   try {

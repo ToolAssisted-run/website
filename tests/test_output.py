@@ -1328,7 +1328,7 @@ def main():
            'Runless One' in rat_rows_[0] and 'Ratified Family' in rat_rows_[1],
            str([r[:60] for r in rat_rows_]))
         ck('and the game names its expert, date and system',
-           all(s in rat_rows_[2] for s in ('Grp', '2026-02-09', 'Hardgame')),
+           all(s in rat_rows_[2] for s in ('Grp', '09-Feb-2026', 'Hardgame')),
            rat_rows_[2][:300])
 
         moved = all_html.get(out / 'policy' / 'moderation-log' / 'index.html', '')
