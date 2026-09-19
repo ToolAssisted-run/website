@@ -44,6 +44,8 @@ function chip(state){
           pending:'<span class="chip pendchip">Pending</span>'}[state];
 }
 
+var formatDate = (window.TAR && window.TAR.formatDate) || function(s){ return s || ''; };
+
 function syncUrl(){
   try {
     if (typeof history !== 'undefined' && history.replaceState) {
@@ -139,7 +141,7 @@ function render(resetPage){
       '<td class="bsys">' + r.metric + '</td>' +
       '<td class="num">' + r.result + '</td>' +
       '<td class="num"><span class="starglyph">★</span>' + r.stars + '</td>' +
-      '<td class="bsys bdate">' + r.date + '</td>' +
+      '<td class="bsys bdate">' + formatDate(r.date) + '</td>' +
       '<td>' + chip(r.state) + '</td></tr>';
   }).join('');
 

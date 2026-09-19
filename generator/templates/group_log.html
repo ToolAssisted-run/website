@@ -65,7 +65,7 @@
 <p class="actnote">{{ REPORT_LABELS.get(rep.kind, rep.kind) }} · {{ run_link(r_) }}
 {% if rep.get('details') %}: {{ inline(rep.get('details'), rel) }}{% endif %}</p>
 {% if rep.status != 'open' %}
-<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ format_date(rep.get('resolvedAt')) }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
 {% endif %}
 </div>
 {% endfor %}
@@ -82,10 +82,10 @@
 {% if c.status == 'open' %}<span class="chip pendchip">Open</span>
 {% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
 {% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
-<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ format_date(c.date or c.get('opened', '')) }} · {{ run_link(r_) }}</span></div>
 <p class="actnote">{{ inline(c.reason, rel) }}</p>
 {% for v in c.get('reaffirmations', []) %}
-<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ format_date(v.date) }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
 {% endfor %}
 </div>
 {% endfor %}
@@ -121,7 +121,7 @@
 <tr><td>{{ moment(rem.get('at') or rem.date) }}</td>
 <td>{{ member_chip(rem.by, rel) }}</td>
 <td>{{ inline(rem.reason, rel) }}</td>
-<td>{{ status_chip(rem.status, REMOVAL_CHIPS) }}{% if rem.get('decidedBy') %} by {{ member_chip(rem.decidedBy, rel) }} on {{ rem.get('decidedAt') or '' }}{% endif %}</td></tr>
+<td>{{ status_chip(rem.status, REMOVAL_CHIPS) }}{% if rem.get('decidedBy') %} by {{ member_chip(rem.decidedBy, rel) }} on {{ format_date(rem.get('decidedAt')) }}{% endif %}</td></tr>
 {% endfor %}
 </tbody></table></div>
 </section>

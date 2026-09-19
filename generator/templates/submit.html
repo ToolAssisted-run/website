@@ -100,7 +100,10 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   <p class="rules coauthnote" hidden><a href="https://github.com/ToolAssisted-run#32-multiple-author-submission-policy" target="_blank" rel="noopener">Submitting a work with co-authors? Read the Multiple author submission policy first.</a></p>
   <label>When was the run completed? (optional; a run finished long before it was
   submitted may say so, and the page shows both dates)</label>
-  <input name="completed" type="date" max="{{ today }}">
+  <div class="datepick" id="s-completed-pick" data-max="{{ today }}">
+    <input type="hidden" name="completed" id="s-completed">
+    <noscript><input name="completed" type="date" max="{{ today }}"></noscript>
+  </div>
   </div></section>
 
   <section class="panel actform folded" id="p-repro" data-step="3">

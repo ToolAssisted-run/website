@@ -20,7 +20,22 @@
 <div class="navsearch-pop" id="navsearch-pop" hidden></div></form>
 <span id="navauth"></span>
 <button id="navoffline" class="nl navoff" hidden title="This site cannot reach the archivist right now, so logging in, submitting and contributing will not work. Reading works fine. It is usually a firewall, a VPN or a content blocker between you and forum.toolassisted.run. Click to try again.">archivist unreachable</button></nav>
-<script>window.TAR = {api: '{{ ARCHIVIST }}', rel: '{{ rel }}', v: '{{ SITE_COMMIT or 'dev' }}', experts: {{ EXPERT_NAMES_JS|safe }}, editors: {{ EDITOR_NAMES_JS|safe }}, committee: {{ COMMITTEE_NAMES_JS|safe }}, founders: {{ FOUNDER_NAMES_JS|safe }}}</script>
+<script>window.TAR = {api: '{{ ARCHIVIST }}', rel: '{{ rel }}', v: '{{ SITE_COMMIT or 'dev' }}', months: {{ json_blob(MONTH_ABBR) }}, experts: {{ EXPERT_NAMES_JS|safe }}, editors: {{ EDITOR_NAMES_JS|safe }}, committee: {{ COMMITTEE_NAMES_JS|safe }}, founders: {{ FOUNDER_NAMES_JS|safe }}};
+window.TAR.formatDate = function(s) {
+  if (!s) return '';
+  var str = String(s).trim();
+  if (str.indexOf('T') !== -1) str = str.split('T')[0];
+  if (str.indexOf(' ') !== -1) str = str.split(' ')[0];
+  var parts = str.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    var m = parseInt(parts[1], 10);
+    if (m >= 1 && m <= 12) {
+      var d = parts[2].length === 1 ? '0' + parts[2] : parts[2];
+      return d + '-' + window.TAR.months[m - 1] + '-' + parts[0];
+    }
+  }
+  return str;
+};</script>
 {% for script in page_scripts %}<script type="module" src="{{ rel }}assets/{{ script }}?v={{ SITE_COMMIT or 'dev' }}"></script>{% endfor %}
 <div class="wrap{{ ' wrapfull' if wide else '' }}">{% if crumb %}<div class="crumb">{{ crumb|safe }}</div>{% endif %}
 {{ body|safe }}</div>

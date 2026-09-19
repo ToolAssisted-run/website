@@ -1,6 +1,7 @@
 // toolAssisted.run — dedicated search page client script.
 import {
   escapeHtml,
+  formatDate,
   rel,
   versionQuery,
   createPaginator,
@@ -408,7 +409,7 @@ function initSearchPage() {
           r.stars +
           '</td>' +
           '<td class="bsys bdate">' +
-          escapeHtml(r.d) +
+          escapeHtml(formatDate(r.d)) +
           '</td>' +
           '<td>' +
           chipHtml(r.st) +

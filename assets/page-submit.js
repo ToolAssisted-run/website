@@ -2573,8 +2573,11 @@ if (submitForm) {
               x.disabled = true;
             });
           }
-          submitForm.querySelector('[name=completed]').value =
-            run.completed || '';
+          var compInp = submitForm.querySelector('[name=completed]');
+          if (compInp) {
+            if (compInp.fill) compInp.fill(run.completed || '');
+            else compInp.value = run.completed || '';
+          }
 
           // the designated "You may also like" picks: search-as-you-type
           byIdS('s-relatedwrap').hidden = false;

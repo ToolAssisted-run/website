@@ -22,6 +22,7 @@ from config import (
     ARCHIVE_REF,
     ARCHIVIST,
     FORUM,
+    MONTH_ABBR,
     OUT,
     SITE_COMMIT,
 )
@@ -138,13 +139,41 @@ def expert_line(game_key, rel):
 def esc(s): return html.escape(str(s), quote=True)
 
 
+def format_date(s):
+    """Standardized military date: DD-Mmm-YYYY (e.g. 15-Sep-2026)."""
+    if not s:
+        return ''
+    s = str(s).strip()
+    if 'T' in s:
+        s = s.split('T')[0]
+    if ' ' in s:
+        s = s.split(' ')[0]
+    parts = s.split('-')
+    if len(parts) == 3 and len(parts[0]) == 4:
+        try:
+            m_idx = int(parts[1]) - 1
+            if 0 <= m_idx < 12:
+                day_digits = ''.join(c for c in parts[2] if c.isdigit())
+                if day_digits:
+                    day = str(int(day_digits)).zfill(2)
+                    return f'{day}-{MONTH_ABBR[m_idx]}-{parts[0]}'
+        except (ValueError, IndexError):
+            pass
+    return s
+
+
 def moment(s):
     """A stamp for log rows: the day, and the clock when the record carries
-    one ('2026-08-20 14:32:07', UTC). Day-only records show the day alone."""
-    s = str(s or '')
+    one ('20-Aug-2026 14:32:07', UTC). Day-only records show the day alone."""
+    s = str(s or '').strip()
     if 'T' in s:
-        return f'{s[:10]} {s[11:19]}'
-    return s[:10]
+        d, t = s.split('T', 1)
+        t_clean = t.rstrip('Z')
+        return f'{format_date(d[:10])} {t_clean[:8]}'
+    if ' ' in s:
+        d, t = s.split(' ', 1)
+        return f'{format_date(d[:10])} {t[:8]}'
+    return format_date(s[:10])
 
 MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
           'August', 'September', 'October', 'November', 'December']
@@ -252,9 +281,11 @@ def run_date_cell(r):
     """The run's primary date on a board: the completion date the authors
     stated when they stated one, the submission day otherwise. A future
     history tab wants the same rule."""
+    d = board_date(r)
+    formatted = format_date(d)
     if (r.get('completed') or '').strip():
-        return f'<td title="completion date">{esc(board_date(r))}</td>'
-    return f'<td title="submission date">{esc(board_date(r))}</td>'
+        return f'<td data-sort="{esc(d)}" title="completion date">{esc(formatted)}</td>'
+    return f'<td data-sort="{esc(d)}" title="submission date">{esc(formatted)}</td>'
 
 def frames_html(r):
     """The frames cell: a count for a movie, a dash for a video-only run,
@@ -689,12 +720,12 @@ _HTML_HELPERS = (
     'tick console_chip state_chip badge_chip medals dl_members dl_games '
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
-    'moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
+    'format_date moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
     'thumb_alt shot_url breadcrumb_ld thumb_blurhash game_blurhash shot_blurhash '
     'thumb_data_url game_data_url shot_data_url').split()
 _HTML_CONSTANTS = 'METRICS_ED FULL_TICK NONE_TICK EYE_ICON'.split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
-                   'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
+                   'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS MONTH_ABBR ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
                    'FORUM SITE_COMMIT').split()
 
 def _safe(fn):

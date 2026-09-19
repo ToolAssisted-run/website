@@ -76,7 +76,7 @@
   {% endif %}
   {% if open_case %}
   <div class="disputebox"><b>This run is under dispute (case {{ open_case['id'] }})</b>
-Opened by {{ open_case['openedBy'] }} on {{ open_case['date'] }}: {{ inline(open_case['reason']) }}
+Opened by {{ open_case['openedBy'] }} on {{ format_date(open_case['date']) }}: {{ inline(open_case['reason']) }}
 Its verifiers have been asked to reaffirm ({{ open_case.get('reaffirmations', [])|length }} of {{ open_case['verifiers']|length }} votes so far).
 The run keeps its status until the case resolves; nothing is ever automatic.</div>
   {% endif %}
@@ -210,9 +210,9 @@ Log in (top right) to reply from here.</p></section>
     <dt>Rerecords</dt><dd>{{ '{:,}'.format(r['movie'].get('rerecords') or 0) }}</dd>
     <dt>Format</dt><dd>{{ r['movie']['format'] }}</dd>
     {% endif %}
-    {% if r.get('completed') %}<dt>Completed</dt><dd>{{ r['completed'] }}</dd>{% endif %}
-    <dt>{{ 'Published' if is_leg else 'Submitted' }}</dt><dd>{{ (r.get('submitted') or '')[:10] }}</dd>
-    {% if is_leg %}<dt>Archived here</dt><dd>{{ archived_at(r)[:10] }}</dd>{% endif %}</dl>
+    {% if r.get('completed') %}<dt>Completed</dt><dd>{{ format_date(r['completed']) }}</dd>{% endif %}
+    <dt>{{ 'Published' if is_leg else 'Submitted' }}</dt><dd>{{ format_date((r.get('submitted') or '')[:10]) }}</dd>
+    {% if is_leg %}<dt>Archived here</dt><dd>{{ format_date(archived_at(r)[:10]) }}</dd>{% endif %}</dl>
     {% if not r.get('videoOnly') %}<p class="factfoot"><a class="btn" href="{{ ARCHIVE_RAW }}/games/{{ g['key'] }}/runs/{{ r['id'] }}/{{ r['movie']['file'] }}">Download movie file</a></p>{% endif %}</div>
   {% if not r.get('videoOnly') %}<div class="factbox"><h4>Reproduction info</h4><dl>
     <dt>Emulator</dt><dd>{{ r.get('contract', {}).get('emulator') or '—' }}</dd>

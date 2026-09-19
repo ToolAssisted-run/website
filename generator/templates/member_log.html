@@ -107,10 +107,10 @@
 <div class="act" id="R{{ rep.id }}">
 <div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
 <span class="chip">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}</span>
-<span class="actmeta">filed by {{ member_chip(rep.by, rel) }} · {{ rep.date }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">filed by {{ member_chip(rep.by, rel) }} · {{ format_date(rep.date) }} · {{ run_link(r_) }}</span></div>
 <p class="actnote">{{ inline(rep.details, rel) }}</p>
 {% if rep.get('resolvedBy') %}
-<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ format_date(rep.get('resolvedAt')) }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
 {% endif %}
 </div>
 {% endfor %}
@@ -127,10 +127,10 @@
 {% if c.status == 'open' %}<span class="chip pendchip">Open</span>
 {% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
 {% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
-<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">opened by {{ member_chip(c.openedBy, rel) }} · {{ format_date(c.date or c.get('opened', '')) }} · {{ run_link(r_) }}</span></div>
 <p class="actnote">{{ inline(c.reason, rel) }}</p>
 {% for v in c.get('reaffirmations', []) %}
-<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ format_date(v.date) }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
 {% endfor %}
 </div>
 {% endfor %}
@@ -211,10 +211,10 @@
 <div class="act" id="R{{ rep.id }}">
 <div class="acthead"><b><a href="#R{{ rep.id }}">R{{ rep.id }}</a></b> {{ status_chip(rep.status, REPORT_CHIPS) }}
 <span class="chip">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}</span>
-<span class="actmeta">{{ rep.date }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">{{ format_date(rep.date) }} · {{ run_link(r_) }}</span></div>
 <p class="actnote">{{ inline(rep.details, rel) }}</p>
 {% if rep.get('resolvedBy') %}
-<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), rel) }} on {{ format_date(rep.get('resolvedAt')) }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
 {% endif %}
 </div>
 {% endfor %}
@@ -227,9 +227,9 @@
 <div class="act" id="R-res-{{ rep.id }}">
 <div class="acthead"><b>R{{ rep.id }}</b> {{ status_chip(rep.status, REPORT_CHIPS) }}
 <span class="chip">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}</span>
-<span class="actmeta">filed by {{ member_chip(rep.by, rel) }} · {{ rep.date }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">filed by {{ member_chip(rep.by, rel) }} · {{ format_date(rep.date) }} · {{ run_link(r_) }}</span></div>
 <p class="actnote">{{ inline(rep.details, rel) }}</p>
-<p class="statline">Resolution on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
+<p class="statline">Resolution on {{ format_date(rep.get('resolvedAt')) }}: {{ inline(rep.get('resolution') or '', rel) }}</p>
 </div>
 {% endfor %}
 </div>
@@ -250,10 +250,10 @@
 {% if c.status == 'open' %}<span class="chip pendchip">Open</span>
 {% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
 {% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
-<span class="actmeta">{{ c.date or c.get('opened', '') }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">{{ format_date(c.date or c.get('opened', '')) }} · {{ run_link(r_) }}</span></div>
 <p class="actnote">{{ inline(c.reason, rel) }}</p>
 {% for v in c.get('reaffirmations', []) %}
-<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
+<p class="statline">{{ member_chip(v.user, rel) }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ format_date(v.date) }}{% if v.get('notes') %} · {{ inline(v.notes, rel) }}{% endif %}</p>
 {% endfor %}
 </div>
 {% endfor %}
@@ -265,7 +265,7 @@
 {% for v, c, r_ in cases_voted_by %}
 <div class="act"><div class="acthead"><b>Case {{ c.id }}</b>
 <span class="chip{% if v.reaffirm %} verchip{% else %} pendchip{% endif %}">{{ 'Reaffirmed' if v.reaffirm else 'Withdrew' }}</span>
-<span class="actmeta">{{ v.date }} · {{ run_link(r_) }}</span></div>
+<span class="actmeta">{{ format_date(v.date) }} · {{ run_link(r_) }}</span></div>
 {% if v.get('notes') %}<p class="actnote">{{ inline(v.notes, rel) }}</p>{% endif %}
 </div>
 {% endfor %}

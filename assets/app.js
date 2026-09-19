@@ -9,6 +9,38 @@ var T = window.TAR || {};
 export var api = T.api,
   rel = T.rel || '';
 export var versionQuery = '?v=' + (T.v || '0');
+export var MONTH_ABBR = (T && T.months) || [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+export function formatDate(s) {
+  if (T && T.formatDate) {
+    return T.formatDate(s);
+  }
+  if (!s) return '';
+  var str = String(s).trim();
+  if (str.indexOf('T') !== -1) str = str.split('T')[0];
+  if (str.indexOf(' ') !== -1) str = str.split(' ')[0];
+  var parts = str.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    var m = parseInt(parts[1], 10);
+    if (m >= 1 && m <= 12) {
+      var d = parts[2].length === 1 ? '0' + parts[2] : parts[2];
+      return d + '-' + MONTH_ABBR[m - 1] + '-' + parts[0];
+    }
+  }
+  return str;
+}
 export var mePromise = fetch(api + '/api/me', { credentials: 'include' })
   .then(function (r) {
     return r.json();
@@ -1063,6 +1095,24 @@ function cellValue(td) {
       ? mainChild.textContent.trim()
       : raw;
 
+  var dateMatch = raw.match(
+    /^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})$/i
+  );
+  if (dateMatch) {
+    var mIdx = -1;
+    for (var mi = 0; mi < MONTH_ABBR.length; mi++) {
+      if (MONTH_ABBR[mi].toLowerCase() === dateMatch[2].toLowerCase()) {
+        mIdx = mi;
+        break;
+      }
+    }
+    if (mIdx !== -1) {
+      var dStr = dateMatch[1].length === 1 ? '0' + dateMatch[1] : dateMatch[1];
+      var mStr = mIdx + 1 < 10 ? '0' + (mIdx + 1) : String(mIdx + 1);
+      return { type: 'text', val: dateMatch[3] + '-' + mStr + '-' + dStr };
+    }
+  }
+
   var timeMatch = raw.match(/^(?:(\d+):)?(\d{1,2}):(\d{2}(?:\.\d+)?)$/);
   if (timeMatch) {
     var h = timeMatch[1] ? parseFloat(timeMatch[1]) : 0;
@@ -1991,10 +2041,386 @@ export function initBlurhashes(root) {
   }
 }
 
+function parseMonth(val) {
+  if (!val) return null;
+  val = val.trim();
+  var num = parseInt(val, 10);
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return { num: num, name: MONTH_ABBR[num - 1] };
+  }
+  var low = val.toLowerCase();
+  for (var i = 0; i < MONTH_ABBR.length; i++) {
+    if (MONTH_ABBR[i].toLowerCase().startsWith(low)) {
+      return { num: i + 1, name: MONTH_ABBR[i] };
+    }
+  }
+  return null;
+}
+
+// Segmented military date picker (dd-mmm-yyyy)
+export function armDatePicker(target, opts) {
+  opts = opts || {};
+  if (!target || target.dataset.datepickArmed) return null;
+  target.dataset.datepickArmed = '1';
+
+  var wrap, hidden, maxDate, name;
+  if (target.tagName === 'INPUT' && target.type === 'date') {
+    if (target.closest && target.closest('.datepick')) return null;
+    name = target.name;
+    maxDate = target.max || '';
+    wrap = document.createElement('div');
+    wrap.className =
+      'datepick' + (target.className ? ' ' + target.className : '');
+    target.parentNode.insertBefore(wrap, target);
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = name;
+    if (target.id) hidden.id = target.id;
+    wrap.appendChild(hidden);
+    target.remove();
+  } else {
+    wrap = target;
+    hidden = opts.hidden || wrap.querySelector('input[type=hidden]');
+    maxDate = opts.max || wrap.dataset.max || '';
+    name = hidden ? hidden.name : '';
+  }
+
+  if (!hidden) return null;
+
+  var dayInp = document.createElement('input');
+  dayInp.className = 'date-seg date-seg-d';
+  dayInp.placeholder = 'dd';
+  dayInp.maxLength = 2;
+  dayInp.inputMode = 'numeric';
+  dayInp.setAttribute('aria-label', 'Day');
+  wrap.appendChild(dayInp);
+
+  var sep1 = document.createElement('span');
+  sep1.className = 'date-sep';
+  sep1.textContent = '-';
+  wrap.appendChild(sep1);
+
+  var monthInp = document.createElement('input');
+  monthInp.className = 'date-seg date-seg-m';
+  monthInp.placeholder = 'mmm';
+  monthInp.maxLength = 3;
+  monthInp.setAttribute('aria-label', 'Month');
+  wrap.appendChild(monthInp);
+
+  var sep2 = document.createElement('span');
+  sep2.className = 'date-sep';
+  sep2.textContent = '-';
+  wrap.appendChild(sep2);
+
+  var yearInp = document.createElement('input');
+  yearInp.className = 'date-seg date-seg-y';
+  yearInp.placeholder = 'yyyy';
+  yearInp.maxLength = 4;
+  yearInp.inputMode = 'numeric';
+  yearInp.setAttribute('aria-label', 'Year');
+  wrap.appendChild(yearInp);
+
+  var fillSpan = document.createElement('span');
+  fillSpan.className = 'date-fill';
+  wrap.appendChild(fillSpan);
+
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'datepick-btn';
+  btn.setAttribute('aria-label', 'Choose date');
+  btn.setAttribute('title', 'Choose date');
+  wrap.appendChild(btn);
+
+  var nativeInp = document.createElement('input');
+  nativeInp.type = 'date';
+  nativeInp.className = 'datepick-native';
+  nativeInp.tabIndex = -1;
+  nativeInp.setAttribute('aria-hidden', 'true');
+  if (maxDate) nativeInp.max = maxDate;
+  wrap.appendChild(nativeInp);
+
+  var nativeDescriptor =
+    typeof HTMLInputElement !== 'undefined' && HTMLInputElement.prototype
+      ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
+      : null;
+
+  function setNativeValue(el, val) {
+    if (nativeDescriptor && nativeDescriptor.set) {
+      nativeDescriptor.set.call(el, val);
+    } else {
+      el.value = val;
+    }
+  }
+
+  function getNativeValue(el) {
+    if (nativeDescriptor && nativeDescriptor.get) {
+      return nativeDescriptor.get.call(el);
+    }
+    return el.value;
+  }
+
+  function fillFromIso(iso) {
+    if (!iso || typeof iso !== 'string' || !iso.includes('-')) {
+      dayInp.value = '';
+      monthInp.value = '';
+      yearInp.value = '';
+      setNativeValue(hidden, '');
+      hidden.setAttribute('value', '');
+      nativeInp.value = '';
+      return;
+    }
+    var bits = iso.split('-');
+    if (bits.length === 3) {
+      var y = bits[0];
+      var mNum = parseInt(bits[1], 10);
+      var d = bits[2];
+      yearInp.value = y;
+      monthInp.value = mNum >= 1 && mNum <= 12 ? MONTH_ABBR[mNum - 1] : bits[1];
+      dayInp.value = d;
+      setNativeValue(hidden, iso);
+      hidden.setAttribute('value', iso);
+      nativeInp.value = iso;
+    }
+  }
+
+  try {
+    Object.defineProperty(hidden, 'value', {
+      get: function () {
+        return getNativeValue(this);
+      },
+      set: function (v) {
+        fillFromIso(v);
+      },
+      configurable: true,
+    });
+  } catch (e) {}
+
+  hidden.fill = fillFromIso;
+
+  function compose() {
+    var d = dayInp.value.trim();
+    var m = monthInp.value.trim();
+    var y = yearInp.value.trim();
+
+    if (!d && !m && !y) {
+      setNativeValue(hidden, '');
+      hidden.setAttribute('value', '');
+      nativeInp.value = '';
+    } else {
+      var pm = parseMonth(m);
+      if (d && pm && y && y.length === 4) {
+        var dNum = Math.min(31, Math.max(1, parseInt(d, 10) || 1));
+        var mNum = pm.num;
+        var iso =
+          String(y).padStart(4, '0') +
+          '-' +
+          String(mNum).padStart(2, '0') +
+          '-' +
+          String(dNum).padStart(2, '0');
+        setNativeValue(hidden, iso);
+        hidden.setAttribute('value', iso);
+        nativeInp.value = iso;
+      } else {
+        setNativeValue(hidden, '');
+        hidden.setAttribute('value', '');
+        nativeInp.value = '';
+      }
+    }
+    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  dayInp.addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '');
+    if (this.value.length >= 2) {
+      monthInp.focus();
+      monthInp.select();
+    }
+    compose();
+  });
+
+  dayInp.addEventListener('blur', function () {
+    if (this.value && this.value.length === 1) {
+      this.value = '0' + this.value;
+      compose();
+    }
+  });
+
+  dayInp.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') {
+      if (this.selectionEnd === this.value.length) {
+        monthInp.focus();
+        e.preventDefault();
+      }
+    } else if (e.key === 'ArrowUp') {
+      var cur = parseInt(this.value, 10);
+      var next = isNaN(cur) ? 1 : cur >= 31 ? 1 : cur + 1;
+      this.value = String(next).padStart(2, '0');
+      compose();
+      this.select();
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      var cur = parseInt(this.value, 10);
+      var prev = isNaN(cur) ? 31 : cur <= 1 ? 31 : cur - 1;
+      this.value = String(prev).padStart(2, '0');
+      compose();
+      this.select();
+      e.preventDefault();
+    }
+  });
+
+  monthInp.addEventListener('input', function () {
+    var val = this.value;
+    if (/^\d+$/.test(val)) {
+      if (val.length >= 2) {
+        var pm = parseMonth(val);
+        if (pm) this.value = pm.name;
+        yearInp.focus();
+        yearInp.select();
+      }
+    } else {
+      this.value = val.replace(/[^a-zA-Z]/g, '');
+      if (this.value.length >= 3) {
+        var pm = parseMonth(this.value);
+        if (pm) this.value = pm.name;
+        yearInp.focus();
+        yearInp.select();
+      }
+    }
+    compose();
+  });
+
+  monthInp.addEventListener('blur', function () {
+    var pm = parseMonth(this.value);
+    if (pm) {
+      this.value = pm.name;
+    } else if (this.value) {
+      this.value = '';
+    }
+    compose();
+  });
+
+  monthInp.addEventListener('keydown', function (e) {
+    if (e.key === 'Backspace' && !this.value) {
+      dayInp.focus();
+    } else if (e.key === 'ArrowLeft') {
+      if (this.selectionStart === 0) {
+        dayInp.focus();
+        e.preventDefault();
+      }
+    } else if (e.key === 'ArrowRight') {
+      if (this.selectionEnd === this.value.length) {
+        yearInp.focus();
+        e.preventDefault();
+      }
+    } else if (e.key === 'ArrowUp') {
+      var pm = parseMonth(this.value);
+      var idx = pm ? pm.num % 12 : 0;
+      this.value = MONTH_ABBR[idx];
+      compose();
+      this.select();
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      var pm = parseMonth(this.value);
+      var idx = pm ? (pm.num - 2 + 12) % 12 : 11;
+      this.value = MONTH_ABBR[idx];
+      compose();
+      this.select();
+      e.preventDefault();
+    }
+  });
+
+  yearInp.addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '');
+    compose();
+  });
+
+  yearInp.addEventListener('keydown', function (e) {
+    if (e.key === 'Backspace' && !this.value) {
+      monthInp.focus();
+    } else if (e.key === 'ArrowLeft') {
+      if (this.selectionStart === 0) {
+        monthInp.focus();
+        e.preventDefault();
+      }
+    } else if (e.key === 'ArrowUp') {
+      var cur = parseInt(this.value, 10);
+      var thisYear = new Date().getFullYear();
+      this.value = String(isNaN(cur) ? thisYear : cur + 1);
+      compose();
+      this.select();
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      var cur = parseInt(this.value, 10);
+      var thisYear = new Date().getFullYear();
+      this.value = String(isNaN(cur) ? thisYear : cur - 1);
+      compose();
+      this.select();
+      e.preventDefault();
+    }
+  });
+
+  btn.addEventListener('click', function () {
+    if (hidden.value) nativeInp.value = hidden.value;
+    if (typeof nativeInp.showPicker === 'function') {
+      try {
+        nativeInp.showPicker();
+      } catch (e) {
+        dayInp.focus();
+      }
+    } else {
+      dayInp.focus();
+    }
+  });
+
+  function onNativeChange() {
+    fillFromIso(nativeInp.value || '');
+    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  nativeInp.addEventListener('change', onNativeChange);
+  nativeInp.addEventListener('input', onNativeChange);
+
+  wrap.addEventListener('click', function (e) {
+    if (e.target === wrap || e.target.classList.contains('date-fill')) {
+      if (!dayInp.value) dayInp.focus();
+      else if (!monthInp.value) monthInp.focus();
+      else if (!yearInp.value) yearInp.focus();
+      else dayInp.focus();
+    }
+  });
+
+  if (hidden.value) {
+    fillFromIso(hidden.value);
+  }
+
+  return {
+    wrap: wrap,
+    hidden: hidden,
+    fill: fillFromIso,
+  };
+}
+
+export function initDatePickers(root) {
+  if (typeof document === 'undefined') return;
+  var scope = root || document;
+  var picks = scope.querySelectorAll('.datepick');
+  for (var i = 0; i < picks.length; i++) {
+    armDatePicker(picks[i]);
+  }
+  var dateInputs = scope.querySelectorAll(
+    'input[type=date]:not(.datepick-native)'
+  );
+  for (var j = 0; j < dateInputs.length; j++) {
+    armDatePicker(dateInputs[j]);
+  }
+}
+
 function initApp() {
   initSortableTables();
   initNavSearch();
   initBlurhashes();
+  initDatePickers();
   if (typeof MutationObserver !== 'undefined' && document.body) {
     var mo = new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i++) {
@@ -2007,6 +2433,7 @@ function initApp() {
             } else if (node.querySelectorAll) {
               var sub = node.querySelectorAll('img[data-blurhash]');
               for (var k = 0; k < sub.length; k++) setupBlurhash(sub[k]);
+              initDatePickers(node);
             }
           }
         }
@@ -2019,6 +2446,7 @@ function initApp() {
 if (typeof document !== 'undefined') {
   if (document.body) {
     initBlurhashes();
+    initDatePickers();
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);

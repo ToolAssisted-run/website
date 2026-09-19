@@ -4209,6 +4209,125 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     center / contain no-repeat;
 }
 
+/* Segmented date picker */
+.datepick {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: 2.5px solid var(--hair);
+  border-radius: 9px;
+  background: var(--panel);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.datepick:not([data-datepick-armed]) {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.datepick:focus-within {
+  border-color: var(--accent-text);
+}
+
+.actform .datepick input.date-seg,
+.datepick .date-seg {
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-family: ui-monospace, monospace;
+  padding: 0;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.actform .datepick input.date-seg:focus,
+.datepick .date-seg:focus {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--accent-text);
+  border-radius: 3px;
+  border: 0;
+  outline: none;
+}
+
+.datepick .date-seg::-webkit-inner-spin-button,
+.datepick .date-seg::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.datepick .date-seg::placeholder {
+  color: var(--muted);
+  opacity: 1;
+  font-family: Inter, system-ui, sans-serif;
+  text-transform: lowercase;
+}
+
+.actform .datepick input.date-seg-d,
+.datepick .date-seg-d {
+  width: 2.8ch;
+}
+
+.actform .datepick input.date-seg-m,
+.datepick .date-seg-m {
+  width: 4.5ch;
+  text-transform: capitalize;
+}
+
+.actform .datepick input.date-seg-y,
+.datepick .date-seg-y {
+  width: 5ch;
+}
+
+.datepick .date-sep {
+  color: var(--faint);
+  padding: 0 4px;
+  user-select: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.datepick .date-fill {
+  flex: 1;
+}
+
+.datepick-btn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='16' rx='3'/><path d='M3 10h18M8 3v4M16 3v4'/></svg>")
+    center / contain no-repeat;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.datepick-btn:hover {
+  opacity: 1;
+}
+
+.datepick-native,
+.actform input.datepick-native {
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
 .formrule {
   border: 0;
   border-top: 2.5px solid var(--hair);

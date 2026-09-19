@@ -145,11 +145,11 @@ def main():
         ck('the member page carries the run credited to the former name',
            'M900004' in rd('authors/newstar/index.html'))
         ck('a stated completion date shows beside the submission date',
-           '<dt>Completed</dt><dd>2021-10-26</dd>' in ren)
+           '<dt>Completed</dt><dd>26-Oct-2021</dd>' in ren)
         ck('the board leads with the completion date when one is stated',
-           'title="completion date">2021-10-26' in rd('games/nes/pinball/index.html'))
+           'title="completion date">26-Oct-2021' in rd('games/nes/pinball/index.html'))
         ck('so does the profile listing (#39)',
-           'title="completion date">2021-10-26' in rd('authors/newstar/index.html'))
+           'title="completion date">26-Oct-2021' in rd('authors/newstar/index.html'))
         prof = rd('authors/newstar/index.html')
         ck('the profile sorts by the date it shows, most recent first (#47)',
            0 < prof.find('M900004') < prof.find('M900006'))

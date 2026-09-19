@@ -46,7 +46,7 @@
 <p class="actnote">{{ REPORT_LABELS.get(rep.kind, rep.kind) }}
 {% if rep.get('details') %}: {{ inline(rep.get('details'), '../../../') }}{% endif %}</p>
 {% if rep.status != 'open' %}
-<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), '../../../') }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '', '../../../') }}</p>
+<p class="statline">Resolution by expert {{ member_chip(rep.get('resolvedBy'), '../../../') }} on {{ format_date(rep.get('resolvedAt')) }}: {{ inline(rep.get('resolution') or '', '../../../') }}</p>
 {% endif %}
 </div>
 {% endfor %}
@@ -63,10 +63,10 @@
 {% if c.status == 'open' %}<span class="chip pendchip">Open</span>
 {% elif c.status == 'closed' %}<span class="chip verchip">Closed: reaffirmed</span>
 {% else %}<span class="chip upheldchip">Upheld: run returned to pending</span>{% endif %}
-<span class="actmeta">opened by {{ member_chip(c.openedBy, '../../../') }} · {{ c.date or c.get('opened', '') }}</span></div>
+<span class="actmeta">opened by {{ member_chip(c.openedBy, '../../../') }} · {{ format_date(c.date or c.get('opened', '')) }}</span></div>
 <p class="actnote">{{ inline(c.reason, '../../../') }}</p>
 {% for v in c.get('reaffirmations', []) %}
-<p class="statline">{{ member_chip(v.user, '../../../') }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ v.date }}{% if v.get('notes') %} · {{ inline(v.notes, '../../../') }}{% endif %}</p>
+<p class="statline">{{ member_chip(v.user, '../../../') }}: {{ 'reaffirmed' if v.reaffirm else 'withdrew' }} on {{ format_date(v.date) }}{% if v.get('notes') %} · {{ inline(v.notes, '../../../') }}{% endif %}</p>
 {% endfor %}
 </div>
 {% endfor %}

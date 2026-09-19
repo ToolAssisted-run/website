@@ -38,6 +38,11 @@ OUT = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else 'stage-build')
 
 TODAY = datetime.date.today()
 
+MONTH_ABBR = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+]
+
 def site_commit():
     """Short hash of the website repo commit this build came from — shown in
     the footer, linked to GitHub, so any page identifies its exact code."""

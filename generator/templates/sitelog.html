@@ -9,7 +9,7 @@
 {# the answer to a request: its state, who decided and when, and any note #}
 {% macro answer(r, chips) %}
 {{ status_chip(r.status, chips) }}
-{%- if r.get('decidedBy') %}<span class="actmeta"> by {{ member_chip(r.get('decidedBy'), '../../') }} on {{ r.get('decidedAt') or '' }}</span>{% endif %}
+{%- if r.get('decidedBy') %}<span class="actmeta"> by {{ member_chip(r.get('decidedBy'), '../../') }} on {{ format_date(r.get('decidedAt')) }}</span>{% endif %}
 {%- if r.get('note') %}<p class="actnote">{{ inline(r.get('note') or '', '../../') }}</p>{% endif %}
 {%- endmacro %}
 <header class="ghead"><div><h1>Site log</h1>
@@ -93,7 +93,7 @@ worked out when they look, written into neither this archive nor anywhere else.<
 {{ run_link(r_) }}
 {% if rep.get('details') %}: {{ inline(rep.get('details')) }}{% endif %}</p>
 {% if rep.status != 'open' %}
-<p class="statline">Resolution by expert {{ rep.get('resolvedBy') }} on {{ rep.get('resolvedAt') or '' }}: {{ inline(rep.get('resolution') or '') }}</p>
+<p class="statline">Resolution by expert {{ rep.get('resolvedBy') }} on {{ format_date(rep.get('resolvedAt')) }}: {{ inline(rep.get('resolution') or '') }}</p>
 {% endif %}
 </div>
 {% endfor %}
@@ -205,7 +205,7 @@ and asks the people who spoke to say so again.</p>
 <div class="tblwrap" data-pagesize-key="sitelog-cases" data-item-label="case"><table class="sortable paginated"><thead><tr><th class="sort-desc">Opened</th><th>Run</th><th>State</th></tr></thead>
 <tbody>
 {% for r_, c in open_cases %}
-<tr><td>{{ c.get('opened') or '' }}</td>
+<tr><td>{{ format_date(c.get('opened')) }}</td>
 <td>{{ run_link(r_) }}</td>
 <td>case {{ c.id }} · {{ c.get('reaffirmations', [])|length }} of {{ c.verifiers|length }} verifiers
 have stood by their word</td></tr>
