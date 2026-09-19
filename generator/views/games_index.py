@@ -104,7 +104,6 @@ def render_system_log(skey, sname, sgames, sruns, sysexperts, site_experts):
         for kind, roster in [
             ('reproduction', 'reproductions'),
             ('verification', 'verifications'),
-            ('console verification', 'consoleVerifications'),
         ]:
             for a in r_.get(roster, []):
                 inv = a.get('invalidated')
@@ -196,7 +195,6 @@ def render_group_log(gr, ggames, grunts, group_experts, site_experts, synthetic)
         for kind, roster in [
             ('reproduction', 'reproductions'),
             ('verification', 'verifications'),
-            ('console verification', 'consoleVerifications'),
         ]:
             for a in r_.get(roster, []):
                 inv = a.get('invalidated')

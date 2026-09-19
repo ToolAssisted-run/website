@@ -9,7 +9,6 @@ from model import (
     groups,
     nlikes,
     nvisits,
-    console_state,
     covering_experts,
     edits_of,
     eff_state,
@@ -125,7 +124,6 @@ def render_run_log(r):
     for kind, roster in [
         ('reproduction', 'reproductions'),
         ('verification', 'verifications'),
-        ('console verification', 'consoleVerifications'),
     ]:
         for a in r.get(roster, []):
             inv = a.get('invalidated')
@@ -177,7 +175,6 @@ for r in runs:
     is_leg = rs == 'imported'
     reps = sorted(r.get('reproductions', []), key=lambda a: a.get('date') or '')
     vers = sorted(r.get('verifications', []), key=lambda a: a.get('date') or '')
-    cons = sorted(r.get('consoleVerifications', []), key=lambda a: a.get('date') or '')
     # each case with the verifiers who have not voted on it yet
     cases = []
     for c in sorted(r.get('cases', []), key=lambda c: c['id']):
@@ -185,7 +182,6 @@ for r in runs:
         cases.append((c, [u for u in c['verifiers'] if u.lower() not in voted]))
     forum = r.get('forum') or {}
     nrep, nver = len(live(r.get('reproductions', []))), len(live(r.get('verifications', [])))
-    ncons = len(live(cons))
     open_case = next((c for c in r.get('cases', []) if c['status'] == 'open'), None)
     # the secondary metrics of the run's category, with the stated value of each
     metric_rows = [(m, metric_value(r, m)) for m in run_metric_defs(r) if m['key'] != 'time']
@@ -202,8 +198,6 @@ for r in runs:
         'reproduced': [a['user'].lower() for a in r.get('reproductions', [])
                        if not a.get('invalidated') or a['invalidated'].get('cause') != 'edit'],
         'verified': [a['user'].lower() for a in r.get('verifications', [])
-                     if not a.get('invalidated') or a['invalidated'].get('cause') != 'edit'],
-        'consoled': [a['user'].lower() for a in r.get('consoleVerifications', [])
                      if not a.get('invalidated') or a['invalidated'].get('cause') != 'edit'],
         'experts': covering_experts(r['_game']['key']),
         'hasEncode': bool(enc) and not is_unclassified(r),
@@ -232,8 +226,6 @@ for r in runs:
                             if not a.get('invalidated')],
         'verifiedNames': [a['user'] for a in r.get('verifications', [])
                           if not a.get('invalidated')],
-        'consoledNames': [a['user'] for a in r.get('consoleVerifications', [])
-                          if not a.get('invalidated')],
         'openReports': [{'id': x['id'], 'kind': x['kind'], 'by': x['by']}
                         for x in r.get('reports', []) if x['status'] == 'open'],
     }
@@ -247,9 +239,9 @@ for r in runs:
     body = tpl('run_pages.html', r=r, g=g, t=t, cl=cl, rs=rs, vs=vs, enc=enc, enc_url=enc_url,
                reel=reel_for(r),
                pv=pv, warns=warns, files=files, imported=imported, is_leg=is_leg,
-               reps=reps, vers=vers, cons=cons, cases=cases,
+               reps=reps, vers=vers, cases=cases,
                topic=forum.get('topicId'), forum_url=forum.get('url'),
-               nrep=nrep, nver=nver, ncons=ncons, cstate=console_state(r),
+               nrep=nrep, nver=nver,
                open_case=open_case, metric_rows=metric_rows, nrev=nrev, notes_src=notes_src,
                atts=r.get('attachments', []), today=datetime.date.today().isoformat(),
                n_open_reports=len(act_data['openReports']),

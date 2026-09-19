@@ -34,7 +34,6 @@ def make_run(tmp, rid, frames, status, extra):
     (rd / f'{rid}.bk2').write_bytes(b'test')
     (rd / 'thumb.png').write_bytes(PNG)
     status = dict(status)
-    status.setdefault('console', 'none')
     run = {'id': rid, 'game': 'nes/pinball', 'category': {'goal': '100k-glitched'},
            'authors': [{'user': 'TestAuthor'}],
            'movie': {'file': f'{rid}.bk2', 'format': 'bk2', 'frames': frames,
@@ -208,10 +207,6 @@ def main():
            'jo***oe@e****.com' in claimp and 'obfuscated' in claimp)
         ck('claim page no longer hands out a token',
            'one-time code' not in claimp and 'claim-start' not in claimp)
-        ck('console verification section on a community run',
-           'Console verifications' in r2 and 'f-console' in r2)
-        ck('console verification is absent from imported runs',
-           'f-console' not in leg)
         ck('app.js emitted', (out / 'assets/app.js').exists())
 
     print('---', len(failures), 'failures')

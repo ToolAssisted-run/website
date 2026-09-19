@@ -360,10 +360,7 @@ def main():
                                submitted='2026-02-05T00:00:00Z'),
             mkarchive.run_spec('M900105', frames=5500, authors=['Eve'], goal='100-percent',
                                contract={'emulator': 'BizHawk 2.11',
-                                         'rom': {'name': 'Old Game (USA).nes', 'sha1': 'c' * 40}},
-                               consoleVerifications=[{'user': 'Metal', 'date': '2026-02-07',
-                                                      'proof': 'https://example.com/rec',
-                                                      'hardware': 'NES + Everdrive'}]),
+                                         'rom': {'name': 'Old Game (USA).nes', 'sha1': 'c' * 40}}),
             mkarchive.run_spec('M900104', game='dos/hardgame', frames=9000, authors=['Dee'],
                                status={'reproduced': 'community', 'verified': 'full'},
                                reproductions=[{'user': 'Rep', 'date': '2026-02-04'}],
@@ -385,6 +382,15 @@ def main():
                                frames=9000, authors=['Bo'],
                                status={'reproduced': 'none', 'verified': 'provisional'},
                                verifications=[{'user': 'Rep', 'date': '2026-02-09'}]),
+        ] + [
+            # the contributor board shows medals, and the cheapest one is ten
+            # acts by one member: Medalist verifies ten runs nobody else here
+            # touches
+            mkarchive.run_spec(f'M9001{20 + i}', game='nes/orphan', frames=20000 + i,
+                               authors=['Ada'],
+                               status={'reproduced': 'none', 'verified': 'provisional'},
+                               verifications=[{'user': 'Medalist', 'date': '2026-02-10'}])
+            for i in range(10)
         ], nonmembers=['Nyx'],
             game_props={'nes/testgame': {'released': '1989-03', 'unofficial': True,
                                          'discord': 'https://discord.gg/tg1',
@@ -700,24 +706,6 @@ def main():
            'href="https://www.speedrun.com/tg"' in gpage_
            and 'rel="noopener noreferrer">RTA leaderboards' in gpage_)
         ck('the URLs land in attributes, escaped', 'javascript:' not in gpage_)
-        # hardware verification exists only on systems played back on real
-        # hardware (#53): nes is one, dos is not
-        dosgame_ = all_html[out / 'games' / 'dos' / 'hardgame' / 'index.html']
-        ck('a game on a non-verifiable system shows no Console column',
-           '<th class="ctr">Console</th>' not in dosgame_ and 'Console</th>' in all_html[out / 'games' / 'nes' / 'testgame' / 'index.html'])
-        dosrun_ = all_html[out / 'runs' / 'M900104' / 'index.html']
-        ck('its run page has no console roster, form or status line',
-           'Console verifications' not in dosrun_ and 'id="f-console"' not in dosrun_
-           and 'Console verification: none yet' not in dosrun_)
-        nesrun_ = all_html[out / 'runs' / 'M900101' / 'index.html']
-        ck('an nes run page keeps them',
-           'Console verifications' in nesrun_ and 'id="f-console"' in nesrun_)
-        contrib_hw = all_html[out / 'contribute' / 'index.html']
-        hw_list2 = contrib_hw.split('id="hw-scroll"')[1].split('</table>')[0] if 'id="hw-scroll"' in contrib_hw else ''
-        ck('the hardware worklist lists verifiable systems only',
-           'M900104' not in hw_list2 and 'M900101' in hw_list2)
-        ck('the hardware filter offers verifiable systems only',
-           'data-sys="dos"' not in contrib_hw.split('id="hwfilter"')[1].split('</div>')[0])
         # subcategories (#43)
         subpage_ = all_html[out / 'games' / 'dos' / 'subgame' / 'index.html']
         ck('a category with subcategories has one board per subcategory',
@@ -929,14 +917,6 @@ def main():
                                           f'vs {len(heads)} headers {names}')
         ck('every table row matches its header', not bad_tables, str(bad_tables[:4]))
 
-        # ---------- the third signal is visible ----------
-        game_pages = [h for p_, h in all_html.items() if p_.parent.name == 'testgame']
-        ck('game listings carry a console column',
-           any('<th class="ctr">Console</th>' in h for h in game_pages),
-           str(len(game_pages)))
-        ck('a console-verified run is marked on its own page',
-           'consolechip' in all_html[out / 'runs' / 'M900105' / 'index.html'])
-
         # ---------- only members have a presence ----------
         ck('someone who is not a member has no profile',
            not (out / 'authors' / 'nyx').exists())
@@ -1079,15 +1059,6 @@ def main():
            'f-newgroup' in all_html[out / 'games' / 'index.html'])
 
         contrib = all_html[out / 'contribute' / 'index.html']
-        # the third worklist: hardware verification, with its own remembered
-        # filter; a video-only run (no input movie) never appears on it
-        ck('contribute lists what needs hardware verification',
-           'Needs hardware verification' in contrib and 'id="hw-scroll"' in contrib
-           and 'id="hwfilter"' in contrib and 'Hardware I own' in contrib
-           and "'tar-my-hardware'" in contrib)
-        hw_list = contrib.split('id="hw-scroll"')[1].split('</table>')[0]
-        ck('the hardware list skips video-only runs and console-verified ones',
-           'M900109' not in hw_list and 'M900105' not in hw_list and 'M900101' in hw_list, hw_list[:300])
         ck('the systems filter applies after the rows it filters exist (#40)',
            "addEventListener('DOMContentLoaded', apply)" in contrib
            and contrib.index('#sysfilter') < contrib.index('id="nr-scroll"'))

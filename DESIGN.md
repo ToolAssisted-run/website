@@ -73,8 +73,8 @@ machine is a run the archive wants, and a rate is a correction rather than a
 reason to turn somebody away. The panels send the key, rate and flags outright.
 
 **A whole-site expert or the Committee corrects one** (`/api/system/edit`, on
-both panels): name, frame rate, and the two flags (hard to reproduce, plays
-back on original hardware), each logged in `edits.json` like any expert edit.
+both panels): name, frame rate, and the hard-to-reproduce flag, each logged
+in `edits.json` like any expert edit.
 The key is never among them: it opens every game address filed under the
 system, and a run cannot move between systems. **Removing one is the Steering
 Committee's alone** (`/api/system/delete`), refused while any game is filed
@@ -147,7 +147,7 @@ A person can relate to the site in these ways, from lightest to heaviest:
 - **An author**: a member credited on archived runs. Their profile lists their
   runs, stars, contributions, news, and role history.
 - **A contributor**: a member who has earned contributor points (one
-  reproduction, verification or console run suffices).
+  reproduction or verification suffices).
 
 **Roles** (all recorded in `roles.json`, an append-only event log; who holds
 what is the fold of it, never stored twice):
@@ -189,7 +189,7 @@ only; history may name things later deleted).
 
 **What experts do** (every act logged, public, appealable):
 invalidate faulty
-reproductions/verifications/console verifications · resolve/dismiss reports ·
+reproductions/verifications · resolve/dismiss reports ·
 edit everything in their jurisdiction (see §4, "Edits") · create games in
 their group, groups at site scope · delete outright what was never a
 work · withdraw any run in scope. Experts never
@@ -284,8 +284,8 @@ whose own frame rate differs from the system default carries `movie.fps`
 absence of the file is the fact; the API's `video_only` flag survives for
 callers, and a flag plus a file is refused as a contradiction); the encode
 IS the run. Nothing exists to
-reproduce, in emulator or on console: both gates are marked `not-applicable`
-(a status only video-only runs may carry), the endpoints refuse the acts, and
+reproduce: the gate is marked `not-applicable`
+(a status only video-only runs may carry), the endpoint refuses the act, and
 the page says so plainly. Verification ranks it exactly like any other run.
 
 **Reproduction tool, Preset Assistant, and Curator Maintenance**: reproduction
@@ -378,8 +378,8 @@ default frame geometry and continues from the stopped moment.
 
 ### States and the ranking gate
 
-**Verification is the ranking gate.** Reproduction gates nothing (it is a
-recorded, paid act of assurance); console verification gates nothing.
+**Verification is the ranking gate.** Reproduction gates nothing: it is a
+recorded, paid act of assurance.
 
 | Stored enum | Shown as | Meaning |
 |---|---|---|
@@ -387,7 +387,7 @@ recorded, paid act of assurance); console verification gates nothing.
 | `provisional` | **Verified** | one verification, from anybody; ranked |
 | `confirmed` | **Verified** | same: a verification that happened to be an expert's. No tier, no permanence; shown identically |
 | `imported` | **Verified** | verified+reproduced at the trusted source site, irrevocable. No badge of its own anywhere: the run page's Status box alone says where it was verified, names the importer and the CC BY attribution |
-| `not-applicable` | (explained in place) | video-only runs, repro/console gates |
+| `not-applicable` | (explained in place) | video-only runs, the repro gate |
 
 **There are no verification tiers**: zero verifications is not verified,
 one (from whoever) is verified, and the verifier is trusted by default; a
@@ -424,10 +424,6 @@ invalidation of a faulty act does not)
   Mandatory ending screenshot (png/jpg/webp, magic-checked, ≤512 KB each/8 MB
   per run, never matching the ROM hash); optional notes forming a per-run
   how-to. Goal-free: survives category moves.
-- **Console verification**: replayed on original hardware; mandatory public
-  proof link, optional hardware/screenshot/notes. Never required; absence is
-  a neutral dash. Imported runs inherit the source site's console flag
-  (`status.console = 'imported'`).
 - **Like** (★): anyone, once per run, never your own (rename-resolved). The
   one reversible act: a second press erases the like outright, no tombstone,
   no log — a like is a mood, not a judgement. Orders the Unclassified shelves.
@@ -496,8 +492,8 @@ what it changed.** A change to the run's **goal or scoring** (its category,
 stated time or any metric value) invalidates every live verification (the run leaves the
 ranking until verified again). A change to its **reproduction
 information** (the movie file, the tool it plays in, the files it was
-made against) invalidates every live reproduction and console
-verification (they synced the old setup). Nothing else voids anything:
+made against) invalidates every live reproduction (they synced the old
+setup). Nothing else voids anything:
 encode, notes, dates, disclosures and authors are free. The archivist
 enforces this on both edit paths (`SCORING_FIELDS` / `REPRO_FIELDS` +
 `metric:*` in `void_acts_for`), logs it, and a dry run announces it
@@ -523,9 +519,8 @@ This is what keeps replacing a video link from touching the scoring.
   An expert using the panel must state a public reason (8–500 chars) and can
   never touch the author list or the uploads; their changes log exactly like
   `/api/expert/edit` ones. Replacing a movie invalidates the live reproductions
-  and console verifications that synced the old file, but keeps those historical
-  acts in their rosters marked **Obsoleted**; the run then needs reproduction
-  again.
+  that synced the old file, but keeps those historical acts in the roster
+  marked **Obsoleted**; the run then needs reproduction again.
 - **Experts** additionally correct structural facts through
   `/api/expert/edit` (API; the old per-field run form is retired from the
   page): a run's goal (existing options; unclassified refused while live
@@ -776,8 +771,7 @@ Two currencies, recomputed at every build from the rosters, never stored:
 sat waiting, the whole payout topping out at 2,000 · later reproductions 25 ·
 hard-to-reproduce systems (flagged in systems.json) +50 on any reproduction ·
 first verification 20 + 1/day waiting, topping out at 1,000; later
-verifications 20 · console verification a fixed 1,000 (real hardware, a
-capture setup, a recording). Both contribute worklists sort by bounty.
+verifications 20. Both contribute worklists sort by bounty.
 One plain **Contributor** badge, earned by the first act; the milestone
 tiers (1k/5k/10k/25k) are retired, since the medals carry the honors. The
 badge shows beside a name everywhere except on the contributor board, where
@@ -786,8 +780,8 @@ take its place: little gold/silver/bronze discs, one letter each, the
 achievement in the tooltip. All recomputed from the recorded acts at build
 time, nothing stored: top contributor of the last 7 / 30 days (W, M; ties
 share), ten / a hundred / five hundred reproductions (R) or verifications (V),
-twenty-five / a hundred firsts (1), one / ten console verifications (H);
-one medal per family, the highest earned. **No currency
+twenty-five / a hundred firsts (1); one medal per family, the highest
+earned. **No currency
 buys anything** (anti-farming: a currency without privileges is not worth
 gaming). Imports award nothing.
 
@@ -813,8 +807,8 @@ archivist, module responsibilities). What matters designwise:
 
 - **The archive is a plain git repo, no database, no LFS.** Facts in, derived
   state out. Layout: `games/<sys>/<slug>/{game.json, categories.json,
-  runs/M<id>/{run.json, movie, notes.md, attachments/, reproductions/,
-  console/}}` plus `authors/`, `groups.json`, `roles.json`, `claims.json`,
+  runs/M<id>/{run.json, movie, notes.md, attachments/, reproductions/}}`
+  plus `authors/`, `groups.json`, `roles.json`, `claims.json`,
   `edits.json`, `deletions.json`, `systems.json`, `schema/`, `validate.py`.
   Rosters are the facts; the stored `status` is a checked cache that CI
   refuses to let lie. Invalidated acts stay on the record with by/date/reason.
@@ -964,7 +958,7 @@ archivist, module responsibilities). What matters designwise:
   **held until the page they link answers 200** (up to
   `NOTIFY_LINK_WAIT_SECONDS`). New-movie lines carry the run thumbnail as an
   embed. Imports notify once per batch. **Every act names the category it
-  was about** (verification, reproduction, hardware playback), since that is
+  was about** (verification, reproduction), since that is
   what was judged or synced. **Every edit is announced too**: a run revision,
   an expert edit of a run, game, category or group, a cross-game move, and a
   system correction, each naming the fields that changed, what the change
@@ -1132,14 +1126,6 @@ archivist, module responsibilities). What matters designwise:
   form and the import page link to; the site carries no policy page of its
   own); any author may withdraw it, all together may erase it. The importer never crawls the source site: it
   reads a local backup corpus, refreshed by a daily cron.
-- **Hardware verification exists only where it can happen** (issue #53):
-  `systems.json` marks the systems a movie is played back on real hardware
-  (`hardwareVerifiable`: a2600, nes, snes, genesis, gb, gbc, gba, n64). On
-  every other system the console signal is absent rather than "none": no
-  Console column on that game's boards (mixed tables show the column only
-  when some row can carry it, a dot otherwise), no roster, act form or
-  status line on the run page, no row on the hardware worklist, and the
-  archivist refuses the act. An import's source verification still shows.
 - **ROMs never touch the site.** Hashes and names are facts.
 - **Privacy commitments** (§6, and they bind the implementation): no
   analytics, no tracker, one session cookie after login; the archive holds

@@ -265,8 +265,7 @@ def m_status_reproduced_lies(root):
 def m_status_verified_lies(root):
     # claiming confirmed with no expert-stamped verification behind it
     edit(root, 'M900202', lambda d: d.update(
-        status={'reproduced': 'community', 'verified': 'confirmed',
-                'console': d['status'].get('console', 'none')}))
+        status={'reproduced': 'community', 'verified': 'confirmed'}))
 
 def m_undeclared_file(root):
     (rdir(root, 'M900201') / 'secret.bin').write_bytes(b'\0\1\2')
@@ -282,32 +281,6 @@ def m_missing_categories(root):
 
 def m_run_without_movie(root):
     edit(root, 'M900201', lambda d: d.pop('movie'))
-
-def m_console_status_lies(root):
-    edit(root, 'M900202', lambda d: d['status'].update(console='community'))
-
-def m_console_imported_on_native(root):
-    edit(root, 'M900202', lambda d: d['status'].update(console='imported'))
-
-def m_console_without_proof(root):
-    edit(root, 'M900202', lambda d: d.update(consoleVerifications=[
-        {'user': 'Hardware', 'date': '2026-03-08', 'proof': 'not-a-link'}]))
-
-def m_console_self_act(root):
-    edit(root, 'M900202', lambda d: d.update(consoleVerifications=[
-        {'user': 'Bo', 'date': '2026-03-08', 'proof': 'https://example.com/v'}]))
-
-def m_console_duplicate(root):
-    edit(root, 'M900202', lambda d: d.update(consoleVerifications=[
-        {'user': 'Hardware', 'date': '2026-03-08', 'proof': 'https://example.com/v'},
-        {'user': 'Hardware', 'date': '2026-03-09', 'proof': 'https://example.com/w'}]))
-
-def m_console_screenshot_misplaced(root):
-    p = rdir(root, 'M900202') / 'reproductions'
-    (p / 'stray.png').write_bytes(PNG)
-    edit(root, 'M900202', lambda d: d.update(consoleVerifications=[
-        {'user': 'Hardware', 'date': '2026-03-08', 'proof': 'https://example.com/v',
-         'screenshot': 'reproductions/stray.png'}]))
 
 def m_negative_frames(root):
     edit(root, 'M900201', lambda d: d['movie'].update(frames=-5))
@@ -463,14 +436,6 @@ CASES = [
     ('author schema enforced', m_schema_violation_author, 'schema violation'),
     ('missing categories.json is reported', m_missing_categories, 'categories.json'),
     ('run without movie is reported', m_run_without_movie, 'movie.file'),
-    ('status.console cannot lie', m_console_status_lies, 'status.console'),
-    ('only imported runs can inherit console verification', m_console_imported_on_native,
-     'not imported'),
-    ('console verification without proof', m_console_without_proof, 'schema violation'),
-    ('no self console-verification', m_console_self_act, 'consoleVerification by'),
-    ('no duplicate console verification', m_console_duplicate, 'duplicate consoleVerification'),
-    ('console screenshots live under console/', m_console_screenshot_misplaced,
-     'must live under console/'),
     ('negative frame counts', m_negative_frames, 'schema violation'),
     ('unparseable run.json is reported', m_broken_json, 'not valid JSON'),
     ('a group cannot list a game that is not here', m_group_unknown_game,

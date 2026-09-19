@@ -543,13 +543,6 @@ a {
   color: var(--muted);
 }
 
-.consolechip {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--panel);
-  font-weight: 700;
-}
-
 .importedchip {
   background: rgba(139, 92, 246, 0.1);
   border-color: rgba(139, 92, 246, 0.45);
@@ -598,11 +591,6 @@ a {
 .tick.imported {
   background: var(--imported);
   color: #fff;
-}
-
-.tick.console {
-  background: var(--ink);
-  color: var(--panel);
 }
 
 .tick.full {
@@ -2949,10 +2937,6 @@ input.bad {
 
 .newsico.liked {
   color: var(--accent);
-}
-
-.newsico.console {
-  color: var(--imported);
 }
 
 .acctmenu {

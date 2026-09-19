@@ -378,7 +378,7 @@ def request_identity(form, field='user'):
 WRITE_PACE = {          # kind -> (calls allowed, per seconds)
     'like': (12, 600),         # a dozen votes in ten minutes
     'edit': (40, 3600),        # revisions of one's own work (a save is a dry run + a write)
-    'act': (30, 3600),         # reproductions, verifications, console
+    'act': (30, 3600),         # reproductions, verifications
     'submit': (12, 3600),      # new runs
     'report': (6, 3600),       # reports and cases
     'create': (20, 3600),      # games, categories, groups
@@ -603,7 +603,7 @@ def submit():
 
     # --- the movie, or the statement that there is none ---
     # A video-only run has no input movie: the encode IS the run. It can never
-    # be reproduced, in emulator or on console, and it says so; verification
+    # be reproduced, and it says so; verification
     # still gates its ranking like any other run's. The submitter states the
     # time, since there are no frames to derive it from.
     # a run without a movie file IS video-only: the encode is the run. The
@@ -744,9 +744,8 @@ def submit():
             **({'goalDescription': goal_description} if goal_description else {}),
             **({'contentWarnings': content_warnings} if content_warnings else {}),
             'contract': {'emulator': (submission.get('emulator') or '').strip(), **({'files': files} if files else {})},
-            'status': ({'reproduced': 'not-applicable', 'verified': 'none',
-                        'console': 'not-applicable'} if video_only else
-                       {'reproduced': 'none', 'verified': 'none', 'console': 'none'}),
+            'status': ({'reproduced': 'not-applicable', 'verified': 'none'} if video_only else
+                       {'reproduced': 'none', 'verified': 'none'}),
             'encodes': [{'kind': encode_provider['kind'], 'url': encode}],
             'attachments': [{'file': f'attachments/{name}', 'role': 'submitted attachment'} for name, _ in attachments],
             **({'completed': completed} if completed else {}),
@@ -933,7 +932,7 @@ def invalidate():
     can be redone by anyone else.
 
     Who: an expert covering the run's game (`key` plus `expert`, or session)
-    Reads: form fields run, kind (reproduction|verification|console), target
+    Reads: form fields run, kind (reproduction|verification), target
         (the username whose act it is), reason, dry_run
     Answers: {ok, run, status, note}; dry_run: {ok, dry_run, would_invalidate,
         status}
@@ -961,11 +960,9 @@ def invalidate():
         if not expert_covers(expert, game_key):
             return fail(f'{expert!r} is not an expert covering {game_key}', 403)
         kind = (invalidation_form.get('kind') or '').strip()
-        # console verification lives in its own roster, hence the mapping
-        ROSTER = {'reproduction': 'reproductions', 'verification': 'verifications',
-                  'console': 'consoleVerifications'}
+        ROSTER = {'reproduction': 'reproductions', 'verification': 'verifications'}
         if kind not in ROSTER:
-            return fail('kind must be reproduction, verification or console')
+            return fail('kind must be reproduction or verification')
         target = (invalidation_form.get('target') or '').strip()
         reason = (invalidation_form.get('reason') or '').strip()
         if not reason:
@@ -1507,7 +1504,7 @@ def place_subcategory(categories, category, raw_sub):
 # time or any metric) invalidates the verifications, which attested those
 # facts from the encode; a change to its REPRODUCTION INFORMATION (the movie file, the
 # tool it plays in, the files it was made against) invalidates the
-# reproductions and the console verifications, which synced the old setup.
+# reproductions, which synced the old setup.
 # Nothing else voids anything.
 SCORING_FIELDS = {'duration', 'goal'}              # plus every metric:<key>
 REPRO_FIELDS = {'movie', 'emulator', 'files'}
@@ -1518,8 +1515,8 @@ def void_acts_for(run, changed, by):
     verifications, which attested those values, and the run leaves the
     ranking until somebody verifies it again; a reproduction-information
     change (the movie file, the tool, the files it was made against)
-    invalidates the live reproductions and console verifications, which
-    synced the old setup. Nothing else voids anything.
+    invalidates the live reproductions, which synced the old setup.
+    Nothing else voids anything.
     Returns the kinds voided."""
     voided = []
     stamp = {'by': by, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(), 'cause': 'edit'}
@@ -1537,10 +1534,6 @@ def void_acts_for(run, changed, by):
             if not r_.get('invalidated'):
                 r_['invalidated'] = dict(stamp, reason=f'{what} changed after this reproduction')
                 if 'reproductions' not in voided: voided.append('reproductions')
-        for c_ in run.get('consoleVerifications', []):
-            if not c_.get('invalidated'):
-                c_['invalidated'] = dict(stamp, reason=f'{what} changed after this console verification')
-                if 'consoleVerifications' not in voided: voided.append('consoleVerifications')
     if voided:
         sync_status(run)
     return voided
@@ -1812,14 +1805,12 @@ def expert_edit():
                 # a run that gains its first movie stops being video-only, and
                 # what was not applicable to it becomes merely undone
                 run.pop('videoOnly', None)
-                for gate in ('reproduced', 'console'):
-                    if run.get('status', {}).get(gate) == 'not-applicable':
-                        run['status'][gate] = 'none'
+                if run.get('status', {}).get('reproduced') == 'not-applicable':
+                    run['status']['reproduced'] = 'none'
             would_void = []
             if (field in SCORING_FIELDS or field.startswith('metric:')) and live_acts(run)['verifications']: would_void.append('verifications')
             if field in REPRO_FIELDS:
                 if live_acts(run)['reproductions']: would_void.append('reproductions')
-                if any(not c_.get('invalidated') for c_ in run.get('consoleVerifications', [])): would_void.append('consoleVerifications')
             if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'field': field,
                                 'from': old_value, 'to': value, 'would_void': would_void})
@@ -2668,8 +2659,7 @@ def system_create():
         send, and a whole-site expert or the Committee corrects them later
         through /api/system/edit
     Reads: form fields name, system (its key, made from the name when
-        absent), fps (60 when absent), hard (hard to reproduce), hardware
-        (playable back on original hardware), dry_run
+        absent), fps (60 when absent), hard (hard to reproduce), dry_run
     Answers: {ok, key, system}; dry_run: {ok, dry_run, would_create};
         409 when the key or the name is taken
     """
@@ -2713,8 +2703,6 @@ def system_create():
         entry = {'name': name, 'fps': fps}
         if system_form.get('hard') in ('1', 'true', 'yes', 'on'):
             entry['hardToReproduce'] = True
-        if system_form.get('hardware') in ('1', 'true', 'yes', 'on'):
-            entry['hardwareVerifiable'] = True
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_create': {key: entry}})
         checkout_branch()
@@ -2727,7 +2715,6 @@ def system_create():
         commit_push(f'System {key}: created by {actor}\n\n'
                     f'Name: {name}\nFrame rate: {fps}\n'
                     f'Hard to reproduce: {"yes" if entry.get("hardToReproduce") else "no"}\n'
-                    f'Hardware verifiable: {"yes" if entry.get("hardwareVerifiable") else "no"}\n'
                     f'By: {actor}\nVia: archivist')
         notify_discord(f'\U0001f579\ufe0f **{member_md(actor)}** added the system '
                        f'**{name}**: runs on it can be submitted now')
@@ -2746,7 +2733,7 @@ def system_edit():
     break every address it ever had.
 
     Who: a whole-site expert, or the Steering Committee
-    Reads: form fields system (its key), name, fps, hard, hardware (each
+    Reads: form fields system (its key), name, fps, hard (each
         optional; only what is sent changes), dry_run
     Answers: {ok, key, system, changed}; dry_run: {ok, dry_run, would_change}
     """
@@ -2796,7 +2783,7 @@ def system_edit():
                 befores['fps'] = str(entry['fps'])
                 entry['fps'] = fps
                 changed.append('fps')
-        for field, flag in (('hard', 'hardToReproduce'), ('hardware', 'hardwareVerifiable')):
+        for field, flag in (('hard', 'hardToReproduce'),):
             if not (system_form.get(field) or '').strip():
                 continue                       # empty says "leave it as it is"
             want = system_form.get(field) in ('1', 'true', 'yes', 'on')
@@ -3313,8 +3300,8 @@ def attach_movie(run, run_dir, upload):
     A run is video-only because no movie file came with it, which is a
     statement about the submission and not a permanent property of the work:
     a file that failed to reach us (a form that would not send it, an author
-    who had not exported it yet) can still arrive. Reproduction and console
-    verification stop being not-applicable the moment one does.
+    who had not exported it yet) can still arrive. Reproduction stops being
+    not-applicable the moment one does.
 
     Returns (description, error): the error is a Flask response.
     """
@@ -3332,9 +3319,8 @@ def attach_movie(run, run_dir, upload):
                     'start': parsed['start'],
                     **({'fps': parsed['fps']} if parsed.get('fps') else {})}
     run.pop('videoOnly', None)
-    for gate in ('reproduced', 'console'):
-        if run.get('status', {}).get(gate) == 'not-applicable':
-            run['status'][gate] = 'none'
+    if run.get('status', {}).get('reproduced') == 'not-applicable':
+        run['status']['reproduced'] = 'none'
     return (f"{run['id']}.{ext} (sha1 {run['movie']['sha1'][:12]}, "
             f"{parsed['frames'] or 'unknown'} frames)"), None
 
@@ -3549,8 +3535,8 @@ def edit_run():
                     run.pop('goalDescription', None)
                 changed.append('goalDescription')
         # Authors and covering experts may replace the movie one item at a time.
-        # The reproduction and console rosters remain historical, while
-        # void_acts_for marks their records obsolete because they synced the old file.
+        # The reproduction roster remains historical, while void_acts_for
+        # marks its records obsolete because they synced the old file.
         movie_upload = request.files.get('movie')
         if movie_upload and movie_upload.filename:
             old_movie = run.get('movie')
@@ -3682,8 +3668,6 @@ def edit_run():
             if live_acts(run)['verifications']: would_void.append('verifications')
         if any(c in REPRO_FIELDS for c in changed):
             if live_acts(run)['reproductions']: would_void.append('reproductions')
-            if any(not c_.get('invalidated') for c_ in run.get('consoleVerifications', [])):
-                would_void.append('consoleVerifications')
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_change': changed, 'would_void': would_void})
         voided = void_acts_for(run, changed, user)
@@ -5040,7 +5024,7 @@ def verify():
         commit_push(f'Verify {run["id"]}: by {user}\n\nVia: archivist')
         # every act is about a run in a category, and the category closes the
         # line: "verified [PS2] Athens 2004 by toca, Pole Vault" says what
-        # was judged, and the reproduction and hardware notices say the same
+        # was judged, and the reproduction notice says the same
         notify_discord(f'\u2713 **{member_md(user)}** verified '
                        + movie_md(run) + in_category(run),
                        wait_for=f'{SITE_URL}/runs/{run["id"]}/')
@@ -5099,90 +5083,6 @@ def withdraw():
         ensure_member(user)
         commit_push(f'Withdraw {run_id}: by {user}\n\nReason: {reason}\nVia: archivist')
     return jsonify({'ok': True, 'run': run_id, 'withdrawn': run['withdrawn']})
-
-@app.post('/api/console-verify')
-def console_verify():
-    """Record a console verification: the run replayed on original hardware.
-
-    An optional signal beside verification (the one gate). It is the most
-    expensive act anyone can perform here, so it carries a public recording
-    and pays accordingly.
-
-    Who: a member who is not one of the run's authors; not on video-only runs
-    Reads: form fields run, proof (URL of the recording), hardware, notes,
-        dry_run; optional file screenshot
-    Answers: {ok, run, proof, consoleVerifications}
-    """
-    verification_form = request.form
-    dry_run = verification_form.get('dry_run') in ('1', 'true', 'yes')
-    with lock:
-        auth_error = auth_precheck(verification_form)
-        if auth_error:
-            return auth_error
-        if not dry_run:
-            checkout_branch()
-        act_error, run_dir, run, user = act_common(verification_form)
-        if act_error:
-            return act_error
-        if run.get('videoOnly'):
-            return fail('this run is video-only: there is no input movie to play '
-                        'back on hardware, so console verification does not apply')
-        systems_doc = json.loads((ARCHIVE / 'systems.json').read_text())
-        if not systems_doc.get(run_dir.parent.parent.parent.name, {}).get('hardwareVerifiable'):
-            return fail('this system is not one that is played back on original hardware '
-                        '(systems.json: hardwareVerifiable), so console verification does not apply')
-        if any(a['user'].lower() == user.lower() and (not a.get('invalidated') or a['invalidated'].get('cause') != 'edit')
-               for a in run.get('consoleVerifications', [])):
-            return fail('you have already console-verified this run; '
-                        'one console verification per member')
-        proof = (verification_form.get('proof') or '').strip()
-        if not re.match(r'https?://\S+$', proof) or len(proof) > 500:
-            return fail('a link to the recording of the console playing this run '
-                        'is required as proof')
-
-        entry = {'user': user, 'date': time.strftime('%Y-%m-%d', time.gmtime()), 'at': now_iso(),
-                 'proof': proof}
-        if (verification_form.get('hardware') or '').strip():
-            entry['hardware'] = verification_form.get('hardware').strip()[:120]
-        if (verification_form.get('notes') or '').strip():
-            entry['notes'] = verification_form.get('notes').strip()[:2000]
-
-        screenshot_upload = request.files.get('screenshot')
-        screenshot_bytes = None
-        if screenshot_upload and screenshot_upload.filename:
-            ext = pathlib.Path(screenshot_upload.filename).suffix.lower()
-            if ext not in IMAGE_MAGIC:
-                return fail('screenshot must be png, jpg or webp')
-            screenshot_bytes = screenshot_upload.read()
-            if len(screenshot_bytes) > SHOT_MAX_EACH:
-                return fail('screenshot exceeds 512 KB')
-            if not any(screenshot_bytes.startswith(magic) for magic in IMAGE_MAGIC[ext]):
-                return fail(f'screenshot is not a real {ext} image')
-            stored_bytes = sum(sp.stat().st_size for sp in (run_dir / 'console').glob('*')
-                           if sp.is_file()) if (run_dir / 'console').exists() else 0
-            if stored_bytes + len(screenshot_bytes) > SHOT_MAX_TOTAL:
-                return fail('this run has reached its screenshot storage cap')
-            ordinal = len(run.get('consoleVerifications', [])) + 1
-            entry['screenshot'] = f'console/{ordinal}-{user}{ext}'
-
-        run.setdefault('consoleVerifications', []).append(entry)
-        sync_status(run)
-        if dry_run:
-            return jsonify({'ok': True, 'dry_run': True, 'would_record': entry})
-
-        if screenshot_bytes is not None:
-            (run_dir / 'console').mkdir(exist_ok=True)
-            (run_dir / entry['screenshot']).write_bytes(screenshot_bytes)
-        (run_dir / 'run.json').write_text(json.dumps(
-            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
-        ensure_member(user)
-        commit_push(f'Console-verify {run["id"]}: by {user}\n\nProof: {proof}\nVia: archivist')
-        notify_discord(f'\U0001f579\ufe0f **{member_md(user)}** played ' + movie_md(run)
-                       + ' back on original hardware' + in_category(run),
-                       wait_for=f'{SITE_URL}/runs/{run["id"]}/')
-    return jsonify({'ok': True, 'run': run['id'], 'proof': proof,
-                    'consoleVerifications': len([a for a in run['consoleVerifications']
-                                                 if not a.get('invalidated')])})
 
 DISCUSSION_CACHE = {}      # topic id -> (fetched_at, payload)
 

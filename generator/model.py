@@ -46,8 +46,6 @@ PT_REPRO_MAX = 2000         # the whole first-reproduction payout tops out here
 
 PT_REPRO_HARD = 50   # extra for hard-to-reproduce systems (systems.json flag)
 
-PT_CONSOLE = 1000
-
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
 
 systems = json.loads((ARCHIVE / 'systems.json').read_text(encoding='utf-8'))
@@ -358,7 +356,7 @@ credited = {}          # lower -> the name as the run spells it
 
 for r in runs:
     people = [x['user'] for x in r['authors']]
-    for roster in ('reproductions', 'verifications', 'consoleVerifications', 'likes'):
+    for roster in ('reproductions', 'verifications', 'likes'):
         people += [x['user'] for x in r.get(roster, [])]
     for name in people:
         credited.setdefault(name.lower(), name)
@@ -471,31 +469,6 @@ def earning(acts):
     of the run voided afterwards (the act was honest work on what the run
     was then; only an expert finding it faulty forfeits the points)."""
     return [a for a in acts if not a.get('invalidated') or a['invalidated'].get('cause') == 'edit']
-
-# the systems a movie can be played back on real hardware (a replay device
-# on the console): systems.json marks them hardwareVerifiable (issue #53);
-# everywhere else the console signal does not exist, and the site says
-# nothing about it
-HW_SYSTEMS = {k for k, v in systems.items() if v.get('hardwareVerifiable')}
-
-def hw_verifiable(system):
-    return system in HW_SYSTEMS
-
-def console_applicable(r):
-    """Whether hardware verification is a thing for this run at all: a real
-    input movie, on a system that can play one back."""
-    return not r.get('videoOnly') and hw_verifiable(r['_game']['system'])
-
-def console_state(r):
-    """'imported' when TASVideos had already console-verified it, 'community'
-    when somebody here played it back on hardware, 'not-applicable' when the
-    run cannot be (video-only, or a system nobody plays back on hardware),
-    else 'none'."""
-    if (r.get('status') or {}).get('console') == 'imported':
-        return 'imported'
-    if live(r.get('consoleVerifications', [])):
-        return 'community'
-    return 'none' if console_applicable(r) else 'not-applicable'
 
 def eff_state(r):
     """(reproduced, verified) derived from rosters; 'imported' passes through.
@@ -629,17 +602,12 @@ for r in runs:
         else:
             award(act['user'], PT_VERIFY, 'verification', r,
                   act.get('at') or act.get('date'))
-    for act in earning(r.get('consoleVerifications', [])):
-        award(act['user'], PT_CONSOLE, 'console verification', r,
-              act.get('at') or act.get('date'))
 
 # ---- medals: achievements read off the acts above (issue #59) ----
 # Nothing is stored: every medal is recomputed from the recorded acts at
 # build time, so the board cannot disagree with the archive. Each is
 # (key, metal, mark, words); the words are the tooltip.
 MEDAL_RULES = [
-    ('console-1',   'bronze', 'H', 1,   'console verification', 'Hardware verifier: played a run back on original hardware'),
-    ('console-10',  'gold',   'H', 10,  'console verification', 'Hardware verifier: ten console verifications'),
     ('repro-10',    'bronze', 'R', 10,  'reproduction',         'Reproducer: ten reproductions'),
     ('repro-100',   'silver', 'R', 100, 'reproduction',         'Reproducer: a hundred reproductions'),
     ('repro-500',   'gold',   'R', 500, 'reproduction',         'Reproducer: five hundred reproductions'),
@@ -651,8 +619,6 @@ MEDAL_RULES = [
 ]
 
 def _act_kind(desc):
-    if desc == 'console verification':
-        return 'console verification'
     return 'reproduction' if 'reproduction' in desc else 'verification'
 
 def _recent_leaders(days):

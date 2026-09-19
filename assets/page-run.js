@@ -1,5 +1,5 @@
 // toolAssisted.run — the run page: the act zone (withdraw, reproduce,
-// verify, console-verify, move category, invalidate, reports), likes,
+// verify, move category, invalidate, reports), likes,
 // the 18+ gate, and the in-place forum discussion. Moved out of app.js:
 // these ids exist only on a run page.
 import {
@@ -163,12 +163,6 @@ if (actDataEl) {
       }
       if (runData.hasEncode && runData.verified.indexOf(myName) < 0)
         arm('f-verify', '/api/verify');
-      if (
-        !runData.videoOnly &&
-        document.getElementById('f-console') &&
-        (runData.consoled || []).indexOf(myName) < 0
-      )
-        arm('f-console', '/api/console-verify');
       if (runData.openCase) {
         if (
           runData.openCase.verifiers.indexOf(myName) >= 0 &&
@@ -236,7 +230,6 @@ if (actDataEl) {
       var kinds = [
         ['reproduction', runData.reproducedNames || []],
         ['verification', runData.verifiedNames || []],
-        ['console', runData.consoledNames || []],
       ];
       var options = [];
       kinds.forEach(function (pair) {

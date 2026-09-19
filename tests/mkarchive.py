@@ -16,7 +16,7 @@ JPG = b'\xff\xd8\xff' + b'\0' * 60
 
 # Frame rates match the real systems.json values so clock() output is realistic.
 DEFAULT_SYSTEMS = {
-    'nes': {'name': 'Nintendo Entertainment System', 'fps': 60.0988138974405, 'hardwareVerifiable': True},
+    'nes': {'name': 'Nintendo Entertainment System', 'fps': 60.0988138974405},
     'dos': {'name': 'DOS', 'fps': 60.0, 'hardToReproduce': True},
 }
 
@@ -67,7 +67,7 @@ def prune_superseded(root):
             continue
         anames = {canon(a['user']) for a in r.get('authors', [])}
         changed = False
-        for kind in ('reproductions', 'verifications', 'consoleVerifications'):
+        for kind in ('reproductions', 'verifications'):
             for act in r.get(kind, []):
                 if canon(act['user']) in anames and not act.get('invalidated'):
                     act['invalidated'] = {'by': 'fixture', 'date': '2026-08-19',
@@ -105,12 +105,11 @@ def validator_accepts_edit_retries(result, root):
     rosters = {
         'reproduction': 'reproductions',
         'verification': 'verifications',
-        'consoleVerification': 'consoleVerifications',
     }
     for problem in problems:
         match = re.search(
             r'/runs/(M\d+): duplicate '
-            r'(reproduction|verification|consoleVerification) by \'([^\']+)\'',
+            r'(reproduction|verification) by \'([^\']+)\'',
             problem.replace('\\', '/'))
         if not match:
             return False
@@ -263,7 +262,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
     for spec in runs:
         for a in spec['authors']:
             names.setdefault(a.lower(), a)
-        for act in ('reproductions', 'verifications', 'consoleVerifications'):
+        for act in ('reproductions', 'verifications'):
             for x in spec.get(act, []):
                 names.setdefault(x['user'].lower(), x['user'])
         for l in spec.get('likes', []):
@@ -335,8 +334,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             'thumbnail': 'thumb.png',
             'contract': {'emulator': 'BizHawk 2.11'},
             'status': spec.get('status',
-                               {'reproduced': 'not-applicable', 'verified': 'none',
-                                'console': 'not-applicable'} if video_only else
+                               {'reproduced': 'not-applicable', 'verified': 'none'} if video_only else
                                {'reproduced': 'none', 'verified': 'none'}),
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF45'}],
             'submitted': spec.get('submitted', '2026-01-01T00:00:00Z'),
@@ -346,9 +344,6 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
             if k in ('id', 'game', 'goal', 'sub', 'selector', 'sub_selector', 'authors', 'frames', 'notes', 'goal_metrics'):
                 continue
             run[k] = v
-        # the third signal is part of the checked status cache
-        run['status'].setdefault(
-            'console', 'community' if run.get('consoleVerifications') else 'none')
         for act, prefix in (('reproductions', 'reproductions'),):
             if run.get(act):
                 (rdir / prefix).mkdir(exist_ok=True)

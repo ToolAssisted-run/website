@@ -142,8 +142,7 @@ def main():
                                               {'user': 'Rep2', 'date': d(0)}],
                                verifications=[{'user': 'Ver', 'date': d(0)},
                                               {'user': 'Ver2', 'date': d(0)}],
-                               consoleVerifications=[{'user': 'Hardware', 'date': d(0),
-                                                      'proof': 'https://example.com/rec'}]),
+                               ),
             # imported runs pay nobody
             mkarchive.run_spec('M900312', frames=5000, authors=['Bo'], submitted=d(150),
                                status={'reproduced': 'imported', 'verified': 'imported'},
@@ -169,28 +168,27 @@ def main():
            stats.get('ver2', {}).get('contrib') == PT_VERIFY, str(stats.get('ver2')))
         ck('imported runs award nothing', 'importer' not in stats)
 
-        ck('console verification pays its own weight',
-           stats.get('hardware', {}).get('contrib') == 1000, str(stats.get('hardware')))
-
         # ---- contributor tiers: the badge a member wears is the one their
         # score buys, at every threshold. The fixtures elsewhere only ever
         # reach the first one, so the upper branches would otherwise ship
         # having never once been evaluated.
+        # Later verifications pay the flat weight, so a member's score is
+        # exactly how many of these runs they appear on. 'Pathfinder' takes
+        # the first verification of each run, which is the one that ages.
         tier_runs = []
         for i in range(25):
-            console = [{'user': 'TierD', 'date': '2026-03-01',
-                        'proof': 'https://example.com/d', 'hardware': 'NES'}]
+            vers = [{'user': 'Pathfinder', 'date': '2026-03-01'},
+                    {'user': 'TierD', 'date': '2026-03-01'}]
             if i < 10:
-                console.append({'user': 'TierC', 'date': '2026-03-01',
-                                'proof': 'https://example.com/c', 'hardware': 'NES'})
+                vers.append({'user': 'TierC', 'date': '2026-03-01'})
             if i < 5:
-                console.append({'user': 'TierB', 'date': '2026-03-01',
-                                'proof': 'https://example.com/b', 'hardware': 'NES'})
+                vers.append({'user': 'TierB', 'date': '2026-03-01'})
             if i < 1:
-                console.append({'user': 'TierA', 'date': '2026-03-01',
-                                'proof': 'https://example.com/a', 'hardware': 'NES'})
-            tier_runs.append(mkarchive.run_spec(f'M9004{i:02d}', frames=1000 + i,
-                                                authors=['Ada'], consoleVerifications=console))
+                vers.append({'user': 'TierA', 'date': '2026-03-01'})
+            tier_runs.append(mkarchive.run_spec(
+                f'M9004{i:02d}', frames=1000 + i, authors=['Ada'],
+                status={'reproduced': 'none', 'verified': 'provisional'},
+                verifications=vers))
         arch = mkarchive.make_archive(td / 'a4', tier_runs)
         out = td / 'o4'
         r = build(arch, out)
@@ -198,8 +196,8 @@ def main():
         stats = json.loads((out / 'assets/authorstats.json').read_text())
         # the milestone tiers are retired: every contributor wears the same
         # plain badge, and the medals carry the honors
-        for who, want_pts in (('tiera', 1000), ('tierb', 5000),
-                              ('tierc', 10000), ('tierd', 25000)):
+        for who, want_pts in (('tiera', 1 * PT_VERIFY), ('tierb', 5 * PT_VERIFY),
+                              ('tierc', 10 * PT_VERIFY), ('tierd', 25 * PT_VERIFY)):
             ck(f'{who} earned exactly {want_pts}',
                stats.get(who, {}).get('contrib') == want_pts, str(stats.get(who)))
             page_ = (out / 'authors' / who / 'index.html').read_text()
@@ -352,14 +350,12 @@ def main():
         mkarchive.make_archive(gitarch, [
             mkarchive.run_spec('M900371', frames=5000, authors=['Ada'],
                                submitted='2015-01-01T00:00:00Z',
-                               status={'reproduced': 'imported', 'verified': 'imported',
-                                       'console': 'none'},
+                               status={'reproduced': 'imported', 'verified': 'imported'},
                                imported={'source': 'https://tasvideos.org/71M',
                                          'importedBy': 'Ada', 'importedAt': d(0)}),
             mkarchive.run_spec('M900372', frames=5100, authors=['Bo'],
                                submitted='2024-01-01T00:00:00Z',
-                               status={'reproduced': 'imported', 'verified': 'imported',
-                                       'console': 'none'},
+                               status={'reproduced': 'imported', 'verified': 'imported'},
                                imported={'source': 'https://tasvideos.org/72M',
                                          'importedBy': 'Bo', 'importedAt': d(0)}),
         ])

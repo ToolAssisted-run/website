@@ -36,7 +36,6 @@ from model import (
     authors,
     canon,
     cat_label,
-    console_state,
     contrib_tier,
     medals_of,
     credited,
@@ -48,7 +47,6 @@ from model import (
     is_member,
     is_ranked,
     is_unclassified,
-    live,
     metric_value,
     points,
     profile_slug,
@@ -76,8 +74,8 @@ def role_badges(name):
     tier = contrib_tier(points.get(name.lower(), {}).get('points', 0))
     if tier:
         out.append(f'<span class="rolechip role-contrib {tier[1]}" '
-                   f'title="{esc(tier[0])}: earned by reproducing, verifying and '
-                   f'console-verifying runs">{esc(tier[0])}</span>')
+                   f'title="{esc(tier[0])}: earned by reproducing and verifying runs">'
+                   f'{esc(tier[0])}</span>')
     return ''.join(out)
 
 def group_chip(game_key, rel='../../'):
@@ -374,7 +372,7 @@ SHIPPED_GAME_THUMBS = {} # game key -> the expert-set game face, if any
 SHIPPED_SHOTS = {}       # (run id, screenshot path) -> the file name we serve
 
 def shot_url(r, rel_path):
-    """A reproduction or console-verification proof, served by us.
+    """A reproduction proof, served by us.
 
     Same reason as the thumbnails: these are images a page loads, and raw
     .githubusercontent is not something to load images from.
@@ -547,24 +545,6 @@ def thumb_html(r, dur=''):
     return (f'<span class="thumb"{style_attr}><span class="sys">{esc(r["_game"]["system"].upper())}</span>'
             f'{img}{badge}{dur}</span>')
 
-def console_tick(r):
-    """Column cell for the third signal: a mark when the run has been played
-    back on hardware (here or, for imports, on TASVideos), a neutral dash
-    otherwise. Absence is never a failure."""
-    cs = console_state(r)
-    if cs == 'imported':
-        return ('<span class="tick console" title="Console verified at the trusted '
-                'site it was imported from">✓</span>')
-    if cs == 'community':
-        n = len(live(r.get('consoleVerifications', [])))
-        return (f'<span class="tick console" title="Played back on original hardware '
-                f'by {n} member{"s" if n != 1 else ""}">✓</span>')
-    if cs == 'not-applicable':
-        why = ('Video-only: no input movie to play back on hardware' if r.get('videoOnly')
-               else 'Not a system that is played back on hardware')
-        return f'<span class="tick none na" title="{why}">·</span>'
-    return '<span class="tick none" title="Not played back on hardware yet (optional)">—</span>'
-
 FULL_TICK = '<span class="tick full" title="Verified: a member confirmed the goal is met">✓</span>'
 
 NONE_TICK = '<span class="tick none" title="Not yet: this run is pending">—</span>'
@@ -574,13 +554,6 @@ def tick(state):
     # page's Status box to tell, not a badge (stored enum stays 'imported')
     if state in ('imported', 'community', 'verified'): return FULL_TICK
     return NONE_TICK
-
-def console_chip(r):
-    cs = console_state(r)
-    if cs == 'none':
-        return ''
-    label = ('Console verified' if cs == 'community' else 'Console verified (at source)')
-    return f' <span class="chip consolechip">✓ {label}</span>'
 
 def state_chip(r):
     rs, vs = eff_state(r)
@@ -716,8 +689,8 @@ TEMPLATES = pathlib.Path(__file__).resolve().parent / 'templates'
 
 _HTML_HELPERS = (
     'role_badges group_chip expert_line scope_badge card_views chip_views md_html run_date_cell '
-    'frames_html wiki_html inline author_chip member_chip thumb_html console_tick '
-    'tick console_chip state_chip badge_chip medals dl_members dl_games '
+    'frames_html wiki_html inline author_chip member_chip thumb_html '
+    'tick state_chip badge_chip medals dl_members dl_games '
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (
     'format_date moment clock sec_clock run_clock release_text primary_metric_text thumb_url '

@@ -235,9 +235,7 @@ def main():
             **({'thumbnail': thumb_name} if thumb_name else {}),
             'contract': {'emulator': p.get('emulatorVersion') or sub.get('emulatorVersion') or '',
                          **({'rom': rom} if rom else {})},
-            'status': {'reproduced': 'imported', 'verified': 'imported',
-                   # TASVideos' flag token "Verified" is its Console-verified flag
-                   'console': 'imported' if 'Verified' in (p.get('flags') or []) else 'none'},
+            'status': {'reproduced': 'imported', 'verified': 'imported'},
             'imported': {'source': f'https://tasvideos.org/{pid}M',
                        'importedBy': args.username, 'importedAt': TODAY},
             'encodes': encodes,

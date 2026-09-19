@@ -106,9 +106,6 @@ def sync_status(r):
         r['status']['reproduced'] = 'community' if live_r else 'none'
     r['status']['verified'] = ('confirmed' if any(a.get('expert') for a in live_v) else
                                'provisional' if live_v else 'none')
-    if r['status'].get('console') != 'imported' and not r.get('videoOnly'):
-        live_c = [a for a in r.get('consoleVerifications', []) if not a.get('invalidated')]
-        r['status']['console'] = 'community' if live_c else 'none'
 
 def load_roles():
     p = ARCHIVE / 'roles.json'

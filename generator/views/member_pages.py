@@ -52,7 +52,6 @@ for r_ in all_runs:
     for kind, roster in [
         ('reproduction', 'reproductions'),
         ('verification', 'verifications'),
-        ('console verification', 'consoleVerifications'),
     ]:
         for a_entry in r_.get(roster, []):
             inv = a_entry.get('invalidated')

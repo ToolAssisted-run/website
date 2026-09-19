@@ -3357,10 +3357,6 @@ if (submitForm) {
           text +=
             (text ? ' ' : '') +
             'Changing its reproduction information invalidates the reproductions: they synced the old setup.';
-        if (wv.indexOf('consoleVerifications') >= 0)
-          text +=
-            (text ? ' ' : '') +
-            'Its console verifications are invalidated too.';
         if (text && !window.confirm(text + ' Save anyway?')) {
           setMark(submitBtn, '', '');
           return;

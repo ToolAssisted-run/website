@@ -240,7 +240,7 @@ def main():
                       'rerecords': None, 'start': 'power-on'},
             'thumbnail': 'thumb.png',
             'contract': {'emulator': 'BizHawk 2.11'},
-            'status': {'reproduced': 'none', 'verified': 'provisional', 'console': 'none'},
+            'status': {'reproduced': 'none', 'verified': 'provisional'},
             'verifications': [{'user': 'watcher', 'date': '2026-08-20',
                                'at': '2026-08-20T22:27:28Z'}],
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF99'}],
@@ -822,11 +822,6 @@ def main():
                [m['key'] for m in pac['metrics']] == ['score', 'time']
                and pac['metrics'][0]['better'] == 'higher', str(pac))
 
-            # --- console verification only where hardware playback exists (#53) ---
-            c, r, _ = call(U + '/api/console-verify',
-                           {'key': KEY, 'user': 'helper', 'run': 'M900010', 'proof': 'https://example.com/rec',
-                            'hardware': 'x', 'dry_run': '1'})
-            ck('an nes run may be console-verified', c == 200, str(r))
             # --- subcategories (#43): a second level inside a category ---
             c, r, _ = call(U + '/api/category/add',
                            {'key': KEY, 'user': 'TestAuthor', 'game': 'nes/pinball',
@@ -1243,20 +1238,13 @@ def main():
             ck('it carries its stated duration and no movie',
                vo.get('videoOnly') is True and abs(vo['duration'] - 83.456) < 0.001
                and 'movie' not in vo, str(vo)[:200])
-            ck('reproduction and console are marked not applicable',
-               vo['status']['reproduced'] == 'not-applicable'
-               and vo['status']['console'] == 'not-applicable', str(vo['status']))
+            ck('reproduction is marked not applicable',
+               vo['status']['reproduced'] == 'not-applicable', str(vo['status']))
             c, r, _ = call(U + '/api/reproduce', {'key': KEY, 'user': 'Rep',
                                                   'run': vo_id, 'dry_run': '1'},
                            files={'screenshot': ('s.png', PNG)})
             ck('a video-only run cannot be reproduced', c == 400
                and 'video-only' in r.get('error', ''), str(r))
-            c, r, _ = call(U + '/api/console-verify',
-                           {'key': KEY, 'user': 'Metal', 'run': vo_id,
-                            'proof': 'https://youtu.be/x', 'hardware': 'NES',
-                            'dry_run': '1'})
-            ck('nor console-verified', c == 400 and 'video-only' in r.get('error', ''),
-               str(r))
             c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'watcher2',
                                                'run': vo_id})
             ck('one verification still ranks a video-only run', c == 200
@@ -1281,8 +1269,7 @@ def main():
                not vo2.get('videoOnly') and vo2['movie']['format'] == 'chimeraproject'
                and vo2['movie']['frames'] == 24, str(vo2.get('movie'))[:200])
             ck('and what was not applicable to it is merely undone',
-               vo2['status']['reproduced'] == 'none'
-               and vo2['status']['console'] == 'none', str(vo2['status']))
+               vo2['status']['reproduced'] == 'none', str(vo2['status']))
             ck('the file itself is in the archive',
                (work / f'games/nes/pinball/runs/{vo_id}/{vo_id}.chimeraproject').exists()
                or any(p_.name.lower().endswith('.chimeraproject')
@@ -1576,7 +1563,7 @@ def main():
                            {'screenshot': ('end.png', PNG)})
             ck('verified and reproduced', c == 200 and r['status']['reproduced'] == 'community', str(r)[:200])
             # the general voiding rule: scoring -> verifications;
-            # reproduction information -> reproductions + console; else nothing
+            # reproduction information -> reproductions; else nothing
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': vrun, 'notes': 'fresh notes',
                                              'time': '1:00.000'})
             ck('a notes edit voids nothing, the prefilled time sent back included',
@@ -1786,30 +1773,6 @@ def main():
             ck('withdrawing is voluntary: even a covering expert may not '
                '(they delete instead)', c == 403, str(r)[:160])
 
-            # --- console verification: the optional third signal ---
-            cv = {'key': KEY, 'user': 'ConsoleFan', 'run': 'M900010'}
-            c, r, _ = call(U + '/api/console-verify', dict(cv, proof='not-a-url'))
-            ck('console verification needs a real proof link', c == 400, str(r))
-            c, r, _ = call(U + '/api/console-verify',
-                           dict(cv, user='TestAuthor', proof='https://example.com/rec'))
-            ck('authors cannot console-verify their own run', c == 400, str(r))
-            c, r, _ = call(U + '/api/console-verify',
-                           dict(cv, proof='https://example.com/rec',
-                                hardware='NES + Everdrive'))
-            ck('console verification recorded',
-               c == 200 and r.get('consoleVerifications') == 1, str(r))
-            c, r, _ = call(U + '/api/console-verify',
-                           dict(cv, proof='https://example.com/again'))
-            ck('one console verification per member', c == 400, str(r))
-            c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'ConsoleFan',
-                                               'run': 'M900010', 'dry_run': '1'})
-            ck('console verification does not spend the normal verification',
-               c == 200, str(r))
-            c, r, _ = call(U + '/api/invalidate', {'key': KEY, 'expert': 'eien86',
-                                                   'run': 'M900010', 'kind': 'console',
-                                                   'target': 'ConsoleFan',
-                                                   'reason': 'Recording shows a different run.'})
-            ck('an expert can invalidate a console verification', c == 200, str(r))
 
             # --- author edits + role/expert notes ---
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'stranger', 'run': 'M900010',
@@ -2049,8 +2012,7 @@ def main():
             ck('and a plausible one', c == 400, str(r)[:120])
             c, r, _ = call(U + '/api/system/create', sysreq)
             ck('a whole-site expert adds a system',
-               c == 200 and r['system']['fps'] == 29.97002997002997
-               and r['system'].get('hardwareVerifiable') is None, str(r)[:200])
+               c == 200 and r['system']['fps'] == 29.97002997002997, str(r)[:200])
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             sysdoc = json.loads((work / 'systems.json').read_text())
             ck('and it lands in the archive as written',
@@ -2067,16 +2029,15 @@ def main():
             ck('an ordinary member does not correct a system', c == 403, str(r)[:120])
             c, r, _ = call(U + '/api/system/edit',
                            {'key': KEY, 'expert': 'SiteOnly', 'system': 'fixturebox',
-                            'fps': '59.94005994005994', 'hard': '0', 'hardware': '1'})
+                            'fps': '59.94005994005994', 'hard': '0'})
             ck('a whole-site expert sets the rate and the flags',
-               c == 200 and set(r['changed']) == {'fps', 'hardToReproduce', 'hardwareVerifiable'},
+               c == 200 and set(r['changed']) == {'fps', 'hardToReproduce'},
                str(r)[:220])
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             sysdoc = json.loads((work / 'systems.json').read_text())
             ck('and the archive carries the correction',
                sysdoc['fixturebox']['fps'] == 59.94005994005994
-               and 'hardToReproduce' not in sysdoc['fixturebox']
-               and sysdoc['fixturebox']['hardwareVerifiable'] is True, str(sysdoc['fixturebox']))
+               and 'hardToReproduce' not in sysdoc['fixturebox'], str(sysdoc['fixturebox']))
             ck('the correction is in the edit log',
                any(e['kind'] == 'system' and e['key'] == 'fixturebox' and e['field'] == 'fps'
                    for e in json.loads((work / 'edits.json').read_text())['events']),
@@ -2677,10 +2638,6 @@ def main():
                any('reproduced [[NES] Pinball' in m and ('100000 points, glitched' in m or '100k glitched' in m or m.rstrip().endswith('glitched'))
                    for m in DISCORD_MSGS),
                str([m for m in DISCORD_MSGS if 'reproduced' in m][-2:]))
-            ck('and so does a hardware one',
-               any('back on original hardware, ' in m for m in DISCORD_MSGS)
-               or not any('back on original hardware' in m for m in DISCORD_MSGS),
-               str([m for m in DISCORD_MSGS if 'hardware' in m][-2:]))
             ck('and the notice says which category was verified',
                discord_saw('verified [[NES] Pinball') and any(
                    'verified [[NES] Pinball' in m and ('100000 points, glitched' in m or '100k glitched' in m or m.rstrip().endswith('glitched'))
@@ -3003,7 +2960,6 @@ def main():
                 ck('imported run marked imported',
                    ir['status']['reproduced'] == 'imported'
                    and ir['status']['verified'] == 'imported'
-                   and ir['status']['console'] in ('none', 'imported')
                    and ir['imported']['importedBy'] == 'ssouser')
                 notes = (irun / 'notes.md').read_text()
                 ck('judge text stripped from imported notes',
@@ -3065,7 +3021,7 @@ def main():
                                 return True
                 match = re.search(
                     r'/runs/(M\d+): duplicate '
-                    r'(reproduction|verification|consoleVerification) by \'([^\']+)\'',
+                    r'(reproduction|verification) by \'([^\']+)\'',
                     normalized)
                 if not match:
                     return False
@@ -3073,7 +3029,6 @@ def main():
                 roster = {
                     'reproduction': 'reproductions',
                     'verification': 'verifications',
-                    'consoleVerification': 'consoleVerifications',
                 }[kind]
                 run_files = list(archive.glob(f'games/*/*/runs/{run_id}/run.json'))
                 if len(run_files) != 1:

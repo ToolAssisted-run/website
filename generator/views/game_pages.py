@@ -108,7 +108,6 @@ def render_game_log(g, face, total_likes):
         for kind, roster in [
             ('reproduction', 'reproductions'),
             ('verification', 'verifications'),
-            ('console verification', 'consoleVerifications'),
         ]:
             for a in r_.get(roster, []):
                 inv = a.get('invalidated')

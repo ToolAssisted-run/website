@@ -443,7 +443,7 @@ def main():
         if act:
             ck('no exception arming the acts', not act['errors'], str(act['errors'][:2]))
             st = act['state']
-            for wrap in ('f-repro-wrap', 'f-verify-wrap', 'f-console-wrap'):
+            for wrap in ('f-repro-wrap', 'f-verify-wrap'):
                 ck(f'{wrap} is revealed for a member who has not acted',
                    st.get(wrap, {}).get('hidden') is False, str(st.get(wrap)))
             ck('the act zone itself is shown',
