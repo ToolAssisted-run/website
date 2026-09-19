@@ -102,8 +102,9 @@ def disclaimer(pub_id):
 
 
 def strip_judge_text(text):
-    """Cut everything from the judge/staff boundary onward; same rules as
-    the operator tool. Returns (clean, flags)."""
+    """Cut everything from the judge/staff boundary onward. The operator tool
+    (tools/import_tasvideos_author.py) calls this one, so a licensing rule is
+    written once. Returns (clean, flags)."""
     flags = []
     text = re.sub(r'\A(?:\[#\d+:[^\n]*\]\n|\[status:[^\n]*\]\n|\n)+', '', text)
     m = re.search(r'^-{4,}\s*\n\s*\[user:', text, re.M)
@@ -113,6 +114,9 @@ def strip_judge_text(text):
         flags.append('no judge boundary found in notes; review that nothing staff-written remains')
     if re.search(r'\[user:', text):
         flags.append('notes still mention [user:...] after stripping; review manually')
+    for word in ('judge', 'claiming for', 'accepting'):
+        if re.search(rf'^!+.*{word}', text, re.I | re.M):
+            flags.append(f'notes heading mentions {word!r}; review for staff text')
     return text.rstrip() + '\n', flags
 
 

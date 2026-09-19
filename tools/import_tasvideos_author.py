@@ -33,43 +33,13 @@ import zipfile
 
 TODAY = datetime.date.today().isoformat()
 
-SYSTEM_NAMES = {
-    'A2600': 'Atari 2600', 'A7800': 'Atari 7800', 'NES': 'Nintendo Entertainment System',
-    'SNES': 'Super Nintendo Entertainment System', 'N64': 'Nintendo 64',
-    'GB': 'Game Boy', 'GBC': 'Game Boy Color', 'GBA': 'Game Boy Advance',
-    'DS': 'Nintendo DS', 'Genesis': 'Sega Genesis', 'SMS': 'Sega Master System',
-    'GG': 'Sega Game Gear', 'Saturn': 'Sega Saturn', 'PSX': 'PlayStation',
-    'PSP': 'PlayStation Portable', 'C64': 'Commodore 64', 'DOS': 'DOS',
-    'PC': 'PC', 'Amiga': 'Amiga', '3DO': '3DO', 'Arcade': 'Arcade',
-    'MSX': 'MSX', 'PCE': 'PC Engine / TurboGrafx-16', 'WSWAN': 'WonderSwan',
-    'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'VBoy': 'Virtual Boy',
-    'Coleco': 'ColecoVision', 'INTV': 'Intellivision', 'Dreamcast': 'Sega Dreamcast',
-    'GC': 'GameCube', 'Wii': 'Wii', 'Windows': 'Windows', 'Linux': 'Linux',
-    'ZXS': 'ZX Spectrum', 'A800': 'Atari 800', 'Apple2': 'Apple II', 'AppleII': 'Apple II',
-    'X68K': 'Sharp X68000', 'PC88': 'NEC PC-8801', 'PC98': 'NEC PC-9801',
-    'FDS': 'Famicom Disk System', 'SGX': 'SuperGrafx', 'Vectrex': 'Vectrex',
-    'O2': 'Odyssey 2', 'Uzebox': 'Uzebox', 'TI83': 'TI-83', 'SG1000': 'SG-1000',
-    '32X': 'Sega 32X', 'SegaCD': 'Sega CD', 'PCECD': 'PC Engine CD',
-}
-# Exact NTSC/PAL rates where the community-standard value is known; other
-# systems fall back to the backup's systemFrameRate and get flagged.
-EXACT_FPS = {
-    'nes': 60.0988138974405, 'fds': 60.0988138974405,
-    'snes': 60.0988118623484, 'sgb': 59.7275005696058,
-    'a2600': 59.9227510135505, 'c64': 50.1245421245421,
-    'genesis': 59.922751013551, 'gb': 59.7275005696058,
-    'gbc': 59.7275005696058, 'gba': 59.7275005696058,
-    'gg': 59.922751013551, 'sms': 59.922751013551,
-    'n64': 60.0, 'psx': 59.29286256195557,
-    'appleii': 59.9227510135505,
-}
-START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
-# Systems where setting up a faithful reproduction environment is genuinely
-# painful (BIOS/disk images, library versions, ROM sets…) — reproductions
-# there earn the hard-system bonus. Provisional list, experts refine.
-HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
-                'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
-                'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'appleii', 'a800', 'zxs', 'c64'}
+# One roster, not two. The system names, exact frame rates, start types and the
+# hard-to-reproduce list live in the archivist's importer, and so do the three
+# functions that decide what a note may keep: this tool reads them from there,
+# so the two importers cannot drift apart.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
+from selfimport import (EXACT_FPS, HARD_SYSTEMS, START_TYPES,  # noqa: E402
+                        SYSTEM_NAMES, disclaimer, slugify, strip_judge_text)
 
 
 def fetch(url, timeout=20):
@@ -104,47 +74,7 @@ def fetch_thumbnail(pub, encodes):
     return None, None
 
 
-def slugify(s):
-    s = re.sub(r"['’]", '', s.lower())
-    s = re.sub(r'[^a-z0-9]+', '-', s).strip('-')
-    return s or 'unknown'
 
-
-def disclaimer(pub_id):
-    return f'''> **Imported from TASVideos**
-> This run was originally published at https://tasvideos.org/{pub_id}M and entered this archive as a voluntary
-> import by one of its authors. On a collaborative work, any one author may authorize
-> this republication. The notes below are the authors' own, reproduced under their
-> Creative Commons license; text not written by the authors (judging feedback, staff
-> annotations) has been removed. The original publication was verified and reproduced
-> by TASVideos staff, a trustworthy TASing source; it is marked fully verified here
-> without passing through this site's standard procedure. The movie file and these
-> notes were obtained freely from tasvideos.org and are redistributed in observance
-> of the Creative Commons Attribution 2.0 license under which they were published there.
-'''
-
-
-def strip_judge_text(text):
-    """Cut everything from the judge/staff boundary onward.
-
-    TASVideos judging feedback is appended to submission notes as
-    `----` followed by a `[user:...]` line. Returns (clean, truncated, flags).
-    """
-    flags = []
-    # drop the crawl header our backup prepended (submission title/status lines)
-    text = re.sub(r'\A(?:\[#\d+:[^\n]*\]\n|\[status:[^\n]*\]\n|\n)+', '', text)
-    m = re.search(r'^-{4,}\s*\n\s*\[user:', text, re.M)
-    truncated = False
-    if m:
-        text = text[:m.start()]
-        truncated = True
-    if re.search(r'\[user:', text):
-        flags.append('notes still contain a [user:...] mention after stripping — '
-                     'REVIEW MANUALLY (author-edited-after-judge case?)')
-    for word in ('judge', 'claiming for', 'accepting'):
-        if re.search(rf'^!+.*{word}', text, re.I | re.M):
-            flags.append(f'notes heading mentions {word!r} — review for staff text')
-    return text.rstrip() + '\n', truncated, flags
 
 
 def main():
@@ -262,11 +192,8 @@ def main():
         notes_html = ''
         if notes_file.exists():
             raw = notes_file.read_text(errors='replace')
-            clean, truncated, nflags = strip_judge_text(raw)
+            clean, nflags = strip_judge_text(raw)
             flags += nflags
-            if not truncated:
-                flags.append('no judge boundary found in notes — verify nothing '
-                             'staff-written remains')
             notes_html = disclaimer(pid) + '\n' + clean
         else:
             flags.append('no submission notes in the backup')
