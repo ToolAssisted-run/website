@@ -3712,6 +3712,25 @@ footer a {
   margin-top: 12px;
 }
 
+.mtime-chip {
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 2px solid rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--accent-text);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.metriced .mrow select:disabled,
+.metriced .mrow input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background-color: var(--panel);
+}
+
 /* the freshness pill: the deployed site moved on while this page sat in the
    browser's 10-minute Pages cache; one press catches up */
 .freshpill {

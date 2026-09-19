@@ -871,21 +871,22 @@ document.querySelectorAll('.filerows').forEach(function (box) {
 // ---- create-game / create-category pages ----
 // The metrics editor both forms share: up to 4 rows, order = tie-break
 // hierarchy; time is a row like any other (a row labeled Time is the
-// run's main time).
+// run's classic time).
 export function initMetricsEd(root, initial) {
   var rowsEl = root.querySelector('.mrows');
   var addBtn = root.querySelector('.med-add');
   var metricsField = root.querySelector('[name=metrics]');
-  var rows = []; // {label,type,better,unit}; time is a metric like any other
+  var rows = []; // {label,type,better,unit,badge,updateTimeLock}; time is a metric like any other
   function serialize() {
     var arr = rows
       .map(function (row) {
+        var isTime = (row.label.value || '').trim().toLowerCase() === 'time';
         return {
-          label: row.label.value.trim(),
-          type: row.type.value,
-          better: row.better.value,
+          label: isTime ? 'Time' : row.label.value.trim(),
+          type: isTime ? 'time' : row.type.value,
+          better: isTime ? 'lower' : row.better.value,
           unit:
-            row.type.value === 'number' && row.unit.value.trim()
+            !isTime && row.type.value === 'number' && row.unit.value.trim()
               ? row.unit.value.trim()
               : undefined,
         };
@@ -898,12 +899,14 @@ export function initMetricsEd(root, initial) {
   function paint() {
     rowsEl.innerHTML = '';
     rows.forEach(function (row, i) {
-      var div = el('div', 'mrow');
+      row.updateTimeLock();
+      var isTime = (row.label.value || '').trim().toLowerCase() === 'time';
+      var div = el('div', 'mrow' + (isTime ? ' mrow-time' : ''));
       div.appendChild(row.label);
       div.appendChild(row.type);
       div.appendChild(row.better);
       div.appendChild(row.unit);
-      row.unit.hidden = row.type.value === 'time';
+      div.appendChild(row.badge);
       [
         ['↑', -1],
         ['↓', 1],
@@ -930,11 +933,33 @@ export function initMetricsEd(root, initial) {
     serialize();
   }
   function makeRow(def) {
+    var badge = el('span', 'mtime-chip', 'reserved: classic time');
+    badge.title = "Reserved label for the run's classic time (lower is better)";
     var row = {
       label: el('input', 'mlabel'),
       type: el('select', 'mselect mtype'),
       better: el('select', 'mselect mbetter'),
       unit: el('input', 'munit'),
+      badge: badge,
+      updateTimeLock: function () {
+        var isTime = (row.label.value || '').trim().toLowerCase() === 'time';
+        if (isTime) {
+          row.type.value = 'time';
+          row.better.value = 'lower';
+          row.type.disabled = true;
+          row.better.disabled = true;
+          row.unit.hidden = true;
+          row.badge.hidden = false;
+          row.label.title =
+            "Reserved label for the run's classic time (lower is better)";
+        } else {
+          row.type.disabled = false;
+          row.better.disabled = false;
+          row.unit.hidden = row.type.value === 'time';
+          row.badge.hidden = true;
+          row.label.title = '';
+        }
+      },
     };
     row.label.placeholder = 'Metric name, e.g. Score';
     [
@@ -957,17 +982,22 @@ export function initMetricsEd(root, initial) {
     });
     row.unit.placeholder = 'unit, e.g. pts';
     if (def) {
-      row.label.value = def.label || '';
+      row.label.value = def.label || (def.key === 'time' ? 'Time' : '');
       row.type.value = def.type || 'number';
       row.better.value = def.better || 'lower';
       row.unit.value = def.unit || '';
     }
-    [row.label, row.type, row.better, row.unit].forEach(function (inp) {
-      inp.addEventListener('input', serialize);
-      inp.addEventListener('change', function () {
-        paint();
-      });
+    row.updateTimeLock();
+    row.label.addEventListener('input', function () {
+      row.updateTimeLock();
+      serialize();
     });
+    row.type.addEventListener('change', function () {
+      row.unit.hidden = row.type.value === 'time';
+      serialize();
+    });
+    row.better.addEventListener('change', serialize);
+    row.unit.addEventListener('input', serialize);
     return row;
   }
   addBtn.addEventListener('click', function () {
@@ -983,7 +1013,7 @@ export function initMetricsEd(root, initial) {
         makeRow({
           label: def.label || 'Time',
           type: 'time',
-          better: def.better || 'lower',
+          better: 'lower',
         })
       );
     else rows.push(makeRow(def));

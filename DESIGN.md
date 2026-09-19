@@ -659,7 +659,7 @@ A category defines what it ranks by.
   Array order IS the tie-break hierarchy; the first entry is the primary
   metric, shown wherever time shows classically (browse, thumbnails, home
   shelf, member lists, group records). The reserved key `time` (which a
-  metric labeled Time slugifies to) is the run's main time: stated by the
+  metric labeled Time slugifies to) is the run's classic time: stated by the
   author like any other metric, stored as `duration`, importable from the
   movie file or the encode on demand; metrics and the movie are fully
   decoupled. **Absent `metrics`
@@ -687,9 +687,10 @@ A category defines what it ranks by.
   member creates a game (`/create-game/`: title, system, plus the first
   category) or a category (`/create-category/?game=<key>`, game locked).
   Both forms share the **metrics editor** (up to 4 rows: label, type,
-  direction, unit, reorder; time is a row like any other, and a row labeled
-  Time becomes the run's main time; keys derive from labels; `unclassified`
-  refused; skipping metrics yields the classic category). Entry points: "Create a game" on `/games/`,
+  direction, unit, reorder; time is a row like any other, locked to type time
+  and lower-is-better with a reserved badge, and a row labeled Time becomes the run's
+  classic time; keys derive from labels; `unclassified` refused; skipping metrics
+  yields the classic category). Entry points: "Create a game" on `/games/`,
   "Create a category" on every game page, and a question + button BESIDE
   the submit form's selectors ("Game not there? Create it") opening in a
   new tab so a half-filled submission survives. The selectors themselves

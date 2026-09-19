@@ -368,6 +368,40 @@ class DevHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             resp = {'ok': True, 'id': 'M100055', 'serial': 1076, 'url': '/runs/M100055/'}
             self.wfile.write(json.dumps(resp).encode('utf-8'))
+        # Handle category and subcategory creation
+        if url_path == '/api/category/add':
+            content_type = self.headers.get('Content-Type', '')
+            form_fields = {}
+            if 'multipart/form-data' in content_type:
+                boundary = content_type.split('boundary=')[1].encode('ascii')
+                parts = raw_body.split(b'--' + boundary)
+                for part in parts:
+                    m = re.search(rb'name="([^"]+)"\r?\n\r?\n(.*?)\r?\n?$', part, re.S)
+                    if m:
+                        form_fields[m.group(1).decode('utf-8', errors='ignore')] = m.group(2).decode('utf-8', errors='ignore').strip()
+            else:
+                qs = urllib.parse.parse_qs(raw_body.decode('utf-8', errors='ignore'))
+                for k, v in qs.items():
+                    form_fields[k] = v[0] if v else ''
+
+            label = form_fields.get('label', '').strip()
+            option_key = form_fields.get('option_key', '').strip()
+            if not option_key:
+                option_key = re.sub(r'[^a-z0-9]+', '-', label.lower()).strip('-')
+            parent = form_fields.get('parent', '').strip()
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
+            resp = {
+                'ok': True,
+                'key': option_key,
+                'label': label,
+                'parent': parent,
+                'runs_moved': 0,
+                'serial': 1076,
+            }
+            self.wfile.write(json.dumps(resp).encode('utf-8'))
             return
 
         # Handle emulator preset & quick chips curation

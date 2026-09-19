@@ -21,7 +21,13 @@ import {
 // logged edits the archivist knows (title, properties, thumbnail, new
 // categories and subcategories, renames and rules, metrics, deletions,
 // orders), all under one public reason. The first failure stops the
-// sequence; what went through is the new baseline, the rest stays pending.
+function slugify(s) {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 var gameEditEl = document.getElementById('gameeditdata');
 if (gameEditEl) {
   var gameEditData = JSON.parse(gameEditEl.textContent);
@@ -297,12 +303,12 @@ if (gameEditEl) {
     var base = {
       title: gameEditData.title,
       props: {
-        released: byId('ge-released').value,
+        released: byId('ge-released').value.trim(),
         unofficial: byId('ge-unofficial').checked ? 'yes' : 'no',
-        discord: byId('ge-discord').value,
-        website: byId('ge-website').value,
-        rta: byId('ge-rta').value,
-        rules: byId('ge-rules').value,
+        discord: byId('ge-discord').value.trim(),
+        website: byId('ge-website').value.trim(),
+        rta: byId('ge-rta').value.trim(),
+        rules: byId('ge-rules').value.trim(),
       },
       selector: gameEditData.selector || 'buttons',
       cats: (gameEditData.options || []).map(function (o) {
@@ -651,9 +657,15 @@ if (gameEditEl) {
           }
         });
       c.metrics = metricsEd.value();
-      metricsBox.addEventListener('input', refresh);
+      metricsBox.addEventListener('input', function () {
+        c.metrics = metricsEd.value();
+        refresh();
+      });
       metricsBox.addEventListener('click', function () {
-        setTimeout(refresh, 0);
+        setTimeout(function () {
+          c.metrics = metricsEd.value();
+          refresh();
+        }, 0);
       });
 
       // Subcategories section
@@ -995,6 +1007,142 @@ if (gameEditEl) {
     });
 
     // ---- the diff: what Save would do, in order ----
+    function formatVal(v, maxLen) {
+      if (v === null || v === undefined || v === '') return '(empty)';
+      var s = String(v).trim().replace(/\s+/g, ' ');
+      maxLen = maxLen || 50;
+      if (s.length > maxLen) {
+        return s.slice(0, maxLen) + '…';
+      }
+      return s;
+    }
+    function summarizeMetrics(mStr) {
+      try {
+        var arr = typeof mStr === 'string' ? JSON.parse(mStr || '[]') : mStr;
+        if (!arr || !arr.length) return '(classic time)';
+        return arr
+          .map(function (m) {
+            var name = m.label || m.name || 'unnamed';
+            return name + (m.unit ? ' (' + m.unit + ')' : '');
+          })
+          .join(', ');
+      } catch (e) {
+        return mStr || '(classic time)';
+      }
+    }
+    function renderPendingChanges(ops) {
+      if (!pendingEl) return;
+      if (
+        pendingEl.tagName === 'B' &&
+        pendingEl.parentNode &&
+        pendingEl.parentNode.tagName === 'P'
+      ) {
+        var p = pendingEl.parentNode;
+        var wrap = el('div', 'ge-pending-wrap');
+        wrap.id = 'ge-pending';
+        p.parentNode.insertBefore(wrap, p);
+        p.parentNode.removeChild(p);
+        pendingEl = wrap;
+      }
+      pendingEl.innerHTML = '';
+      if (!ops.length) {
+        var cleanHead = el('div', 'ge-pending-head');
+        cleanHead.appendChild(el('span', 'chip', 'No changes yet'));
+        pendingEl.appendChild(cleanHead);
+        return;
+      }
+      var head = el('div', 'ge-pending-head');
+      var countChip = el(
+        'span',
+        'chip pendchip',
+        ops.length + ' change' + (ops.length === 1 ? '' : 's') + ' pending'
+      );
+      head.appendChild(countChip);
+      pendingEl.appendChild(head);
+
+      var tblWrap = el('div', 'tblwrap ge-pending-tblwrap');
+      var table = el('table', 'ge-pending-table');
+      var thead = el('thead');
+      var headRow = el('tr');
+      headRow.appendChild(el('th', '', 'Target'));
+      headRow.appendChild(el('th', '', 'Field'));
+      headRow.appendChild(el('th', '', 'Change'));
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      var tbody = el('tbody');
+      ops.forEach(function (op) {
+        var tr = el('tr');
+
+        var tdTarget = el('td');
+        var bTarget = el('b', 'ge-pending-target', op.target || 'Game');
+        tdTarget.appendChild(bTarget);
+        tr.appendChild(tdTarget);
+
+        var tdField = el('td', 'ge-pending-field', op.field || op.what || '');
+        tr.appendChild(tdField);
+
+        var tdChange = el('td');
+        if (op.kind === 'add') {
+          var ins = el('ins', 'diff-item diff-add');
+          var sign = el('span', 'diff-sign', '+');
+          sign.setAttribute('aria-hidden', 'true');
+          ins.appendChild(sign);
+          ins.appendChild(document.createTextNode(' ' + (op.to || 'added')));
+          tdChange.appendChild(ins);
+        } else if (op.kind === 'delete') {
+          var del = el('del', 'diff-item diff-del');
+          var sign = el('span', 'diff-sign', '\u2212');
+          sign.setAttribute('aria-hidden', 'true');
+          del.appendChild(sign);
+          del.appendChild(
+            document.createTextNode(' ' + (op.from || 'removed'))
+          );
+          tdChange.appendChild(del);
+        } else if (op.kind === 'order') {
+          if (op.from && op.to) {
+            var diffSum = el('div', 'diff-summary');
+            diffSum.appendChild(el('del', 'diff-inline diff-del', op.from));
+            var arrow = el('span', 'diff-arrow', ' \u2192 ');
+            arrow.setAttribute('aria-hidden', 'true');
+            diffSum.appendChild(arrow);
+            diffSum.appendChild(el('ins', 'diff-inline diff-add', op.to));
+            tdChange.appendChild(diffSum);
+          } else {
+            var orderItem = el('span', 'diff-item');
+            orderItem.appendChild(el('span', 'diff-tag', 'order'));
+            orderItem.appendChild(
+              document.createTextNode(' ' + (op.summary || 'reordered'))
+            );
+            tdChange.appendChild(orderItem);
+          }
+        } else {
+          // Edit / modify
+          if (op.from !== undefined && op.to !== undefined) {
+            var diffSum = el('div', 'diff-summary');
+            diffSum.appendChild(
+              el('del', 'diff-inline diff-del', op.from || '(empty)')
+            );
+            var arrow = el('span', 'diff-arrow', ' \u2192 ');
+            arrow.setAttribute('aria-hidden', 'true');
+            diffSum.appendChild(arrow);
+            diffSum.appendChild(
+              el('ins', 'diff-inline diff-add', op.to || '(empty)')
+            );
+            tdChange.appendChild(diffSum);
+          } else {
+            tdChange.appendChild(
+              document.createTextNode(op.summary || op.what || 'modified')
+            );
+          }
+        }
+        tr.appendChild(tdChange);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      tblWrap.appendChild(table);
+      pendingEl.appendChild(tblWrap);
+    }
     function props() {
       return {
         released: byId('ge-released').value.trim(),
@@ -1011,6 +1159,11 @@ if (gameEditEl) {
       if (title && title !== base.title)
         ops.push({
           what: 'title',
+          target: 'Game',
+          field: 'title',
+          kind: 'edit',
+          from: formatVal(base.title),
+          to: formatVal(title),
           run: function () {
             return edit('game', gameEditData.game, 'title', title);
           },
@@ -1024,6 +1177,11 @@ if (gameEditEl) {
           if (pv[f] !== base.props[f])
             ops.push({
               what: f,
+              target: 'Game',
+              field: f,
+              kind: 'edit',
+              from: formatVal(base.props[f]),
+              to: formatVal(pv[f]),
               run: function () {
                 return edit('game', gameEditData.game, f, pv[f]);
               },
@@ -1037,6 +1195,10 @@ if (gameEditEl) {
       if (thumb.files && thumb.files[0])
         ops.push({
           what: 'thumbnail',
+          target: 'Game',
+          field: 'thumbnail',
+          kind: 'add',
+          to: 'new image',
           run: function () {
             return prepareThumbnail()
               .then(function (blob) {
@@ -1050,12 +1212,19 @@ if (gameEditEl) {
           },
           done: function () {
             thumb.value = '';
+            resetCrop();
+            thumbPreview.hidden = true;
           },
         });
       var selv = selectorChoice();
       if (selv !== base.selector)
         ops.push({
           what: 'category selector',
+          target: 'Game',
+          field: 'category selector',
+          kind: 'edit',
+          from: base.selector || 'buttons',
+          to: selv,
           run: function () {
             return edit('category', gameEditData.game + ':*', 'selector', selv);
           },
@@ -1075,6 +1244,10 @@ if (gameEditEl) {
         .forEach(function (c) {
           ops.push({
             what: 'add ' + c.label,
+            target: c.label || '(new category)',
+            field: 'category',
+            kind: 'add',
+            to: 'added',
             run: function () {
               var fd = new FormData();
               fd.append('game', gameEditData.game);
@@ -1085,9 +1258,13 @@ if (gameEditEl) {
               return post('/api/category/add', fd, saveBtn);
             },
             done: function (res) {
-              c.key = res.j.key;
+              c.key =
+                (res.j && res.j.key) ||
+                c.key ||
+                slugify(c.label) ||
+                'cat-' + c.tmp;
               c.isNew = false;
-              c.metrics = c.metricsEd ? c.metricsEd.value() : '[]';
+              c.metrics = c.metricsEd ? c.metricsEd.value() : c.metrics || '[]';
               base.cats.push({
                 key: c.key,
                 label: c.label,
@@ -1110,6 +1287,11 @@ if (gameEditEl) {
             if (c.label !== b.label)
               ops.push({
                 what: c.key + ' label',
+                target: b.label || c.key,
+                field: 'label',
+                kind: 'edit',
+                from: b.label,
+                to: c.label,
                 run: function () {
                   return edit(
                     'category',
@@ -1125,6 +1307,11 @@ if (gameEditEl) {
             if (c.rule !== b.rule)
               ops.push({
                 what: c.key + ' rule',
+                target: c.label || c.key,
+                field: 'rule',
+                kind: 'edit',
+                from: formatVal(b.rule, 40),
+                to: formatVal(c.rule, 40),
                 run: function () {
                   return edit(
                     'category',
@@ -1141,6 +1328,11 @@ if (gameEditEl) {
             if (mv !== b.metrics)
               ops.push({
                 what: c.key + ' metrics',
+                target: c.label || c.key,
+                field: 'metrics',
+                kind: 'edit',
+                from: summarizeMetrics(b.metrics),
+                to: summarizeMetrics(mv),
                 run: function () {
                   return edit(
                     'category',
@@ -1151,12 +1343,18 @@ if (gameEditEl) {
                 },
                 done: function () {
                   b.metrics = mv;
+                  c.metrics = mv;
                 },
               });
             var ssv = c.subSelector || 'buttons';
             if (ssv !== (b.subSelector || 'buttons'))
               ops.push({
                 what: c.key + ' subcategory selector',
+                target: c.label || c.key,
+                field: 'subcategory selector',
+                kind: 'edit',
+                from: b.subSelector || 'buttons',
+                to: ssv,
                 run: function () {
                   return edit(
                     'category',
@@ -1178,6 +1376,11 @@ if (gameEditEl) {
             .forEach(function (x) {
               ops.push({
                 what: c.key + '/' + x.label + ' add',
+                target:
+                  (c.label || c.key) + ' / ' + (x.label || '(new subcategory)'),
+                field: 'subcategory',
+                kind: 'add',
+                to: 'added',
                 run: function () {
                   var fd = new FormData();
                   fd.append('game', gameEditData.game);
@@ -1188,9 +1391,13 @@ if (gameEditEl) {
                   return post('/api/category/add', fd, saveBtn);
                 },
                 done: function (res) {
-                  x.key = res.j.key;
+                  x.key =
+                    (res.j && res.j.key) ||
+                    x.key ||
+                    slugify(x.label) ||
+                    'sub-' + x.tmp;
                   x.isNew = false;
-                  x.runs = res.j.runs_moved || 0;
+                  x.runs = (res.j && res.j.runs_moved) || 0;
                   var bb =
                     baseByKey[c.key] ||
                     base.cats.filter(function (z) {
@@ -1220,6 +1427,11 @@ if (gameEditEl) {
               if (x.label !== bx.label)
                 ops.push({
                   what: c.key + '/' + x.key + ' label',
+                  target: (c.label || c.key) + ' / ' + (bx.label || x.key),
+                  field: 'label',
+                  kind: 'edit',
+                  from: bx.label,
+                  to: x.label,
                   run: function () {
                     return edit(
                       'category',
@@ -1232,9 +1444,14 @@ if (gameEditEl) {
                     bx.label = x.label;
                   },
                 });
-              if (x.rule !== bx.rule && x.rule)
+              if (x.rule !== (bx.rule || ''))
                 ops.push({
                   what: c.key + '/' + x.key + ' rule',
+                  target: (c.label || c.key) + ' / ' + (x.label || x.key),
+                  field: 'rule',
+                  kind: 'edit',
+                  from: formatVal(bx.rule, 40),
+                  to: formatVal(x.rule, 40),
                   run: function () {
                     return edit(
                       'category',
@@ -1255,6 +1472,10 @@ if (gameEditEl) {
             .forEach(function (x) {
               ops.push({
                 what: c.key + '/' + x.key + ' delete',
+                target: (c.label || c.key) + ' / ' + (x.label || x.key),
+                field: 'subcategory',
+                kind: 'delete',
+                from: 'removed',
                 run: function () {
                   var fd = new FormData();
                   fd.append('game', gameEditData.game);
@@ -1282,6 +1503,11 @@ if (gameEditEl) {
           ) {
             ops.push({
               what: c.key + ' key \u2192 ' + c.newKey,
+              target: c.label || c.key,
+              field: 'key',
+              kind: 'edit',
+              from: c.key,
+              to: c.newKey,
               run: function () {
                 return edit(
                   'category',
@@ -1304,6 +1530,10 @@ if (gameEditEl) {
         .forEach(function (c) {
           ops.push({
             what: c.key + ' delete',
+            target: c.label || c.key,
+            field: 'category',
+            kind: 'delete',
+            from: 'removed',
             run: function () {
               var fd = new FormData();
               fd.append('game', gameEditData.game);
@@ -1330,12 +1560,21 @@ if (gameEditEl) {
       var haveOrder = base.cats.map(function (c) {
         return c.key;
       });
+      var hasNewCats = draft.cats.some(function (c) {
+        return c.isNew && !c.deleted;
+      });
       if (
+        !hasNewCats &&
         wantOrder.join(',') !== haveOrder.join(',') &&
         wantOrder.length === haveOrder.length
       ) {
         ops.push({
           what: 'category order',
+          target: 'Categories',
+          field: 'order',
+          kind: 'order',
+          from: formatVal(haveOrder.join(', '), 45),
+          to: formatVal(wantOrder.join(', '), 45),
           run: function () {
             var fd = new FormData();
             fd.append('game', gameEditData.game);
@@ -1367,7 +1606,7 @@ if (gameEditEl) {
               });
           },
         });
-      } else if (wantOrder.length !== haveOrder.length) {
+      } else if (wantOrder.length !== haveOrder.length || hasNewCats) {
         // adds or deletes pending: the order is settled on the next save
         ops.orderLater = true;
       }
@@ -1388,12 +1627,21 @@ if (gameEditEl) {
           var have = b.subs.map(function (x) {
             return x.key;
           });
+          var hasNewSubs = c.subs.some(function (x) {
+            return x.isNew && !x.deleted;
+          });
           if (
+            !hasNewSubs &&
             want.length === have.length &&
             want.join(',') !== have.join(',')
           ) {
             ops.push({
               what: c.key + ' subcategory order',
+              target: c.label || c.key,
+              field: 'subcategory order',
+              kind: 'order',
+              from: formatVal(have.join(', '), 45),
+              to: formatVal(want.join(', '), 45),
               run: function () {
                 var fd = new FormData();
                 fd.append('game', gameEditData.game);
@@ -1450,19 +1698,10 @@ if (gameEditEl) {
     function refresh() {
       var ops = plan();
       dirty = ops.length > 0;
-      pendingEl.textContent = ops.length
-        ? ops.length +
-          ' change' +
-          (ops.length === 1 ? '' : 's') +
-          ' pending: ' +
-          ops
-            .map(function (o) {
-              return o.what;
-            })
-            .join(', ')
-        : 'No changes yet';
+      renderPendingChanges(ops);
       saveBtn.disabled = !ops.length;
     }
+
     [
       'ge-title',
       'ge-released',

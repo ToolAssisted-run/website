@@ -520,3 +520,93 @@
   opacity: 0.6;
   border-style: dashed;
 }
+
+/* Pending changes summary & diff table on savebar */
+.ge-pending-wrap {
+  margin-bottom: 12px;
+}
+
+.ge-pending-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ge-pending-tblwrap {
+  margin: 8px 0 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 2px solid var(--hair);
+  border-radius: 9px;
+  background: var(--panel);
+}
+
+.ge-pending-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.ge-pending-table th {
+  padding: 7px 12px;
+  font-size: 0.68rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg);
+  border-bottom: 2.5px solid var(--hairs);
+}
+
+.ge-pending-table td {
+  padding: 8px 12px;
+  border-bottom: 1.5px solid var(--hair);
+  vertical-align: middle;
+}
+
+.ge-pending-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ge-pending-target {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.ge-pending-field {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.ge-pending-table .diff-summary {
+  font-size: 0.82rem;
+}
+
+.ge-pending-table .diff-item {
+  font-size: 0.8rem;
+}
+
+.ge-pending-table th:nth-child(1),
+.ge-pending-table td:nth-child(1) {
+  width: 22%;
+  min-width: 110px;
+}
+
+.ge-pending-table th:nth-child(2),
+.ge-pending-table td:nth-child(2) {
+  width: 22%;
+  min-width: 110px;
+}
+
+.ge-pending-table th:nth-child(3),
+.ge-pending-table td:nth-child(3) {
+  width: 56%;
+}
