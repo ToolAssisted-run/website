@@ -37,7 +37,8 @@ SYSTEM_NAMES = {
     'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'NeoGeo': 'Neo Geo AES', 'VBoy': 'Virtual Boy',
     'Coleco': 'ColecoVision', 'INTV': 'Intellivision', 'Dreamcast': 'Sega Dreamcast',
     'GC': 'GameCube', 'Wii': 'Wii', 'Windows': 'Windows', 'Linux': 'Linux',
-    'ZXS': 'ZX Spectrum', 'A800': 'Atari 800', 'Apple2': 'Apple II',
+    'ZXS': 'ZX Spectrum', 'A800': 'Atari 800',
+    'Apple2': 'Apple II', 'AppleII': 'Apple II',
     'X68K': 'Sharp X68000', 'PC88': 'NEC PC-8801', 'PC98': 'NEC PC-9801',
     'FDS': 'Famicom Disk System', 'SGX': 'SuperGrafx', 'Vectrex': 'Vectrex',
     'O2': 'Odyssey 2', 'Uzebox': 'Uzebox', 'TI83': 'TI-83',
@@ -65,13 +66,15 @@ EXACT_FPS = {
     'sg1000': 59.922751013551, '32x': 59.922751013551,
     'segacd32x': 59.922751013550524, 'bsx': 60.0988118623484,
     'sgx': 59.8261054534819, 'msx2': 59.9227510135505,
+    'appleii': 59.9227510135505,   # AppleWin: (157500000/11 * 65/912) / 17030
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
                 'ps2', 'psp', 'ps3', 'xbox', 'symbian', 'a5200',
                 'neogeo', 'ngp', 'bsx', '32x', 'segacd32x', 'msx2',
-                'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
+                'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'appleii', 'a800', 'zxs',
+                'c64'}
 
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}
 

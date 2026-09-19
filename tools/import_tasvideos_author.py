@@ -45,7 +45,7 @@ SYSTEM_NAMES = {
     'Lynx': 'Atari Lynx', 'NGP': 'Neo Geo Pocket', 'VBoy': 'Virtual Boy',
     'Coleco': 'ColecoVision', 'INTV': 'Intellivision', 'Dreamcast': 'Sega Dreamcast',
     'GC': 'GameCube', 'Wii': 'Wii', 'Windows': 'Windows', 'Linux': 'Linux',
-    'ZXS': 'ZX Spectrum', 'A800': 'Atari 800', 'Apple2': 'Apple II',
+    'ZXS': 'ZX Spectrum', 'A800': 'Atari 800', 'Apple2': 'Apple II', 'AppleII': 'Apple II',
     'X68K': 'Sharp X68000', 'PC88': 'NEC PC-8801', 'PC98': 'NEC PC-9801',
     'FDS': 'Famicom Disk System', 'SGX': 'SuperGrafx', 'Vectrex': 'Vectrex',
     'O2': 'Odyssey 2', 'Uzebox': 'Uzebox', 'TI83': 'TI-83', 'SG1000': 'SG-1000',
@@ -61,6 +61,7 @@ EXACT_FPS = {
     'gbc': 59.7275005696058, 'gba': 59.7275005696058,
     'gg': 59.922751013551, 'sms': 59.922751013551,
     'n64': 60.0, 'psx': 59.29286256195557,
+    'appleii': 59.9227510135505,
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 # Systems where setting up a faithful reproduction environment is genuinely
@@ -68,7 +69,7 @@ START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 # there earn the hard-system bonus. Provisional list, experts refine.
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
                 'saturn', '3do', 'segacd', 'pcecd', 'dreamcast', 'gc', 'wii',
-                'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'a800', 'zxs', 'c64'}
+                'pc88', 'pc98', 'x68k', 'msx', 'apple2', 'appleii', 'a800', 'zxs', 'c64'}
 
 
 def fetch(url, timeout=20):
