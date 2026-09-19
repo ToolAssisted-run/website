@@ -2121,7 +2121,9 @@ img.blurhash-loaded {
   margin-bottom: 4px;
 }
 
-.actform > :not(summary):not([hidden]) ~ :not(summary):not([hidden]) {
+.actform:not(.selchoice)
+  > :not(summary):not([hidden])
+  ~ :not(summary):not([hidden]) {
   margin-top: 14px;
 }
 
@@ -2162,7 +2164,7 @@ img.blurhash-loaded {
   margin-top: 14px;
 }
 
-.actform input,
+.actform input:not([type="checkbox"]):not([type="radio"]),
 .actform textarea {
   width: 100%;
   padding: 9px 12px;
@@ -2185,7 +2187,7 @@ img.blurhash-loaded {
   font-size: 0.88rem;
 }
 
-.actform input:focus,
+.actform input:not([type="checkbox"]):not([type="radio"]):focus,
 .actform textarea:focus,
 .actform select:focus {
   outline: none;
@@ -4412,9 +4414,12 @@ ins.diff-inline {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--faint);
+  line-height: 1;
 }
 
-.selchoice label.check {
+.selchoice label.check,
+.selchoice > :not(summary):not([hidden]) ~ :not(summary):not([hidden]),
+.selchoice > * {
   margin: 0;
 }
 
@@ -4423,18 +4428,26 @@ input[type="radio"] {
   -webkit-appearance: none;
   width: 20px;
   height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   margin: 0;
+  padding: 0;
   flex: none;
   border: 2.5px solid var(--hairs);
   border-radius: 50%;
   background: var(--bg);
   cursor: pointer;
-  display: inline-grid;
-  place-content: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  transition: none;
 }
 
 input[type="radio"]::before {
   content: "";
+  display: block;
+  flex: none;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -4448,6 +4461,20 @@ input[type="radio"]:checked {
 
 input[type="radio"]:checked::before {
   transform: scale(1);
+}
+
+input[type="radio"]:hover {
+  border-color: var(--accent);
+}
+
+input[type="radio"]:focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input[type="radio"]:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .importnote {

@@ -126,7 +126,7 @@
   width: 100%;
 }
 
-.gecard input,
+.gecard input:not([type="checkbox"]):not([type="radio"]),
 .gecard textarea {
   width: 100%;
   border: 2.5px solid var(--hair);
@@ -148,7 +148,7 @@
   font-size: 0.88rem;
 }
 
-.gecard input:focus,
+.gecard input:not([type="checkbox"]):not([type="radio"]):focus,
 .gecard textarea:focus,
 .gecard select:focus {
   outline: none;
