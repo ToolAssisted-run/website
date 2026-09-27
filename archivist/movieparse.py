@@ -116,7 +116,13 @@ BIZ_TO_TASV = {'gen': 'genesis', 'sat': 'saturn', 'dgb': 'gb', 'gb3x': 'gb',
                # keeps under a different key
                'ng': 'neogeo', 'ngpc': 'ngp', 'a52': 'a5200', 'ps1': 'psx',
                'sfc': 'snes', 'cv': 'coleco', 'ws': 'wswan', 'wsc': 'wswan',
-               'mcd': 'segacd', 'sg': 'sg1000', 'mcd32x': 'segacd32x'}
+               'mcd': 'segacd', 'sg': 'sg1000', 'mcd32x': 'segacd32x',
+               # FBNeo's boards arrive under their own ids (CPS1, CPS2, CPS3,
+               # SYS16 are keys here already). Its NEOGEO is the arcade MVS,
+               # not the AES cartridge machine ares runs as NG, so it must not
+               # fall through to that one; 'system16' is its setting's spelling
+               # of the same board.
+               'neogeo': 'mvs', 'system16': 'sys16'}
 CYCLE_BASED_CORES = {'subgbhawk': 4194304, 'gambatte': 2097152}
 VALID_CLOCK_RATES = {'4194304', '2097152', '5369318.18181818', '5320342.5',
                      '33868800', '21477272.7272727', '21281370', '16777216'}
