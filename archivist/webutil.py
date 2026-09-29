@@ -20,6 +20,5 @@ from flask import jsonify
 
 
 def fail(msg, code=400):
-    """Return a JSON error response with its HTTP status."""
     return jsonify({'ok': False, 'error': msg}), code
 

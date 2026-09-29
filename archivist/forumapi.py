@@ -140,7 +140,6 @@ def ensure_game_topic(system, slug, title):
     return None
 
 def discourse_api(path, method='GET', payload=None):
-    """Send a Discourse API request and decode its response."""
     body = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(DISCOURSE_URL + path, data=body, method=method,
                                  headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'eien86',
@@ -285,14 +284,18 @@ def publish_roles(dry=False):
     """
     report = {}
     for role, (group, _full) in ROLE_GROUP.items():
-        want = _role_members(role)
+        want = sorted({ev['user'] for (u, r, s), ev in held_roles().items() if r == role})
         try:
             members = discourse_api(f'/groups/{group}/members.json').get('members', [])
             have = [m['username'] for m in members]
         except Exception as e:                                 # noqa: BLE001
             report[role] = {'error': f'could not read the forum group {group} ({e})'}
             continue
-        add, drop = _role_changes(want, have)
+        held_lower = {w.lower() for w in want}
+        add = [u for u in want if u.lower() not in {h.lower() for h in have}]
+        # never evict our own bot: it is in groups to be able to post, not
+        # because anybody granted it a role
+        drop = [u for u in have if u.lower() not in held_lower and u != BOT_USER]
         entry = {'group': group, 'roster': want, 'forum': have,
                  'add': add, 'remove': drop}
         if not dry:
@@ -300,20 +303,6 @@ def publish_roles(dry=False):
                               + [publish_group(role, u, False) for u in drop])
         report[role] = entry
     return report
-
-
-def _role_members(role):
-    """List the archive's current holders of one forum-published role."""
-    return sorted({ev['user'] for (u, r, s), ev in held_roles().items() if r == role})
-
-
-def _role_changes(want, have):
-    """Diff group members without ever evicting the posting bot."""
-    held_lower = {w.lower() for w in want}
-    forum_lower = {h.lower() for h in have}
-    add = [u for u in want if u.lower() not in forum_lower]
-    drop = [u for u in have if u.lower() not in held_lower and u != BOT_USER]
-    return add, drop
 
 def committee_size():
     """How many people the Committee has, which is what a majority is measured
@@ -435,10 +424,10 @@ def topics_for_imported(archive, run_ids):
     return made
 
 def _forum_get(path):
-    """Read a forum API path without modifying it."""
     req = urllib.request.Request(
         f'{DISCOURSE_URL}{path}',
         headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'system',
                  'Accept': 'application/json'})
     with urllib.request.urlopen(req, timeout=20) as resp:
         return json.loads(resp.read())
+

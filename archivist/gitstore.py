@@ -34,17 +34,14 @@ from identity import (
 lock = threading.RLock()   # re-entrant: a refresh may be taken inside a locked section
 
 def sh(*args, **kw):
-    """Run a git command in the archive checkout."""
     return subprocess.run(args, cwd=ARCHIVE, check=True, capture_output=True,
                           text=True, env={**os.environ, 'GIT_SSH_COMMAND': GIT_SSH}, **kw)
 
 def next_id():
-    """Reserve the next unused run identifier."""
     ids = [int(p.name[1:]) for p in ARCHIVE.glob('games/*/*/runs/M*') if p.name[1:].isdigit()]
     return max([100000] + [i for i in ids if i >= 100000]) + 1
 
 def load_game(system, slug):
-    """Load a game record from the archive checkout."""
     gdir = ARCHIVE / 'games' / system / slug
     if not (gdir / 'game.json').exists():
         return None, None
@@ -70,21 +67,15 @@ def duplicate_of(sha1, game_key=None, goal=None, frames=None, authors=None):
         mv = d.get('movie') or {}
         if sha1 and mv.get('sha1') == sha1:
             return d.get('id'), 'the same movie file'
-        if _same_run_metadata(d, game_key, goal, frames, aset):
+        if (game_key and d.get('game') == game_key
+                and (d.get('category') or {}).get('goal') == goal
+                and mv.get('frames') and mv.get('frames') == frames
+                and aset and {a['user'].lower() for a in d.get('authors', [])} == aset):
             same_work = d.get('id')
     if same_work:
         return same_work, ('the same game, category, frame count and authors, so it '
                            'looks like the same run saved again')
     return None, None
-
-
-def _same_run_metadata(run, game_key, goal, frames, authors):
-    """Match an imported movie resaved with different bytes but identical work."""
-    movie = run.get('movie') or {}
-    return (game_key and run.get('game') == game_key
-            and (run.get('category') or {}).get('goal') == goal
-            and movie.get('frames') and movie.get('frames') == frames
-            and authors and {a['user'].lower() for a in run.get('authors', [])} == authors)
 
 def _abandon_unfinished_git_state():
     """Leave no half-finished rebase or merge behind. A conflicted rebase
@@ -132,7 +123,6 @@ def current_serial():
         return _serial_cache['n']
 
 def checkout_branch():
-    """Select the writable archive branch before editing."""
     _abandon_unfinished_git_state()
     _last_refresh['t'] = time.time()
     try:
@@ -140,7 +130,15 @@ def checkout_branch():
     except subprocess.CalledProcessError:
         before = None
     sh('git', 'fetch', '-q', 'origin')
-    remote_target, remote_head = _remote_branch_head()
+    try:
+        remote_target = f'origin/{BRANCH}'
+        remote_head = sh('git', 'rev-parse', remote_target).stdout.strip()
+    except subprocess.CalledProcessError:
+        remote_target = 'origin/main'
+        try:
+            remote_head = sh('git', 'rev-parse', remote_target).stdout.strip()
+        except subprocess.CalledProcessError:
+            remote_head = None
 
     worktree_dirty = bool(sh('git', 'status', '--porcelain').stdout.strip())
     if before is None or before != remote_head or worktree_dirty:
@@ -158,20 +156,6 @@ def checkout_branch():
         _serial_cache['n'] = None
         import sitebuild
         sitebuild.request_build()
-
-
-def _remote_branch_head():
-    """Choose the configured remote branch or its main fallback."""
-    try:
-        remote_target = f'origin/{BRANCH}'
-        remote_head = sh('git', 'rev-parse', remote_target).stdout.strip()
-    except subprocess.CalledProcessError:
-        remote_target = 'origin/main'
-        try:
-            remote_head = sh('git', 'rev-parse', remote_target).stdout.strip()
-        except subprocess.CalledProcessError:
-            remote_head = None
-    return remote_target, remote_head
 
 def refresh_archive(max_age=None):
     """Make sure the checkout is current before anything is decided from it.
@@ -206,7 +190,6 @@ def dispatch_site_rebuild():
         return
 
     def work():
-        """Perform a background persistence operation."""
         try:
             req = urllib.request.Request(
                 'https://api.github.com/repos/ToolAssisted-run/website/'
@@ -249,8 +232,26 @@ def _touched_keys():
 
 
 def validate_worktree():
-    """Reject pre-commit archive errors on touched paths; ignore unrelated
-    errors or validator outages. Return the complaint, or None."""
+    """The archive's own rules, applied to what this write touched, before
+    the commit that would break them.
+
+    validate.py lives in the archive because the archive is written from more
+    places than intake: our own commits, the self-import, a maintainer's
+    hand. This is the last point at which a bad write can still be refused,
+    and 2.8.2 is why refusing beats reporting: nobody may rewrite history, so
+    an invalid state that lands is in the archive for good.
+
+    Only complaints about the paths this request wrote can stop it. The
+    validator judges the whole archive, and a gate that took its verdict
+    whole would turn one bad record anywhere into a total outage of writes:
+    the morning two .wch attachments made the archive invalid, every
+    submission on the site would have been refused until somebody noticed.
+    Problems elsewhere are logged and left to the daily sweep.
+
+    Returns the complaint to refuse on, or None. A validator that could not
+    run at all (absent from the checkout, no jsonschema, crashed, hung) has
+    said nothing about the content, so it never blocks a member's write.
+    """
     script = ARCHIVE / 'validate.py'
     if not script.exists():
         return None            # a fixture archive carries no validator
@@ -283,7 +284,6 @@ def validate_worktree():
 
 
 def commit_push(message):
-    """Validate, commit and push the archive worktree."""
     sh('git', 'add', '-A')
     bad = validate_worktree()
     if bad:
@@ -314,7 +314,7 @@ def commit_push(message):
                 raise
 
 def find_run(run_id):
-    """Locate a run record by its identifier."""
     for p in ARCHIVE.glob(f'games/*/*/runs/{run_id}/run.json'):
         return p.parent
     return None
+

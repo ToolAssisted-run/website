@@ -208,7 +208,6 @@ ACT_NOTES_MAX = 2000
 LOG = logging.getLogger('archivist')
 
 def slugify(s):
-    """Turn a source name into a safe lowercase slug."""
     s = re.sub(r"['’]", '', s.lower())
     s = re.sub(r'[^a-z0-9]+', '-', s).strip('-')
     return s[:60]

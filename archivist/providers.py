@@ -107,7 +107,6 @@ def names():
 
 
 def host_of(url):
-    """Extract the normalized hostname from a video URL."""
     host = urllib.parse.urlparse(url).netloc.lower().split(':')[0]
     return host[4:] if host.startswith('www.') else host
 
@@ -136,13 +135,11 @@ def resolve(url):
 
 
 def embed_url(kind, vid):
-    """Build a provider embed URL from its video id."""
     p = BY_KIND.get(kind)
     return p['embed'].format(id=vid) if p else None
 
 
 def _fetch(url, timeout=TIMEOUT):
-    """Fetch provider bytes with the configured user agent."""
     if MOCK_BASE:
         url = MOCK_BASE + urllib.parse.quote(url, safe='')
     req = urllib.request.Request(url, headers={'User-Agent': UA})
@@ -151,7 +148,6 @@ def _fetch(url, timeout=TIMEOUT):
 
 
 def fetch_bytes(url, timeout=TIMEOUT):
-    """Fetch provider bytes, returning None on network failure."""
     try:
         return _fetch(url, timeout)
     except Exception:                                      # noqa: BLE001
@@ -159,13 +155,11 @@ def fetch_bytes(url, timeout=TIMEOUT):
 
 
 def fetch_text(url, timeout=TIMEOUT):
-    """Decode provider response bytes as UTF-8 text."""
     data = fetch_bytes(url, timeout)
     return data.decode('utf-8', 'replace') if data else None
 
 
 def _dig(obj, path):
-    """Read a nested string field from provider JSON."""
     for part in path.split('.'):
         if not isinstance(obj, dict):
             return None
@@ -189,25 +183,24 @@ def duration_seconds(kind, vid):
                 h, mnt, sec = int(m.group(1) or 0), int(m.group(2)), int(m.group(3))
                 return h * 3600 + mnt * 60 + sec
             return None
-        return _json_duration(kind, vid)
+        if kind == 'bilibili':
+            body = fetch_text(f'https://api.bilibili.com/x/web-interface/view?bvid={vid}')
+            doc = json.loads(body) if body else {}
+            dur = (doc.get('data') or {}).get('duration')
+            return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
+        if kind == 'vimeo':
+            body = fetch_text(f'https://vimeo.com/api/oembed.json?url=https%3A//vimeo.com/{vid}')
+            doc = json.loads(body) if body else {}
+            dur = doc.get('duration')
+            return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
+        if kind == 'dailymotion':
+            body = fetch_text(f'https://api.dailymotion.com/video/{vid}?fields=duration')
+            doc = json.loads(body) if body else {}
+            dur = doc.get('duration')
+            return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
     except Exception:                                      # noqa: BLE001
         return None
-
-
-def _json_duration(kind, vid):
-    """Read a platform's positive duration field from its metadata endpoint."""
-    sources = {
-        'bilibili': (f'https://api.bilibili.com/x/web-interface/view?bvid={vid}', 'data'),
-        'vimeo': (f'https://vimeo.com/api/oembed.json?url=https%3A//vimeo.com/{vid}', None),
-        'dailymotion': (f'https://api.dailymotion.com/video/{vid}?fields=duration', None),
-    }
-    if kind not in sources:
-        return None
-    url, field = sources[kind]
-    body = fetch_text(url)
-    doc = json.loads(body) if body else {}
-    dur = (doc.get(field) or {}).get('duration') if field else doc.get('duration')
-    return int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
+    return None
 
 
 def thumbnail_url(kind, vid):
@@ -216,32 +209,30 @@ def thumbnail_url(kind, vid):
     if not p:
         return None
     api = p.get('thumb_api')
-    if not api:
-        return None
-    tmpl, fmt, path = api
-    body = fetch_text(tmpl.format(id=vid))
-    if not body:
-        return None
-    found = _thumbnail_field(body, fmt, path)
-    if not found:
-        return None
-    # Provider CDNs support HTTPS; never embed mixed-content images.
-    if found.startswith('//'):
-        found = 'https:' + found
-    elif found.startswith('http://'):
-        found = 'https://' + found[7:]
-    return found if found.startswith('https://') else None
-
-
-def _thumbnail_field(body, fmt, path):
-    """Extract the provider's still-image URL from JSON or XML metadata."""
-    if fmt == 'json':
-        try:
-            return _dig(json.loads(body), path)
-        except ValueError:
+    if api:
+        tmpl, fmt, path = api
+        body = fetch_text(tmpl.format(id=vid))
+        if not body:
             return None
-    match = re.search(rf'<{path}>(.*?)</{path}>', body, re.S)
-    return match.group(1).strip() if match else None
+        if fmt == 'json':
+            try:
+                found = _dig(json.loads(body), path)
+            except ValueError:
+                return None
+        else:
+            m = re.search(rf'<{path}>(.*?)</{path}>', body, re.S)
+            found = m.group(1).strip() if m else None
+        if not found:
+            return None
+        # Bilibili answers with a protocol-relative or plain http URL, and an
+        # http image on an https page is blocked as mixed content before it
+        # ever loads. Every one of these CDNs serves https.
+        if found.startswith('//'):
+            found = 'https:' + found
+        elif found.startswith('http://'):
+            found = 'https://' + found[7:]
+        return found if found.startswith('https://') else None
+    return None
 
 
 def thumbnail(kind, vid, max_bytes=256 * 1024):

@@ -66,15 +66,10 @@ never derived state** (who verified what, when; never "this run is ranked").
 
 **Controller** — what happens when.
 - `generator/build.py`: scaffolding, build order, shared assets.
-- `archivist/archivist.py`: the executable Flask entrypoint, response hooks
-  and startup workers. `archivist/routes/` groups JSON endpoints by feature;
-  routes validate requests, drive the layers and answer JSON. Request helpers
-  shared by route families stay separate from the records they write. The
-  layers import only upward (settings → webutil → identity → gitstore →
-  notify → records → forumapi), never the controller.
-- `archivist/movieparse/`, `archivist/wikitext/` and
-  `archivist/selfimport/` keep their existing public import names while
-  grouping format parsers, notes rendering, and import steps respectively.
+- `archivist/archivist.py`: the Flask app and every route. Routes validate
+  the request, drive the layers, answer JSON. The layers import only upward
+  (settings → webutil → identity → gitstore → notify → records → forumapi),
+  never the controller.
 
 ## Frontend/backend decoupling
 
@@ -107,8 +102,6 @@ them on every push; a deploy only happens when they pass. `mkarchive.py`
 builds fully synthetic archives for exact-value assertions. Client checks
 parse and execute the shared entrypoint together with the emitted page
 modules, so a template's script mapping cannot silently go stale.
-The VPS installer copies both the flat service modules and Python package
-directories into `/opt/archivist/`, preserving the script entrypoint.
 
 ## Code quality scanning
 

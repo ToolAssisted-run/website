@@ -40,26 +40,10 @@ cd /opt/archivist/website
 git fetch -q origin
 git reset -q --hard origin/main
 git clean -qfd
-cp archivist/*.py /opt/archivist/
-# Package directories are part of the service, not optional deploy assets.
-# Stage each replacement before removing its previous installed copy.
-for package in archivist/*/; do
-    [ -f "$package/__init__.py" ] || continue
-    name=$(basename "$package")
-    staged=$(mktemp -d "/opt/archivist/.${name}.XXXXXX")
-    cp -R "$package/." "$staged/"
-    rm -rf "/opt/archivist/$name"
-    mv "$staged" "/opt/archivist/$name"
-    # A former flat module must not remain as an alternative import target.
-    if [ ! -f "archivist/$name.py" ]; then
-        rm -f "/opt/archivist/$name.py"
-    fi
-done
-# The archivist's own page templates ride along with its code.
-staged_templates=$(mktemp -d /opt/archivist/.templates.XXXXXX)
-cp -R archivist/templates/. "$staged_templates/"
-rm -rf /opt/archivist/templates
-mv "$staged_templates" /opt/archivist/templates
+cp archivist/*.py /opt/archivist/ 2>/dev/null || true
+# the archivist's own page templates ride along with its code
+rm -rf /opt/archivist/templates 2>/dev/null || true
+cp -r archivist/templates /opt/archivist/templates 2>/dev/null || true
 pip3 install --quiet --break-system-packages pillow numpy 2>/dev/null || pip3 install --quiet pillow numpy 2>/dev/null || true
 
 # 3. Self-update this sync script if changed in repository.
