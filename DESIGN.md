@@ -237,7 +237,7 @@ picked and hashed locally, **the file never leaves the machine**, or typed;
 revisable from Edit run; the legacy single `contract.rom` on older records
 is shown as one row and never rewritten) · movie file, **optional**: a run
 without one is video-only (see below). Any extension is archived as it is;
-a supported format is parsed mechanically (`archivist/movieparse.py`:
+a supported format is parsed mechanically (`archivist/movieparse/`:
 Chimera's own `.chimeraProject`, the TASVideos emulator formats, classic
 ones included (smv, zmv, fcm, fmv, vmv,
 nmv, mmv, mcm, pjm, pxm, mc2, ymv, bkm, dof, rec), plus the game-specific
@@ -857,7 +857,10 @@ archivist, module responsibilities). What matters designwise:
   refresh the checkout at most every 20 s; role projections reconcile to the
   forum every 600 s. Reached publicly through the forum's nginx at
   `https://forum.toolassisted.run/archivist/` (port 8100 is docker-subnet
-  only).
+  only). Its `archivist.py` remains the executable Flask entrypoint;
+  feature-grouped endpoints live in `archivist/routes/`. Movie parsers,
+  notes rendering and the consenting-member import flow use their own
+  same-named Python packages while retaining their existing public imports.
 - **Run visit counters are operational state, not archive facts**: the run
   page's script POSTs `/api/visit` (no auth; a visit is anonymous, and
   counting from the script keeps plain crawlers out), the archivist tallies
@@ -1204,7 +1207,8 @@ archivist, module responsibilities). What matters designwise:
   `core.sshCommand`: GitHub began answering the host's anonymous HTTPS
   git-upload-pack with 401, so every deploy failed at the pull while the
   same URL still advertised its refs), update `/usr/local/bin/tar-site-sync`
-  from the repo, copy **all** of `archivist/*.py` to `/opt/archivist/`, and
+  from the repo, install `archivist/*.py`, its Python package directories,
+  and its templates in `/opt/archivist/`, and
   restart the archivist (whose startup build republishes the site and runs the
   backfill). **A second, independent door**: GitHub's own webhook reaches
   `POST /api/hooks/github` on the archivist, HMAC-verified

@@ -21,7 +21,10 @@ Then:
 2. **Repos**: `git clone archive-<DAY>.bundle /opt/archivist/archive` and
    `git clone website-<DAY>.bundle /opt/archivist/website`; point their
    `origin` at GitHub again (`git remote set-url origin …`). Copy
-   `website/archivist/*.py` into `/opt/archivist/` and
+   `website/archivist/*.py`, each Python package directory in
+   `website/archivist/` (including its `__init__.py`), and
+   `website/archivist/templates/` into `/opt/archivist/`; remove any
+   obsolete flat `.py` module whose name is now a package, then
    `systemctl enable --now archivist` — its startup build republishes the
    site into `/opt/archivist/site/current`.
 3. **nginx**: `apt install nginx`, symlink the restored vhosts from

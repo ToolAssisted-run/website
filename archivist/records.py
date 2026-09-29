@@ -65,6 +65,7 @@ def note_new_member(username):
     in, and a failure here must never cost somebody their session: the next
     thing they do writes the record anyway."""
     def work():
+        """Perform a background persistence operation."""
         try:
             record_member_once(username)
         except Exception as e:                                 # noqa: BLE001
@@ -108,6 +109,7 @@ def sync_status(r):
                                'provisional' if live_v else 'none')
 
 def load_roles():
+    """Read role events from the archive."""
     p = ARCHIVE / 'roles.json'
     if not p.exists():
         return []
@@ -169,11 +171,13 @@ def already_covers(user, scope):
     return None
 
 def expert_covers(user, game_key):
+    """Check whether an expert covers the given game."""
     reach = scopes_over(game_key)
     return any(e['user'].lower() == user.lower() and e['scope'] in reach
                for e in load_experts())
 
 def load_groups():
+    """Read the archive group definitions."""
     p = ARCHIVE / 'groups.json'
     if not p.exists():
         return {'comment': 'Game groups: one family of games, across every system it '
@@ -181,6 +185,7 @@ def load_groups():
     return json.loads(p.read_text())
 
 def save_groups(doc):
+    """Write group definitions to the archive."""
     doc['groups'].sort(key=lambda g: g['title'].lower())
     (ARCHIVE / 'groups.json').write_text(json.dumps(doc, indent=1) + '\n')
 
@@ -232,6 +237,7 @@ def log_edit(kind, key, field, old_v, new_v, by, reason):
     p_.write_text(json.dumps(doc, indent=1) + '\n')
 
 def is_uncl_run(r):
+    """Check whether a run is in the unclassified category."""
     return (r.get('category') or {}).get('goal') == 'unclassified'
 
 def case_derived_status(case):
@@ -247,6 +253,7 @@ def case_derived_status(case):
     return 'open'
 
 def next_report_id():
+    """Allocate the next report identifier."""
     ids = [0]
     for rj in ARCHIVE.glob('games/*/*/runs/*/run.json'):
         for rep in json.loads(rj.read_text()).get('reports', []):
@@ -291,10 +298,12 @@ def scope_covers(wider, narrower):
     return False
 
 def is_founder(user):
+    """Check whether a member holds the founder role."""
     return any(u == user.lower() and role == 'founder'
                for (u, role, scope) in held_roles())
 
 def is_committee(user):
+    """Check whether a member sits on the committee."""
     return any(u == user.lower() and role == 'committee'
                for (u, role, scope) in held_roles())
 
@@ -306,6 +315,7 @@ def is_editor(user):
                for (u, role, scope) in held_roles())
 
 def load_claims():
+    """Read identity claims from the archive."""
     p_ = ARCHIVE / 'claims.json'
     if not p_.exists():
         return {'comment': 'Requests to be handed a held name, and how each was '
@@ -315,6 +325,7 @@ def load_claims():
     return json.loads(p_.read_text())
 
 def save_claims(doc):
+    """Write identity claims to the archive."""
     (ARCHIVE / 'claims.json').write_text(json.dumps(doc, indent=1) + '\n')
 
 def may_decide_claims(user):
@@ -343,6 +354,7 @@ ARCHIVE_EMULATORS = ARCHIVE / 'emulators.json'
 SITE_EMULATORS = pathlib.Path(__file__).resolve().parent.parent / 'assets' / 'emulators.json'
 
 def load_emulators():
+    """Read system emulator presets from the archive."""
     if ARCHIVE_EMULATORS.exists():
         p = ARCHIVE_EMULATORS
     elif SITE_EMULATORS.exists():
@@ -352,16 +364,10 @@ def load_emulators():
     return json.loads(p.read_text(encoding='utf-8'))
 
 def save_emulators(doc):
+    """Write system emulator presets to the archive."""
     clean_doc = {}
     if 'systems' in doc and isinstance(doc['systems'], dict):
-        s_map = doc['systems']
-        sorted_s = {}
-        if 'default' in s_map:
-            sorted_s['default'] = s_map['default']
-        for k in sorted(s_map.keys()):
-            if k != 'default':
-                sorted_s[k] = s_map[k]
-        clean_doc['systems'] = sorted_s
+        clean_doc['systems'] = _ordered_emulator_systems(doc['systems'])
     if 'catalog' in doc:
         clean_doc['catalog'] = doc['catalog']
     elif 'presets' in doc:
@@ -378,4 +384,14 @@ def save_emulators(doc):
         except Exception:
             pass
 
+
+def _ordered_emulator_systems(systems):
+    """Put the default emulator mapping first, then system keys alphabetically."""
+    ordered = {}
+    if 'default' in systems:
+        ordered['default'] = systems['default']
+    for key in sorted(systems.keys()):
+        if key != 'default':
+            ordered[key] = systems[key]
+    return ordered
 
