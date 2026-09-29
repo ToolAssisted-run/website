@@ -40,6 +40,12 @@
   width: auto;
 }
 
+/* the two core tables, each under its own heading */
+.corehead {
+  font-size: 1rem;
+  margin: 22px 0 10px;
+}
+
 .cat-changes-list {
   margin: 8px 0 0 18px;
   padding: 0;
