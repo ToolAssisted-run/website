@@ -729,7 +729,25 @@ if (submitForm) {
                 : '';
             compose();
           };
-          metricFields.appendChild(wrap);
+          // a time metric can take the game's own timer, when the movie
+          // carries one (a game core's, through Chimera's GameTimeMs);
+          // never automatic
+          var timeRow = document.createElement('div');
+          timeRow.className = 'timerow';
+          var igtBtn = document.createElement('button');
+          igtBtn.type = 'button';
+          igtBtn.className = 'btn quiet mfromigt';
+          igtBtn.disabled = true;
+          igtBtn.textContent = 'From movie';
+          igtBtn.addEventListener('click', function () {
+            if (!(movieInfo && movieInfo.parsed && movieInfo.igt != null))
+              return;
+            hiddenField.fill(movieInfo.igt);
+            paintPanels();
+          });
+          timeRow.appendChild(wrap);
+          timeRow.appendChild(igtBtn);
+          metricFields.appendChild(timeRow);
         } else {
           var numberInput = document.createElement('input');
           numberInput.type = 'number';
@@ -825,7 +843,8 @@ if (submitForm) {
                 (j.seconds ? ', ' + secClock(j.seconds) : '') +
                 (j.rerecords
                   ? ', ' + j.rerecords.toLocaleString() + ' rerecords'
-                  : '');
+                  : '') +
+                (j.igt != null ? ', in-game time ' + secClock(j.igt) : '');
               setMovieMark(
                 'ok',
                 'movie read: ' + (j.frames || 0).toLocaleString() + ' frames'
@@ -2165,6 +2184,20 @@ if (submitForm) {
           ? 'Fill with the movie\u2019s frame count: ' +
             movieInfo.frames.toLocaleString()
           : 'Enabled when the movie file could be parsed';
+      });
+      // a time metric's own import: the game's timer, which only a movie made
+      // on a game core carries
+      var igt =
+        movieInfo && movieInfo.parsed && movieInfo.igt != null
+          ? movieInfo.igt
+          : null;
+      submitForm.querySelectorAll('.mfromigt').forEach(function (btn) {
+        btn.disabled = igt === null;
+        btn.title =
+          igt === null
+            ? 'Enabled when the movie carries the game\u2019s own timer'
+            : 'Fill with the game\u2019s own timer in the movie: ' +
+              secClock(igt);
       });
     }
     var encTimeWarn = document.getElementById('s-enc-timewarn');

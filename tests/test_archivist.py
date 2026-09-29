@@ -90,6 +90,18 @@ CHIMERA_PROJECT = json.dumps({
              + '|........|\n' + '|.D......|\n' * 12 + '|...R....|\n' * 11
              + '|........|\n' * 30 + '[/Input]'}).encode()
 
+# The same project as a game core's, which carries the game's own timer:
+# Chimera writes GameTimeMs/GameTime/GameTimeFrame at the end of a project
+# whose core names one (SDLPoP and SDLPoP2 do).
+CHIMERA_GAME_PROJECT = json.dumps({
+    'title': 'Prince of Persia', 'core': {'name': 'SDLPoP', 'version': '1', 'sha1': 'b' * 40},
+    'headers': {'Platform': 'PrinceOfPersia', 'GameTimeMs': '75250',
+                'GameTime': '01:15.250', 'GameTimeFrame': '54'},
+    'rerecords': 12,
+    'input': '[Input]\nLogKey:#P1 Up|P1 Down|P1 Left|P1 Right|P1 A|P1 B|P1 Select|P1 Start|\n'
+             + '|........|\n' + '|.D......|\n' * 12 + '|...R....|\n' * 11
+             + '|........|\n' * 30 + '[/Input]'}).encode()
+
 
 def call(url, data=None, files=None, cookie=None, method=None, headers=None):
     """multipart/form POST helper; returns (status, json)."""
@@ -687,6 +699,18 @@ def main():
             c, r, _ = call(U + '/api/movie/inspect', {'key': KEY}, {'movie': ('t.xyz', b'x' * 10)})
             ck('inspect says when a format is not known at all, without refusing',
                c == 200 and r['known'] is False and r['parsed'] is False, str(r))
+            # the game's own timer: the submit form offers it for the metric
+            # that ranks by it, so intake has to hand it over
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'},
+                           {'movie': ('t.chimeraProject', CHIMERA_PROJECT)})
+            ck('inspect reports no game timer for a movie that carries none',
+               c == 200 and r['parsed'] and r['igt'] is None, str(r))
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'},
+                           {'movie': ('t.chimeraProject', CHIMERA_GAME_PROJECT)})
+            ck("inspect hands over a game core's in-game time, in seconds",
+               c == 200 and r['parsed'] and r['igt'] == 75.25, str(r))
+            ck('and the in-game time is not the run time',
+               c == 200 and r['frames'] == 24 and r['seconds'] != r['igt'], str(r))
 
             # --- games and categories exist beforehand; creation is its own
             # flow, open to every member ---

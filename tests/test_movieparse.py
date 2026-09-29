@@ -595,6 +595,43 @@ def main():
            any('not counted as run time' in w for w in res.get('warnings', []))
            == (want != 70), str(res.get('warnings')))
 
+    # ---- the game's own timer, which only a game core's project carries ----
+    # Chimera writes GameTimeMs/GameTime/GameTimeFrame at the end of a project
+    # whose core names a timer (SDLPoP, SDLPoP2), and strips them when an edit
+    # makes them stale: a value that is there belongs to this movie.
+    def with_timer(**headers):
+        doc = json.loads(f_chimeraproject().decode())
+        doc['headers'].update(headers)
+        return json.dumps(doc).encode()
+
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject())
+    ck('chimeraProject: a project with no game timer reports none',
+       res.get('ok') and res.get('igt') is None, str(res)[:200])
+    res = movieparse.parse('run.chimeraProject', with_timer(
+        GameTimeMs='75250', GameTime='01:15.250', GameTimeFrame='54'))
+    ck("chimeraProject: the game's timer is read, in seconds",
+       res.get('igt') == 75.25, str(res)[:200])
+    ck('chimeraProject: a game timer is not the run time',
+       res.get('frames') == 24, str(res)[:200])
+    res = movieparse.parse('run.chimeraProject', with_timer(
+        GameTimeMs='0', GameTimeFrame='54'))
+    ck('chimeraProject: a game timer of zero is a value, not an absence',
+       res.get('igt') == 0.0, str(res)[:200])
+    for bad, why in (('soon', 'not a number'), ('-4', 'negative')):
+        res = movieparse.parse('run.chimeraProject', with_timer(GameTimeMs=bad))
+        ck(f'chimeraProject: a {why} game timer is dropped, loudly',
+           res.get('ok') and res.get('igt') is None
+           and any('game time' in w for w in res.get('warnings', [])), str(res)[:200])
+    res = movieparse.parse('run.chimeraProject', with_timer(
+        GameTimeMs='75250', GameTimeFrame='19'))
+    ck('chimeraProject: a game timer read at another frame is flagged',
+       res.get('igt') == 75.25
+       and any('read at frame 19' in w for w in res.get('warnings', [])), str(res)[:200])
+    ck('every format answers about the game timer, even with nothing to say',
+       all(movieparse.parse('x.' + ext, data).get('igt', 'missing') is None
+           for ext, (data, _, _) in FIXTURES.items() if ext != 'chimeraproject'),
+       'a format left the key out')
+
     presents = json.loads(f_chimeraproject(idle=0).decode())
     presents['core']['name'] = 'PCSX2'
     res = movieparse.parse('run.chimeraProject', json.dumps(presents).encode())

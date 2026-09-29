@@ -3802,7 +3802,8 @@ def movie_inspect():
     Who: anybody (the file is the caller's own)
     Reads: file movie; form field game (system/slug, for the frame rate when
         the movie names none)
-    Answers: {ok, format, known, parsed, frames, fps, seconds, rerecords};
+    Answers: {ok, format, known, parsed, frames, fps, seconds, rerecords,
+        igt (the game's own timer in seconds, when the movie carries one)};
         400 for a missing, empty, oversized or unknown-format file
     """
     gate = _helper_gate()
@@ -3828,6 +3829,10 @@ def movie_inspect():
     resp = jsonify({'ok': True, 'format': ext, 'known': known, 'parsed': bool(parsed.get('ok')),
                     'frames': frames, 'fps': fps, 'rerecords': parsed.get('rerecords') if parsed.get('ok') else None,
                     'seconds': (frames / fps) if (frames and fps) else None,
+                    # a game core may carry the game's own timer; the form
+                    # offers it for the metric that ranks by it, never for
+                    # the run's time
+                    'igt': parsed.get('igt') if parsed.get('ok') else None,
                     'error': None if parsed.get('ok') else parsed.get('error')})
     resp.headers['Cache-Control'] = 'no-store'
     return resp

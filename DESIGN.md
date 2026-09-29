@@ -341,7 +341,15 @@ with the encode check). Picking one fills the segments and the selector
 resets. Numeric metric fields carry their own **From movie** button that
 fills the movie's frame or step count (for categories ranked by frames,
 steps or ticks; formats whose frame count is readable but whose rate is not,
-like `.otts` and `.gmtas`, still feed this). **Importing is a copy/paste,
+like `.otts` and `.gmtas`, still feed this), and a time-typed metric field
+carries one that fills **the game's own timer**: a Chimera game core may
+name one of its properties as the game's timer, and a project then ends with
+`GameTimeMs`/`GameTime`/`GameTimeFrame`, which the engine writes only when
+the machine ran to the end since the last edit and strips otherwise (SDLPoP
+and SDLPoP2 carry it). `movieparse` reads it as `igt` seconds and
+`/api/movie/inspect` hands it over. It is never offered for the run's time:
+a game counts its clock its own way (SDLPoP's stops in cutscenes), so it
+belongs to the metric that ranks by it and to nothing else. **Importing is a copy/paste,
 never a commitment**: it only writes the value into the field, which stays
 hand-editable like any typed value. Every import control sits on the same
 line as the field it fills, and its sources track the form live: removing

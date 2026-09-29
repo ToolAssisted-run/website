@@ -39,7 +39,7 @@ DOOM_FPS = 35.0029869215506
 
 
 def _ok(fmt, frames=0, rerecords=None, start='power-on', system=None, fps=None,
-        warnings=None):
+        warnings=None, igt=None):
     # Several formats derive the frame count from the file's own length
     # ((len - header) // stride) or from header bytes the uploader controls, so
     # a truncated or hostile file can compute a negative length. Frames feed
@@ -49,7 +49,7 @@ def _ok(fmt, frames=0, rerecords=None, start='power-on', system=None, fps=None,
         return _err(fmt, 'Negative frame count: the file looks truncated')
     return {'ok': True, 'format': fmt, 'frames': frames,
             'rerecords': rerecords, 'start': start, 'system': system,
-            'fps': fps, 'warnings': warnings or []}
+            'fps': fps, 'igt': igt, 'warnings': warnings or []}
 
 
 def _err(fmt, msg):
@@ -182,6 +182,44 @@ def _chimera_split(line):
     return masks, axes
 
 
+def _chimera_game_time(lower, log_frames, warnings):
+    """The game's own timer, when the project carries it.
+
+    A game core may name one of its properties as the game's timer (Chimera's
+    docs/game-cores.md), and a saved project then ends with GameTimeMs (the
+    number), GameTime (as the game shows it) and GameTimeFrame (the frame it
+    was read at, which is the movie's length). The engine writes the three
+    only when the machine has run to the end since the last edit, and strips
+    them otherwise, so a value that IS there belongs to this movie.
+
+    Returns the time in seconds, or None. It is never the run's time: the
+    game counts it its own way (SDLPoP's clock stops in cutscenes), and the
+    author states what the category ranks by regardless.
+    """
+    raw = lower.get('gametimems')
+    if raw is None or str(raw).strip() == '':
+        return None
+    try:
+        ms = int(str(raw).strip())
+    except (TypeError, ValueError):
+        warnings.append('the project states a game time that is not a number; '
+                        'it is ignored')
+        return None
+    if ms < 0:
+        warnings.append('the project states a negative game time; it is ignored')
+        return None
+    at = lower.get('gametimeframe')
+    if at is not None and str(at).strip() != '':
+        try:
+            frame = int(str(at).strip())
+        except (TypeError, ValueError):
+            frame = None
+        if frame is not None and frame != log_frames:
+            warnings.append(f'the game time was read at frame {frame}, and the '
+                            f'input log is {log_frames} frames: it may predate '
+                            f'an edit')
+    return ms / 1000.0
+
 def parse_chimeraproject(data):
     fmt = 'chimeraProject'
     try:
@@ -272,6 +310,8 @@ def parse_chimeraproject(data):
             return True
         return any(v != neutral.get(i) for i, v in enumerate(axes))
 
+    igt = _chimera_game_time(lower, len(rows), warnings)
+
     last_input = next((i for i in range(len(rows) - 1, -1, -1) if pressed(rows[i])), 0)
     for stated in [lower.get('lastinputframe')] + [doc.get(k) for k in CHIMERA_LAST_INPUT_KEYS]:
         try:                                   # the project's own answer, when it has one
@@ -289,12 +329,12 @@ def parse_chimeraproject(data):
     if last_input == 0 and not pressed(rows[0]):
         warnings.append('nothing is pressed anywhere in this project: the '
                         'length is the input log, not the run')
-        return _ok(fmt, len(rows), rerecords, 'power-on', system, fps, warnings)
+        return _ok(fmt, len(rows), rerecords, 'power-on', system, fps, warnings, igt)
     idle = len(rows) - 1 - last_input
     if idle > 0:
         warnings.append(f'{idle} frame{"s" if idle != 1 else ""} after the last '
                         f'input are not counted as run time')
-    return _ok(fmt, last_input + 1, rerecords, 'power-on', system, fps, warnings)
+    return _ok(fmt, last_input + 1, rerecords, 'power-on', system, fps, warnings, igt)
 
 
 def parse_bk2(data, fmt='bk2'):
