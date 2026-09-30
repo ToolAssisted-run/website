@@ -31,9 +31,11 @@ from settings import (
 )
 
 def sso_sign(payload_b64):
+    """Sign a Discourse single-sign-on payload."""
     return hmac.new(SSO_SECRET.encode(), payload_b64, hashlib.sha256).hexdigest()
 
 def session_token(username, external_id):
+    """Sign a member session token."""
     exp = int(time.time()) + SESSION_TTL
     body = f'{username}|{external_id}|{exp}'
     sig = hmac.new(SESSION_SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
@@ -114,6 +116,7 @@ def mask_email(addr):
     dom, _, tld = domain.rpartition('.')
 
     def keep(s, head, tail):
+        """Preserve safe character ranges while masking an email."""
         if len(s) <= head + tail:
             return (s[:1] or '*') + '*' * max(1, len(s) - 1)
         stars = '*' * max(1, min(8, len(s) - head - tail))

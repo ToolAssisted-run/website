@@ -39,6 +39,7 @@ _last = {'ok': None, 'when': 0.0, 'error': None}   # observable via /api/health
 
 
 def enabled():
+    """Check whether site rebuilds are configured."""
     return (WEBSITE_DIR / 'generator' / 'build.py').exists()
 
 
@@ -75,28 +76,34 @@ def _swap(out):
     symlinks aren't supported or across filesystems), fall back to copying
     the build directory into `current` so the site remains available."""
     tmp = SITE_DIR / f'.current-{out.name}'
-    if tmp.is_symlink() or tmp.exists():
-        if tmp.is_dir() and not tmp.is_symlink():
-            shutil.rmtree(tmp)
-        else:
-            tmp.unlink()
+    _remove_swap_link(tmp)
     try:
         os.symlink(out.name, tmp, target_is_directory=True)
         if os.name == 'nt' and (SITE_DIR / 'current').is_symlink():
             (SITE_DIR / 'current').unlink()
         os.replace(tmp, SITE_DIR / 'current')
     except OSError:
-        if tmp.is_symlink() or tmp.exists():
-            if tmp.is_dir() and not tmp.is_symlink():
-                shutil.rmtree(tmp, ignore_errors=True)
-            else:
-                tmp.unlink(missing_ok=True)
-        cur = SITE_DIR / 'current'
-        if cur.is_symlink():
-            cur.unlink()
-        elif cur.exists():
-            shutil.rmtree(cur)
-        shutil.copytree(out, cur)
+        _remove_swap_link(tmp, ignore_errors=True)
+        _copy_current(out)
+
+
+def _remove_swap_link(path, ignore_errors=False):
+    """Remove a leftover swap path, whether symlink, file or directory."""
+    if path.is_symlink() or path.exists():
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path, ignore_errors=ignore_errors)
+        else:
+            path.unlink(missing_ok=ignore_errors)
+
+
+def _copy_current(out):
+    """Fall back to a directory copy when symlink replacement is unavailable."""
+    cur = SITE_DIR / 'current'
+    if cur.is_symlink():
+        cur.unlink()
+    elif cur.exists():
+        shutil.rmtree(cur)
+    shutil.copytree(out, cur)
 
 
 def _prune():
@@ -118,6 +125,7 @@ def _prune():
 
 
 def _build_once():
+    """Build and publish one site snapshot."""
     import gitstore
     _serial['n'] += 1
     out = SITE_DIR / f'build-{int(time.time())}-{_serial["n"]}'
@@ -143,6 +151,7 @@ def _build_once():
 
 
 def _worker():
+    """Process queued site rebuilds in the background."""
     while True:
         _wake.wait()
         _wake.clear()

@@ -120,22 +120,26 @@ SPOOL = pathlib.Path(os.environ.get('NOTIFY_SPOOL',
 _spool_lock = threading.Lock()
 
 def _spool_read():
+    """Read undelivered notifications from the spool."""
     try:
         return json.loads(SPOOL.read_text())
     except (OSError, ValueError):
         return []
 
 def _spool_write(items):
+    """Persist the notification spool to disk."""
     try:
         SPOOL.write_text(json.dumps(items))
     except OSError as exc:
         LOG.warning('notify spool not writable: %s', exc)
 
 def _spool_add(entry):
+    """Queue a notification for later delivery."""
     with _spool_lock:
         _spool_write(_spool_read() + [entry])
 
 def _spool_drop(eid):
+    """Remove a delivered notification from the spool."""
     with _spool_lock:
         _spool_write([x for x in _spool_read() if x.get('id') != eid])
 
@@ -166,19 +170,8 @@ def _deliver(entry):
     _spool_drop(entry['id'])
 
 def notify_discord(text, wait_for=None, image=None):
-    """Tell the Discord server something happened, best effort.
-
-    Fire-and-forget in a background thread: a notification is a courtesy, so
-    it must never slow an action down or fail one, and with no webhook
-    configured it is silently nothing. Only ever called AFTER the archive
-    write succeeded, so Discord never hears of things that did not happen.
-
-    wait_for is the page the message links to: the post is held until that
-    page actually answers, so a link in Discord is never a 404. If the deploy
-    pipeline is stuck the message still goes out at the deadline, with a
-    warning in our log: the event is real either way. The message is spooled
-    first, so a restart mid-wait delays it instead of losing it.
-    """
+    """Spool a post-write Discord notice for background delivery; if linked,
+    wait for the page to go live or for the deadline."""
     if not DISCORD_WEBHOOK:
         return
     entry = {'id': secrets.token_hex(8), 'text': text, 'wait_for': wait_for,
@@ -197,4 +190,3 @@ def replay_spool():
     for entry in _spool_read():
         LOG.info('replaying spooled discord notification %s', entry.get('id'))
         threading.Thread(target=_deliver, args=(entry,), daemon=True).start()
-
