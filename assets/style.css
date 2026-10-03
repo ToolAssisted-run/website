@@ -902,11 +902,6 @@ a {
   color: var(--ink);
 }
 
-.herobtns {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 
 .heronews {
   display: flex;
@@ -1162,8 +1157,6 @@ h2 {
   margin: 2px 0;
 }
 
-/* .wide/.narrow are the responsive TEXT-SWAP pair (wide hides under 560px);
-   never put .wide on a container, or it vanishes whole on phones */
 .resourcebox {
   margin-top: 14px;
   background: rgba(34, 197, 94, 0.07);
@@ -2737,21 +2730,12 @@ input.bad {
   padding: 6px;
 }
 
-.narrow {
-  display: none;
-}
 
 @media (max-width: 560px) {
   .cwrow {
     grid-template-columns: 1fr;
   }
-  /* the hero buttons and the statistics have to fit a phone, not wrap */
-  .wide {
-    display: none;
-  }
-  .narrow {
-    display: inline;
-  }
+  /* the statistics have to fit a phone, not wrap */
   .gface.gface-desk {
     display: none;
   }
@@ -2831,16 +2815,6 @@ input.bad {
   .btn.ext {
     font-size: 0.76rem;
     padding: 6px 10px;
-  }
-  /* wrapping is still allowed as a last resort: on a very narrow phone a
-     second row beats overflowing the viewport */
-  .herobtns {
-    gap: 7px;
-  }
-  .herobtns .btn {
-    padding: 9px 11px;
-    font-size: 0.78rem;
-    white-space: nowrap;
   }
   .statstrip {
     display: grid;

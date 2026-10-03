@@ -889,13 +889,6 @@ def main():
            bool(re.search(r'\.nav\s+\.navlinks\s*,\s*\.nav\s+\.navsearch\s*\{[^}]*display:\s*none', css_txt)))
         ck('the menu button is desktop-hidden by default',
            bool(re.search(r'\.navtoggle\s*\{[^}]*display:\s*none', css_txt)))
-        ck('hero buttons get short labels on a phone',
-           bool(re.search(r'\.narrow\s*\{[^}]*display:\s*none', css_txt)
-                and re.search(r'\.wide\s*\{[^}]*display:\s*none', css_txt)
-                and re.search(r'\.narrow\s*\{[^}]*display:\s*inline', css_txt)))
-        ck('both label variants ship in the markup',
-           'class="wide">Browse the archive<' in home
-           and 'class="narrow">Browse<' in home)
         ck('the statistics become a grid on a phone',
            bool(re.search(r'\.statstrip\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(3,\s*1fr\)', css_txt)))
 
