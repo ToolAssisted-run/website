@@ -881,8 +881,10 @@ a {
   flex-direction: column;
 }
 
+/* the lede is two lines now and carries no buttons under it, so the strip
+   sits closer than the 34px that gap used to need */
 .herotext .statstrip {
-  margin-top: 34px;
+  margin-top: 16px;
 }
 
 .hero h1 {
