@@ -67,6 +67,7 @@ EXACT_FPS = {
     'segacd32x': 59.922751013550524, 'bsx': 60.0988118623484,
     'sgx': 59.8261054534819, 'msx2': 59.9227510135505,
     'appleii': 59.9227510135505,   # AppleWin: (157500000/11 * 65/912) / 17030
+    'x68k': 55.863,                # MAME X68000 states 55863/1000
 }
 START_TYPES = {None: 'power-on', 0: 'power-on', 1: 'savestate', 2: 'sram'}
 HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',

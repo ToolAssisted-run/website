@@ -129,7 +129,19 @@ BIZ_TO_TASV = {'gen': 'genesis', 'sat': 'saturn', 'dgb': 'gb', 'gb3x': 'gb',
                # not the AES cartridge machine ares runs as NG, so it must not
                # fall through to that one; 'system16' is its setting's spelling
                # of the same board.
-               'neogeo': 'mvs', 'system16': 'sys16'}
+               'neogeo': 'mvs', 'system16': 'sys16',
+               # MAME's X68000 names itself in full; the archive keeps the
+               # short key the TASVideos corpus uses
+               'x68000': 'x68k',
+               # A game core IS the game, with no machine under it, and every
+               # one of them is the Native system: the project names the game
+               # (the core's systemId), and the game is the game, filed under
+               # native/<slug>. The rate comes from the movie here and never
+               # from the system, because each of these states its own (12 fps
+               # for SDLPoP, 35 for DSDA-Doom, 70.09 for OpenSamurai).
+               'princeofpersia': 'native', 'princeofpersia2': 'native',
+               'swordofthesamurai': 'native', 'syndicate': 'native',
+               'anotherworld': 'native', 'doom': 'native'}
 CYCLE_BASED_CORES = {'subgbhawk': 4194304, 'gambatte': 2097152}
 VALID_CLOCK_RATES = {'4194304', '2097152', '5369318.18181818', '5320342.5',
                      '33868800', '21477272.7272727', '21281370', '16777216'}

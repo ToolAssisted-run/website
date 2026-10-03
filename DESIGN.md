@@ -72,6 +72,20 @@ hyphens, everything else dropped: "Bandai Terebikko" becomes
 machine is a run the archive wants, and a rate is a correction rather than a
 reason to turn somebody away. The panels send the key, rate and flags outright.
 
+**One system holds every game that has no machine under it: `native`,
+"Native".** A Chimera **game core** is the game itself (its own engine, run
+from the game's own data files) rather than a machine that plays many games,
+so there is nothing to call its platform: Prince of Persia, Prince of Persia
+2, Sword of the Samurai, Syndicate, Another World and the Doom-engine games
+are all filed under `native/<slug>`, and their project's Platform header (the
+core's `systemId`) maps there in `BIZ_TO_TASV`. The system's stored rate is a
+placeholder and nothing is timed by it: every game core states its own in the
+movie (12 fps for SDLPoP, 11.68 for SDLPoP2, 12.5 for rawgl, 16 for
+SyndicatFX, 35 for DSDA-Doom, 70.09 for OpenSamurai), and `run_fps` prefers
+the movie's. A standalone `.lmp` Doom demo still lands in `pc` at
+`DOOM_FPS`, which is the one place where the same run reaches two systems by
+two routes.
+
 **A whole-site expert or the Committee corrects one** (`/api/system/edit`, on
 both panels): name, frame rate, and the hard-to-reproduce flag, each logged
 in `edits.json` like any expert edit.

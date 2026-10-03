@@ -672,6 +672,31 @@ def main():
     ck('chimeraProject: a nominal 60 defers to the system rate the archive keeps',
        res.get('fps') is None and res.get('system') == 'a2600'
        and any('nominal' in w for w in res['warnings']), str(res))
+    # ---- which system a project lands in ----
+    # The Platform header is the core's machine id, and the archive keeps some
+    # machines under a different key. A game core is the game itself with no
+    # machine under it: every one of them is the Native system.
+    def platformed(name):
+        doc = json.loads(f_chimeraproject().decode())
+        doc['headers']['Platform'] = name
+        return movieparse.parse('run.chimeraProject', json.dumps(doc).encode())
+
+    for name, want in (('PrinceOfPersia', 'native'), ('PrinceOfPersia2', 'native'),
+                       ('SwordOfTheSamurai', 'native'), ('Syndicate', 'native'),
+                       ('AnotherWorld', 'native'), ('Doom', 'native')):
+        res = platformed(name)
+        ck(f'chimeraProject: a {name} project is a Native run',
+           res.get('system') == want, f'got {res.get("system")} want {want}')
+    res = platformed('X68000')
+    ck("chimeraProject: MAME's X68000 lands on the archive's x68k",
+       res.get('system') == 'x68k', str(res.get('system')))
+    res = platformed('NEOGEO')
+    ck('chimeraProject: FBNeo\'s arcade Neo Geo is still the MVS, not the AES',
+       res.get('system') == 'mvs', str(res.get('system')))
+    res = platformed('iOS')
+    ck("chimeraProject: touchHLE's iOS needs no mapping at all",
+       res.get('system') == 'ios', str(res.get('system')))
+
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(rerecords=None))
     ck('chimeraProject: a missing rerecord count is a warning, not a failure',
        res.get('ok') and res.get('rerecords') is None
