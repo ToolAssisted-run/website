@@ -887,14 +887,16 @@ a {
   margin-top: 16px;
 }
 
-/* The headline is one line at every width the hero is two columns at. 5vw
-   grew it faster than the text column beside the news panel grew (the column
+/* The headline is one line at every width, in whatever font the reader has.
+   5vw grew it faster than the column beside the news panel grew (the column
    is about 0.55 of the viewport, the headline was about 0.56), so it wrapped
-   from 900px to roughly 1100px. 4.2vw keeps it inside the column, and still
-   reaches the full 3rem from 1143px up, where the old value had already
-   stopped growing. */
+   from 900px to roughly 1100px. These numbers are solved against DejaVu
+   Sans, the widest thing `system-ui` falls back to, because the stack below
+   asks for Inter and nothing here ships it: a reader without Inter installed
+   gets whatever their system calls the UI font. Ship Inter and this can grow
+   again. */
 .hero h1 {
-  font-size: clamp(1.7rem, 4.2vw, 3rem);
+  font-size: clamp(1.4rem, 3.5vw, 2.7rem);
   letter-spacing: -0.03em;
   max-width: 22ch;
 }
