@@ -126,6 +126,20 @@ async function look(url, width, view) {
             return b.width ? Math.abs((b.left + b.right) / 2 - target) : 999;
           });
       };
+      // the headline: one line box, at every width. A Range reports one rect
+      // per line, which is the only honest count: the element's own height
+      // would need the line-height to interpret.
+      const h1El = document.querySelector('.hero h1');
+      let h1 = null;
+      if (h1El) {
+        const r = document.createRange();
+        r.selectNodeContents(h1El);
+        h1 = {
+          lines: r.getClientRects().length,
+          text: h1El.textContent.trim(),
+          size: Math.round(parseFloat(getComputedStyle(h1El).fontSize)),
+        };
+      }
       const stats = stripEl ? {
         n: statEls.length,
         rows: new Set(statEls.map((s) => Math.round(s.getBoundingClientRect().top))).size,
@@ -142,7 +156,7 @@ async function look(url, width, view) {
       return {
         docWidth: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
-        tiles, collages, collapsed, nav, stats,
+        tiles, collages, collapsed, nav, stats, h1,
         cards: [...document.querySelectorAll('.card')].filter(shown).length,
       };
     });
@@ -323,6 +337,16 @@ def main():
             ck(f'{name}: the page does not scroll sideways',
                data[name]['docWidth'] <= data[name]['viewport'],
                f"{data[name]['docWidth']} > {data[name]['viewport']}")
+
+        # the headline never wraps: it wrapped from 900px to about 1100px,
+        # where the hero was still two columns and the text column was too
+        # narrow for a headline sized off the whole viewport
+        for name in ('nav-wide', 'home-1200', 'home-1100', 'nav-mid', 'home'):
+            h1 = data[name].get('h1')
+            ck(f'{name}: the headline is one line',
+               h1 and h1['lines'] == 1,
+               f"{h1 and h1['lines']} lines at {data[name]['viewport']}px, "
+               f"{h1 and h1['size']}px type: {h1 and h1['text']!r}")
 
         # the counters: three to a row, two rows, centred, at every width
         for name in ('nav-wide', 'home-1200', 'home-1100', 'nav-mid', 'home'):
