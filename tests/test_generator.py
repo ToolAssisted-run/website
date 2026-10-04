@@ -158,7 +158,7 @@ def main():
         stats = json.loads(rd('assets/authorstats.json'))
         ck('stats count the former-name run for the member',
            stats.get('newstar', {}).get('runs') == 2)   # M900004 and the #47 fixture
-        ck('home hero', 'beyond human limits' in home)
+        ck('home hero', 'Speedruns beyond limits' in home)
         ck('home stats strip', 'statstrip' in home)
         ck('nav auth probe', 'navauth' in home)
         browse = rd('browse/index.html')
