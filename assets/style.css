@@ -1694,10 +1694,13 @@ img.blurhash-loaded {
   align-items: start;
 }
 
-@media (max-width: 900px) {
-  .cols {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* The hero is two columns only while the page is at its full width. Narrower
+   than that the text column shrinks continuously (594px at 1161px down to
+   452px at 900px), and the statistics strip runs out of room and wraps its
+   last counter onto a second line long before the layout would have stacked.
+   Stacking first is the better answer: the strip then has the whole width,
+   and the news panel gets its own. */
+@media (max-width: 1160px) {
   .herogrid {
     grid-template-columns: 1fr;
   }
@@ -1708,6 +1711,25 @@ img.blurhash-loaded {
   }
   .bskyfeed {
     max-height: 340px;
+  }
+}
+
+/* Six counters stop fitting in one flex row at about 595px, so the grid they
+   fall back to starts before that rather than after: a 3x2 block is a layout,
+   a row with one counter hanging under it is an accident. */
+@media (max-width: 640px) {
+  .statstrip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 8px;
+    padding: 13px 12px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 900px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2817,13 +2839,6 @@ input.bad {
   .btn.ext {
     font-size: 0.76rem;
     padding: 6px 10px;
-  }
-  .statstrip {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px 8px;
-    padding: 13px 12px;
-    text-align: center;
   }
   .stat b {
     font-size: 1.15rem;

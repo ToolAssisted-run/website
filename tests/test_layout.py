@@ -104,6 +104,20 @@ async function look(url, width, view) {
         .map((el) => el.className + '#' + (el.id || ''));
       // the top bar: one row at every width, or it folded into the menu
       // button. Wrapping into two is the failure this measures.
+      // the counters: one row while the hero is still two columns. A counter
+      // wrapping onto a second line before the layout stacks is the failure
+      // this measures.
+      const stripEl = document.querySelector('.statstrip');
+      const gridEl = document.querySelector('.herogrid');
+      const stats = stripEl ? {
+        n: stripEl.querySelectorAll('.stat').length,
+        rows: new Set([...stripEl.querySelectorAll('.stat')]
+          .map((s) => Math.round(s.getBoundingClientRect().top))).size,
+        stacked: gridEl
+          ? getComputedStyle(gridEl).gridTemplateColumns.split(/\s+/)
+              .filter(Boolean).length === 1
+          : null,
+      } : null;
       const navEl = document.querySelector('.nav');
       const toggleEl = document.getElementById('navtoggle');
       const nav = navEl ? {
@@ -114,7 +128,7 @@ async function look(url, width, view) {
       return {
         docWidth: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
-        tiles, collages, collapsed, nav,
+        tiles, collages, collapsed, nav, stats,
         cards: [...document.querySelectorAll('.card')].filter(shown).length,
       };
     });
@@ -207,8 +221,15 @@ def main():
             {'key': 'two', 'title': 'Two Games', 'games': ['dos/fifth', 'nes/testgame']},
         ])
         out = td / 'o'
+        # the views counter only exists where the archivist keeps visit state,
+        # which is the live origin. The widest counter is the one that wrapped,
+        # so the measured page has to carry it.
+        visits = td / 'visits.json'
+        visits.write_text(json.dumps({f'M90090{i}': n for i, n in
+                                      enumerate((98765, 43210, 31098, 22087, 14076), 1)}))
         r = subprocess.run([sys.executable, str(REPO / 'generator/build.py'),
-                            str(arch), str(out)], capture_output=True, text=True)
+                            str(arch), str(out)], capture_output=True, text=True,
+                           env=dict(os.environ, SITE_VISITS_FILE=str(visits)))
         ck('build succeeds', r.returncode == 0, r.stderr[-300:])
         if r.returncode:
             sys.exit(1)
@@ -250,6 +271,11 @@ def main():
             {'name': 'nav-wide', 'url': f'{base}/', 'width': 1400, 'view': None},
             {'name': 'nav-mid', 'url': f'{base}/', 'width': 1000, 'view': None},
             {'name': 'nav-narrow', 'url': f'{base}/', 'width': 360, 'view': None},
+            # the counters wrapped their last one onto a second line anywhere
+            # the hero was still two columns but no longer full width. These
+            # are the widths on either side of where it folds.
+            {'name': 'home-1200', 'url': f'{base}/', 'width': 1200, 'view': None},
+            {'name': 'home-1100', 'url': f'{base}/', 'width': 1100, 'view': None},
         ]
         proc = subprocess.run([node, str(script), json.dumps(jobs)],
                               capture_output=True, text=True, cwd=str(pupp_root),
@@ -283,6 +309,16 @@ def main():
             ck(f'{name}: the page does not scroll sideways',
                data[name]['docWidth'] <= data[name]['viewport'],
                f"{data[name]['docWidth']} > {data[name]['viewport']}")
+
+        # the counters: never two rows while the hero is still side by side
+        for name in ('nav-wide', 'home-1200', 'home-1100', 'nav-mid', 'home'):
+            st = data[name].get('stats')
+            ck(f'{name}: the counter strip was measured', st and st['n'] >= 5, str(st))
+            if st and not st['stacked']:
+                ck(f'{name}: the counters stay on one row beside the news panel',
+                   st['rows'] == 1,
+                   f"{st['n']} counters on {st['rows']} rows at "
+                   f"{data[name]['viewport']}px")
 
         groups = data['groups']
         ck('the groups view draws a card per group', groups['cards'] == 2, str(groups['cards']))
