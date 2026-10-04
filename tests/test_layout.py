@@ -109,22 +109,28 @@ async function look(url, width, view) {
       // of its own is the failure this measures.
       const stripEl = document.querySelector('.statstrip');
       const statEls = stripEl ? [...stripEl.querySelectorAll('.stat')] : [];
-      const centred = (s) => {
-        const box = s.getBoundingClientRect();
-        const mid = (el) => {
-          const b = el.getBoundingClientRect();
-          return b.width ? (b.left + b.right) / 2 : null;
-        };
-        // the number and the label each sit on the column's own centre line
-        return [s.querySelector('b'), s.querySelector('span')]
+      // How far the number and the label sit from their column's centre line.
+      // Measured with a Range, because .stat b is a block that fills the
+      // column whatever its text does: its own box says nothing about where
+      // the digits are. Direct children only, or the star inside the likes
+      // counter's <b> gets measured instead of the label beneath it.
+      const offCentre = (s) => {
+        const cell = s.getBoundingClientRect();
+        const target = (cell.left + cell.right) / 2;
+        return [s.querySelector(':scope > b'), s.querySelector(':scope > span')]
           .filter(Boolean)
-          .every((el) => Math.abs(mid(el) - (box.left + box.right) / 2) <= 1.5);
+          .map((el) => {
+            const r = document.createRange();
+            r.selectNodeContents(el);
+            const b = r.getBoundingClientRect();
+            return b.width ? Math.abs((b.left + b.right) / 2 - target) : 999;
+          });
       };
       const stats = stripEl ? {
         n: statEls.length,
         rows: new Set(statEls.map((s) => Math.round(s.getBoundingClientRect().top))).size,
         cols: new Set(statEls.map((s) => Math.round(s.getBoundingClientRect().left))).size,
-        centred: statEls.every(centred),
+        offCentre: Math.round(Math.max(0, ...statEls.flatMap(offCentre))),
       } : null;
       const navEl = document.querySelector('.nav');
       const toggleEl = document.getElementById('navtoggle');
@@ -328,7 +334,8 @@ def main():
                    f"{st['n']} counters in {st['rows']} rows / {st['cols']} columns "
                    f"at {data[name]['viewport']}px")
                 ck(f'{name}: each counter and its label are centred in their column',
-                   st['centred'], str(st))
+                   st['offCentre'] <= 2,
+                   f"furthest is {st['offCentre']}px off its column centre")
 
         groups = data['groups']
         ck('the groups view draws a card per group', groups['cards'] == 2, str(groups['cards']))
