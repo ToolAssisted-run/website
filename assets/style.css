@@ -1698,13 +1698,21 @@ img.blurhash-loaded {
   align-items: start;
 }
 
-/* The hero is two columns only while the page is at its full width. Narrower
-   than that the text column shrinks continuously (594px at 1161px down to
-   452px at 900px), and the statistics strip runs out of room and wraps its
-   last counter onto a second line long before the layout would have stacked.
-   Stacking first is the better answer: the strip then has the whole width,
-   and the news panel gets its own. */
-@media (max-width: 1160px) {
+@media (max-width: 640px) {
+  /* the same three columns, drawn tighter */
+  .statstrip {
+    gap: 12px 8px;
+    padding: 13px 12px;
+  }
+}
+
+/* The hero folds here and no earlier: the counters are a fixed 3x2 grid, so
+   they need about 375px however large the numbers grow, and the text column
+   is still 452px wide at this width. */
+@media (max-width: 900px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .herogrid {
     grid-template-columns: 1fr;
   }
@@ -1715,20 +1723,6 @@ img.blurhash-loaded {
   }
   .bskyfeed {
     max-height: 340px;
-  }
-}
-
-@media (max-width: 640px) {
-  /* the same three columns, drawn tighter */
-  .statstrip {
-    gap: 12px 8px;
-    padding: 13px 12px;
-  }
-}
-
-@media (max-width: 900px) {
-  .cols {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
