@@ -889,8 +889,10 @@ def main():
            bool(re.search(r'\.nav\s+\.navlinks\s*,\s*\.nav\s+\.navsearch\s*\{[^}]*display:\s*none', css_txt)))
         ck('the menu button is desktop-hidden by default',
            bool(re.search(r'\.navtoggle\s*\{[^}]*display:\s*none', css_txt)))
-        ck('the statistics become a grid on a phone',
-           bool(re.search(r'\.statstrip\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(3,\s*1fr\)', css_txt)))
+        ck('the statistics are three to a row at every width, centred',
+           bool(re.search(r'\.statstrip\s*\{[^}]*display:\s*grid;[^}]*'
+                          r'grid-template-columns:\s*repeat\(3,\s*1fr\)[^}]*'
+                          r'text-align:\s*center', css_txt)))
 
         # ---------- tables are structurally sound ----------
         # adding a column is easy to get half-right: header updated, one row

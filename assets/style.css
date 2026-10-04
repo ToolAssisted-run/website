@@ -1090,16 +1090,20 @@ a {
   color: var(--faint);
 }
 
+/* two rows of three at every width, each counter centred in its own third:
+   a fixed shape cannot wrap a stray counter onto a line of its own, whatever
+   the numbers grow to */
 .statstrip {
-  display: flex;
-  gap: 26px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 12px;
   margin: 24px 0 4px;
   padding: 16px 20px;
+  text-align: center;
   background: var(--bg);
   border: 2.5px solid var(--hair);
   border-radius: 12px;
   box-shadow: var(--shadow);
-  flex-wrap: wrap;
 }
 
 .stat b {
@@ -1714,16 +1718,11 @@ img.blurhash-loaded {
   }
 }
 
-/* Six counters stop fitting in one flex row at about 595px, so the grid they
-   fall back to starts before that rather than after: a 3x2 block is a layout,
-   a row with one counter hanging under it is an accident. */
 @media (max-width: 640px) {
+  /* the same three columns, drawn tighter */
   .statstrip {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
     gap: 12px 8px;
     padding: 13px 12px;
-    text-align: center;
   }
 }
 

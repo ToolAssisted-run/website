@@ -104,19 +104,27 @@ async function look(url, width, view) {
         .map((el) => el.className + '#' + (el.id || ''));
       // the top bar: one row at every width, or it folded into the menu
       // button. Wrapping into two is the failure this measures.
-      // the counters: one row while the hero is still two columns. A counter
-      // wrapping onto a second line before the layout stacks is the failure
-      // this measures.
+      // the counters: three to a row, two rows, at every width, with each
+      // counter and its label centred in its own column. A counter on a line
+      // of its own is the failure this measures.
       const stripEl = document.querySelector('.statstrip');
-      const gridEl = document.querySelector('.herogrid');
+      const statEls = stripEl ? [...stripEl.querySelectorAll('.stat')] : [];
+      const centred = (s) => {
+        const box = s.getBoundingClientRect();
+        const mid = (el) => {
+          const b = el.getBoundingClientRect();
+          return b.width ? (b.left + b.right) / 2 : null;
+        };
+        // the number and the label each sit on the column's own centre line
+        return [s.querySelector('b'), s.querySelector('span')]
+          .filter(Boolean)
+          .every((el) => Math.abs(mid(el) - (box.left + box.right) / 2) <= 1.5);
+      };
       const stats = stripEl ? {
-        n: stripEl.querySelectorAll('.stat').length,
-        rows: new Set([...stripEl.querySelectorAll('.stat')]
-          .map((s) => Math.round(s.getBoundingClientRect().top))).size,
-        stacked: gridEl
-          ? getComputedStyle(gridEl).gridTemplateColumns.split(/\s+/)
-              .filter(Boolean).length === 1
-          : null,
+        n: statEls.length,
+        rows: new Set(statEls.map((s) => Math.round(s.getBoundingClientRect().top))).size,
+        cols: new Set(statEls.map((s) => Math.round(s.getBoundingClientRect().left))).size,
+        centred: statEls.every(centred),
       } : null;
       const navEl = document.querySelector('.nav');
       const toggleEl = document.getElementById('navtoggle');
@@ -310,15 +318,17 @@ def main():
                data[name]['docWidth'] <= data[name]['viewport'],
                f"{data[name]['docWidth']} > {data[name]['viewport']}")
 
-        # the counters: never two rows while the hero is still side by side
+        # the counters: three to a row, two rows, centred, at every width
         for name in ('nav-wide', 'home-1200', 'home-1100', 'nav-mid', 'home'):
             st = data[name].get('stats')
-            ck(f'{name}: the counter strip was measured', st and st['n'] >= 5, str(st))
-            if st and not st['stacked']:
-                ck(f'{name}: the counters stay on one row beside the news panel',
-                   st['rows'] == 1,
-                   f"{st['n']} counters on {st['rows']} rows at "
-                   f"{data[name]['viewport']}px")
+            ck(f'{name}: the counter strip was measured', st and st['n'] == 6, str(st))
+            if st:
+                ck(f'{name}: the counters are three to a row, in two rows',
+                   st['rows'] == 2 and st['cols'] == 3,
+                   f"{st['n']} counters in {st['rows']} rows / {st['cols']} columns "
+                   f"at {data[name]['viewport']}px")
+                ck(f'{name}: each counter and its label are centred in their column',
+                   st['centred'], str(st))
 
         groups = data['groups']
         ck('the groups view draws a card per group', groups['cards'] == 2, str(groups['cards']))
