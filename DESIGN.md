@@ -857,6 +857,17 @@ archivist, module responsibilities). What matters designwise:
   logged and left to the daily sweep, as is a validator that could not run at
   all (absent, no `jsonschema`, crashed, hung), which has said nothing about
   the content and so never blocks a member.
+- **A write that cannot reach origin says so in JSON.** Every write begins by
+  fetching origin, and a fetch that fails leaves the checkout possibly behind,
+  where committing would let two members overwrite each other. `checkout_branch`
+  raises `ArchiveUnreachable` and the endpoint answers **503** with git's own
+  complaint, having written nothing. It is a typed error for one reason: the
+  bare `CalledProcessError` reached Flask as an HTML page, the client parses
+  every answer as JSON, and so a revoked deploy key presented itself to members
+  as "the archivist is not reachable" while the service was healthy, answering
+  reads, and only its credential had gone. Reads are unaffected either way:
+  `refresh_archive` swallows a failed fetch and serves the tree it has, stale
+  being better than closed.
 - **Three derivations must always agree** (change all or none):
   `archivist/records.py::sync_status`, the archive's `validate.py`, and
   `generator/model.py::eff_state`. Same for rename resolution

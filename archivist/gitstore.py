@@ -139,7 +139,11 @@ def checkout_branch():
         before = sh('git', 'rev-parse', 'HEAD').stdout.strip()
     except subprocess.CalledProcessError:
         before = None
-    sh('git', 'fetch', '-q', 'origin')
+    try:
+        sh('git', 'fetch', '-q', 'origin')
+    except subprocess.CalledProcessError as e:
+        raise ArchiveUnreachable((e.stderr or '').strip()
+                                 or f'git fetch exited {e.returncode}') from e
     remote_target, remote_head = _remote_branch_head()
 
     worktree_dirty = bool(sh('git', 'status', '--porcelain').stdout.strip())
@@ -224,6 +228,18 @@ def dispatch_site_rebuild():
 
 class ArchiveInvalid(Exception):
     """A write that would leave the archive breaking its own rules."""
+
+
+class ArchiveUnreachable(Exception):
+    """GitHub would not answer, so the write never began.
+
+    Every write starts by fetching origin, and when that fails there is no
+    safe way to continue: the checkout may be behind, and committing on top
+    of a stale tree is how two members overwrite each other. Raised instead
+    of the bare CalledProcessError, which reached Flask as an HTML 500 that
+    the client could not parse, so the page reported the service unreachable
+    when it was the credential that had gone.
+    """
 
 
 VALIDATE_TIMEOUT = 120

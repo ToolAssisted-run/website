@@ -90,6 +90,7 @@ from identity import (
 )
 from gitstore import (
     ArchiveInvalid,
+    ArchiveUnreachable,
     checkout_branch,
     commit_push,
     current_serial,
@@ -169,6 +170,25 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 96 * 1024 * 1024
 
 sso_nonces = {}   # nonce -> expiry
+
+@app.errorhandler(ArchiveUnreachable)
+def archive_unreachable(e):
+    """Origin would not answer, so the write never began.
+
+    Who: any endpoint that writes, through checkout_branch
+    Reads: git's own complaint
+    Answers: 503 {ok: false, error, detail} and an unchanged archive
+
+    This is a JSON answer on purpose. The bare git error used to reach Flask
+    as an unhandled exception, which returns an HTML page; the client parses
+    every answer as JSON, so it reported the archivist unreachable while the
+    service was healthy and only its credential had gone.
+    """
+    LOG.error('the archive could not be reached: %s', str(e)[:1000])
+    return jsonify({'ok': False,
+                    'error': 'the archive could not be reached just now, so '
+                             'nothing was written. Try again in a moment.',
+                    'detail': str(e)[:2000]}), 503
 
 @app.errorhandler(ArchiveInvalid)
 def archive_invalid(e):

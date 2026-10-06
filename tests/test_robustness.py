@@ -256,6 +256,32 @@ def main():
                               files={'movie': ('m.bk2', mkarchive.unique_movie())})
             ck('intake still healthy after a refused write', code == 200, str(r)[:120])
 
+            # ---------- origin unreachable: a JSON refusal, not an HTML 500 ----------
+            # A revoked deploy key made checkout_branch's fetch raise
+            # CalledProcessError out of every write. Flask answered with an
+            # HTML page, the client parses every answer as JSON, and the site
+            # reported the archivist unreachable while it was healthy and only
+            # its credential had gone. The refusal has to be readable.
+            git('fetch', '-q', 'origin', cwd=other)
+            before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
+            good_url = git('remote', 'get-url', 'origin', cwd=work).stdout.strip()
+            git('remote', 'set-url', 'origin', str(td / 'no-such-origin.git'), cwd=work)
+            code, r, _ = call(U + '/api/submit', dict(sub),
+                              files={'movie': ('m.bk2', mkarchive.unique_movie())})
+            ck('a write is refused when origin cannot be reached', code == 503, str(r)[:200])
+            ck('and the refusal is JSON the page can read, not an HTML error',
+               'raw' not in r and r.get('ok') is False, str(r)[:200])
+            ck('and it says plainly that nothing was written',
+               'written' in str(r.get('error', '')), str(r)[:200])
+            git('remote', 'set-url', 'origin', good_url, cwd=work)
+            git('fetch', '-q', 'origin', cwd=other)
+            ck('nothing was committed while origin was unreachable',
+               before == git('rev-parse', 'origin/main', cwd=other).stdout.strip())
+            code, r, _ = call(U + '/api/submit', dict(sub),
+                              files={'movie': ('m.bk2', mkarchive.unique_movie())})
+            ck('intake recovers by itself once origin answers again',
+               code == 200, str(r)[:120])
+
             # ---------- the archive is valid throughout ----------
             check = td / 'check'
             subprocess.run(['git', 'clone', '-q', f'file://{origin}', str(check)], check=True)
