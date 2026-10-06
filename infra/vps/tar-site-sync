@@ -40,7 +40,7 @@ cd /opt/archivist/website
 git fetch -q origin
 git reset -q --hard origin/main
 git clean -qfd
-cp archivist/*.py /opt/archivist/
+cp archivist/*.py /opt/archivist/ && chmod 644 /opt/archivist/*.py
 # Package directories are part of the service, not optional deploy assets.
 # Stage each replacement before removing its previous installed copy.
 for package in archivist/*/; do
@@ -48,6 +48,10 @@ for package in archivist/*/; do
     name=$(basename "$package")
     staged=$(mktemp -d "/opt/archivist/.${name}.XXXXXX")
     cp -R "$package/." "$staged/"
+    # mktemp -d makes a 0700 directory, and the service runs as `archivist`,
+    # not root: left as it is, the package is unreadable and the import yields
+    # an empty namespace module, which fails at the first attribute it needs.
+    chmod -R u=rwX,go=rX "$staged"
     rm -rf "/opt/archivist/$name"
     mv "$staged" "/opt/archivist/$name"
     # A former flat module must not remain as an alternative import target.
@@ -58,6 +62,7 @@ done
 # The archivist's own page templates ride along with its code.
 staged_templates=$(mktemp -d /opt/archivist/.templates.XXXXXX)
 cp -R archivist/templates/. "$staged_templates/"
+chmod -R u=rwX,go=rX "$staged_templates"      # same 0700 trap as the packages
 rm -rf /opt/archivist/templates
 mv "$staged_templates" /opt/archivist/templates
 pip3 install --quiet --break-system-packages pillow numpy 2>/dev/null || pip3 install --quiet pillow numpy 2>/dev/null || true
