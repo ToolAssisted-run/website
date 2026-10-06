@@ -1233,6 +1233,27 @@ def main():
                sync_marker.exists() and sync_marker.read_text().strip() == 'b' * 40,
                sync_marker.read_text()[:80] if sync_marker.exists() else 'no marker')
 
+            # The service runs unprivileged on the live origin, where the deploy
+            # script is root's: installing code and restarting the unit are not
+            # ours to do. It used to spawn the child anyway and answer 202
+            # "deploying", while the child died on its first write. A hook must
+            # never report a deploy it could not start.
+            sync_marker.unlink()
+            moved = sync_script.with_suffix(sync_script.suffix + '.away')
+            sync_script.rename(moved)
+            c, r = gh_hook(wf_run(sha='c' * 40), event='workflow_run')
+            ck('with no deploy script to run, the green run claims no deploy',
+               c == 202 and not r.get('syncing') and r.get('how') == 'unprivileged',
+               str(r)[:180])
+            ck('and it says so, rather than reporting a sync it never began',
+               'cannot deploy' in r.get('ignored', ''), str(r)[:180])
+            c, r = gh_hook({'action': 'deploy-now'}, event='repository_dispatch')
+            ck('the operator override fails loudly: the hook is their only path',
+               c == 503 and r.get('ok') is False, str(r)[:180])
+            ck('nothing deployed while the service could not deploy',
+               not sync_marker.exists())
+            moved.rename(sync_script)
+
             # --- the pickers' search (#56): members and games, as typed ---
             c, r, _ = call(U + '/api/search?kind=members&q=testauth')
             ck('member search answers the matching usernames', c == 200

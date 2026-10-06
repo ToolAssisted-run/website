@@ -1045,14 +1045,52 @@ ANNUL_WORDS = ('annul', 'remove', 'revoke', 'yes')
 _sync_lock = threading.Lock()
 _sync_last = [0.0]
 
+def _sync_privilege():
+    """How, if at all, this process can run the deploy script.
+
+    Installing code into /opt/archivist and restarting the service is root's
+    work. As root we have it outright. Unprivileged, an explicit sudo rule
+    for exactly this command buys it back; without one there is no point
+    starting a child that dies on the first write it attempts.
+
+    A script we own ourselves is a different thing: that is the test harness
+    and a developer's own checkout, where the deploy is ours to run.
+
+    'root', 'sudo', 'direct' or None.
+    """
+    euid = getattr(os, 'geteuid', lambda: -1)()
+    if euid == 0:
+        return 'root'
+    try:
+        if os.stat(SITE_SYNC_CMD).st_uid == euid:
+            return 'direct'
+    except OSError:
+        pass
+    try:
+        ok = subprocess.run(['sudo', '-n', '-l', SITE_SYNC_CMD],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            timeout=10).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return 'sudo' if ok else None
+
+
 def spawn_site_sync(ref=None):
     """Run the code deploy detached from this process.
 
     The script ends in `systemctl restart archivist`, and a child living in
-    our own cgroup would be killed along with us, so as root the work goes
-    into a transient unit of its own. `ref` is the exact commit the tests
-    passed on, so main racing ahead to a red commit cannot ride along.
-    Returns how it was started."""
+    our own cgroup would be killed along with us, so the work goes into a
+    transient unit of its own. `ref` is the exact commit the tests passed on,
+    so main racing ahead to a red commit cannot ride along.
+
+    CI deploys over SSH as root (deploy.yml, job sync-vps) and needs none of
+    this; what comes through here is the fallback and the operator override.
+    Returns how it was started, which is the answer the hook reports: never
+    a cheerful word for a child that cannot write a byte of what it deploys.
+    """
+    how = _sync_privilege()
+    if how is None:
+        return 'unprivileged'
     with _sync_lock:
         now = time.monotonic()
         if now - _sync_last[0] < 20:
@@ -1061,14 +1099,16 @@ def spawn_site_sync(ref=None):
     argv = [SITE_SYNC_CMD] + ([ref] if ref else [])
     if os.name == 'nt' and SITE_SYNC_CMD.lower().endswith(('.cmd', '.bat')):
         argv = ['cmd.exe', '/c'] + argv
+    # the script ends in `systemctl restart archivist`; a child in our own
+    # cgroup dies with us mid-deploy, so where systemd is ours to ask, ask it
+    unit = [] if how == 'direct' else ['systemd-run', '--collect', '--quiet',
+                                       '--unit=tar-site-sync-' + secrets.token_hex(4)]
+    if how == 'sudo':
+        unit = ['sudo', '-n'] + unit
     try:
-        if getattr(os, 'geteuid', lambda: -1)() == 0:
-            subprocess.Popen(['systemd-run', '--collect', '--quiet',
-                              '--unit=tar-site-sync-' + secrets.token_hex(4)] + argv,
-                             start_new_session=True)
-            return 'systemd-run'
-        subprocess.Popen(argv, start_new_session=True)
-        return 'detached'
+        subprocess.Popen(unit + argv, start_new_session=True)
+        return {'root': 'systemd-run', 'sudo': 'sudo systemd-run',
+                'direct': 'detached'}[how]
     except (OSError, subprocess.SubprocessError) as exc:      # noqa: BLE001
         LOG.warning('site sync could not start: %s', exc)
         return 'failed'
@@ -1124,6 +1164,11 @@ def github_hook():
             return jsonify({'ok': True, 'ignored': 'no commit to deploy'})
         how = spawn_site_sync(sha)
         LOG.info('github hook: deploying %s (%s), site sync %s', sha[:12], why, how)
+        if how == 'unprivileged':
+            # CI deploys over SSH as root in the same run; this path is the
+            # spare wheel, so say plainly that it did not turn.
+            return jsonify({'ok': True, 'ignored': 'this service cannot deploy code',
+                            'why': why, 'how': how}), 202
         return jsonify({'ok': True, 'syncing': sha[:12], 'why': why, 'how': how}), 202
 
     if event == 'push':
@@ -1145,6 +1190,11 @@ def github_hook():
             return deploy(sha, 'operator override')
         how = spawn_site_sync()
         LOG.info('github hook: operator override on main, site sync %s', how)
+        if how == 'unprivileged':
+            # Here the hook is the only mechanism the operator has, so a
+            # cheerful 202 would be a lie about the one path they reached for.
+            return fail('this service runs unprivileged and cannot deploy code; '
+                        'run /usr/local/bin/tar-site-sync on the host', 503)
         return jsonify({'ok': True, 'syncing': 'main',
                         'why': 'operator override', 'how': how}), 202
 

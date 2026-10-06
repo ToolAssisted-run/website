@@ -166,28 +166,15 @@ def _worker():
             LOG.warning('site build failed, previous build keeps serving: %s', e)
 
 
-def _sync_infra_scripts():
-    """Keep /usr/local/bin/tar-site-sync matching the repository."""
-    src = WEBSITE_DIR / 'infra' / 'vps' / 'tar-site-sync'
-    dest = pathlib.Path('/usr/local/bin/tar-site-sync')
-    if src.is_file():
-        try:
-            content = src.read_bytes()
-            if not dest.exists() or dest.read_bytes() != content:
-                dest.write_bytes(content)
-                dest.chmod(0o755)
-                LOG.info('updated /usr/local/bin/tar-site-sync from %s', src)
-        except Exception as exc:                               # noqa: BLE001
-            LOG.warning('could not update /usr/local/bin/tar-site-sync: %s', exc)
-
-
 def start():
     """Start the builder thread and schedule the first build. A no-op
     without a website checkout, so tests and local runs stay hermetic."""
     if not enabled():
         LOG.info('site builder off: no website checkout at %s', WEBSITE_DIR)
         return
-    _sync_infra_scripts()
+    # /usr/local/bin/tar-site-sync is not ours to install: this service runs
+    # unprivileged and the script is root's. It replaces itself from the
+    # checkout on every deploy, which is the one place that can.
     try:
         from gitstore import refresh_archive
         refresh_archive(0)
