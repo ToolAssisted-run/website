@@ -1242,26 +1242,31 @@ archivist, module responsibilities). What matters designwise:
   from the repo, install `archivist/*.py`, its Python package directories,
   and its templates in `/opt/archivist/`, and
   restart the archivist (whose startup build republishes the site and runs the
-  backfill). **A second, independent door**: GitHub's own webhook reaches
-  `POST /api/hooks/github` on the archivist, HMAC-verified
-  (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`). It opens on exactly the
-  condition code pushes need — a **successful `Build and deploy` run,
-  triggered by a push to main** (`workflow_run` completed) — and it
-  deploys **that run's commit**, passed to the script as its argument, so
-  main racing ahead to a red commit cannot ride along. A bare push only
-  logs that work is coming; red runs, other branches, and the schedule and
-  archive-content runs (both skip the suite) deploy nothing through this
-  webhook door (they deploy via CI's `sync-vps` job directly). The script
+  backfill). **The SSH path is the only one that deploys code.** GitHub's own
+  webhook reaches `POST /api/hooks/github` on the archivist, HMAC-verified
+  (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`), and it recognises exactly
+  the condition code pushes need: a **successful `Build and deploy` run,
+  triggered by a push to main** (`workflow_run` completed), carrying **that
+  run's commit**, so main racing ahead to a red commit could not ride along.
+  What it can no longer do is act on it. The archivist runs unprivileged
+  (`User=archivist`), and installing code into `/opt/archivist` and
+  restarting the unit are root's work, so the hook answers `unprivileged`
+  and deploys nothing. It says so rather than reporting a sync: it once
+  spawned the child anyway, which died on its first write to the root-owned
+  checkout while the answer read `202 deploying`. A narrow sudo rule for
+  that one command would restore the door with no code change, and is
+  deliberately not granted: the webhook is reachable from the internet and
+  the service parses anonymous uploads, which is the whole reason it gave
+  up root. The same applies to the operator override (a signed
+  `repository_dispatch`-shaped body, action `deploy-now`, optional
+  `client_payload.sha`; GitHub itself never delivers that event to a
+  webhook), which answers **503** so the one path an operator reached for
+  cannot fail silently. **Break-glass is therefore `ssh ubuntu@… sync`**
+  over the tailnet, which runs the same forced command as root; the manual
+  path (scp the same files, restart) remains the last fallback. The script
   runs in a transient systemd unit, since it ends by restarting the
   archivist and would otherwise kill its own parent; repeat calls inside
-  20 s fold together. It exists because Actions is not always there: a
-  backed-up queue, or a push that produces no run at all, used to leave the
-  VPS serving old code with nothing to notice it. When Actions cannot
-  report at all, the override is an operator's own signed call to the same
-  endpoint (a `repository_dispatch`-shaped body, action `deploy-now`,
-  optional `client_payload.sha`; GitHub itself never delivers that event to
-  a webhook), or plainly `ssh ubuntu@… sync`; the manual path (scp the same
-  files, restart) remains the last fallback.
+  20 s fold together.
 - **Secrets** (never committed): `/etc/archivist.env` on the VPS
   (`SUBMIT_KEY`, `DISCOURSE_*`, `SESSION_SECRET`, `SSO`, `DISCORD_WEBHOOK_URL`,
   `GITHUB_HOOK_SECRET`, `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under
