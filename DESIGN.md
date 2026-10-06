@@ -881,8 +881,15 @@ archivist, module responsibilities). What matters designwise:
   fallback; cookie-authenticated writes are CSRF-guarded by Origin. Reads
   refresh the checkout at most every 20 s; role projections reconcile to the
   forum every 600 s. Reached publicly through the forum's nginx at
-  `https://forum.toolassisted.run/archivist/` (port 8100 is docker-subnet
-  only). Its `archivist.py` remains the executable Flask entrypoint;
+  `https://forum.toolassisted.run/archivist/`; nginx terminates TLS and
+  proxies to the service over the loopback, so 8100 is neither public nor
+  encrypted and the service holds no certificate. **It runs unprivileged**,
+  as the system user `archivist` under a systemd sandbox (`ProtectSystem=
+  strict`, an empty `CapabilityBoundingSet`, `SystemCallFilter=@system-
+  service`; exposure 1.7). It parses untrusted uploads in 25+ binary formats,
+  so a parser bug has to cost a service rather than the machine: the archive,
+  the built site and its own state files are all it can write, and its code
+  is root-owned and read-only to it. Its `archivist.py` remains the executable Flask entrypoint;
   feature-grouped endpoints live in `archivist/routes/`. Movie parsers,
   notes rendering and the consenting-member import flow use their own
   same-named Python packages while retaining their existing public imports.

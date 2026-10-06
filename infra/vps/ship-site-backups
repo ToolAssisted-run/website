@@ -6,10 +6,10 @@
 # together the two remotes are the complete disaster-recovery set.
 #
 # Layout on the remote:
-#   swissbackup:site-backups/archive-YYYY-MM-DD.bundle      daily, kept 30d
-#   swissbackup:site-backups/website-YYYY-MM-DD.bundle      daily, kept 30d
-#   swissbackup:site-backups/state-YYYY-MM-DD.tar.gz        daily, kept 30d
-#   swissbackup:corpus-backups/tasvideos-YYYY-MM-DD.bundle  Mondays, kept 21d
+#   sitecrypt: (= swissbackup:site-backups-enc, encrypted)/archive-YYYY-MM-DD.bundle      daily, kept 30d
+#   sitecrypt: (= swissbackup:site-backups-enc, encrypted)/website-YYYY-MM-DD.bundle      daily, kept 30d
+#   sitecrypt: (= swissbackup:site-backups-enc, encrypted)/state-YYYY-MM-DD.tar.gz        daily, kept 30d
+#   corpuscrypt: (= swissbackup:corpus-backups-enc, encrypted)/tasvideos-YYYY-MM-DD.bundle  Mondays, kept 21d
 set -euo pipefail
 
 DAY=$(date -u +%F)
@@ -53,17 +53,17 @@ tar -czf "$WORK/state-$DAY.tar.gz" \
     /usr/local/bin/cloudflare-realip \
     2>/dev/null || true
 
-rclone copy "$WORK" swissbackup:site-backups --transfers 2 --log-level ERROR
-rclone delete swissbackup:site-backups --min-age 30d --log-level ERROR || true
+rclone copy "$WORK" sitecrypt: --transfers 2 --log-level ERROR
+rclone delete sitecrypt: --min-age 30d --log-level ERROR || true
 
 # 4. the TASVideos import corpus: 2.3 GB and mirrored to a private GitHub
 #    repo besides, so weekly here is belt-and-braces, not the only copy
 if [ "$(date -u +%u)" = 1 ]; then
     git -C /opt/archivist/tasvideos-dumps bundle create -q \
         "$WORK/tasvideos-$DAY.bundle" --all
-    rclone copy "$WORK/tasvideos-$DAY.bundle" swissbackup:corpus-backups \
+    rclone copy "$WORK/tasvideos-$DAY.bundle" corpuscrypt: \
         --transfers 1 --log-level ERROR
-    rclone delete swissbackup:corpus-backups --min-age 21d --log-level ERROR || true
+    rclone delete corpuscrypt: --min-age 21d --log-level ERROR || true
 fi
 
 echo "$DAY shipped: $(ls -sh1 "$WORK" | tail -n +2 | tr '\n' ' ')"

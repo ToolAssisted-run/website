@@ -1351,8 +1351,12 @@ if __name__ == '__main__':
     replay_spool()   # notifications a restart interrupted mid-wait
     import sitebuild
     sitebuild.start()   # publish the site from here, fresh on every commit
+    # nginx terminates TLS and proxies to us over the loopback, so the
+    # service needs neither a certificate nor a public interface. TLS_CERT and
+    # TLS_KEY still work if set, for a deployment that fronts nothing.
     cert = os.environ.get('TLS_CERT')
     key = os.environ.get('TLS_KEY')
     ctx = (cert, key) if cert and key else None
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '8100')),
+    app.run(host=os.environ.get('HOST', '127.0.0.1'),
+            port=int(os.environ.get('PORT', '8100')),
             ssl_context=ctx, threaded=True)
