@@ -1261,9 +1261,10 @@ archivist, module responsibilities). What matters designwise:
   `repository_dispatch`-shaped body, action `deploy-now`, optional
   `client_payload.sha`; GitHub itself never delivers that event to a
   webhook), which answers **503** so the one path an operator reached for
-  cannot fail silently. **Break-glass is therefore `ssh ubuntu@… sync`**
-  over the tailnet, which runs the same forced command as root; the manual
-  path (scp the same files, restart) remains the last fallback. The script
+  cannot fail silently. **Break-glass is therefore `ssh ubuntu@… sync`**,
+  which runs the same forced command as root; the manual path (scp the same
+  files, restart) remains the last fallback, and the hosting console is the
+  way in if sshd itself will not start. The script
   runs in a transient systemd unit, since it ends by restarting the
   archivist and would otherwise kill its own parent; repeat calls inside
   20 s fold together.
