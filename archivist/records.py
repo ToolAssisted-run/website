@@ -31,11 +31,25 @@ from gitstore import (
     lock,
     refresh_archive,
 )
+from identity import current_name
 from notify import (
     member_md,
     notify_discord,
     profile_slug,
 )
+
+def _superseded(username):
+    """True when an approved claim has already given this person another name.
+
+    Their record is the claimed one, and the claim deleted the record this
+    name wrote at first login. Logging in again under the forum name must not
+    write it back: the archive would then hold the person twice, which its
+    own validator rejects, and every run of the archive's CI fails until
+    somebody deletes the duplicate by hand. Three were written this way
+    before the login path learned to ask.
+    """
+    return current_name(username).lower() != username.lower()
+
 
 def record_member_once(username):
     """Write the member record if this person has none yet.
@@ -48,11 +62,11 @@ def record_member_once(username):
     """
     afile = ARCHIVE / 'authors' / f'{selfimport.slugify(username)}.json'
     refresh_archive()
-    if afile.exists():
+    if afile.exists() or _superseded(username):
         return False
     with lock:
         checkout_branch()
-        if afile.exists():
+        if afile.exists() or _superseded(username):
             return False
         ensure_member(username)
         commit_push(f'Member: {username} arrived\n\nVia: archivist (first login)')

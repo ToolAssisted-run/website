@@ -2838,6 +2838,43 @@ def main():
                 ck('and it says only that they are here, nothing else about them',
                    rec_.get('claimed') is True and set(rec_) == {'username', 'claimed'},
                    str(rec_))
+            # An approved claim deletes the record the person registered under,
+            # so logging in again under their forum name must not write it
+            # back. It did: DuckSquared's record returned three times after the
+            # Committee handed them DigitalDuck, and the archive then held one
+            # person twice, which its own validator rejects. Every run of the
+            # archive's CI failed until somebody deleted the duplicate by hand.
+            ck('approving the claim removed the name they registered under',
+               not (work / 'authors' / 'newuser.json').exists(),
+               'newuser.json should have gone when HeldName was handed over')
+            try:
+                op.open(U + '/login')
+            except urllib.error.HTTPError as e:
+                q3 = urllib.parse.parse_qs(urllib.parse.urlparse(e.headers['Location']).query)
+                nonce3 = urllib.parse.parse_qs(
+                    base64.b64decode(q3['sso'][0]).decode())['nonce'][0]
+            payload3 = urllib.parse.urlencode({'nonce': nonce3, 'username': 'newuser',
+                                               'external_id': '9'})
+            b64c = base64.b64encode(payload3.encode()).decode()
+            sigc = hmac.new(SSO_SECRET.encode(), b64c.encode(), hashlib.sha256).hexdigest()
+            try:
+                op.open(U + '/login/callback?'
+                        + urllib.parse.urlencode({'sso': b64c, 'sig': sigc}))
+            except urllib.error.HTTPError:
+                pass
+            time.sleep(3)
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            ck('a superseded name logging in again writes no second record',
+               not (work / 'authors' / 'newuser.json').exists(),
+               'the claim gave them another name; this one is not theirs any more')
+            ck('and the identity they were handed is untouched',
+               json.loads((work / 'authors' / 'heldname.json').read_text())
+               .get('claimedBy') == 'newuser')
+            v_ = subprocess.run([sys.executable, str(work / 'validate.py')],
+                                capture_output=True, text=True, cwd=work)
+            ck('so the archive still validates, which is what CI gates on',
+               v_.returncode == 0, v_.stdout[-300:])
+
             c, r, _ = call(U + '/api/me', cookie=cookie)
             ck('session identity', r.get('user') == 'ssouser')
             c, r, _ = call(U + '/api/verify', {'run': 'M900010', 'dry_run': '1'}, cookie=cookie)
