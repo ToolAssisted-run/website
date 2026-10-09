@@ -8,13 +8,13 @@ import urllib.request
 from flask import jsonify, request
 import movieparse
 import providers
-from settings import ARCHIVE, allowed_movie_exts, DISCOURSE_KEY, DISCOURSE_URL, MOVIE_MAX, SITE_ORIGIN, THUMB_MAX
+from settings import ARCHIVE, allowed_movie_exts, DISCOURSE_KEY, DISCOURSE_URL, SITE_ORIGIN, THUMB_MAX, movie_refusal
 from webutil import fail
 from identity import origin_ok, session_user
 from forumapi import _forum_get, forum_account_exists, reserved_usernames
 
 
-def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, MOVIE_TOO_LARGE, _helper_gate, _name_seen, _search_index):
+def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _search_index):
     """Attach the reading endpoints with explicit request dependencies."""
 
     @app.get('/api/name/status')
@@ -116,8 +116,9 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, MOVIE_TOO_LARGE, _helper_ga
         movie_bytes = movie_upload.read()
         if not movie_bytes:
             return fail('movie file is empty')
-        if len(movie_bytes) > MOVIE_MAX:
-            return fail(MOVIE_TOO_LARGE)
+        oversize = movie_refusal(movie_bytes)
+        if oversize:
+            return fail(oversize)
         known = ext in allowed_movie_exts()
         parsed = movieparse.parse(movie_upload.filename, movie_bytes) if known else {'ok': False, 'error': f'.{ext} is not a format the archive can read'}
         fps = parsed.get('fps') if parsed.get('ok') else None

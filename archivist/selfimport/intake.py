@@ -4,9 +4,10 @@ import pathlib
 import re
 import zipfile
 import providers
-from .catalog import (MOVIE_MAX, SYSTEM_NAMES, EXACT_FPS, START_TYPES, HARD_SYSTEMS,
-                      _pub_cache, slugify, disclaimer, strip_judge_text, _zip_movie_size,
+from .catalog import (SYSTEM_NAMES, EXACT_FPS, START_TYPES, HARD_SYSTEMS,
+                      _pub_cache, slugify, disclaimer, strip_judge_text, _zip_movie_sizes,
                       pubs_for, archived_sources)
+from settings import movie_oversize, movie_refusal
 
 def scan(dumps, archive, username):
     """What the backup holds for this author vs what the archive already has."""
@@ -16,7 +17,8 @@ def scan(dumps, archive, username):
     for p in sorted(mine, key=lambda p: p['id']):
         if p['id'] in existing:
             continue
-        size = _zip_movie_size(dumps, p['id'])
+        sizes = _zip_movie_sizes(dumps, p['id'])
+        oversize = movie_oversize(*sizes) if sizes else None
         authors = list(p.get('authors') or [])
         for extra in (p.get('additionalAuthors') or '').split(','):
             if extra.strip() and extra.strip() not in authors:
@@ -26,10 +28,11 @@ def scan(dumps, archive, username):
             'system': p.get('systemCode') or '?',
             'goal': p.get('goal') or p.get('branch') or 'baseline',
             'obsolete': bool(p.get('obsoletedById')),
-            'movieMissing': size is None,
+            'movieMissing': sizes is None,
             # says so up front, instead of leaving a publication that can never
             # be imported sitting in the list with no explanation
-            'tooBig': bool(size and size > MOVIE_MAX),
+            'tooBig': bool(oversize),
+            'tooBigWhy': oversize,
             'authors': authors,
             'multiAuthor': len(authors) > 1})
     # the already-archived ones are listed too: the page shows the member's
@@ -203,12 +206,11 @@ def import_one(dumps, archive, p, sub, username, today, thumb_base,
             return False, f'{rid}: movie zip is empty', flags
         movie_bytes = z.read(names[0])
         ext = pathlib.Path(names[0]).suffix.lstrip('.').lower()
-    if len(movie_bytes) > MOVIE_MAX:
-        # the intake cap exists so the archive stays a repository people can
-        # clone; a movie past it is a decision for a person, not a batch job
-        return (False, f'{rid}: movie is {len(movie_bytes) >> 20} MB, over the '
-                       f'{MOVIE_MAX >> 20} MB intake cap; ask on the forum to have '
-                       f'it archived', flags)
+    oversize = movie_refusal(movie_bytes)
+    if oversize:
+        # the cap exists so the archive stays a repository people can clone;
+        # a movie past it is a decision for a person, not a batch job
+        return False, f'{rid}: {oversize}; ask on the forum to have it archived', flags
 
     encodes = [{'kind': 'youtube', 'url': u} for u in (p.get('urls') or []) if 'youtu' in u]
     thumb_name, thumb_bytes = _thumbnail(dumps, pid, encodes, thumb_base)

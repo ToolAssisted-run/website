@@ -135,7 +135,10 @@ if (impMsg && api) {
           var text = 'M' + x.id + ' · ' + x.title;
           if (x.movieMissing) text += ' (movie not in the snapshot yet)';
           if (x.tooBig)
-            text += ' (movie too large to import; ask on the forum)';
+            text +=
+              ' (' +
+              (x.tooBigWhy || 'movie too large to import') +
+              '; ask on the forum)';
           row.appendChild(box);
           row.appendChild(document.createTextNode(' ' + text));
           if (x.multiAuthor && !blocked) {

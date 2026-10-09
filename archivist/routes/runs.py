@@ -8,7 +8,7 @@ import time
 from flask import jsonify, request
 import movieparse
 import providers
-from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, BRANCH, IMAGE_MAGIC, MOVIE_MAX, NOTES_MAX, SHOT_MAX_EACH, SHOT_MAX_TOTAL, SITE_URL, THUMB_MAX, slugify
+from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, BRANCH, IMAGE_MAGIC, NOTES_MAX, SHOT_MAX_EACH, SHOT_MAX_TOTAL, SITE_URL, THUMB_MAX, movie_refusal, slugify
 from webutil import fail
 from identity import current_name, run_authors_now, session_user
 from gitstore import checkout_branch, commit_push, duplicate_of, find_run, load_game, lock, next_id, refresh_archive
@@ -17,7 +17,7 @@ from records import covers_group, ensure_member, expert_covers, is_editor, is_un
 from forumapi import ensure_game_topic, ensure_topic
 
 
-def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX, MOVIE_TOO_LARGE, REPRO_FIELDS, SCORING_FIELDS, act_common, attach_movie, auth_precheck, in_category, live_acts, notify_edit, option_in, pace_gate, parse_file_rows, parse_game_property, parse_metric_defs, parse_stated_time, place_subcategory, read_attachments, request_identity, split_notes_header, void_acts_for):
+def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EMPTY, REPRO_FIELDS, SCORING_FIELDS, act_common, attach_movie, auth_precheck, in_category, live_acts, notify_edit, option_in, pace_gate, parse_file_rows, parse_game_property, parse_metric_defs, parse_stated_time, place_subcategory, read_attachments, request_identity, split_notes_header, void_acts_for):
     """Attach the runs endpoints with explicit request dependencies."""
 
     def _submission_uploaded_movie(movie_upload, submission, wants_time, goal):
@@ -25,10 +25,11 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_MU
         duration = None
         ext = movie_upload.filename.rsplit('.', 1)[-1].lower()
         movie_bytes = movie_upload.read()
-        if len(movie_bytes) > MOVIE_MAX:
-            return None, fail(MOVIE_TOO_LARGE)
         if not movie_bytes:
-            return None, fail('movie file is empty')
+            return None, fail(MOVIE_EMPTY)
+        oversize = movie_refusal(movie_bytes)
+        if oversize:
+            return None, fail(oversize)
         # any extension is archived as it is: an author may work in a tool
         # the archive has no parser for. A parse failure is a warning, never
         # a refusal; the record's time is the one the author states either
@@ -642,8 +643,11 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_MU
             return fail('attach the replacement movie file')
         movie_ext = new_movie_upload.filename.rsplit('.', 1)[-1].lower()
         movie_bytes = new_movie_upload.read()
-        if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
-            return fail(MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX)
+        if not movie_bytes:
+            return fail(MOVIE_EMPTY)
+        oversize = movie_refusal(movie_bytes)
+        if oversize:
+            return fail(oversize)
         # the same door as submission: any extension, and a parse
         # failure keeps the file with frames unknown
         parsed_movie = movieparse.parse(new_movie_upload.filename, movie_bytes)
@@ -1483,8 +1487,11 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_MU
             else:
                 ext = movie_upload.filename.rsplit('.', 1)[-1].lower()
                 movie_bytes = movie_upload.read()
-                if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
-                    return fail(MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX)
+                if not movie_bytes:
+                    return fail(MOVIE_EMPTY)
+                oversize = movie_refusal(movie_bytes)
+                if oversize:
+                    return fail(oversize)
                 value = f"{run['id']}.{ext} (sha1 {hashlib.sha1(movie_bytes).hexdigest()[:12]})"
             befores['movie'] = old_value
             changed.append('movie')

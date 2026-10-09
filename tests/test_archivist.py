@@ -531,6 +531,12 @@ def main():
              'urls': ['https://youtu.be/goodvid12345'], 'frames': 9, 'rerecordCount': 1,
              'emulatorVersion': 'x', 'createTimestamp': '2023-01-01T00:00:00Z',
              'obsoletedById': None},
+            {'id': 910004, 'submissionId': 810005, 'title': 'NES Fat Log by ssouser',
+             'systemCode': 'NES', 'systemFrameRate': 60.1, 'goal': 'baseline',
+             'gameId': 9, 'authors': ['ssouser'], 'additionalAuthors': '',
+             'urls': ['https://youtu.be/fatlog12345'], 'frames': 11, 'rerecordCount': 1,
+             'emulatorVersion': 'x', 'createTimestamp': '2023-02-01T00:00:00Z',
+             'obsoletedById': None},
             {'id': 900010, 'submissionId': 810003, 'title': 'Collision bait by ssouser',
              'systemCode': 'NES', 'systemFrameRate': 60.1, 'goal': 'baseline',
              'gameId': 7, 'authors': ['ssouser'], 'additionalAuthors': '',
@@ -548,12 +554,24 @@ def main():
              'movieStartType': 0, 'emulatorVersion': 'BizHawk 2.9'},
             {'id': 810004, 'gameName': 'Huge Movie', 'romName': '',
              'movieStartType': 0, 'emulatorVersion': 'x'},
+            {'id': 810005, 'gameName': 'Fat Log', 'romName': '',
+             'movieStartType': 0, 'emulatorVersion': 'x'},
         ]))
-        # a movie past the intake cap: two of these reached the real archive
-        # through the import, which never checked, and left it invalid
-        with zipfile.ZipFile(dumps / 'movies' / 'M910003-ssouser-game.zip', 'w') as z:
-            z.writestr('movie.bk2', make_bk2() + b'\0' * (33 * 1024 * 1024))
+        # The two shapes of a big movie, deflated as TASVideos stores them.
+        # The door is checked at all because two movies past the cap once came
+        # through the import, which did not look, and left the archive
+        # invalid. M910003 is incompressible, so it would cost every clone its
+        # full weight and is refused. M910004 is a fixed-width input log, big
+        # on disk and nearly free packed, which is what a Dolphin .dtm is: it
+        # imports, and used to be turned away on raw size alone.
+        with zipfile.ZipFile(dumps / 'movies' / 'M910003-ssouser-game.zip', 'w',
+                             zipfile.ZIP_DEFLATED) as z:
+            z.writestr('movie.bk2', make_bk2() + os.urandom(33 * 1024 * 1024))
         (dumps / 'thumbnails' / 'M910003.jpg').write_bytes(JPG)
+        with zipfile.ZipFile(dumps / 'movies' / 'M910004-ssouser-game.zip', 'w',
+                             zipfile.ZIP_DEFLATED) as z:
+            z.writestr('movie.bk2', make_bk2() + b'\0' * (40 * 1024 * 1024))
+        (dumps / 'thumbnails' / 'M910004.jpg').write_bytes(JPG)
         for pid in (910001, 910002):
             zp = dumps / 'movies' / f'M{pid}-ssouser-game.zip'
             with zipfile.ZipFile(zp, 'w') as z:
@@ -2948,8 +2966,8 @@ def main():
             c, r, _ = call(U + '/api/import/scan', {'x': '1'})
             ck('import scan needs a session', c == 403, str(r))
             c, r, _ = call(U + '/api/import/scan', {'x': '1'}, cookie=cookie)
-            ck('import scan lists pending', c == 200 and r['total'] == 4
-               and len(r['pending']) == 3 and r['pending'][0]['id'] == 910001, str(r))
+            ck('import scan lists pending', c == 200 and r['total'] == 5
+               and len(r['pending']) == 4 and r['pending'][0]['id'] == 910001, str(r))
             ck('id-colliding publication never listed',
                all(x['id'] != 900010 for x in r['pending']), str(r))
             ck('a co-authored publication is listed, flagged as such',
@@ -2963,23 +2981,29 @@ def main():
                and r['imported'] == ['M910001'] and r['remaining'] == 0, str(r))
             # a co-authored work comes over when its member picks it: the
             # selection is the act that carries the responsibility
-            c, r, _ = call(U + '/api/import/run', {'select': 'M910002, M910003'},
-                           cookie=cookie)
+            c, r, _ = call(U + '/api/import/run',
+                           {'select': 'M910002, M910003, M910004'}, cookie=cookie)
             ck('a picked co-authored movie is imported on that selection',
                c == 200 and 'M910002' in r['imported'], str(r))
-            ck('an oversized movie is refused instead of archived',
-               any('intake cap' in s for s in r.get('skipped', [])), str(r.get('skipped')))
+            ck('a movie refused for its weight says what it would cost',
+               any('every clone' in s for s in r.get('skipped', [])), str(r.get('skipped')))
+            # the bug this guards: judged on raw size, a 40 MB input log that
+            # packs to 40 KB was refused at the same door as a 33 MB blob
+            ck('a big movie that compresses to nothing is imported',
+               'M910004' in r['imported'], str(r))
             ck('the import told Discord, one line for the batch',
-               discord_saw('** imported movie: [M910002](<'),
+               discord_saw('** imported 2 movies: [M910002](<'),
                str(DISCORD_MSGS[-3:]))
             c, r, _ = call(U + '/api/import/scan', {'x': '1'}, cookie=cookie)
-            ck('import is idempotent (scan)', c == 200 and r['archived'] == 3
+            ck('import is idempotent (scan)', c == 200 and r['archived'] == 4
                and [x['id'] for x in r['pending']] == [910003], str(r))
             ck('the whole catalogue is listed: archived ones say so by name',
-               sorted(x['id'] for x in r.get('already', [])) == [900010, 910001, 910002],
-               str(r.get('already')))
+               sorted(x['id'] for x in r.get('already', []))
+               == [900010, 910001, 910002, 910004], str(r.get('already')))
             ck('the unimportable one says why it is still listed',
-               r['pending'][0].get('tooBig') is True, str(r['pending']))
+               r['pending'][0].get('tooBig') is True
+               and 'compressed' in (r['pending'][0].get('tooBigWhy') or ''),
+               str(r['pending']))
             c, r, _ = call(U + '/api/import/run', {'select': '910001 910002'},
                            cookie=cookie)
             ck('import is idempotent (run)', c == 200 and r['imported'] == [], str(r))

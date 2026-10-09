@@ -289,8 +289,16 @@ The run is **archived instantly and appears immediately, as pending**. One
 commit per run; git history is the public submission log. Duplicates are
 refused at intake: same movie bytes (`movie.sha1`), the same work saved again
 (same game+category+frames+author set), or for video-only the same encode URL.
-Caps: 32 MB at intake (a human decides past that), 100 MB in the validator
-(what a git host will hold). Movie frame counts are ≥0 by schema; a movie
+Caps are on what a movie costs a clone, not on what it weighs: up to 32 MB
+is accepted outright, past that up to the validator's 100 MB if it compresses
+to 4 MB or less, and a human decides anything beyond. The two numbers diverge
+by format. A Dolphin `.dtm` or a Chimera `.chimeraproject` is a fixed-width
+uncompressed input log that deflates 300:1, so a 46-minute GameCube run is
+97 MB on disk and 345 KB in the packfile, lighter than half the movies in the
+archive; a `.bk2` is a zip already and packs to itself. Raw size alone would
+turn away the free ones and admit the expensive ones. Anything arriving over
+HTTP is bounded as well by what nginx accepts for one request, which is the
+smaller number for an upload. Movie frame counts are ≥0 by schema; a movie
 whose own frame rate differs from the system default carries `movie.fps`
 (the fallback rate for older runs whose time still derives from frames).
 
@@ -840,7 +848,8 @@ archivist, module responsibilities). What matters designwise:
   `validate.py`, and its size caps are clamped to the archive's; both are
   re-read when that file changes, and intake's own values stand in when there
   is no validator to read. Intake stricter than the archive is fine and
-  deliberate (32 MB movies against the archive's 100 MB); intake looser is
+  deliberate (a movie must pack small to use the band between intake's 32 MB
+  and the archive's 100 MB); intake looser is
   what archives a correct submission and then breaks the archive, which
   happened twice in a day (a `.chimeraProject` movie, two `.wch` watch
   files). A member hears no at the door, in the words of the rule.

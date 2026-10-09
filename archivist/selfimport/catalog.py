@@ -15,11 +15,9 @@ import json
 import pathlib
 import re
 import urllib.request
+import zipfile
 
 import providers
-
-MOVIE_MAX = 32 * 1024 * 1024   # the same cap the archivist applies at submit
-import zipfile
 
 SYSTEM_NAMES = {
     'A2600': 'Atari 2600', 'A5200': 'Atari 5200', 'A7800': 'Atari 7800', 'NES': 'Nintendo Entertainment System',
@@ -168,14 +166,29 @@ def archived_sources(archive):
     return existing
 
 
-def _zip_movie_size(dumps, pid):
-    """How big the movie inside the backup zip is, without unpacking it."""
+def _zip_movie_sizes(dumps, pid):
+    """The movie inside the backup zip as (raw, compressed), without unpacking.
+
+    The zip's own directory carries both numbers, so the listing can apply
+    the same rule the import will without inflating a 97 MB input log to
+    ask. It reads the entry the importer reads, the first that is not a
+    directory, so what the page offers and what the import accepts cannot
+    disagree.
+    """
     zips = sorted((dumps / 'movies').glob(f'M{pid}-*.zip'))
     if not zips:
         return None
     try:
         with zipfile.ZipFile(zips[0]) as z:
-            sizes = [i.file_size for i in z.infolist() if not i.filename.endswith('/')]
-        return max(sizes) if sizes else 0
+            entries = [i for i in z.infolist() if not i.filename.endswith('/')]
+        if not entries:
+            return (0, 0)
+        entry = entries[0]
+        # a stored entry's compressed size is its own, which says nothing
+        # about how well it would deflate: report that as unknown. The test
+        # is the compression method, not the two sizes, because deflate on
+        # incompressible bytes comes out slightly larger than it went in.
+        stored = entry.compress_type == zipfile.ZIP_STORED
+        return (entry.file_size, None if stored else entry.compress_size)
     except Exception:                                       # noqa: BLE001
         return None

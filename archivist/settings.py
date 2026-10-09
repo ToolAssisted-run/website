@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 
 import movieparse
 
@@ -151,7 +152,11 @@ def allowed_attach_exts():
     return ATTACH_EXTS if theirs is None else ATTACH_EXTS & theirs
 
 
-MOVIE_MAX = 32 * 1024 * 1024   # intake cap. A console TAS can be genuinely
+MOVIE_MAX = 32 * 1024 * 1024        # accepted on raw size alone
+
+MOVIE_RAW_MAX = 100 * 1024 * 1024   # raw size nothing may pass, however well it packs
+
+MOVIE_PACKED_MAX = 4 * 1024 * 1024  # what one movie may cost every clone
 
 NOTES_MAX = 256 * 1024
 
@@ -192,11 +197,63 @@ def _archive_cap(name, ours):
     return min(ours, theirs)
 
 MOVIE_MAX = _archive_cap('MOVIE_MAX', MOVIE_MAX)
+MOVIE_RAW_MAX = max(MOVIE_MAX, _archive_cap('MOVIE_MAX', MOVIE_RAW_MAX))
 NOTES_MAX = _archive_cap('NOTES_MAX', NOTES_MAX)
 ATTACH_MAX_EACH = _archive_cap('ATTACH_MAX_EACH', ATTACH_MAX_EACH)
 ATTACH_MAX_TOTAL = _archive_cap('ATTACH_MAX_TOTAL', ATTACH_MAX_TOTAL)
 SHOT_MAX_EACH = _archive_cap('SHOT_MAX_EACH', SHOT_MAX_EACH)
 SHOT_MAX_TOTAL = _archive_cap('SHOT_MAX_TOTAL', SHOT_MAX_TOTAL)
+
+
+def movie_oversize(size, packed):
+    """Why a movie of this size cannot be archived, or None when it can.
+
+    The cap exists so the archive stays a repository people can clone, and
+    what a clone pays for a file is its compressed size, not its own. The
+    two diverge wildly by format: Dolphin's .dtm and Chimera's
+    .chimeraproject are fixed-width uncompressed input logs that deflate
+    300:1, while a .bk2 is a zip already and packs to itself. Judging both
+    by raw bytes turns away files that cost the archive nothing, which is
+    how a 46-minute GameCube run (97 MB on disk, 345 KB packed, lighter
+    than half the movies already here) came to be refused at three times
+    the cap. So the raw size is only the cheap first answer, and past it the
+    packed size decides.
+
+    Anything crossing the wire is additionally bounded by what nginx and
+    Flask accept for one request, which is the smaller number today.
+
+    `packed` may be None when the caller only has the raw size to hand, as
+    the import listing does for a movie stored rather than deflated in its
+    backup zip. Unknown weight is not refused: the listing offers the movie
+    and the import, which holds the bytes, gives the real answer. Better a
+    refusal that explains itself than a row quietly withheld.
+    """
+    if size <= MOVIE_MAX:
+        return None
+
+    def mb(n):
+        return f'{n / (1 << 20):.1f} MB'.replace('.0 ', ' ')
+
+    if size > MOVIE_RAW_MAX:
+        return (f'movie is {mb(size)}, past the {mb(MOVIE_RAW_MAX)} the '
+                f'archive holds at any compression')
+    if packed is not None and packed > MOVIE_PACKED_MAX:
+        return (f'movie is {mb(size)} and still {mb(packed)} compressed, past '
+                f'the {mb(MOVIE_PACKED_MAX)} one movie may add to every clone '
+                f'of the archive')
+    return None
+
+
+def movie_refusal(data):
+    """Why this movie cannot be archived, or None. The rule, applied to bytes.
+
+    Compresses only when the raw size has already failed, so the ordinary
+    2 MB movie costs nothing and the 97 MB one costs half a second.
+    """
+    if len(data) <= MOVIE_MAX:
+        return None
+    return movie_oversize(len(data), len(zlib.compress(data, 6)))
+
 
 THUMB_MAX = 256 * 1024
 

@@ -60,13 +60,13 @@ from settings import (
     DUMPS_DIR,
     IMAGE_MAGIC,
     LOG,
-    MOVIE_MAX,
     VISITS_FILE,
     NOTES_MAX,
     RECONCILE_SECONDS,
     SELF_URL,
     SESSION_TTL,
     SHOT_MAX_EACH,
+    movie_refusal,
     SHOT_MAX_TOTAL,
     SITE_ORIGIN,
     SITE_ORIGINS,
@@ -159,10 +159,7 @@ from forumapi import (
     unlock_forum_username,
 )
 
-MOVIE_TOO_LARGE = f'movie exceeds {MOVIE_MAX >> 20} MB'
-MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX = (
-    f'movie must be non-empty and under {MOVIE_MAX >> 20} MB'
-)
+MOVIE_EMPTY = 'movie file is empty'
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
@@ -475,8 +472,9 @@ def form():
 def _attachment_content(name, data, suffix, movie_exts, attach_exts):
     """Check one upload's extension, size and text encoding before archiving."""
     if suffix.lstrip('.') in movie_exts:
-        if len(data) > MOVIE_MAX:
-            return None, fail(f'movie attachment {name!r} exceeds {MOVIE_MAX >> 20} MB')
+        oversize = movie_refusal(data)
+        if oversize:
+            return None, fail(f'movie attachment {name!r}: {oversize}')
         return True, None
     if suffix in attach_exts:
         if len(data) > ATTACH_MAX_EACH:
@@ -998,8 +996,11 @@ def attach_movie(run, run_dir, upload):
     """
     ext = upload.filename.rsplit('.', 1)[-1].lower()
     movie_bytes = upload.read()
-    if not movie_bytes or len(movie_bytes) > MOVIE_MAX:
-        return None, fail(MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX)
+    if not movie_bytes:
+        return None, fail(MOVIE_EMPTY)
+    oversize = movie_refusal(movie_bytes)
+    if oversize:
+        return None, fail(oversize)
     parsed = movieparse.parse(upload.filename, movie_bytes)
     if not parsed['ok']:                 # any extension is archived as it is
         parsed = {'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
@@ -1330,8 +1331,7 @@ runs_routes.register(app,
     CW_ALLOWED=CW_ALLOWED,
     EXPERT_EDITABLE=EXPERT_EDITABLE,
     GAME_PROPERTY_FIELDS=GAME_PROPERTY_FIELDS,
-    MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX=MOVIE_MUST_BE_NON_EMPTY_AND_UNDER_MAX,
-    MOVIE_TOO_LARGE=MOVIE_TOO_LARGE,
+    MOVIE_EMPTY=MOVIE_EMPTY,
     REPRO_FIELDS=REPRO_FIELDS,
     SCORING_FIELDS=SCORING_FIELDS,
     act_common=act_common,
@@ -1389,7 +1389,6 @@ from routes import reading as reading_routes
 reading_routes.register(app,
     DISCUSSION_CACHE=DISCUSSION_CACHE,
     ENCODE_CACHE=ENCODE_CACHE,
-    MOVIE_TOO_LARGE=MOVIE_TOO_LARGE,
     _helper_gate=_helper_gate,
     _name_seen=_name_seen,
     _search_index=_search_index,
