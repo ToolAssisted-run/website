@@ -192,7 +192,21 @@ def unlock_forum_username(claimant, tv_user):
         _put_reserved_usernames('|'.join(entries))
         discourse_api(f'/u/{urllib.parse.quote(claimant)}/preferences/username.json',
                       'PUT', {'new_username': new_name})
-        return True, f'forum account renamed to {new_name}'
+        # The rename frees the name the claimant used to hold, and
+        # session_user() resolves that name through claimedBy to the one they
+        # hold now: whoever registered it next would be read as them, with
+        # their likes, their verifications and their imports. So the old name
+        # is held exactly as the claimed one was.
+        try:
+            if claimant.lower() not in {e.lower() for e in entries}:
+                _put_reserved_usernames('|'.join(entries + [claimant]))
+            held = f', {claimant} held'
+        except Exception as holding:                            # noqa: BLE001
+            LOG.error('claim rename %s -> %s: freed name not held: %s',
+                      claimant, new_name, holding)
+            held = (f', but {claimant} is NOT held ({holding}): until an admin '
+                    f'reserves it, registering it would act as {new_name}')
+        return True, f'forum account renamed to {new_name}{held}'
     except Exception as e:                                      # noqa: BLE001
         note = f'rename failed ({e})'
         if reserved_before is not None:

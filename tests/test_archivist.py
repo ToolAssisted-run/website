@@ -2842,6 +2842,13 @@ def main():
                             'method': 'they posted the request from their TASVideos account'})
             ck('a site expert attests an identity', c == 200
                and r['identity'] == 'SomeAuthor' and r['attestedBy'] == 'eien86', str(r))
+            # The rename frees the name the claimant came in under, and a
+            # session carrying that name resolves through claimedBy to the one
+            # they hold now. 25 such names were registerable at once.
+            ck('the name a claimant leaves behind is held, not left free',
+               r.get('renamed') is True
+               and any('newuser' in w.split('|') for w in RESERVED_WRITES),
+               f'{r.get("rename")!r} {RESERVED_WRITES[-1:]}')
             rec = json.loads((work / 'authors' / 'someauthor.json').read_text()) \
                 if (work / 'authors' / 'someauthor.json').exists() else {}
             c, r, _ = call(U + '/api/claim/attest',

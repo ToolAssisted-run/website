@@ -1,0 +1,71 @@
+#!/bin/bash
+# Reserve, on the forum, every name a claimant has left behind.
+#
+# An approved claim renames the forum account to the claimed name, which
+# frees the name the person signed up under. The site resolves a session
+# through `claimedBy` (identity.py::current_name), so a session carrying that
+# freed name is read as the name they hold now: whoever registered it next
+# would act as them, with their likes, their verifications and their imports.
+# Holding the old name is what shuts that. unlock_forum_username does it from
+# now on; this is the one-off for the claims approved before it did.
+#
+#   sudo bash /opt/archivist/website/infra/vps/hold-superseded-names
+#
+# Idempotent: run it again and it adds nothing. It reads the names from the
+# archive checkout rather than a list baked in here, so it stays right as
+# more claims are approved, and it is worth running after any batch of them
+# if a rename ever reports that it could not hold the freed name.
+#
+# Run it AFTER any outstanding manual rename, not before: Discourse refuses a
+# rename TO a reserved name, so reserving a name somebody is still waiting to
+# be renamed into would block it.
+set -euo pipefail
+
+if [ "$(id -u)" != 0 ]; then
+    echo "run me with sudo" >&2
+    exit 1
+fi
+
+AUTHORS=/opt/archivist/archive/authors
+if [ ! -d "$AUTHORS" ]; then
+    echo "no archive checkout at $AUTHORS" >&2
+    exit 1
+fi
+
+want=$(python3 - "$AUTHORS" <<'PY'
+import json
+import pathlib
+import sys
+
+old = set()
+for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
+    try:
+        rec = json.loads(f.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        continue
+    # claimedBy is the name the member came in under; username is the one the
+    # approved claim gave them. Only the first is freed by the rename.
+    if rec.get('claimedBy') and rec.get('username'):
+        old.add(rec['claimedBy'])
+print('|'.join(sorted(old)))
+PY
+)
+
+if [ -z "$want" ]; then
+    echo "no superseded names in the archive"
+    exit 0
+fi
+
+docker exec -e WANT="$want" app rails runner '
+want = ENV["WANT"].to_s.split("|").reject(&:empty?)
+cur  = SiteSetting.reserved_usernames.to_s.split("|")
+have = cur.map(&:downcase)
+add  = want.reject { |n| have.include?(n.downcase) }
+if add.empty?
+  puts "nothing to add: all #{want.length} superseded names are already held (#{cur.length} reserved in all)"
+else
+  SiteSetting.reserved_usernames = (cur + add).join("|")
+  puts "held #{add.length}: #{add.sort.join(", ")}"
+  puts "#{SiteSetting.reserved_usernames.to_s.split("|").length} names reserved in all"
+end
+'

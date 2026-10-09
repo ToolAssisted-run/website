@@ -775,7 +775,17 @@ A category defines what it ranks by.
   cache). The forum's signup form asks it as the name is typed and explains
   the held case, through the theme component in
   `infra/discourse-theme/held-name/`; the claim page carries the same
-  sentence for anyone who arrives there first.
+  sentence for anyone who arrives there first. **A name somebody leaves
+  behind is held too**: an approved claim renames the forum account, which
+  frees the name the claimant signed up under, and a session carrying that
+  name resolves through `claimedBy` to the name they hold now. Whoever
+  registered it next would be read as them, with their likes, their
+  verifications and their imports. The rename therefore reserves the old
+  name in the same call that un-reserves the claimed one, and a rename that
+  fails puts the claimed name's reservation back rather than leaving it
+  open. The cookie carries the forum's `external_id` but identity is
+  resolved by name, which is why the reservation, and not the id, is what
+  holds this shut.
 - **Claims**: `/api/claim/request` files one (one open claim per member);
   the claimant TYPES the name, and no page anywhere offers the held ones
   as a list: that list is the roll of people who have not come here, and
