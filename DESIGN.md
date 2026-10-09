@@ -296,7 +296,10 @@ by format. A Dolphin `.dtm` or a Chimera `.chimeraproject` is a fixed-width
 uncompressed input log that deflates 300:1, so a 46-minute GameCube run is
 97 MB on disk and 345 KB in the packfile, lighter than half the movies in the
 archive; a `.bk2` is a zip already and packs to itself. Raw size alone would
-turn away the free ones and admit the expensive ones. Anything arriving over
+turn away the free ones and admit the expensive ones. What grows in the band
+above 32 MB is the working tree a clone writes out, not the history it
+fetches, and 100 MB is the validator's own ceiling and GitHub's hard blob
+limit, so nothing past it could be pushed in any case. Anything arriving over
 HTTP is bounded as well by what nginx accepts for one request, which is the
 smaller number for an upload. Movie frame counts are ≥0 by schema; a movie
 whose own frame rate differs from the system default carries `movie.fps`

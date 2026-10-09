@@ -508,8 +508,11 @@ def main():
             ck('rejection branches answer with the right status', not wrong, str(wrong[:5]))
 
             # ---------------- request size cap ----------------
+            # Incompressible on purpose: a movie is refused for what it would
+            # cost a clone, so 33 MB of zeros is accepted (it packs to 32 KB)
+            # and only 33 MB that stays 33 MB is over the line.
             code, r, _ = call(U + '/api/submit', dict(sub, game='nes/testgame', goal='fastest'),
-                              files={'movie': ('m.bk2', b'\0' * (33 * 1024 * 1024))})
+                              files={'movie': ('m.bk2', os.urandom(33 * 1024 * 1024))})
             ck('an oversized movie is refused', code in (400, 413), f'{code} {str(r)[:80]}')
 
             # ---------------- the archive is still sane ----------------
