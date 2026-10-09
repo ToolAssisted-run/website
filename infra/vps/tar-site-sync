@@ -67,7 +67,61 @@ rm -rf /opt/archivist/templates
 mv "$staged_templates" /opt/archivist/templates
 pip3 install --quiet --break-system-packages pillow numpy 2>/dev/null || pip3 install --quiet pillow numpy 2>/dev/null || true
 
-# 3. Self-update this sync script if changed in repository.
+# 3. Install the nginx configuration. infra/nginx/ IS the live config now
+# (see the note at the top of each vhost), so an nginx change rides in with
+# the deploy instead of being applied by hand and drifting, which is how the
+# repo came to be missing the rate limiting that was running.
+#
+# A config that does not parse must never be the one nginx reloads. Copy,
+# test, and put the previous files back if the test fails: the running
+# config is then untouched and the deploy exits non-zero so CI says so,
+# rather than leaving a broken vhost to be discovered by a reader. Only
+# reload when something actually changed.
+nginx_failed=0
+nginx_src=/opt/archivist/website/infra/nginx
+declare -A nginx_dst=(
+    [toolassisted.conf]=/etc/nginx/sites-available/toolassisted.conf
+    [forum.conf]=/etc/nginx/sites-available/forum.conf
+    [hardening.conf]=/etc/nginx/snippets/tar-hardening.conf
+    [gzip.conf]=/etc/nginx/conf.d/gzip.conf
+    [tar-ratelimit.conf]=/etc/nginx/conf.d/tar-ratelimit.conf
+)
+nginx_changed=()
+for name in "${!nginx_dst[@]}"; do
+    if [ -f "$nginx_src/$name" ] && ! cmp -s "$nginx_src/$name" "${nginx_dst[$name]}"; then
+        nginx_changed+=("$name")
+    fi
+done
+if [ ${#nginx_changed[@]} -gt 0 ]; then
+    # cloudflare-realip.conf is deliberately not in the list: cron regenerates
+    # it from Cloudflare's published ranges and the repo has no business
+    # overwriting whatever the last refresh wrote.
+    rollback=$(mktemp -d /var/tmp/nginx-rollback.XXXXXX)
+    for name in "${nginx_changed[@]}"; do
+        if [ -f "${nginx_dst[$name]}" ]; then
+            cp -a "${nginx_dst[$name]}" "$rollback/$name"
+        fi
+        install -m 644 -o root -g root "$nginx_src/$name" "${nginx_dst[$name]}"
+    done
+    if nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx
+        echo "nginx: installed ${nginx_changed[*]}, tested, reloaded"
+    else
+        for name in "${nginx_changed[@]}"; do
+            if [ -f "$rollback/$name" ]; then
+                cp -a "$rollback/$name" "${nginx_dst[$name]}"
+            else
+                rm -f "${nginx_dst[$name]}"
+            fi
+        done
+        echo "nginx: ${nginx_changed[*]} does not parse, rolled back; the running config is untouched" >&2
+        nginx -t || true          # say what was wrong with it, on stderr
+        nginx_failed=1
+    fi
+    rm -rf "$rollback"
+fi
+
+# 4. Self-update this sync script if changed in repository.
 # Through a rename, never a copy: bash reads a script as it runs it, so
 # writing into the file it is reading makes it carry on at the same byte
 # offset in the new text and run the middle of a word ("line 35: e: command
@@ -87,3 +141,8 @@ echo "synced website to $(cd /opt/archivist/website && git rev-parse --short HEA
 if [ -d /opt/archivist/archive/.git ]; then
     echo "archive at $(cd /opt/archivist/archive && git rev-parse --short HEAD): $(cd /opt/archivist/archive && git log -1 --format=%s)"
 fi
+
+# The code and content are deployed either way; a config that would not parse
+# is still a failed deploy, and a green job over a rolled-back vhost is the
+# kind of silence this service has been bitten by before.
+exit $nginx_failed

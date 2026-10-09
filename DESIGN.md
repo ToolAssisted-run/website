@@ -1219,10 +1219,16 @@ archivist, module responsibilities). What matters designwise:
 - **Hosting**: everything on the Infomaniak VPS (Ubuntu LTS). Host nginx
   terminates TLS (certbot) and serves three things: `toolassisted.run`
   statically from `/opt/archivist/site/current` (the archivist's freshest
-  build; `infra/nginx/` is the **record** of our own directives, not an
-  installable copy: certbot rewrote both vhosts in its own shape, nothing in
-  the deploy installs them, and each change goes in by hand followed by
-  `nginx -t` and a reload), `forum.toolassisted.run` proxied to the
+  build; **`infra/nginx/` IS the live configuration** and the deploy installs
+  it: `tar-site-sync` copies the two vhosts, the hardening snippet, the gzip
+  and rate-limit conf.d files into place, runs `nginx -t`, puts the previous
+  files back if the test fails and exits non-zero so CI says so, and reloads
+  only when something changed. It therefore carries certbot's directives
+  verbatim, because the file has to be installable; a `certbot --nginx`
+  reconfiguration has to be committed back or the next deploy undoes it, and
+  `cloudflare-realip.conf` is left out because cron owns it. The files were
+  hand-managed until 2026-10-09, which is how the repo came to be missing the
+  rate limiting that was running), `forum.toolassisted.run` proxied to the
   Docker Discourse in socketed mode (`web.socketed.template.yml`, unix
   socket, no ports), and `/archivist/` on both hosts proxied to the
   archivist on 8100. **GitHub Pages is the hot standby**: every build still
@@ -1356,12 +1362,10 @@ to 2; registration stays open by principle (§1.5).
 - **A member's name is 2 to 30 characters and starts alphanumeric**
   (`settings.USERNAME_RE`, one pattern used at every door that asks who is
   acting). Two, not three, because TASVideos has published authors with
-  two-character names and a floor of three refused them. An approved claim
-  renames the forum account, so a short name can arrive that way whatever
-  the signup minimum is: the two rules have to agree, or a person ends up
-  holding an account the site will not let act. It starts alphanumeric
-  because a name beginning with a dot or a dash is a path that reads as
-  something else.
+  two-character names and a floor of three refused them: the forum's own
+  minimum and this rule have to agree, or a person can hold an account the
+  site will not let act. It starts alphanumeric because a name beginning
+  with a dot or a dash is a path that reads as something else.
 - **Code quality**: `bash tools/sonar.sh` runs a local SonarQube (docker)
   over the repo per `sonar-project.properties`.
 
