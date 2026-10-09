@@ -26,6 +26,7 @@ from settings import (
     COMMITTEE_GROUP,
     DISCOURSE_KEY,
     DISCOURSE_URL,
+    LOG,
     GAMES_CATEGORY_ID,
     MOVIES_CATEGORY_ID,
     ROLE_GROUP,
@@ -148,32 +149,61 @@ def discourse_api(path, method='GET', payload=None):
     with urllib.request.urlopen(req, timeout=20) as resp:
         return json.loads(resp.read() or b'{}')
 
+def _put_reserved_usernames(value):
+    """Write the forum's reserved-name list, pipe separated."""
+    req = urllib.request.Request(
+        DISCOURSE_URL + '/admin/site_settings/reserved_usernames',
+        data=urllib.parse.urlencode({'reserved_usernames': value}).encode(),
+        method='PUT', headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'eien86'})
+    urllib.request.urlopen(req, timeout=20)
+
+
 def unlock_forum_username(claimant, tv_user):
-    """After an attested claim: free the held name and rename the
-    claimant's forum account to it. Best-effort — returns a status string."""
+    """After an attested claim: free the held name and rename the claimant's
+    forum account to it. Returns (renamed, note).
+
+    The reservation IS the name's protection, and dropping it is what lets
+    the rename land, so a rename that fails afterwards has to put it back.
+    One did not. The forum refused a two-character name because its own
+    minimum was three, the reservation stayed dropped, and a name the
+    archive already treated as somebody's sat registerable by anybody for
+    two hours. Whoever took it would have been read as that member, since
+    the record is keyed on the name.
+
+    `renamed` is returned because the member is told what happened: a PM
+    saying the account has been renamed, sent when it has not, is how the
+    person stops looking.
+    """
     _renames['built'] = False   # the author record naming the claimant is written
     if not DISCOURSE_KEY:
-        return 'forum key missing; rename skipped'
+        return False, 'forum key missing; rename skipped'
     new_name = forum_name(tv_user)
     if claimant.lower() == new_name.lower():
-        return 'already using the name'
+        return True, 'already using the name'
+    reserved_before = None
     try:
         # drop the name from the reserved list so the rename can land
         settings = discourse_api('/admin/site_settings.json')
-        current = next((s.get('value') or '' for s in settings['site_settings']
-                        if s['setting'] == 'reserved_usernames'), '')
-        entries = [e for e in current.split('|') if e and e.lower() != tv_user.lower()
+        reserved_before = next((s.get('value') or '' for s in settings['site_settings']
+                                if s['setting'] == 'reserved_usernames'), '')
+        entries = [e for e in reserved_before.split('|')
+                   if e and e.lower() != tv_user.lower()
                    and e.lower() != new_name.lower()]
-        req = urllib.request.Request(
-            DISCOURSE_URL + '/admin/site_settings/reserved_usernames',
-            data=urllib.parse.urlencode({'reserved_usernames': '|'.join(entries)}).encode(),
-            method='PUT', headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'eien86'})
-        urllib.request.urlopen(req, timeout=20)
+        _put_reserved_usernames('|'.join(entries))
         discourse_api(f'/u/{urllib.parse.quote(claimant)}/preferences/username.json',
                       'PUT', {'new_username': new_name})
-        return f'forum account renamed to {new_name}'
-    except Exception as e:
-        return f'rename failed ({e}); an admin can rename manually'
+        return True, f'forum account renamed to {new_name}'
+    except Exception as e:                                      # noqa: BLE001
+        note = f'rename failed ({e})'
+        if reserved_before is not None:
+            try:
+                _put_reserved_usernames(reserved_before)
+                note += f'; {new_name} is reserved again'
+            except Exception as putting_back:                   # noqa: BLE001
+                note += (f'; AND IT IS NO LONGER RESERVED ({putting_back}): until an '
+                         f'admin puts it back, anybody can register {new_name}')
+        LOG.error('claim rename %s -> %s: %s', claimant, new_name, note)
+        return False, note + '; an admin can rename manually'
 
 # ---- the reserved list: names nobody but their owner may register ----
 # Every author name from the imported corpus is reserved in Discourse, which

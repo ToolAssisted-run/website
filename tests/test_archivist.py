@@ -324,6 +324,7 @@ def main():
         DISCORD_MSGS = []          # what the archivist told 'Discord'
         FORUM_POSTS = []           # replies posted into topics
         TOPIC_STATUS = []          # (topic id, status) changes
+        RESERVED_WRITES = []       # every value written to reserved_usernames
 
         class MockHandler(http.server.SimpleHTTPRequestHandler):
             def do_GET(self):                                    # noqa: N802
@@ -480,7 +481,39 @@ def main():
                 self.end_headers()
                 self.wfile.write(out)
 
+            def _ok_json(self):
+                out = b'{}'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(out)))
+                self.end_headers()
+                self.wfile.write(out)
+
             def do_PUT(self):                                    # noqa: N802
+                # The forum has a username minimum of its own, and a rename it
+                # refuses is the case that once left a claimed name unreserved
+                # and registerable: the archivist drops the reservation first
+                # so the rename can land, and has to put it back when it does
+                # not.
+                m_rename = re.fullmatch(r'/u/([^/]+)/preferences/username\.json', self.path)
+                if m_rename:
+                    n = int(self.headers.get('Content-Length') or 0)
+                    try:
+                        want = json.loads(self.rfile.read(n).decode()).get('new_username', '')
+                    except ValueError:
+                        want = ''
+                    if len(want) < 3:
+                        self.send_response(422)
+                        self.send_header('Content-Length', '0')
+                        self.end_headers()
+                        return None
+                    return self._ok_json()
+                if self.path == '/admin/site_settings/reserved_usernames':
+                    n = int(self.headers.get('Content-Length') or 0)
+                    body = self.rfile.read(n).decode()
+                    RESERVED_WRITES.append(
+                        urllib.parse.parse_qs(body).get('reserved_usernames', [''])[0])
+                    return self._ok_json()
                 m_status = re.fullmatch(r'/t/(\d+)/status', self.path)
                 if m_status:
                     n = int(self.headers.get('Content-Length') or 0)
@@ -2816,6 +2849,26 @@ def main():
                             'identity': 'SomeAuthor',
                             'method': 'a second person claiming the same name'})
             ck('a claimed identity cannot be handed to somebody else', c == 409, str(r))
+            # A name the forum will not take: the reservation is dropped so the
+            # rename can land, so a refused rename has to put it back. It did
+            # not once, and SJ's name sat registerable for two hours while the
+            # archive already treated it as his. Whoever took it on the forum
+            # would have been read as that member.
+            reserved_at_first = RESERVED_WRITES[0] if RESERVED_WRITES else None
+            del RESERVED_WRITES[:]
+            c, r, _ = call(U + '/api/claim/attest',
+                           {'key': KEY, 'expert': 'eien86', 'member': 'shortnamer',
+                            'identity': 'Zz',
+                            'method': 'a name the forum refuses to rename to'})
+            ck('a claim whose rename the forum refuses is not reported as renamed',
+               c == 200 and r.get('renamed') is False
+               and 'rename failed' in r.get('rename', ''), str(r))
+            ck('and the name is reserved again, not left for anybody to take',
+               RESERVED_WRITES[-1:] == ['HeldOne|HeldTwo|*admin*']
+               and 'reserved again' in r.get('rename', ''),
+               f'{RESERVED_WRITES} {r.get("rename")!r}')
+            ck('a rename the forum accepts still says so',
+               reserved_at_first is not None, str(reserved_at_first))
 
             # --- SSO consumer (forge the provider) ---
             class NR(urllib.request.HTTPRedirectHandler):

@@ -1113,23 +1113,28 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
                 and locked_result[0] is True):
             return locked_result
         member, open_claim = locked_result[1]
-        rename_note = (unlock_forum_username(member, open_claim['identity'])
-                       if action == 'approved' else 'no rename')
+        renamed, rename_note = (unlock_forum_username(member, open_claim['identity'])
+                                if action == 'approved' else (False, 'no rename'))
         told = send_pm(
             member,
             f'Your claim to the name {open_claim["identity"]} was {action}',
             (f'The Steering Committee {action} your claim to **{open_claim["identity"]}**.\n\n'
-             + (f'Your forum account has been renamed and the name is yours. Your profile '
-                f'now carries an **Import my movies** button for your publications '
-                f'at the site the name comes from, co-authored ones included; '
-                f'importing a co-authored work is your responsibility.\n\n'
+             + (((f'Your forum account has been renamed and the name is yours. '
+                  if renamed else
+                  f'The name is yours here. Renaming your forum account to it did not '
+                  f'go through, so an admin will do that by hand; nothing else waits '
+                  f'on it. ')
+                 + f'Your profile '
+                   f'now carries an **Import my movies** button for your publications '
+                   f'at the site the name comes from, co-authored ones included; '
+                   f'importing a co-authored work is your responsibility.\n\n')
                 if action == 'approved' else '')
              + (f'Reason given: {decision_note}\n\n' if decision_note else '')
              + f'Answered by {caller}. You can reply to this message if you think this '
                f'is wrong; the decision is recorded in the site log either way.'))
         return jsonify({'ok': True, 'identity': open_claim['identity'], 'member': member,
-                        'action': action, 'by': caller, 'rename': rename_note,
-                        'told': told})
+                        'action': action, 'by': caller, 'renamed': renamed,
+                        'rename': rename_note, 'told': told})
 
 
     def _locked_claim_attest(dry_run, expert, identity, member, method):
@@ -1196,9 +1201,9 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
                 and locked_result[0] is True):
             return locked_result
         author_record, = locked_result[1]
-        rename_note = unlock_forum_username(member, identity)
+        renamed, rename_note = unlock_forum_username(member, identity)
         return jsonify({'ok': True, 'identity': author_record['username'], 'member': member,
-                        'attestedBy': expert, 'rename': rename_note,
+                        'attestedBy': expert, 'renamed': renamed, 'rename': rename_note,
                         'note': 'The attestation is public: it names you as the expert who '
                                 'made the call, and the site log carries it. The '
                                 'member can now import their movies from their '
