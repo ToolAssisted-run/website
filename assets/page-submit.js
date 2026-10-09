@@ -1268,8 +1268,8 @@ if (submitForm) {
           return;
         }
         var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
-        if (isMovie && file.size > 100 * 1024 * 1024) {
-          errs.push(file.name + ' exceeds 100 MB');
+        if (isMovie && file.size > 95 * 1024 * 1024) {
+          errs.push(file.name + ' exceeds 95 MB');
           return;
         }
         if (!isMovie && file.size > 128 * 1024) {
@@ -1329,8 +1329,8 @@ if (submitForm) {
           return;
         }
         var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
-        if (isMovie && file.size > 100 * 1024 * 1024) {
-          setAttError(file.name + ' exceeds 100 MB');
+        if (isMovie && file.size > 95 * 1024 * 1024) {
+          setAttError(file.name + ' exceeds 95 MB');
           return;
         }
         if (!isMovie && file.size > 128 * 1024) {

@@ -299,13 +299,18 @@ archive; a `.bk2` is a zip already and packs to itself. Raw size alone would
 turn away the free ones and admit the expensive ones. What grows in the band
 above 32 MB is the working tree a clone writes out, not the history it
 fetches, and 100 MB is the validator's own ceiling and GitHub's hard blob
-limit, so nothing past it could be pushed in any case. An upload has to cross
-nginx, which carries a whole submission (`client_max_body_size 120m` against
-the 108.8 MB a maximal one can hold) and waits 300 s for the reply, because
-the reply waits on that blob being committed and pushed to GitHub and the
-default 60 s would turn a write that succeeded into a 504. The per-IP
-`limit_req` in front of `/archivist/` is what keeps a large body from being
-a flood. Movie frame counts are ≥0 by schema; a movie
+limit, so nothing past it could be pushed in any case. **An upload is bounded
+by Cloudflare, not by us**: the Free plan refuses a request body over 100 MiB
+at the edge, with its own 413 and no origin involvement (measured:
+101,000,000 bytes reaches the service, 115,000,000 does not). nginx is set
+above that (`client_max_body_size 120m`) so that it is never the one to
+refuse what the edge allowed, and waits 300 s for the reply, because the
+reply waits on that blob being committed and pushed to GitHub and the
+default 60 s would turn a write that succeeded into a 504. So a movie-only
+submission can be just under 100 MiB and screenshots eat into that, while
+the self-service import has no such ceiling because it never crosses HTTP:
+it reads the backup already on the host. The per-IP `limit_req` in front of
+`/archivist/` is what keeps a large body from being a flood. Movie frame counts are ≥0 by schema; a movie
 whose own frame rate differs from the system default carries `movie.fps`
 (the fallback rate for older runs whose time still derives from frames).
 

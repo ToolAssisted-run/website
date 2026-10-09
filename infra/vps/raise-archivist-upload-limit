@@ -1,0 +1,71 @@
+#!/bin/bash
+# Raise the archivist's upload ceiling in the live nginx vhosts, once.
+#
+# Why a script and not a one-line edit: the live vhosts are certbot's, not
+# infra/nginx/'s (see the note at the top of those files), so the change has
+# to be surgical. A surgical sed pasted into a terminal is also exactly the
+# thing that gets mangled by line wrapping, and a half-applied nginx config
+# is a dead site. This takes a backup, edits, tests, restores the backup if
+# the test fails, and only then reloads. Run it again and it does nothing.
+#
+#   sudo bash /opt/archivist/website/infra/vps/raise-archivist-upload-limit
+#
+# A movie may be 100 MB (the validator's ceiling, which is GitHub's hard blob
+# limit) and a submission carries screenshots and notes beside it. 120m is
+# deliberately above what can actually arrive: Cloudflare's Free plan refuses
+# a body over 100 MiB at the edge, so the edge, not nginx, is the real upload
+# ceiling, and nginx should never be the one to refuse what the edge allowed.
+#
+# The read timeout goes up because the reply waits on that blob being
+# committed and pushed to GitHub, which outruns nginx's default 60s. Without
+# it nginx answers 504 on a write that in fact succeeded, and the member's
+# retry then hits the duplicate refusal.
+set -euo pipefail
+
+AVAIL=/etc/nginx/sites-available
+STAMP=$(date -u +%Y%m%d%H%M%S)
+FILES=(toolassisted.conf forum.conf)
+
+if [ "$(id -u)" != 0 ]; then
+    echo "run me with sudo" >&2
+    exit 1
+fi
+
+# Only the /archivist/ locations. Discourse's own location in forum.conf also
+# carries client_max_body_size 40m and is deliberately left alone: it is the
+# forum's own upload limit and has nothing to do with movies.
+SED='\%location /archivist/%,/}/ s@^        client_max_body_size 40m;$@        client_max_body_size 120m;\n        proxy_read_timeout 300s;@'
+
+todo=()
+for f in "${FILES[@]}"; do
+    if grep -q 'client_max_body_size 120m;' "$AVAIL/$f"; then
+        echo "$f: already raised, leaving it"
+    else
+        todo+=("$f")
+    fi
+done
+if [ ${#todo[@]} -eq 0 ]; then
+    echo "nothing to do"
+    exit 0
+fi
+
+for f in "${todo[@]}"; do
+    cp -a "$AVAIL/$f" "$AVAIL/$f.bak-uploadlimit-$STAMP"
+    sed -i "$SED" "$AVAIL/$f"
+    echo "$f: edited, backup at $f.bak-uploadlimit-$STAMP"
+done
+
+# A config that does not parse must never be the one nginx reloads, and the
+# backup is worthless if nobody puts it back.
+if ! nginx -t; then
+    echo "nginx -t failed: restoring the backups and leaving the running config alone" >&2
+    for f in "${todo[@]}"; do
+        cp -a "$AVAIL/$f.bak-uploadlimit-$STAMP" "$AVAIL/$f"
+    done
+    nginx -t >/dev/null 2>&1 && echo "restored, and the restored config parses" >&2
+    exit 1
+fi
+
+systemctl reload nginx
+echo "reloaded. effective directives:"
+grep -n 'client_max_body_size\|proxy_read_timeout' "${FILES[@]/#/$AVAIL/}"
