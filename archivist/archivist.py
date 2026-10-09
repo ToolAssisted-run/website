@@ -164,7 +164,10 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-app.config['MAX_CONTENT_LENGTH'] = 96 * 1024 * 1024
+# Above nginx's 120m, so the proxy refuses an oversized body on its
+# Content-Length before any of it is transferred, and this is only the
+# backstop for a request that reaches the service another way.
+app.config['MAX_CONTENT_LENGTH'] = 128 * 1024 * 1024
 
 sso_nonces = {}   # nonce -> expiry
 

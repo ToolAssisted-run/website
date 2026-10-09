@@ -299,9 +299,13 @@ archive; a `.bk2` is a zip already and packs to itself. Raw size alone would
 turn away the free ones and admit the expensive ones. What grows in the band
 above 32 MB is the working tree a clone writes out, not the history it
 fetches, and 100 MB is the validator's own ceiling and GitHub's hard blob
-limit, so nothing past it could be pushed in any case. Anything arriving over
-HTTP is bounded as well by what nginx accepts for one request, which is the
-smaller number for an upload. Movie frame counts are ≥0 by schema; a movie
+limit, so nothing past it could be pushed in any case. An upload has to cross
+nginx, which carries a whole submission (`client_max_body_size 120m` against
+the 108.8 MB a maximal one can hold) and waits 300 s for the reply, because
+the reply waits on that blob being committed and pushed to GitHub and the
+default 60 s would turn a write that succeeded into a 504. The per-IP
+`limit_req` in front of `/archivist/` is what keeps a large body from being
+a flood. Movie frame counts are ≥0 by schema; a movie
 whose own frame rate differs from the system default carries `movie.fps`
 (the fallback rate for older runs whose time still derives from frames).
 
@@ -1210,7 +1214,10 @@ archivist, module responsibilities). What matters designwise:
 - **Hosting**: everything on the Infomaniak VPS (Ubuntu LTS). Host nginx
   terminates TLS (certbot) and serves three things: `toolassisted.run`
   statically from `/opt/archivist/site/current` (the archivist's freshest
-  build; configs in `infra/nginx/`), `forum.toolassisted.run` proxied to the
+  build; `infra/nginx/` is the **record** of our own directives, not an
+  installable copy: certbot rewrote both vhosts in its own shape, nothing in
+  the deploy installs them, and each change goes in by hand followed by
+  `nginx -t` and a reload), `forum.toolassisted.run` proxied to the
   Docker Discourse in socketed mode (`web.socketed.template.yml`, unix
   socket, no ports), and `/archivist/` on both hosts proxied to the
   archivist on 8100. **GitHub Pages is the hot standby**: every build still
