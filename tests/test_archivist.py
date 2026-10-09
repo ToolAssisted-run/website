@@ -224,6 +224,16 @@ def main():
                 'dimensions': [{'key': 'goal', 'name': 'Goal', 'options': [
                     {'key': '100k-glitched', 'label': '100k glitched', 'rule': 'Earn 100k.'}
                 ]}]}, indent=1) + '\n')
+        # The game properties the suite fills in are live data like the roles
+        # and claims above: a real expert set nes/pinball's rta on the site on
+        # 2026-10-07 and 'an expert sets game rta' started failing, because the
+        # value the test writes was already there. Clear the ones it writes, so
+        # the fixture owes the live archive nothing here either.
+        gfile = seed / 'games/nes/pinball/game.json'
+        gj = json.loads(gfile.read_text())
+        for live in ('released', 'unofficial', 'discord', 'website', 'rta'):
+            gj.pop(live, None)
+        gfile.write_text(json.dumps(gj, indent=1) + '\n')
         (rd / 'M900010.bk2').write_bytes(b'test')
         (rd / 'thumb.png').write_bytes(PNG)
         (rd / 'run.json').write_text(json.dumps({
