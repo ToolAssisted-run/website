@@ -1351,7 +1351,17 @@ anonymous `/api/visit` counter counts each address once per run per hour,
 in memory only (no address is stored), so reload loops cannot inflate view
 counts. Account registration is the forum's: Discourse defaults apply
 (email verification, at most 3 accounts per IP per day, its own signup
-rate limits); registration stays open by principle (§1.5).
+rate limits) with one deliberate exception, `min_username_length` lowered
+to 2; registration stays open by principle (§1.5).
+- **A member's name is 2 to 30 characters and starts alphanumeric**
+  (`settings.USERNAME_RE`, one pattern used at every door that asks who is
+  acting). Two, not three, because TASVideos has published authors with
+  two-character names and a floor of three refused them. An approved claim
+  renames the forum account, so a short name can arrive that way whatever
+  the signup minimum is: the two rules have to agree, or a person ends up
+  holding an account the site will not let act. It starts alphanumeric
+  because a name beginning with a dot or a dash is a path that reads as
+  something else.
 - **Code quality**: `bash tools/sonar.sh` runs a local SonarQube (docker)
   over the repo per `sonar-project.properties`.
 

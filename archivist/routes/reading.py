@@ -8,7 +8,7 @@ import urllib.request
 from flask import jsonify, request
 import movieparse
 import providers
-from settings import ARCHIVE, allowed_movie_exts, DISCOURSE_KEY, DISCOURSE_URL, SITE_ORIGIN, THUMB_MAX, movie_refusal
+from settings import ARCHIVE, allowed_movie_exts, DISCOURSE_KEY, DISCOURSE_URL, SITE_ORIGIN, THUMB_MAX, USERNAME_RE, movie_refusal
 from webutil import fail
 from identity import origin_ok, session_user
 from forumapi import _forum_get, forum_account_exists, reserved_usernames
@@ -298,7 +298,7 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
             return fail('log in via the forum to reply', 403)
         if not origin_ok():
             return fail('cross-origin request refused', 403)
-        if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', user):
+        if not USERNAME_RE.fullmatch(user):
             return fail('session username is not valid', 400)
         if not DISCOURSE_KEY:
             return fail('the forum is not configured on this server', 503)

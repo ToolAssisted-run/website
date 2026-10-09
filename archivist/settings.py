@@ -70,6 +70,18 @@ THUMB_FETCH_BASE = os.environ.get('THUMB_FETCH_BASE', 'https://img.youtube.com/v
 
 YT_ID_RE = re.compile(r'(?:youtube\.com/watch\?(?:.*&)?v=|youtu\.be/|youtube\.com/shorts/)([\w-]{6,20})')
 
+# Who a member may be, as the archive will file them: 2 to 30 characters,
+# starting alphanumeric because a name that begins with a dot or a dash is a
+# path that reads as something else.
+#
+# Two is the floor, not three. TASVideos has published authors with
+# two-character names (SJ, co-author of M5363), and a third of this rule was
+# the only thing still refusing them once the forum's own minimum came down.
+# One pattern, used at every door: the same rule lived in four places with
+# two different shapes and two different minimums, so some endpoints took a
+# name the acting-identity check had already refused.
+USERNAME_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{1,29}')
+
 CLAIM_FETCH_BASE = os.environ.get('CLAIM_FETCH_BASE', 'https://tasvideos.org/HomePages/')
 
 SSO_SECRET = os.environ.get('DISCOURSE_CONNECT_SECRET', '')

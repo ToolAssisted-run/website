@@ -66,6 +66,7 @@ from settings import (
     SELF_URL,
     SESSION_TTL,
     SHOT_MAX_EACH,
+    USERNAME_RE,
     movie_refusal,
     SHOT_MAX_TOTAL,
     SITE_ORIGIN,
@@ -362,13 +363,13 @@ def request_identity(form, field='user'):
     if session_name:
         if not origin_ok():
             return None, fail('cross-origin request refused', 403)
-        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{2,29}', session_name):
+        if not USERNAME_RE.fullmatch(session_name):
             return None, fail('session username is not archive-safe', 400)
         return session_name, None
     if form.get('key') != SUBMIT_KEY:
         return None, fail('log in via the forum, or provide the submitter key', 403)
     user = (form.get(field) or '').strip()
-    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{2,29}', user):
+    if not USERNAME_RE.fullmatch(user):
         return None, fail(f'{field} must be a valid username')
     return user, None
 
@@ -1281,7 +1282,7 @@ def _import_identity():
         return None, fail('log in via the forum to import your movies', 403)
     if not origin_ok():
         return None, fail('cross-origin request refused', 403)
-    if not re.fullmatch(r'[A-Za-z0-9._-]{3,30}', session_name):
+    if not USERNAME_RE.fullmatch(session_name):
         return None, fail('session username is not archive-safe', 400)
     author_file = ARCHIVE / 'authors' / f'{selfimport.slugify(session_name)}.json'
     if not author_file.exists():

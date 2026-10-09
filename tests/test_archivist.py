@@ -649,6 +649,15 @@ def main():
                and "frame-ancestors 'none'" in hdr.get('content-security-policy', ''), str(hdr))
             c, r, _ = call(U + '/api/like', {'key': KEY, 'user': '...', 'run': 'M900010', 'dry_run': '1'})
             ck('a username starts with a letter or digit', c == 400, str(r))
+            # TASVideos has published authors with two-character names (SJ, who
+            # co-authored M5363), and a floor of three was the only thing here
+            # still refusing them.
+            c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'SJ', 'run': 'M900010', 'dry_run': '1'})
+            ck('a two-character username is a username', c == 200, str(r))
+            c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'S', 'run': 'M900010', 'dry_run': '1'})
+            ck('one character is still not', c == 400, str(r))
+            c, r, _ = call(U + '/api/like', {'key': KEY, 'user': 'x' * 31, 'run': 'M900010', 'dry_run': '1'})
+            ck('and thirty-one is not', c == 400, str(r))
 
             # --- submit: encode is mandatory; the thumbnail derives from it ---
             # every time-ranked submission states its time: the form's own
