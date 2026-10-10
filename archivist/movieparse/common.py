@@ -141,7 +141,7 @@ BIZ_TO_TASV = {'gen': 'genesis', 'sat': 'saturn', 'dgb': 'gb', 'gb3x': 'gb',
                # for SDLPoP, 35 for DSDA-Doom, 70.09 for OpenSamurai).
                'princeofpersia': 'native', 'princeofpersia2': 'native',
                'swordofthesamurai': 'native', 'syndicate': 'native',
-               'anotherworld': 'native', 'doom': 'native'}
+               'anotherworld': 'native', 'doom': 'native', 'srb2': 'native'}
 CYCLE_BASED_CORES = {'subgbhawk': 4194304, 'gambatte': 2097152}
 VALID_CLOCK_RATES = {'4194304', '2097152', '5369318.18181818', '5320342.5',
                      '33868800', '21477272.7272727', '21281370', '16777216'}
