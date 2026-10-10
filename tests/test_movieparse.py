@@ -638,6 +638,74 @@ def main():
     ck('chimeraProject: a presenting core makes the time a lower bound, and says so',
        any('lower bound' in w for w in res.get('warnings', [])), str(res.get('warnings')))
 
+    # ---- a game core that steps by the game's own tick ----
+    # SDLPoP2 ends a step at the next game tick (5 frames in play, 6 in a
+    # fight) and at a single frame in the title and the scenes, so the rate
+    # the project states is whichever step ran last. Frames over it is an
+    # estimate, and that is said out loud rather than quoted as exact.
+    stepped = json.loads(f_chimeraproject(idle=0).decode())
+    stepped['core']['name'] = 'SDLPoP2'
+    stepped['headers'].update({'Platform': 'PrinceOfPersia2',
+                               'VsyncNumerator': '3146875',
+                               'VsyncDenominator': '269400'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(stepped).encode())
+    ck('chimeraProject: a tick-stepped core states one step\'s rate, and says so',
+       res.get('fps') and abs(res['fps'] - 11.6811) < 1e-3
+       and any("last step's" in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+    ck('chimeraProject: and it still lands in native, by its platform',
+       res.get('system') == 'native', str(res.get('system')))
+    measured = json.loads(json.dumps(stepped))
+    measured['headers'].update({'CycleCount': '63000', 'ClockRate': '70.0863'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(measured).encode())
+    ck('chimeraProject: a measured rate is the run\'s own, so nothing is estimated',
+       not any("last step's" in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+    norate = json.loads(f_chimeraproject(idle=0).decode())
+    norate['core']['name'] = 'SDLPoP'
+    norate['headers'] = {'Platform': 'PrinceOfPersia'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(norate).encode())
+    ck('chimeraProject: a project stating no rate has no stated rate to qualify',
+       res.get('fps') is None
+       and not any("last step's" in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+    fixed = json.loads(f_chimeraproject(idle=0).decode())
+    fixed['core']['name'] = 'OpenSamurai'
+    fixed['headers'].update({'VsyncNumerator': '3146875',
+                             'VsyncDenominator': '44900'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(fixed).encode())
+    ck('chimeraProject: a game core whose step is one frame is not called an estimate',
+       not any("last step's" in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+
+    # ---- what the game's timer counts from ----
+    # A number alone cannot be ranked: SDLPoP2's clock starts after level 4,
+    # and the setting that counts the play before it is what makes the time
+    # run from the start of the game.
+    def with_basis(on, **headers):
+        doc = json.loads(f_chimeraproject().decode())
+        doc['core']['name'] = 'SDLPoP2'
+        doc['headers'].update({'GameTimeMs': '75250', 'GameTimeFrame': '54'})
+        doc['headers'].update(headers)
+        doc['settings'] = {'igt_from_level_1': on}
+        return json.dumps(doc).encode()
+
+    res = movieparse.parse('run.chimeraProject', with_basis(True))
+    ck('chimeraProject: a game time counted from the start says nothing extra',
+       res.get('igt') == 75.25
+       and not any('levels 1 to 4' in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+    res = movieparse.parse('run.chimeraProject', with_basis(False))
+    ck('chimeraProject: a game time that skips the first levels says which it is',
+       res.get('igt') == 75.25
+       and any('levels 1 to 4' in w for w in res.get('warnings', [])),
+       str(res.get('warnings')))
+    nosettings = json.loads(f_chimeraproject().decode())
+    nosettings['headers'].update({'GameTimeMs': '75250', 'GameTimeFrame': '54'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(nosettings).encode())
+    ck('chimeraProject: a project with no settings at all still reads its timer',
+       res.get('igt') == 75.25, str(res)[:200])
+
     cyc = json.loads(f_chimeraproject(idle=0).decode())
     cyc['headers'].update({'CycleCount': '1000000', 'ClockRate': '1000000',
                            'VsyncNumerator': '60', 'VsyncDenominator': '1'})

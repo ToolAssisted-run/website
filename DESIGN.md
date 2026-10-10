@@ -80,9 +80,21 @@ so there is nothing to call its platform: Prince of Persia, Prince of Persia
 are all filed under `native/<slug>`, and their project's Platform header (the
 core's `systemId`) maps there in `BIZ_TO_TASV`. The system's stored rate is a
 placeholder and nothing is timed by it: every game core states its own in the
-movie (12 fps for SDLPoP, 11.68 for SDLPoP2, 12.5 for rawgl, 16 for
-SyndicatFX, 35 for DSDA-Doom, 70.09 for OpenSamurai), and `run_fps` prefers
-the movie's. A standalone `.lmp` Doom demo still lands in `pc` at
+movie (12.5 fps for rawgl, 16 for SyndicatFX, 35 for DSDA-Doom, 70.09 for
+OpenSamurai), and `run_fps` prefers the movie's. **A core whose step is the
+game's own tick has no single rate**: SDLPoP and SDLPoP2 run the frames up to
+the next tick, which is their `base_speed` in play and `fight_speed` in a
+fight, and one frame in the title, the story scenes and the menus, so a
+SDLPoP2 run moves between 14.02, 11.68 and 70.09 fps (70.0863 Hz over 5, 6
+and 1) and down to 1 fps for a step that reads nothing. The project states
+the rate of the step that ran last, so `movieparse` takes it as the rate but
+says in a warning that a duration derived from the frame count is an
+estimate; `VARIABLE_STEP_CORES` holds the cores this is true of. A project
+that carries `CycleCount` over `ClockRate` needs none of that, because the
+measured rate IS the run's average and `_chimera_cycle_rate` prefers it: that
+is the way for such a core to state its timing exactly, and the reason a
+category over one of them is better ranked by the game's own clock (below)
+than by a time derived from frames. A standalone `.lmp` Doom demo still lands in `pc` at
 `DOOM_FPS`, which is the one place where the same run reaches two systems by
 two routes.
 
@@ -383,7 +395,14 @@ the machine ran to the end since the last edit and strips otherwise (SDLPoP
 and SDLPoP2 carry it). `movieparse` reads it as `igt` seconds and
 `/api/movie/inspect` hands it over. It is never offered for the run's time:
 a game counts its clock its own way (SDLPoP's stops in cutscenes), so it
-belongs to the metric that ranks by it and to nothing else. **Importing is a copy/paste,
+belongs to the metric that ranks by it and to nothing else. **What the clock
+counts from is part of the number**: a core may let the player choose, and
+SDLPoP2 does (its clock starts only after level 4, and `igt_from_level_1`
+adds the play before it), so two runs counted from different places are not
+comparable. The project records the setting, the header does not, so
+`movieparse` reads the project's settings and warns when the basis is not the
+one that counts from the start; `IGT_BASIS_SETTINGS` holds the settings this
+is true of. **Importing is a copy/paste,
 never a commitment**: it only writes the value into the field, which stays
 hand-editable like any typed value. Every import control sits on the same
 line as the field it fills, and its sources track the form live: removing

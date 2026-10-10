@@ -187,7 +187,7 @@ def _bk2_input_frames(archive):
     return frames
 
 
-def _chimera_game_time(lower, log_frames, warnings):
+def _chimera_game_time(lower, log_frames, settings, warnings):
     """Read the game's own timer when Chimera's project carries one."""
     raw = lower.get('gametimems')
     if raw is None or str(raw).strip() == '':
@@ -211,6 +211,11 @@ def _chimera_game_time(lower, log_frames, warnings):
             warnings.append(f'the game time was read at frame {frame}, and the '
                             f'input log is {log_frames} frames: it may predate '
                             f'an edit')
+    # The number alone does not say what it counts from, and two runs counted
+    # from different places cannot be ranked against each other.
+    for key, says in IGT_BASIS_SETTINGS.items():
+        if key in settings and settings[key] is False:
+            warnings.append(says)
     return ms / 1000.0
 
 
@@ -254,7 +259,17 @@ def parse_chimeraproject(data):
                         f'picture, so a game that drops frames makes this time a '
                         f'lower bound')
 
-    igt = _chimera_game_time(lower, len(lines), warnings)
+    # A game core whose step is the game's own tick states the last step's
+    # rate, not the run's, so a duration derived from it is an estimate.
+    if (fps is not None and str(core_name).strip().lower() in VARIABLE_STEP_CORES
+            and not (lower.get('cyclecount') and lower.get('clockrate'))):
+        warnings.append(f'{core_name} ends a step at the game\'s own tick, so '
+                        f'the stated rate is the last step\'s and not the '
+                        f'run\'s: a time derived from the frame count is an '
+                        f'estimate')
+
+    settings = doc.get('settings') if isinstance(doc.get('settings'), dict) else {}
+    igt = _chimera_game_time(lower, len(lines), settings, warnings)
     frames = _chimera_last_input(doc, lower, lines, warnings)
     return _ok(fmt, frames, rerecords, 'power-on', system, fps, warnings, igt)
 

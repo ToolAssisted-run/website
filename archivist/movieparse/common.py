@@ -169,6 +169,31 @@ TASPROJ_INVALID = ['greenzone']
 # marker.
 CHIMERA_LAST_INPUT_KEYS = ('lastInputFrame', 'lastInput')
 
+# Game cores that end a step at the GAME's tick rather than at a fixed
+# interval, so the project's VsyncNumerator/VsyncDenominator is the rate of
+# the one step that ran last and not the rate the run held. SDLPoP and
+# SDLPoP2 step the frames up to the next game tick (their own frame_delay,
+# base_speed in play and fight_speed in a fight) and a single frame in the
+# title, the story scenes and the menus, so one run visits several rates:
+# for SDLPoP2 that is 70.0863 / 5, / 6 and / 1 Hz, and up to / 70 for a step
+# that reads nothing. Frames over such a rate is an estimate, and the project
+# says so rather than being quoted as exact. A core that writes CycleCount
+# and ClockRate needs none of this: the measured rate IS the run's average,
+# and _chimera_cycle_rate prefers it.
+VARIABLE_STEP_CORES = {'sdlpop', 'sdlpop2'}
+
+# A game core may let the player choose what its own timer counts from, which
+# changes what the time MEANS and so what it may be ranked against. SDLPoP2's
+# clock starts only with the first story scene after level 4; its
+# igt_from_level_1 setting (the default) adds the play before that, so the
+# time runs from the start of level 1. The project records the setting; the
+# header carries only the number, so the basis is stated here instead.
+IGT_BASIS_SETTINGS = {
+    'igt_from_level_1': ("the game's clock starts after level 4, and this "
+                         "project turned off counting the play before it: "
+                         "levels 1 to 4 are not in this time"),
+}
+
 
 def _chimera_neutral_axes(rows):
     """The value each analog axis rests at, taken as the one it holds most.
@@ -202,4 +227,4 @@ def _chimera_split(line):
 
 
 
-__all__ = ['NTSC_NES', 'NTSC_SNES', 'PAL_SNES', 'NTSC_SAT', 'NTSC_PSX', 'PAL_PSX', 'DOOM_FPS', '_ok', '_err', '_lines', '_value_for', '_has_value', '_bool_for', '_int_for', '_pipe_header_and_frames', 'BIZ_TO_TASV', 'CYCLE_BASED_CORES', 'VALID_CLOCK_RATES', 'BK2_INVALID', 'TASPROJ_INVALID', 'CHIMERA_LAST_INPUT_KEYS', '_chimera_neutral_axes', '_chimera_split', 'gzip', 'io', 'json', 'math', 're', 'struct', 'tarfile', 'zipfile', 'zlib', 'ET']
+__all__ = ['NTSC_NES', 'NTSC_SNES', 'PAL_SNES', 'NTSC_SAT', 'NTSC_PSX', 'PAL_PSX', 'DOOM_FPS', '_ok', '_err', '_lines', '_value_for', '_has_value', '_bool_for', '_int_for', '_pipe_header_and_frames', 'BIZ_TO_TASV', 'CYCLE_BASED_CORES', 'VALID_CLOCK_RATES', 'BK2_INVALID', 'TASPROJ_INVALID', 'CHIMERA_LAST_INPUT_KEYS', 'VARIABLE_STEP_CORES', 'IGT_BASIS_SETTINGS', '_chimera_neutral_axes', '_chimera_split', 'gzip', 'io', 'json', 'math', 're', 'struct', 'tarfile', 'zipfile', 'zlib', 'ET']
