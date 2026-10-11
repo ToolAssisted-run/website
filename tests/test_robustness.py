@@ -282,6 +282,108 @@ def main():
             ck('intake recovers by itself once origin answers again',
                code == 200, str(r)[:120])
 
+            # ---------- a file the service may not write: said, not a crash ----------
+            # The deploy pulled the archive as root, so a file a direct push
+            # had changed came back root's: the unprivileged service could
+            # read systems.json and never write it. write_text raised
+            # PermissionError, no handler knew it, Flask answered with an
+            # HTML page, and the page (which parses every answer as JSON)
+            # told somebody adding a system "network error; the archivist may
+            # be unreachable" about a service that was up. Only the two
+            # failures somebody had already met answered in JSON, so the rule
+            # is the general one now: nothing unforeseen answers in anything
+            # else. A process that is root ignores the mode, so there is
+            # nothing to refuse there.
+            if os.name == 'nt' or os.geteuid() != 0:
+                git('fetch', '-q', 'origin', cwd=other)
+                before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
+                systems_file = work / 'systems.json'
+                was = systems_file.stat().st_mode
+                newsys = {'key': KEY, 'expert': 'Member', 'name': 'Probe Machine'}
+                systems_file.chmod(0o444)
+                try:
+                    code, r, hdrs = call(U + '/api/system/create', dict(newsys),
+                                         origin='https://toolassisted.run')
+                finally:
+                    systems_file.chmod(was)
+                ck('a file the service may not write is a refusal it can state',
+                   code == 500 and 'raw' not in r and r.get('ok') is False, str(r)[:200])
+                ck('and it names the file, so the operator knows where to look',
+                   'systems.json' in str(r.get('error', '')), str(r)[:200])
+                ck('and says nothing was written, and that trying again will not help',
+                   'nothing was written' in str(r.get('error', '')).lower()
+                   and 'again' in str(r.get('error', '')), str(r)[:300])
+                ck('and the page is allowed to read it (CORS survives the failure)',
+                   {k.lower(): v for k, v in hdrs.items()}.get(
+                       'access-control-allow-origin') == 'https://toolassisted.run',
+                   str(hdrs)[:200])
+                ck('and no path on the server is given away',
+                   str(work) not in json.dumps(r), str(r)[:300])
+                git('fetch', '-q', 'origin', cwd=other)
+                ck('nothing was committed by the write that could not happen',
+                   before == git('rev-parse', 'origin/main', cwd=other).stdout.strip())
+                code, r, _ = call(U + '/api/system/create', dict(newsys))
+                ck('the same request lands once the file is the service\'s again',
+                   code == 200 and r.get('key') == 'probe-machine', str(r)[:200])
+
+            # ---------- git failing in the middle of a write ----------
+            # The other half of the same cause: an object directory root made
+            # is one the service cannot add to, so `git add` fails for
+            # whichever write happens to hash into it, after the files are
+            # already changed on disk. That is an error nobody foresaw by
+            # name, and it still has to answer in JSON, commit nothing, and
+            # not leave what it half wrote to be read as the record.
+            if os.name != 'nt' and os.geteuid() != 0:
+                git('fetch', '-q', 'origin', cwd=other)
+                before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
+                objects = work / '.git' / 'objects'
+                locked = [objects] + [d for d in objects.iterdir() if d.is_dir()]
+                modes = {d: d.stat().st_mode for d in locked}
+                second = {'key': KEY, 'expert': 'Member', 'name': 'Second Probe'}
+                for d in locked:
+                    d.chmod(0o555)
+                try:
+                    code, r, _ = call(U + '/api/system/create', dict(second))
+                finally:
+                    for d, mode in modes.items():
+                        d.chmod(mode)
+                ck('a failure nobody foresaw still answers in JSON',
+                   code == 500 and 'raw' not in r and r.get('ok') is False, str(r)[:200])
+                ck('and does not claim the service is unreachable',
+                   'unreachable' not in str(r.get('error', '')), str(r)[:200])
+                ck('and carries a reference the operator can find in the log',
+                   re.fullmatch(r'[0-9a-f]{8}', str(r.get('ref', ''))) is not None
+                   and str(r.get('ref')) in (td / 'log').read_text(), str(r)[:200])
+                ck('and gives away neither the path nor the error text',
+                   str(work) not in json.dumps(r) and 'insufficient' not in json.dumps(r),
+                   str(r)[:300])
+                git('fetch', '-q', 'origin', cwd=other)
+                ck('nothing was committed by the write git could not store',
+                   before == git('rev-parse', 'origin/main', cwd=other).stdout.strip())
+                # what it half wrote is still on disk; the very next request
+                # must read origin's record, not that
+                code, r, _ = call(U + '/api/system/create', dict(second, dry_run='1'))
+                ck('what a failed write left behind is not read as the record',
+                   code == 200 and 'second-probe' in r.get('would_create', {}), str(r)[:200])
+                code, r, _ = call(U + '/api/submit', dict(sub),
+                                  files={'movie': ('m.bk2', mkarchive.unique_movie())})
+                ck('intake is healthy after git failed mid-write', code == 200, str(r)[:120])
+
+            # ---------- Flask's own refusals are JSON under /api/ too ----------
+            # A route that is not there, the wrong method: HTML pages as well,
+            # and so "network error" to the page that asked.
+            code, r, _ = call(U + '/api/no/such/thing', {'key': KEY})
+            ck('a route that is not there says so in JSON',
+               code == 404 and 'raw' not in r and r.get('ok') is False
+               and bool(r.get('error')), str(r)[:200])
+            code, r, _ = call(U + '/api/me', {'x': '1'})
+            ck('the wrong method says so in JSON',
+               code == 405 and 'raw' not in r and r.get('ok') is False
+               and bool(r.get('error')), str(r)[:200])
+            code, r, _ = call(U + '/no-such-page', method='GET')
+            ck('a page outside the API keeps the answer a browser expects',
+               code == 404 and 'raw' in r, str(r)[:200])
+
             # ---------- the archive is valid throughout ----------
             check = td / 'check'
             subprocess.run(['git', 'clone', '-q', f'file://{origin}', str(check)], check=True)

@@ -300,14 +300,32 @@ export function actionBtn(form) {
     form.querySelector('button')
   );
 }
+// what to say about an answer that arrived and was not JSON: something in
+// front of the archivist answered for it (a proxy's own error page), or it
+// failed with nothing to say. Either way a request got there and came back,
+// so "unreachable" is the one thing it is not, and saying so sent people to
+// look at a service that was up
+export function unreadable(r) {
+  return (
+    'the archivist answered (HTTP ' +
+    r.status +
+    ') with nothing this page can read. It is reachable. Nothing is ' +
+    'confirmed as written: reload to see what stands before trying again'
+  );
+}
 // POST a form to the archivist; resolves {ok, j} and never rejects
 export function post(path, fd, btn) {
   busy(btn, true);
   return fetch(api + path, { method: 'POST', body: fd, credentials: 'include' })
     .then(function (r) {
-      return r.json().then(function (j) {
-        return { ok: r.ok, j: j };
-      });
+      return r.json().then(
+        function (j) {
+          return { ok: r.ok, j: j };
+        },
+        function () {
+          return { ok: false, j: { error: unreadable(r) } };
+        }
+      );
     })
     .catch(function () {
       return {

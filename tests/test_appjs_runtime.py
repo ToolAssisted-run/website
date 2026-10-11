@@ -748,6 +748,96 @@ console.log(JSON.stringify(results));
                sres.get('scoreAsc') == 'row-C,row-B,row-A,row-D' and sres.get('scoreAscClass'),
                str(sres))
 
+        # ---- what the page says about an answer it cannot read ----
+        # post() parses every answer as JSON. An HTML error page (a proxy's
+        # own, or a failure the archivist had no words for) used to land in
+        # the same catch as a request that never left, so a service that was
+        # up and had just answered was reported "unreachable", and people
+        # went looking in the wrong place. The two are told apart now.
+        post_test = td / 'test-post.mjs'
+        post_test.write_text(r"""
+global.window = {
+  TAR: { api: 'https://forum.example/archivist', rel: '', v: 'test' },
+  location: { pathname: '/', href: 'https://toolassisted.run/', search: '' },
+  localStorage: { getItem: () => null, setItem(){}, removeItem(){} },
+  sessionStorage: { getItem: () => null, setItem(){}, removeItem(){} },
+  addEventListener(){},
+};
+global.localStorage = window.localStorage;
+global.sessionStorage = window.sessionStorage;
+global.document = {
+  documentElement: { dataset: {}, classList: { add(){}, remove(){} } },
+  head: { appendChild(){} },
+  body: { appendChild(){}, classList: { add(){}, remove(){} } },
+  getElementById: () => null,
+  querySelector: () => null,
+  querySelectorAll: () => [],
+  addEventListener(){},
+  createElement: (tag) => ({
+    tagName: tag.toUpperCase(), className: '', textContent: '', children: [],
+    dataset: {}, classList: { add(){}, remove(){}, contains: () => false },
+    setAttribute(){}, getAttribute: () => null, appendChild(){}, addEventListener(){}
+  }),
+  cookie: '',
+};
+global.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, loggedIn: false }) });
+
+const { post } = await import(""" + json.dumps(module_url(assets_dir, 'app.js')) + r""");
+
+const results = {};
+const asked = [];
+function answering(make) {
+  global.fetch = (url, opts) => { asked.push([String(url), opts && opts.method]); return make(); };
+}
+
+answering(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, key: 'nes' }) }));
+results.good = await post('/api/system/create', null, null);
+
+answering(() => Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ ok: false, error: 'already here' }) }));
+results.refused = await post('/api/system/create', null, null);
+
+// Flask's own page for a failure it had no handler for: not JSON
+answering(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.reject(new SyntaxError('Unexpected token <')) }));
+results.crashed = await post('/api/system/create', null, null);
+
+// a proxy's page for a body it would not carry
+answering(() => Promise.resolve({ ok: false, status: 413, json: () => Promise.reject(new SyntaxError('Unexpected token <')) }));
+results.proxied = await post('/api/submit', null, null);
+
+// the request never left, or never came back
+answering(() => Promise.reject(new TypeError('Failed to fetch')));
+results.offline = await post('/api/system/create', null, null);
+
+results.asked = asked;
+console.log(JSON.stringify(results));
+""", encoding='utf-8')
+        pr = subprocess.run([node, str(post_test)], capture_output=True, text=True,
+                            encoding='utf-8', errors='replace', timeout=30)
+        ck('the posting script runs under node', pr.returncode == 0, pr.stderr[-300:])
+        if pr.returncode == 0:
+            pres = json.loads(pr.stdout.strip().splitlines()[-1])
+            ck('a form is posted to the archivist the page was built for',
+               pres['asked'][0] == ['https://forum.example/archivist/api/system/create', 'POST'],
+               str(pres['asked'][:1]))
+            ck('an answer that says yes is a yes',
+               pres['good']['ok'] is True and pres['good']['j'].get('key') == 'nes', str(pres['good']))
+            ck('a refusal carries the archivist\'s own words',
+               pres['refused']['ok'] is False and pres['refused']['j'].get('error') == 'already here',
+               str(pres['refused']))
+            crashed = str(pres['crashed']['j'].get('error', ''))
+            ck('an answer the page cannot read is a failure, with its status',
+               pres['crashed']['ok'] is False and 'HTTP 500' in crashed, crashed)
+            ck('and is never called unreachable: something did answer',
+               'unreachable' not in crashed and 'network error' not in crashed, crashed)
+            ck('and says nothing is confirmed, rather than that nothing happened',
+               'confirmed' in crashed and 'reload' in crashed, crashed)
+            ck('a proxy\'s error page is told the same way, by its own status',
+               'HTTP 413' in str(pres['proxied']['j'].get('error', '')), str(pres['proxied']))
+            ck('a request that never came back is still the network\'s failure',
+               pres['offline']['ok'] is False
+               and 'network error' in str(pres['offline']['j'].get('error', '')),
+               str(pres['offline']))
+
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)
 

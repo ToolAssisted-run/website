@@ -2,7 +2,15 @@
 // backup snapshot for a claimed member's unarchived publications, pick,
 // import with a progress bar and log. Moved out of app.js: these ids
 // exist only on /import/.
-import { api, mePromise, el, note, waitBuilt, busy } from './app.js';
+import {
+  api,
+  mePromise,
+  el,
+  note,
+  waitBuilt,
+  busy,
+  unreadable,
+} from './app.js';
 
 // /import/ page: disclaimer -> auto-scan -> import with progress bar + log
 var impMsg = document.getElementById('imp-msg');
@@ -25,7 +33,9 @@ if (impMsg && api) {
       body: fd || undefined,
     })
       .then(function (r) {
-        return r.json();
+        return r.json().catch(function () {
+          return { ok: false, error: unreadable(r) };
+        });
       })
       .catch(function () {
         return {

@@ -17,6 +17,7 @@ and it talks to this service through these endpoints alone.
 """
 import base64
 import datetime
+import errno
 import hashlib
 import hmac
 import io
@@ -36,6 +37,7 @@ import urllib.parse
 import urllib.request
 
 from flask import Flask, jsonify, make_response, redirect, render_template, request
+from werkzeug.exceptions import HTTPException
 
 import movieparse
 import providers
@@ -95,6 +97,7 @@ from gitstore import (
     checkout_branch,
     commit_push,
     current_serial,
+    distrust_checkout,
     duplicate_of,
     find_run,
     load_game,
@@ -211,6 +214,79 @@ def archive_invalid(e):
                     'error': f'the archive will not hold this as written: '
                              f'{first}. Nothing was written.',
                     'detail': said[:2000]}), 422
+
+# What stops a process writing a file that is there: not its to write
+# (EACCES, EPERM), a filesystem gone read-only, or no room left.
+_CANNOT_WRITE = {errno.EACCES, errno.EPERM, errno.EROFS, errno.ENOSPC, errno.EDQUOT}
+
+
+def _archive_file_refused(e):
+    """The archive file this server was not allowed to write, or None.
+
+    As a path inside the archive, which is public, and never the path on this
+    server. An OSError about anything else (a socket, a file outside the
+    archive) is not this failure and gets no special wording.
+    """
+    if not isinstance(e, OSError) or e.errno not in _CANNOT_WRITE or not e.filename:
+        return None
+    try:
+        return pathlib.Path(os.fsdecode(e.filename)).resolve().relative_to(
+            ARCHIVE.resolve()).as_posix()
+    except (ValueError, OSError):
+        return None
+
+
+@app.errorhandler(Exception)
+def unforeseen_failure(e):
+    """Whatever fails, the answer under /api/ is JSON the page can read.
+
+    Who: every endpoint, for any exception no other handler claims
+    Reads: the exception, and the request's path
+    Answers: under /api/, {ok: false, error, ref} with the failure's status;
+        elsewhere a line of plain text. `ref` is in the log beside the
+        traceback, which the answer never carries.
+
+    The page parses every answer as JSON and reports one it cannot parse as
+    "network error; the archivist may be unreachable". So each failure that
+    reached Flask unhandled sent people to look at a service that was up:
+    first a revoked credential, then a file the deploy had left root's, which
+    this unprivileged service could read and not write. Handling them one at
+    a time only ever covered the last one met, so this is the rule instead,
+    and it covers Flask's own refusals too (no such route, wrong method, body
+    too large), which were HTML pages as well.
+
+    What failed may have changed files it never committed, so the checkout is
+    not trusted afterwards: the next request puts it back as origin has it.
+    """
+    api_call = request.path.startswith('/api/')
+    if isinstance(e, HTTPException):
+        if not api_call or e.response is not None:
+            return e
+        return jsonify({'ok': False, 'error': e.description or e.name}), e.code or 500
+    ref = secrets.token_hex(4)
+    LOG.error('unforeseen failure %s in %s %s', ref, request.method, request.path,
+              exc_info=e)
+    distrust_checkout()
+    if not api_call:
+        return make_response((f'Something failed here that should not have. '
+                              f'Reference {ref}.\n', 500,
+                              {'Content-Type': 'text/plain; charset=utf-8'}))
+    refused = _archive_file_refused(e)
+    if refused:
+        why = (e.strerror or 'refused').lower()
+        return jsonify({'ok': False, 'ref': ref,
+                        'error': f'this server is not able to write {refused} '
+                                 f'({why}), so nothing was written. Trying again '
+                                 f'will not help: the site\'s operator has to put '
+                                 f'it right, and this is the reference to give '
+                                 f'them: {ref}.'}), 500
+    return jsonify({'ok': False, 'ref': ref,
+                    'error': f'the archivist failed in a way it did not foresee, '
+                             f'so nothing is confirmed as written. Reload the page '
+                             f'to see what stands. If it keeps happening, tell the '
+                             f'staff what you were doing and give them this '
+                             f'reference: {ref}.'}), 500
+
 
 @app.after_request
 def cors(resp):

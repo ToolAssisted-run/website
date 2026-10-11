@@ -177,6 +177,20 @@ def _remote_branch_head():
             remote_head = None
     return remote_target, remote_head
 
+def distrust_checkout():
+    """Have the next request start from origin, whoever makes it.
+
+    A write that fails somewhere nobody foresaw has already changed files on
+    disk and committed none of them. Reads decide from the working tree and
+    refresh it at most once every REFRESH_MAX_AGE seconds, so for that long a
+    system that was never created answered "already a system here" to the
+    person trying again. Forgetting when the tree was last refreshed makes
+    the very next request fetch, find the tree dirty, and put it back the way
+    origin has it.
+    """
+    _last_refresh['t'] = 0.0
+
+
 def refresh_archive(max_age=None):
     """Make sure the checkout is current before anything is decided from it.
 
