@@ -13,26 +13,78 @@ set -euo pipefail
 # a line like `GIT_SSH_COMMAND=ssh -i /path -o ...` means "run -i" to a shell.
 unset GIT_SSH_COMMAND
 
+# Git in the archive checkout runs as whoever owns the checkout, and that is
+# not this script: the service has been unprivileged since 2026-10-07 and
+# this is root. Whatever root's git rewrites comes back root's, which the
+# service can read and never write. systems.json sat that way for three days
+# after a direct push (root's `reset --hard` had brought it in), and adding a
+# system answered with a crash the page reported as "network error". An
+# object directory root's fetch creates does the same to `git add`, for
+# whichever later write happens to hash into it. On a host whose checkout is
+# root's, this is root as it always was.
+archive=/opt/archivist/archive
+archive_owner=root
+if [ -d "$archive" ]; then
+    archive_owner=$(stat -c %U "$archive")
+fi
+
+as_archive_owner() {
+    if [ "$archive_owner" = root ]; then
+        "$@"
+        return
+    fi
+    # runuser keeps root's environment and git reads its configuration from
+    # HOME: the owner's own, so nothing of root's is consulted or written to
+    local home
+    home=$(getent passwd "$archive_owner" | cut -d: -f6) || home=
+    runuser -u "$archive_owner" -- env HOME="${home:-/nonexistent}" "$@"
+}
+
+# Anything in the checkout that is not its owner's is something the service
+# will fail to rewrite at the moment a member asks it to. Nothing here hands
+# it back: this says so, where a deploy is watched, and fails the deploy,
+# because a green job over a checkout the service cannot write is the kind
+# of silence this has already cost three days.
+archive_strays() {
+    [ -d "$archive" ] && [ "$archive_owner" != root ] || return 0
+    local strays count
+    strays=$(find "$archive" ! -user "$archive_owner" -print 2>/dev/null || true)
+    [ -n "$strays" ] || return 0
+    count=$(printf '%s\n' "$strays" | wc -l)
+    {
+        echo "archive: $count entries under $archive are not $archive_owner's, so the service cannot rewrite them:"
+        printf '%s\n' "$strays" | head -10 | sed 's/^/  /'
+        [ "$count" -le 10 ] || echo "  ... and $((count - 10)) more"
+        echo "archive: put it right with: sudo chown -R $archive_owner: $archive"
+    } >&2
+    return 1
+}
+
 # An archive checkout with no key of its own cannot fetch at all: git then
-# runs as root with no identity and GitHub answers "Permission denied
-# (publickey)", which stopped every deploy on 2026-09-14. Give it the
-# archivist's key, once, rather than requiring a hand-configured host.
-if [ -d /opt/archivist/archive/.git ] && [ -f /opt/archivist/deploy_key ] \
-   && ! git -C /opt/archivist/archive config --local --get core.sshCommand >/dev/null; then
-    git -C /opt/archivist/archive config --local core.sshCommand \
+# runs with no identity and GitHub answers "Permission denied (publickey)",
+# which stopped every deploy on 2026-09-14. Give it the archivist's key,
+# once, rather than requiring a hand-configured host.
+if [ -d "$archive/.git" ] && [ -f /opt/archivist/deploy_key ] \
+   && ! as_archive_owner git -C "$archive" config --local --get core.sshCommand >/dev/null; then
+    as_archive_owner git -C "$archive" config --local core.sshCommand \
         'ssh -i /opt/archivist/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 fi
 
-# 1. Update the archive repository checkout if present
-if [ -d /opt/archivist/archive/.git ]; then
-    (
-        cd /opt/archivist/archive
-        git rebase --abort 2>/dev/null || true
-        git merge --abort 2>/dev/null || true
-        git fetch -q origin || true
-        git reset -q --hard origin/main || true
-        git clean -qfd || true
-    ) || true
+# 1. Update the archive repository checkout if present. The service keeps
+# its own checkout current (every write fetches, and reads refresh it), so
+# this is a head start for the restart below and never the only way content
+# arrives: a pull that fails here is said and is not a failed deploy.
+archive_failed=0
+if [ -d "$archive/.git" ]; then
+    as_archive_owner git -C "$archive" rebase --abort 2>/dev/null || true
+    as_archive_owner git -C "$archive" merge --abort 2>/dev/null || true
+    if as_archive_owner git -C "$archive" fetch -q origin; then
+        as_archive_owner git -C "$archive" reset -q --hard origin/main || true
+        as_archive_owner git -C "$archive" clean -qfd || true
+    else
+        echo "archive: could not fetch as $archive_owner; the service refreshes its own checkout" >&2
+    fi
+    archive_strays || archive_failed=1
 fi
 
 # 2. Update website checkout and archivist modules
@@ -138,11 +190,12 @@ fi
 
 systemctl restart archivist
 echo "synced website to $(cd /opt/archivist/website && git rev-parse --short HEAD): $(cd /opt/archivist/website && git log -1 --format=%s)"
-if [ -d /opt/archivist/archive/.git ]; then
-    echo "archive at $(cd /opt/archivist/archive && git rev-parse --short HEAD): $(cd /opt/archivist/archive && git log -1 --format=%s)"
+if [ -d "$archive/.git" ]; then
+    echo "archive at $(as_archive_owner git -C "$archive" rev-parse --short HEAD): $(as_archive_owner git -C "$archive" log -1 --format=%s), pulled as $archive_owner"
 fi
 
 # The code and content are deployed either way; a config that would not parse
 # is still a failed deploy, and a green job over a rolled-back vhost is the
-# kind of silence this service has been bitten by before.
-exit $nginx_failed
+# kind of silence this service has been bitten by before. The same goes for
+# a checkout the service cannot write.
+exit $(( nginx_failed || archive_failed ))

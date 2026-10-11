@@ -24,11 +24,12 @@ guards, and the few things deliberately left open.
 | `tests/test_movieparse.py` | 124 | parser fixtures, fuzz, confusion, bombs |
 | `tests/test_derivation.py` | 32 | status/ranking, points, stars, history, news, case parity |
 | `tests/test_security.py` | 35 | CSRF, sessions, SSO, traversal, magic bytes, scopes |
-| `tests/test_robustness.py` | 12 | git recovery, concurrency, rollback |
+| `tests/test_robustness.py` | 12 | git recovery, concurrency, rollback, failures nobody foresaw answering in JSON |
 | `tests/test_preview_parity.py` | 30 | server vs client markup renderer |
 | `tests/test_archivist.py` | 89 | the whole community loop end to end |
 | `tests/test_providers.py` | 62 | video platform parsing, refusals, thumbnails |
 | `tests/test_layout.py` | 16 | what a browser actually measures on the page |
+| `tests/test_deploy_script.py` | 30 | the VPS deploy: archive git runs as the checkout's owner, strays fail the deploy |
 
 `tests/mkarchive.py` builds a minimal, fully-controlled archive; the suites
 that assert exact numbers or "nothing anywhere contains X" use it so real

@@ -56,7 +56,7 @@ jobs:
           fi
           changed=$(git diff --name-only "$BEFORE" "${{ github.sha }}")
           echo "$changed"
-          if echo "$changed" | grep -qE '^(archivist/|generator/|assets/|tests/|\.github/|\.htaccess)'; then
+          if echo "$changed" | grep -qE '^(archivist/|generator/|assets/|tests/|infra/|\.github/|\.htaccess)'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
@@ -157,6 +157,12 @@ jobs:
 
       - name: Client runtime tests
         run: python3 website/tests/test_appjs_runtime.py
+
+      # The script the sync-vps job below runs as root on the live origin.
+      # It went untested, and a push that touched only infra/ skipped this
+      # job altogether, which is how it came to pull the archive as root.
+      - name: Deploy script tests
+        run: python3 website/tests/test_deploy_script.py
 
       - name: Robustness tests
         if: needs.scope.outputs.archivist == 'true'

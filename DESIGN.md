@@ -918,6 +918,34 @@ archivist, module responsibilities). What matters designwise:
   reads, and only its credential had gone. Reads are unaffected either way:
   `refresh_archive` swallows a failed fetch and serves the tree it has, stale
   being better than closed.
+- **Nothing under `/api/` answers in anything but JSON, whatever failed.**
+  The two typed errors above are failures somebody had already met, and
+  handling them one at a time only ever covers the last one. So
+  `unforeseen_failure` is registered for `Exception`: any error no other
+  handler claims answers `{ok: false, error, ref}` with status 500, where
+  `ref` is eight hex digits written to the log beside the traceback. The
+  answer never carries the exception's text or a path on the server, since
+  what an unknown failure says is unknown too; the reference is how the
+  operator finds it. One failure is worded for what it is: an `OSError` that
+  says the service may not write a file inside the archive (`EACCES`,
+  `EPERM`, a read-only or full filesystem) names the file as the archive
+  names it and says that trying again will not help, because it will not.
+  Flask's own refusals under `/api/` (no such route, wrong method, a body
+  over `MAX_CONTENT_LENGTH`) are JSON by the same handler, with their own
+  status; pages outside `/api/` keep the answer a browser expects. A write
+  that fails this way has changed files it never committed, and reads decide
+  from the working tree, so the handler calls `gitstore.distrust_checkout()`:
+  the next request, a read included, fetches, finds the tree dirty and puts
+  it back as origin has it, rather than reading a system that was never
+  created as "already here" for the next twenty seconds.
+- **The page tells an answer it cannot read from a request that never
+  arrived.** `post()` and the import page's own fetch parse every answer as
+  JSON. A body that is not JSON (a proxy's error page, or anything that slips
+  past the rule above) is reported as "the archivist answered (HTTP 502) with
+  nothing this page can read", states that it is reachable and that nothing
+  is confirmed as written, and asks for a reload before another try. Only a
+  fetch that rejects is called a network error, because only then is "the
+  archivist may be unreachable" a thing the page knows.
 - **Three derivations must always agree** (change all or none):
   `archivist/records.py::sync_status`, the archive's `validate.py`, and
   `generator/model.py::eff_state`. Same for rename resolution
@@ -1293,6 +1321,17 @@ archivist, module responsibilities). What matters designwise:
   forced-command SSH key (`VPS_SYNC_KEY` secret) that can only ever run
   `/usr/local/bin/tar-site-sync`: pull both the website checkout at
   `/opt/archivist/website` and the archive checkout at `/opt/archivist/archive`
+  (**the archive as the checkout's owner, never as root**: the script is root
+  and the service is not, and whatever root's git rewrites comes back root's,
+  which the service can read and never write, so every `git` in that checkout
+  goes through `as_archive_owner`, which is `runuser` to whoever owns the
+  directory with that user's own `HOME`. The pull is only a head start for
+  the restart, since the service keeps its own checkout current, so a fetch
+  that fails is said and is not a failed deploy. What does fail the deploy is
+  `archive_strays`: any entry in the checkout that is not its owner's is one
+  the service will fail to rewrite when a member asks, so it is counted,
+  listed with the `chown` that puts it right, and the job goes red. The
+  script reports and does not hand files back itself.)
   (both over **SSH with read-only deploy keys**, `/opt/archivist/website_deploy_key`
   and `/opt/archivist/archive_deploy_key`, set as the checkouts' own
   `core.sshCommand`: GitHub began answering the host's anonymous HTTPS
