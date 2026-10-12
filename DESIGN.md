@@ -1122,14 +1122,26 @@ archivist, module responsibilities). What matters designwise:
   warn (amber) differ, because they mean something. Labels are a single verb
   ("Save", "Create", "Record"); exceptions need a real reason (navigation
   buttons name destinations, consent keeps its sentence).
-- **Busy state**: every archivist-triggering button disables, goes flat and
-  greyscale, and spins (steps(8)) until the request answers.
+- **A button is a key.** What can be pressed stands on a hard lower edge (a
+  solid 3 px line in a darker shade of its own face, or in its own border
+  colour when it is outlined; 2 px on the small keys: pagination, order
+  arrows, attachment actions), and sinks onto that edge when pressed. That
+  edge is what tells a button from a badge or a chip, which are flat. It is a
+  line, never a blurred shadow, and the press takes one frame. A key that is
+  held stays down: the sort that is on, the page you are on, a fold that is
+  open. One that cannot be pressed sits down too. Variants name their edge
+  colour (`--edge`) and never their own shadow, so pressed and disabled look
+  the same on all of them. A `<button>` and a link styled as one stand the
+  same height.
+- **Busy state**: every archivist-triggering button disables, sits down flat
+  on its edge in greyscale, and spins (steps(8)) until the request answers.
 - **The Expert menu**: every expert-only form on run, game and group pages
   gathers into one box at the very bottom — faint orange, dashed border,
   headed "Expert menu" — revealed only to covering experts, answering into
   its own message line.
-- **Collapsed folds read as buttons** (bordered, monospace), never as bare
-  text; open-by-default section folds stay headings.
+- **Collapsed folds read as buttons** (bordered, monospace, standing on the
+  same edge), never as bare text; open-by-default section folds stay
+  headings.
 - **Fail-proof inputs beat validated inputs**: the stated-time picker is four
   clamped number boxes, not a format to get wrong. Prefer this shape.
 - **Voice**: no em dashes in user-facing copy (they read as AI-written); use

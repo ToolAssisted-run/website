@@ -661,17 +661,32 @@ a {
   color: var(--imported);
 }
 
+/* A button is a key: a face standing on a hard lower edge, which it sinks
+   onto when pressed. The edge is a solid line, never a blur, and the press
+   takes one frame: no transition. A variant changes the face and names its
+   own --edge; none of them sets box-shadow, so the pressed and the disabled
+   rules below hold for every one. */
 .btn {
+  --lip: 3px;
+  --edge: #15803d;
+  --shine: rgba(255, 255, 255, 0.3);
   display: inline-block;
   text-align: center;
   padding: 10px 16px;
+  border: 0;
   border-radius: 9px;
   background: var(--accent);
+  box-shadow:
+    inset 0 1px 0 var(--shine),
+    0 var(--lip) 0 var(--edge);
   color: #04140a;
+  cursor: pointer;
   text-decoration: none;
   font-family: ui-monospace, monospace;
   font-size: 0.84rem;
   font-weight: 700;
+  /* stated, so a <button> and a link stand the same height side by side */
+  line-height: 1.5;
   font-variant-ligatures: none;
   font-feature-settings:
     "liga" 0,
@@ -680,6 +695,7 @@ a {
 }
 
 .btn.danger {
+  --edge: #991b1b;
   background: #dc2626;
   color: #fef2f2;
 }
@@ -694,6 +710,14 @@ a {
   filter: brightness(1.06);
 }
 
+/* down on its edge: under the pointer, or held there because it is the one
+   switched on */
+.btn:active,
+.btn.on {
+  transform: translateY(var(--lip));
+  box-shadow: inset 0 3px 0 rgba(4, 20, 10, 0.26);
+}
+
 .gface {
   max-height: 96px;
   width: auto;
@@ -706,10 +730,12 @@ a {
   display: block;
 }
 
+/* nothing to press: it sits flat on its edge until it can be pressed */
 .btn:disabled,
 .btn.busy {
   filter: grayscale(1);
   opacity: 0.55;
+  transform: translateY(var(--lip));
   box-shadow: none;
   cursor: not-allowed;
   pointer-events: none;
@@ -911,7 +937,6 @@ a {
 .hero p b {
   color: var(--ink);
 }
-
 
 .heronews {
   display: flex;
@@ -1274,6 +1299,7 @@ tr.lead td:first-child {
   border: 2.5px solid var(--hairs);
   border-radius: 9px;
   background: var(--bg);
+  box-shadow: 0 3px 0 var(--hairs);
   font-family: ui-monospace, monospace;
 }
 
@@ -1284,7 +1310,15 @@ tr.lead td:first-child {
 
 .menufold > summary:hover {
   border-color: var(--accent);
+  box-shadow: 0 3px 0 var(--accent);
   color: var(--accent-text);
+}
+
+/* an open fold is a key held down: it rests on its edge until closed */
+.menufold > summary:active,
+.menufold[open] > summary {
+  transform: translateY(3px);
+  box-shadow: none;
 }
 
 .menufold[open] > summary {
@@ -2249,6 +2283,7 @@ img.blurhash-loaded {
   border: 2.5px solid var(--hairs);
   border-radius: 9px;
   background: var(--bg);
+  box-shadow: 0 3px 0 var(--hairs);
   color: var(--ink);
   text-decoration: none;
 }
@@ -2258,7 +2293,19 @@ img.blurhash-loaded {
 .actform details > summary:hover,
 .actbtn-link:hover {
   border-color: var(--accent);
+  box-shadow: 0 3px 0 var(--accent);
   color: var(--accent-text);
+}
+
+.actform > summary:active,
+.actbtn > summary:active,
+.actform details > summary:active,
+.actbtn-link:active,
+.actform[open] > summary,
+.actbtn[open] > summary,
+.actform details[open] > summary {
+  transform: translateY(3px);
+  box-shadow: none;
 }
 
 .actform[open] > summary,
@@ -2755,7 +2802,6 @@ input.bad {
   padding: 6px;
 }
 
-
 @media (max-width: 560px) {
   .cwrow {
     grid-template-columns: 1fr;
@@ -2855,6 +2901,7 @@ input.bad {
 }
 
 .btn.warn {
+  --edge: #991b1b;
   background: #dc2626;
   color: #fff;
 }
@@ -3253,6 +3300,7 @@ input.bad {
   border: 2px solid var(--hairs);
   border-radius: 8px;
   background: var(--bg);
+  box-shadow: 0 2px 0 var(--hairs);
   color: var(--ink);
   font: inherit;
   font-size: 0.82rem;
@@ -3261,6 +3309,7 @@ input.bad {
 
 .pag-btn:hover:not(:disabled) {
   border-color: var(--accent-text);
+  box-shadow: 0 2px 0 var(--accent-text);
   color: var(--ink);
 }
 
@@ -3274,6 +3323,14 @@ input.bad {
   border-color: var(--accent-text);
   color: var(--ink);
   font-weight: 700;
+}
+
+/* the page you are on is the key held down */
+.pag-btn:active:not(:disabled),
+.pag-btn:disabled,
+.pag-btn.cur {
+  transform: translateY(2px);
+  box-shadow: none;
 }
 
 .pag-cur {
@@ -3481,6 +3538,8 @@ input.bad {
 }
 
 .claimbtn {
+  --edge: var(--imported);
+  --shine: transparent;
   background: var(--panel);
   color: var(--ink);
   border: 2.5px solid var(--imported);
@@ -3488,6 +3547,7 @@ input.bad {
 }
 
 .claimbtn:hover {
+  --edge: var(--accent-text);
   border-color: var(--accent-text);
   color: var(--accent-text);
 }
@@ -3950,6 +4010,8 @@ th .eyeic {
 }
 
 .btn.leave {
+  --edge: var(--hairs);
+  --shine: transparent;
   background: transparent;
   color: var(--ink);
   border: 2.5px solid var(--hairs);
@@ -4132,29 +4194,36 @@ th .eyeic {
 }
 
 .att-btn {
+  --edge: var(--hairs);
   font-size: 0.76rem;
   padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
-  border: 1.5px solid var(--hairs);
+  border: 1.5px solid var(--edge);
   background: var(--bg);
+  box-shadow: 0 2px 0 var(--edge);
   color: var(--muted);
   line-height: 1.2;
 }
 
 .att-btn:hover {
-  border-color: var(--accent-text);
+  --edge: var(--accent-text);
   color: var(--ink);
 }
 
 .att-btn.att-del:hover {
-  border-color: #dc2626;
+  --edge: #dc2626;
   color: #dc2626;
 }
 
 .att-btn.att-undo {
+  --edge: var(--accent);
   color: var(--accent-text);
-  border-color: var(--accent);
+}
+
+.att-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
 }
 
 .att-actions {
@@ -4350,12 +4419,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* the quiet sibling of a primary button: shaded, same shape and line */
 .btn.shade {
+  --edge: var(--hairs);
+  --shine: transparent;
   background: var(--panel);
   color: var(--muted);
   border: 2.5px solid var(--hairs);
 }
 
 .btn.shade:hover {
+  --edge: var(--accent);
   color: var(--ink);
   border-color: var(--accent);
 }
