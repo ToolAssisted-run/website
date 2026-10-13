@@ -2,7 +2,7 @@
    control row, the view-switching script, and the site-expert group form. #}
 {% from '_game_cards.html' import system_card, group_card with context %}
 <header class="ghead"><div><h1>Games</h1>
-<p class="authline">{{ games|length }} games across {{ by_sys|length }} systems. Anyone can create a game;
+<p class="authline">{{ games|length }} games across <a href="../systems/">{{ by_sys|length }} systems</a>. Anyone can create a game;
 experts curate afterwards.</p></div>
 <div class="hbtns"><a class="btn" href="../create-game/">Create a game</a></div></header>
 <div class="dimrow gcontrols">

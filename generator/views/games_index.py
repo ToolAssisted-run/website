@@ -3,6 +3,7 @@ views/__init__). Markup lives in templates/games_*.html and _game_cards.html."""
 from config import OUT
 from model import (
     authors,
+    chimera_cores,
     nvisits,
     cat_label,
     covering_experts,
@@ -18,8 +19,10 @@ from model import (
     nlikes,
     systems,
     emulators,
+    tool_family,
     withdrawn_by_game,
 )
+from movieparse.common import BIZ_TO_TASV
 from render import (
     SITE_URL,
     SHIPPED_GAME_THUMBS,
@@ -135,8 +138,58 @@ def render_system_log(skey, sname, sgames, sruns, sysexperts, site_experts):
     )
 
 
-# ---- system pages: a system's whole library, exactly like a group page ----
+# ---- systems index: every system, and what runs it ----
+# One row per system the archive keeps, plus the machines a Chimera core runs
+# that the archive has no games on yet. A core states its machines under
+# Chimera's own ids; a project's Platform header is that same id, so the map
+# intake uses to place a project (BIZ_TO_TASV) places a core's machine too,
+# and a machine it cannot place is simply not in the archive yet.
+def core_system_key(chimera_id):
+    key = BIZ_TO_TASV.get(str(chimera_id).lower(), str(chimera_id).lower())
+    return key if key in systems else None
+
+cores_by_sys, cores_elsewhere = {}, {}
+for core in chimera_cores:
+    for machine in core.get('systems', []):
+        key = core_system_key(machine['id'])
+        held = (cores_by_sys.setdefault(key, []) if key
+                else cores_elsewhere.setdefault(machine['name'], []))
+        if core['name'] not in [c['name'] for c in held]:
+            held.append(core)
+
+def tools_in_runs(rlist):
+    """The tool families a system's runs were made with, most used first."""
+    tally = {}
+    for r in rlist:
+        key, name = tool_family(r)
+        if key and key != 'chimera':
+            tally[name] = tally.get(name, 0) + 1
+    return sorted(tally.items(), key=lambda kv: (-kv[1], kv[0].lower()))
+
+system_rows = []
+for skey, sysrec in systems.items():
+    sgames_ = by_sys.get(skey, [])
+    sruns_ = runs_of(sgames_)
+    system_rows.append({'key': skey, 'name': sysrec['name'], 'page': bool(sgames_),
+                        'cores': cores_by_sys.get(skey, []), 'tools': tools_in_runs(sruns_),
+                        'games': len(sgames_), 'runs': len(sruns_)})
+for machine_name, machine_cores in cores_elsewhere.items():
+    system_rows.append({'key': '', 'name': machine_name, 'page': False,
+                        'cores': machine_cores, 'tools': [], 'games': 0, 'runs': 0})
+system_rows.sort(key=lambda row: row['name'].lower())
 (OUT / 'systems').mkdir(parents=True, exist_ok=True)
+(OUT / 'systems' / 'index.html').write_text(page(
+    'Systems, and the cores that run them',
+    tpl('systems_index.html', rows=system_rows,
+        n_archived=sum(1 for row in system_rows if row['key'])),
+    '../', tpl('systems_crumb.html').rstrip(), 'Games',
+    styles=['page-system.css'],
+    seo={'path': 'systems/',
+         'description': ('Every system on toolAssisted.run: its games and runs, the Chimera '
+                         'cores that run it, and the other tools its runs were made with.'),
+         'ld': [breadcrumb_ld([('Games', 'games/'), ('Systems', 'systems/')])]}), encoding='utf-8')
+
+# ---- system pages: a system's whole library, exactly like a group page ----
 for skey in sorted(by_sys):
     sgames = sorted(by_sys[skey], key=lambda g: g['title'].lower())
     sruns = runs_of(sgames)

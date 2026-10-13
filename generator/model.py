@@ -59,6 +59,12 @@ elif _repo_emu.exists():
 else:
     emulators = {'presets': [], 'quick_chips': {}}
 
+# Chimera's official cores, as the site lists them: the Tools page shows the
+# list, the Systems page reads which machines each core runs. The file is the
+# one place a core is added.
+chimera_cores = json.loads((pathlib.Path(__file__).resolve().parent / 'cores.json')
+                           .read_text(encoding='utf-8'))['cores']
+
 authors = {}
 
 for f in (ARCHIVE / 'authors').glob('*.json'):

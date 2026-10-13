@@ -96,3 +96,14 @@
   opacity: 1;
   color: #dc2626;
 }
+
+/* the systems index: a system's key is an address, so it reads as one */
+.systable .syskey {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.systable td {
+  vertical-align: top;
+}

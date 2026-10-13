@@ -1,0 +1,50 @@
+{# The systems index: every system the archive keeps and every machine a
+Chimera core runs, one row each, with a filter over the whole row. Built by
+views/games_index.py; the cores come from generator/cores.json. #}
+<header class="ghead"><div>
+<div class="chips"><span class="chip">{{ n_archived }} systems</span></div>
+<h1>Systems</h1>
+<p class="authline">Every system in the archive, the Chimera cores that run it, and
+the other tools its runs were made with. A system no run has reached yet is
+listed too, so you can see what a core would open.</p></div></header>
+<div class="filters">
+<input id="syq" type="search" placeholder="Find a system, a key, a core or a tool…" autocomplete="off">
+<span id="sycount" class="bcount"></span></div>
+<div class="tblwrap"><table class="systable"><thead><tr><th>System</th><th>Key</th>
+<th>Chimera cores</th><th>Other tools in its runs</th><th class="num">Games</th><th class="num">Runs</th></tr></thead>
+<tbody id="syrows">
+{% for row in rows %}<tr data-hay="{{ (row.name ~ ' ' ~ row.key ~ ' ' ~ row.cores|map(attribute='name')|join(' ') ~ ' ' ~ row.tools|map(attribute=0)|join(' '))|lower }}">
+<td>{% if row.page %}<a href="{{ row.key }}/"><b>{{ row.name }}</b></a>{% else %}<b>{{ row.name }}</b>{% endif %}</td>
+<td class="syskey">{% if row.key %}{{ row.key }}{% else %}<span class="actmeta" title="No game on this system has been archived yet">not yet archived</span>{% endif %}</td>
+<td>{% for c in row.cores %}<a href="{{ c.url }}">{{ c.name }}</a>{{ ', ' if not loop.last }}{% else %}<span class="actmeta">—</span>{% endfor %}</td>
+<td>{% for name, n in row.tools %}{{ name }} <span class="actmeta">({{ n }})</span>{{ ', ' if not loop.last }}{% else %}<span class="actmeta">—</span>{% endfor %}</td>
+<td class="num">{{ row.games }}</td><td class="num">{{ row.runs }}</td></tr>
+{% endfor %}</tbody></table></div>
+<p class="rules fullw" id="synone" hidden>No system matches that.</p>
+<script>
+(function(){
+  var q = document.getElementById('syq'), count = document.getElementById('sycount'),
+      none = document.getElementById('synone'),
+      rows = Array.prototype.slice.call(document.querySelectorAll('#syrows tr'));
+  function paint(){
+    var words = q.value.toLowerCase().split(/\s+/).filter(Boolean), shown = 0;
+    rows.forEach(function(tr){
+      var hay = tr.getAttribute('data-hay');
+      var hit = words.every(function(w){ return hay.indexOf(w) !== -1; });
+      tr.hidden = !hit;
+      if (hit) shown++;
+    });
+    count.textContent = shown + ' of ' + rows.length;
+    none.hidden = shown !== 0;
+    try {
+      var u = new URL(location.href);
+      if (q.value) u.searchParams.set('q', q.value); else u.searchParams.delete('q');
+      history.replaceState(null, '', u.toString());
+    } catch(e){}
+  }
+  var asked = new URLSearchParams(location.search).get('q');
+  if (asked) q.value = asked;
+  q.addEventListener('input', paint);
+  paint();
+})();
+</script>

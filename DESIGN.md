@@ -282,7 +282,18 @@ of Chimera's cores (PCSX2, Flycast) end a frame when the machine presents a
 picture rather than at a vblank, so a game that drops frames makes a
 frames-over-rate time a lower bound; the form says so, and the author states
 the time regardless; every parser validated against
-real movies from the TASVideos corpus. The Tools page carries three tables
+real movies from the TASVideos corpus. Chimera's official cores are listed
+in one file, `generator/cores.json`: each core's home, the Tools table's
+wording for it, and the machines it runs under Chimera's own ids. The Tools
+page renders its two core tables from it, and **the systems index**
+(`/systems/`) reads it to say which cores run what: one row per system the
+archive keeps (its key, its cores, the other tool families its runs were
+made with, counted, its games and runs) plus a row for every machine a core
+runs that the archive has no system for yet, marked so and unlinked. A
+core's machine is placed by the same map that places a project
+(`BIZ_TO_TASV`), so a system the archive later gains is picked up by
+itself. One filter box searches the whole row. Listing a new core is one
+entry in that file. The Tools page carries three tables
 (rendered dynamically from the archive's `emulators.json` catalog): Emulator-based
 TAS tools, Old emulator formats (the retired rerecording emulators whose
 movies still parse in full), and Game-specific TAS tools, each row marked parsed

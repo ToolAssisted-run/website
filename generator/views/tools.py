@@ -2,7 +2,7 @@
 from config import OUT
 from render import page, tpl
 
-from model import emulators as emu_catalog, systems as sys_catalog, experts_reg
+from model import chimera_cores, emulators as emu_catalog, systems as sys_catalog, experts_reg
 
 site_experts = sorted({e['user'] for e in experts_reg if e['scope'] == 'site'})
 
@@ -67,7 +67,7 @@ for p in tools_catalog:
 # parsed formats first, then the rest
 game_tools.sort(key=lambda t: not t['parsed'])
 body = tpl('tools.html', emulators=emulators, historical=historical, game_tools=game_tools,
-           emulatordata=emu_catalog, site_experts=site_experts)
+           emulatordata=emu_catalog, site_experts=site_experts, cores=chimera_cores)
 (OUT / 'tools').mkdir(exist_ok=True)
 (OUT / 'tools' / 'index.html').write_text(page(
     'TAS tools: emulators and game-specific tooling', body, '../', '', 'Tools',

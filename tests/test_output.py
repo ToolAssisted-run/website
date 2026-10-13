@@ -485,6 +485,42 @@ def main():
         ck('browse index json cannot break out of its script tag',
            script_opens == script_closes, f'{script_opens} open vs {script_closes} close')
         ck('browse json escapes angle brackets', '\\u003c' in browse)
+        # ---------- the systems index, and the one list of cores (#110) ----------
+        import html as html_
+        cores_ = json.loads((REPO / 'generator' / 'cores.json').read_text())['cores']
+        ck('the cores list is well formed: a name, a home, wording, machines',
+           len(cores_) > 20 and len({c['name'] for c in cores_}) == len(cores_)
+           and all(c['url'].startswith('https://github.com/') and c['shown']
+                   and c['systems'] and all(m['id'] and m['name'] for m in c['systems'])
+                   for c in cores_), str([c['name'] for c in cores_][:5]))
+        tools_page_ = all_html[out / 'tools' / 'index.html']
+        ck('the Tools page shows every listed core, by its home and its wording',
+           all(f'<a href="{c["url"]}">{html_.escape(c["name"])}</a></td>'
+               f'<td>{html_.escape(c["shown"])}</td>' in tools_page_ for c in cores_),
+           str([c['name'] for c in cores_
+                if f'<a href="{c["url"]}">' not in tools_page_][:5]))
+        ck('and points at the systems index', 'href="../systems/"' in tools_page_)
+        sysidx_ = all_html.get(out / 'systems' / 'index.html', '')
+        sys_rows_ = dict((m.group(1), m.group(0)) for m in re.finditer(
+            r'<tr data-hay="[^"]*">\s*<td>(?:<a href="[^"]*">)?<b>([^<]*)</b>.*?</tr>', sysidx_, re.S))
+        ck('the systems index exists and can be filtered',
+           'id="syq"' in sysidx_ and len(sys_rows_) > 5, str(list(sys_rows_)[:5]))
+        nes_name_ = json.loads((arch / 'systems.json').read_text())['nes']['name']
+        nes_row_ = sys_rows_.get(html_.escape(nes_name_), '')
+        ck('a system with games links its page and names the cores that run it',
+           '<a href="nes/">' in nes_row_ and 'chimera-core-quickernes' in nes_row_
+           and '>quickerNES</a>' in nes_row_, nes_row_[:300])
+        ck('and the other tools its runs were made with, counted',
+           re.search(r'BizHawk <span class="actmeta">\(\d+\)</span>', nes_row_) is not None,
+           nes_row_[-400:])
+        absent_ = [c for c in cores_ if not c.get('game')
+                   for m in c['systems'] if m['id'] == 'X360']
+        ck('a machine a core runs that the archive has no system for is listed, unlinked',
+           bool(absent_) and 'not yet archived' in sys_rows_.get('Xbox 360', '')
+           and '<a href="' + absent_[0]['url'] + '">' in sys_rows_.get('Xbox 360', ''),
+           sys_rows_.get('Xbox 360', '')[:300])
+        ck('the games index points at the systems index',
+           'href="../systems/"' in all_html[out / 'games' / 'index.html'])
         # ---------- browse by tool (#104) ----------
         tool_of_ = dict(re.findall(r'"id": ?"(M9001\d\d)".*?"tool": ?"([^"]*)"', browse))
         tool_select_ = re.search(r'<select id="btool">(.*?)</select>', browse, re.S)
