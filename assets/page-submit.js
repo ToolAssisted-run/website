@@ -2220,7 +2220,70 @@ if (submitForm) {
             : 'Fill with the game\u2019s own timer in the movie: ' +
               secClock(igt);
       });
+      // what the movie says it was made with: the tool, and the files
+      var tool = madeTool();
+      var toolFrom = document.getElementById('s-emu-from');
+      if (toolFrom) {
+        toolFrom.disabled = !tool;
+        toolFrom.title = tool
+          ? 'Fill with the tool the movie names: ' + tool
+          : 'Enabled when the movie names the tool it was made with';
+      }
+      var files = madeFiles();
+      var filesFrom = submitForm.querySelector('.filefrom');
+      if (filesFrom) {
+        filesFrom.disabled = !files.length;
+        filesFrom.title = files.length
+          ? 'Fill with the ' +
+            (files.length === 1 ? 'file' : files.length + ' files') +
+            ' the movie lists, with the SHA1 it gives for each: ' +
+            files
+              .map(function (f) {
+                return f.name;
+              })
+              .join(', ')
+          : 'Enabled when the movie lists the files it was made against';
+      }
     }
+    // A movie may say what it was made with (a Chimera project names its
+    // own version, the core and its version, and each file with its SHA1).
+    // Offered beside the fields it answers, and filled only when pressed.
+    function madeOf() {
+      return movieInfo && movieInfo.parsed && movieInfo.made
+        ? movieInfo.made
+        : null;
+    }
+    function madeTool() {
+      var made = madeOf();
+      if (!made || !made.tool) return '';
+      var core = made.core
+        ? ' (Core: ' +
+          made.core +
+          (made.coreVersion ? ' ' + made.coreVersion.slice(0, 8) : '') +
+          ')'
+        : '';
+      return made.tool + (made.version ? ' ' + made.version : '') + core;
+    }
+    function madeFiles() {
+      var made = madeOf();
+      return (made && made.files) || [];
+    }
+    var toolFromBtn = document.getElementById('s-emu-from');
+    if (toolFromBtn)
+      toolFromBtn.addEventListener('click', function () {
+        var tool = madeTool();
+        var toolInput = document.getElementById('s-emulator');
+        if (!tool || !toolInput) return;
+        toolInput.value = tool;
+        toolInput.dispatchEvent(new Event('input', { bubbles: true }));
+        toolInput.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    var filesFromBtn = submitForm.querySelector('.filefrom');
+    if (filesFromBtn)
+      filesFromBtn.addEventListener('click', function () {
+        var rows = fileRowsOf.submitform;
+        if (rows && rows.fill) rows.fill(madeFiles());
+      });
     var encTimeWarn = document.getElementById('s-enc-timewarn');
     if (timeImportSel)
       timeImportSel.addEventListener('change', function () {

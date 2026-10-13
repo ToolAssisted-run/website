@@ -243,6 +243,23 @@
   flex: none;
 }
 
+/* the tool's name with its own From movie beside it */
+.toolrow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.toolrow > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolrow .btn {
+  flex: none;
+  margin-top: 0;
+}
+
 .actform select.impsel,
 .impsel {
   appearance: auto;

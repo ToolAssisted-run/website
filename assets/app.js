@@ -910,6 +910,47 @@ function initFileRows(box) {
       }
       return true;
     },
+    // rows offered from elsewhere (a movie that lists its own files): a
+    // file already there is left as it is, one named without its SHA1
+    // gains it, an empty row is used before a new one is made. Answers
+    // how many rows it wrote.
+    fill: function (entries) {
+      var wrote = 0;
+      (entries || []).forEach(function (entry) {
+        var name = (entry.name || '').trim();
+        var sha1 = (entry.sha1 || '').trim().toLowerCase();
+        if (!name) return;
+        var rows = Array.prototype.map.call(
+          list.querySelectorAll('.filerow'),
+          function (row) {
+            return {
+              name: row.querySelector('input[name=file_name]'),
+              sha1: row.querySelector('input[name=file_sha1]'),
+            };
+          }
+        );
+        var there = rows.some(function (row) {
+          var has = row.sha1.value.trim().toLowerCase();
+          return has ? has === sha1 : !sha1 && row.name.value.trim() === name;
+        });
+        if (there) return;
+        var bare = rows.filter(function (row) {
+          return !row.sha1.value.trim() && row.name.value.trim() === name;
+        })[0];
+        var blank = rows.filter(function (row) {
+          return !row.sha1.value.trim() && !row.name.value.trim();
+        })[0];
+        var into = bare || blank;
+        if (into) {
+          into.name.value = name;
+          into.sha1.value = sha1;
+          into.sha1.classList.remove('bad');
+        } else addRow({ name: name, sha1: sha1 });
+        wrote++;
+      });
+      if (wrote) list.dispatchEvent(new Event('input', { bubbles: true }));
+      return wrote;
+    },
   };
 }
 document.querySelectorAll('.filerows').forEach(function (box) {

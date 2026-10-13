@@ -1199,7 +1199,12 @@ archivist, module responsibilities). What matters designwise:
   or edit continues but nothing is importable from the movie (the file is
   archived exactly as it is, `frames` 0), the tool and its version
   (assisted by presets, versions, cores, and quick chips; stored as free text), the files
-  the movie was made against, supplementary uploads; 4 scoring: the
+  the movie was made against, supplementary uploads; a movie that says what
+  it was made with (a Chimera project names its own version, the core and
+  its version, and every file with its SHA1; the inspection answers it as
+  `made`) arms a **From movie** button beside the tool and one beside the
+  files, which fill them when pressed and never before: a file already
+  listed is left alone, one named without its SHA1 gains it; 4 scoring: the
   category's metric values, and the time, stated by the author, never
   filled in for them (Import from movie fills it on demand when the movie
   parsed); 5 submission notes: disclosures, notes, Preview;

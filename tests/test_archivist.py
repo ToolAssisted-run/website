@@ -781,6 +781,13 @@ def main():
                            {'movie': ('t.chimeraProject', CHIMERA_PROJECT)})
             ck('inspect reports no game timer for a movie that carries none',
                c == 200 and r['parsed'] and r['igt'] is None, str(r))
+            # what a project says it was made with, for the form to offer (#102)
+            ck('inspect hands over what a project says it was made with',
+               c == 200 and (r.get('made') or {}).get('tool') == 'Chimera'
+               and isinstance(r['made'].get('files'), list), str(r.get('made')))
+            c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'}, {'movie': ('t.bk2', BK2)})
+            ck('and nothing of the kind for a movie that does not say',
+               c == 200 and r['parsed'] and r.get('made') is None, str(r))
             c, r, _ = call(U + '/api/movie/inspect', {'key': KEY, 'game': 'nes/pinball'},
                            {'movie': ('t.chimeraProject', CHIMERA_GAME_PROJECT)})
             ck("inspect hands over a game core's in-game time, in seconds",

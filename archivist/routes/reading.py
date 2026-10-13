@@ -103,7 +103,9 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
         Reads: file movie; form field game (system/slug, for the frame rate when
             the movie names none)
         Answers: {ok, format, known, parsed, frames, fps, seconds, rerecords,
-            igt (the game's own timer in seconds, when the movie carries one)};
+            igt (the game's own timer in seconds, when the movie carries one),
+            made (what the movie says it was made with, when it says: tool,
+            version, core, coreVersion, files [{name, sha1}])};
             400 for a missing, empty, oversized or unknown-format file
         """
         gate = _helper_gate()
@@ -134,6 +136,9 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
                         # offers it for the metric that ranks by it, never for
                         # the run's time
                         'igt': parsed.get('igt') if parsed.get('ok') else None,
+                        # what the movie says it was made with: offered beside
+                        # the tool and the files, filled only when asked
+                        'made': parsed.get('made') if parsed.get('ok') else None,
                         'error': None if parsed.get('ok') else parsed.get('error')})
         resp.headers['Cache-Control'] = 'no-store'
         return resp

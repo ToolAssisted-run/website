@@ -759,6 +759,39 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(swf).encode())
     ck('chimeraProject: the same 60 from a console core is still a placeholder',
        res.get('fps') is None and any('nominal' in w for w in res['warnings']), str(res))
+    # ---- what a project says it was made with (#102) ----
+    made_doc = json.loads(f_chimeraproject().decode())
+    made_doc['headers']['emuVersion'] = 'Commit e9dc5ecf1'
+    made_doc['core'] = {'name': 'Ruffle', 'version': '78ec1fa830936e9091c6e9da918a569b72929f88'}
+    made_doc['files'] = [{'name': 'Game (USA).swf', 'sha1': 'AB' * 20, 'slot': 'movie'},
+                         {'name': 'C:\\roms\\disc 2.iso', 'sha1': 'not a hash'},
+                         {'name': '', 'sha1': 'cd' * 20}, 'a string', None]
+    res = movieparse.parse('run.chimeraProject', json.dumps(made_doc).encode())
+    made = res.get('made') or {}
+    ck('chimeraProject: the tool, its version, the core and its version are read',
+       made.get('tool') == 'Chimera' and made.get('version') == 'e9dc5ecf1'
+       and made.get('core') == 'Ruffle' and made.get('coreVersion', '').startswith('78ec1fa8'),
+       str(made))
+    ck('chimeraProject: each file comes with its name and a well-formed SHA1, or none',
+       made.get('files') == [{'name': 'Game (USA).swf', 'sha1': 'ab' * 20},
+                             {'name': 'disc 2.iso', 'sha1': ''}], str(made.get('files')))
+    made_doc['files'] = [{'name': 'x' * 900, 'sha1': 'ef' * 20}] * 400
+    made_doc['core'] = {'name': ['not', 'a', 'name'], 'version': {'nor': 'this'}}
+    made_doc['headers']['emuVersion'] = 'v' * 5000
+    res = movieparse.parse('run.chimeraProject', json.dumps(made_doc).encode())
+    made = res.get('made') or {}
+    ck('chimeraProject: what a hostile project says is bounded and shaped',
+       res.get('ok') and len(made.get('files', [])) == 32
+       and all(len(f['name']) <= 200 for f in made['files'])
+       and made.get('core') == '' and made.get('coreVersion') == ''
+       and len(made.get('version', '')) <= 60, str(made)[:200])
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject())
+    ck('chimeraProject: a project that lists no files says so with an empty list',
+       (res.get('made') or {}).get('files') == [], str(res.get('made')))
+    ck('only a project says what it was made with',
+       all(movieparse.parse('run.' + f, FIXTURES[f][0]).get('ok')
+           and 'made' not in movieparse.parse('run.' + f, FIXTURES[f][0]) for f in ('fm2', 'bk2')),
+       'another format carries made')
     # ---- which system a project lands in ----
     # The Platform header is the core's machine id, and the archive keeps some
     # machines under a different key. A game core is the game itself with no

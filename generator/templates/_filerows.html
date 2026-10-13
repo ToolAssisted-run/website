@@ -1,12 +1,14 @@
 {# The files a movie was made against, one row each: pick the file (hashed
 in the browser, never uploaded), or type name and SHA1; rows are added
 and removed at will. app.js (initFileRows) runs it; `files` seeds the
-rows for an edit form. #}
-{% macro file_rows(files=[], note='') %}
+rows for an edit form. `from_movie` adds the button a page arms to fill the
+rows from a movie that lists its own files. #}
+{% macro file_rows(files=[], note='', from_movie=False) %}
 <div class="filerows" data-files='{{ files|tojson }}'>
   {% if note %}<p class="rules fullw">{{ note }}</p>{% endif %}
   <div class="filerow-list"></div>
-  <div class="btnrow filerow-actions"><button type="button" class="btn leave addfile">+ Add a file</button></div>
+  <div class="btnrow filerow-actions"><button type="button" class="btn leave addfile">+ Add a file</button>{% if from_movie %}
+    <button type="button" class="btn quiet filefrom" disabled>From movie</button>{% endif %}</div>
   <template class="filerow-tpl">
     <div class="filerow">
       <label class="btn leave pickfile"

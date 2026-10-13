@@ -54,6 +54,35 @@ def _chimera_vsync_rate(lower):
     return None
 
 
+def _chimera_made(doc, lower, core_name):
+    """What the project says it was made with, for the form to offer.
+
+    A project names Chimera's own version, the core and its version, and each
+    file it was made against with its SHA1: exactly what a submitter states
+    under reproduction information, and until now retyped by hand (#102).
+    The form fills them when asked and never unasked. Everything here comes
+    from the uploader's file, so it is bounded and shaped before it leaves.
+    """
+    def text(value, cap):
+        if isinstance(value, bool) or not isinstance(value, (str, int)):
+            return ''
+        return ' '.join(str(value).split())[:cap]
+
+    core = doc.get('core') if isinstance(doc.get('core'), dict) else {}
+    version = re.sub(r'^commit\s+', '', text(lower.get('emuversion'), 60), flags=re.I)
+    files = []
+    for entry in (doc.get('files') if isinstance(doc.get('files'), list) else [])[:32]:
+        if not isinstance(entry, dict):
+            continue
+        name = re.split(r'[\\/]', text(entry.get('name'), 400))[-1][:200]
+        sha1 = text(entry.get('sha1'), 40).lower()
+        if name:
+            files.append({'name': name,
+                          'sha1': sha1 if re.fullmatch(r'[0-9a-f]{40}', sha1) else ''})
+    return {'tool': 'Chimera', 'version': version, 'core': text(core_name, 60),
+            'coreVersion': text(core.get('version'), 60), 'files': files}
+
+
 def _chimera_last_input(doc, lower, lines, warnings):
     """Find the final pressed frame, preferring the project's explicit count."""
     rows = [_chimera_split(l) for l in lines]
@@ -272,7 +301,10 @@ def parse_chimeraproject(data):
     settings = doc.get('settings') if isinstance(doc.get('settings'), dict) else {}
     igt = _chimera_game_time(lower, len(lines), settings, warnings)
     frames = _chimera_last_input(doc, lower, lines, warnings)
-    return _ok(fmt, frames, rerecords, 'power-on', system, fps, warnings, igt)
+    result = _ok(fmt, frames, rerecords, 'power-on', system, fps, warnings, igt)
+    if result.get('ok'):
+        result['made'] = _chimera_made(doc, lower, core_name)
+    return result
 
 
 def parse_bk2(data, fmt='bk2'):

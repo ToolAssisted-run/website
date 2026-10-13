@@ -128,12 +128,13 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
     </div>
     <div class="emu-chips emu-quick-chips" id="s-emu-quick" hidden></div>
   </div>
-  <input name="emulator" id="s-emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES core), libTAS 1.4.6, jaffarPlus 3.2">
+  <div class="toolrow"><input name="emulator" id="s-emulator" placeholder="e.g. BizHawk 2.11 (QuickerNES core), libTAS 1.4.6, jaffarPlus 3.2">
+  <button type="button" class="btn quiet" id="s-emu-from" disabled>From movie</button></div>
   <hr class="formrule">
   <label>Files the movie was made against (optional: ROMs, disc images, executables,
   sources; as many as it takes)<br>Pick each file and its name and SHA1 are computed
   locally, the file <b>never leaves your machine</b>; or type them.</label>
-  {{ file_rows() }}
+  {{ file_rows(from_movie=True) }}
   <hr class="formrule">
   <div class="att-widget" id="s-att-widget">
     <label id="s-att-label">Supplementary files to upload (optional: text configs, scripts, tools, or additional movie files)</label>
