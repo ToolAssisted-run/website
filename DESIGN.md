@@ -775,7 +775,14 @@ A category defines what it ranks by.
   (frames against frames when time rules and both sides are movies).
   Browse coalesces Frames/Time into one untitled column showing each run's
   own primary metric; a flat cross-category list has no honest metric sort,
-  so browse orders by date/stars/title only. The run page's fact box keeps
+  so browse orders by date/stars/title only. Browse filters by system, game
+  group, status and **tool**. A run states its tool in its own words, so the
+  filter reads a family out of them at build time and stores nothing: the
+  catalog entry whose alias the text begins with (longest alias first, so a
+  fork is not its parent), else a family of its own under the first word,
+  else "Not stated". Each option says how many runs it holds, and teaching
+  the filter a new spelling is adding an alias to the catalog the experts
+  already curate. The run page's fact box keeps
   everything: frames, derived time when it exists, every stated metric with
   its label ("not yet stated" for 0).
 

@@ -5,6 +5,7 @@
 <input id="bq" type="search" placeholder="Search game, category, author…">
 <select id="bsys"><option value="">All systems</option>{% for k, v in sys_opts %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
 <select id="bgrp"><option value="">All game groups</option>{% for k, v in group_opts %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+<select id="btool"><option value="">All tools</option>{% for k, v in tool_opts %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
 <select id="bst"><option value="">All statuses</option><option value="ranked">Ranked</option>
 <option value="verified">Verified</option>
 <option value="pending">Pending</option>
@@ -20,7 +21,7 @@
 <script>
 var RUNS = {{ json_blob(index) }};
 var q = document.getElementById('bq'), sysf = document.getElementById('bsys'),
-    grpf = document.getElementById('bgrp'),
+    grpf = document.getElementById('bgrp'), toolf = document.getElementById('btool'),
     stf = document.getElementById('bst'), sortf = document.getElementById('bsort'),
     tbody = document.getElementById('brows'), count = document.getElementById('bcount'),
     pagBox = document.getElementById('bpag');
@@ -28,6 +29,7 @@ var params = new URLSearchParams(location.search);
 if (params.get('q')) q.value = params.get('q');
 if (params.get('sys')) sysf.value = params.get('sys');
 if (params.get('grp')) grpf.value = params.get('grp');
+if (params.get('tool')) toolf.value = params.get('tool');
 var curPage = parseInt(params.get('p') || '1', 10);
 if (isNaN(curPage) || curPage < 1) curPage = 1;
 
@@ -72,6 +74,8 @@ function syncUrl(){
       else u.searchParams.delete('sys');
       if (grpf && grpf.value) u.searchParams.set('grp', grpf.value);
       else u.searchParams.delete('grp');
+      if (toolf && toolf.value) u.searchParams.set('tool', toolf.value);
+      else u.searchParams.delete('tool');
       history.replaceState(null, '', u.toString());
     }
   } catch(e){}
@@ -123,8 +127,10 @@ function renderPagBar(totalMatches){
 function render(resetPage){
   if (resetPage) curPage = 1;
   var needle = q.value.toLowerCase(), sys = sysf.value, grp = grpf ? grpf.value : '', st = stf.value;
+  var tool = toolf ? toolf.value : '';
   var rs = RUNS.filter(function(r){
     if (sys && r.sys !== sys) return false;
+    if (tool && r.tool !== tool) return false;
     if (grp && (!r.groups || r.groups.indexOf(grp) === -1)) return false;
     if (st === 'ranked' && (r.state === 'pending')) return false;
     if (st && st !== 'ranked' && st !== 'verified' && r.state !== st) return false;
@@ -163,7 +169,7 @@ function render(resetPage){
   syncUrl();
 }
 
-[q, sysf, grpf, stf, sortf].forEach(function(el){
+[q, sysf, grpf, toolf, stf, sortf].forEach(function(el){
   if (!el) return;
   el.addEventListener('input', function(){ render(true); });
   el.addEventListener('change', function(){ render(true); });

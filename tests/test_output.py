@@ -446,6 +446,20 @@ def main():
              'from': '', 'to': 'clarified', 'by': 'Ada', 'date': '2026-02-15',
              'reason': "The author's own revision."},
         ]}, indent=1))
+        # a tool catalog, and runs that write their tool three ways: in the
+        # catalog's own name, under an alias of it, and not in the catalog
+        (arch / 'emulators.json').write_text(json.dumps({'systems': {}, 'catalog': [
+            {'id': 'bizhawk', 'name': 'BizHawk', 'kind': 'emulator',
+             'aliases': ['bizhawk', 'emuhawk']},
+            {'id': 'bizhawk-fork', 'name': 'BizHawk Fork', 'kind': 'emulator',
+             'aliases': ['bizhawk fork']}]}))
+        for rid_, stated_ in (('M900102', 'emuhawk-2.9.1 (Core: NesHawk)'),
+                              ('M900103', 'BizHawk Fork 3'),
+                              ('M900105', 'Gens 11a'), ('M900107', '')):
+            rj_path_ = next(arch.glob(f'games/*/*/runs/{rid_}/run.json'))
+            rj_ = json.loads(rj_path_.read_text())
+            rj_.setdefault('contract', {})['emulator'] = stated_
+            rj_path_.write_text(json.dumps(rj_, indent=1))
         out = td / 'out'
         r = build(arch, out, ref='staging')
         ck('controlled build succeeds', r.returncode == 0, r.stderr[-400:])
@@ -471,6 +485,30 @@ def main():
         ck('browse index json cannot break out of its script tag',
            script_opens == script_closes, f'{script_opens} open vs {script_closes} close')
         ck('browse json escapes angle brackets', '\\u003c' in browse)
+        # ---------- browse by tool (#104) ----------
+        tool_of_ = dict(re.findall(r'"id": ?"(M9001\d\d)".*?"tool": ?"([^"]*)"', browse))
+        tool_select_ = re.search(r'<select id="btool">(.*?)</select>', browse, re.S)
+        tool_options_ = dict(re.findall(r'<option value="([^"]*)">([^<]*)</option>',
+                                        tool_select_.group(1) if tool_select_ else ''))
+        ck('browse offers a tool to filter by', bool(tool_select_) and '' in tool_options_,
+           str(tool_options_))
+        ck('a tool written under an alias is its catalog family',
+           tool_of_.get('M900102') == 'bizhawk' and tool_of_.get('M900101') == 'bizhawk',
+           str(tool_of_))
+        ck('the longest alias wins, so a fork is not its parent',
+           tool_of_.get('M900103') == 'bizhawk-fork', str(tool_of_.get('M900103')))
+        ck('a tool the catalog does not know is a family under its first word',
+           tool_of_.get('M900105') == 'other-gens'
+           and tool_options_.get('other-gens', '').startswith('Gens ('), str(tool_options_))
+        ck('a run that states no tool is offered as such, last',
+           tool_of_.get('M900107') == 'none'
+           and list(tool_options_)[-1] == 'none'
+           and tool_options_['none'].startswith('Not stated ('), str(tool_options_))
+        ck('every run in browse carries a tool the dropdown offers',
+           tool_of_ and all(t in tool_options_ for t in tool_of_.values()), str(tool_of_))
+        ck('each family says how many runs it holds',
+           all(re.fullmatch(r'.+ \(\d+\)', v) for k, v in tool_options_.items() if k),
+           str(tool_options_))
 
         # ---------- wiki renderer robustness ----------
         run_page = all_html[out / 'runs' / 'M900101' / 'index.html']

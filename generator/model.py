@@ -678,6 +678,34 @@ for lst in author_news.values():
     # ISO strings order correctly either way
     lst.sort(key=lambda e: e['at'] or e['date'], reverse=True)
 
+# ---- which tool a run was made with, as a family ----
+# A run states its tool in its own words ("BizHawk 2.11", "Bizhawk-2.3.1",
+# "bizhawk 2.9 (Core: Gambatte)"), so filtering by tool needs a family those
+# spellings share. The catalog the experts curate already knows them: each
+# tool lists the aliases its name is written under. A run belongs to the
+# tool whose alias its text begins with, the longest alias first, so
+# "snes9x-rr" is not taken for "snes9x". A text no alias claims is a family
+# of its own under its first word, and a run that states none has none.
+# Nothing stored is read differently or changed: this is a reading of it.
+_tool_aliases = sorted(
+    {(str(alias).strip().lower(), str(tool.get('id') or ''), str(tool.get('name') or tool.get('id') or ''))
+     for tool in emulators.get('catalog', []) if isinstance(tool, dict) and tool.get('id')
+     for alias in list(tool.get('aliases') or []) + [tool.get('name') or '', tool.get('id')]
+     if str(alias).strip()},
+    key=lambda entry: (-len(entry[0]), entry[0]))
+
+def tool_family(r):
+    """(key, name) of the tool family a run was made with; ('', '') if it states none."""
+    stated = ' '.join(str((r.get('contract') or {}).get('emulator') or '').split())
+    if not stated:
+        return '', ''
+    low = stated.lower()
+    for alias, key, name in _tool_aliases:
+        if low.startswith(alias):
+            return key, name
+    first = re.split(r'[\s(]', stated, maxsplit=1)[0]
+    return 'other-' + re.sub(r'[^a-z0-9]+', '-', first.lower()).strip('-'), first
+
 def board_date(r):
     """The date a board shows and sorts by (#39, #47): the completion date
     the authors stated, the submission day otherwise. One rule for both, so
