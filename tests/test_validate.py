@@ -74,6 +74,19 @@ def baseline(root):
     att = root / 'games/nes/testgame/runs/M900204/attachments'
     att.mkdir(parents=True, exist_ok=True)
     (att / 'config.txt').write_text('key = value\n')
+    # an alternate encode beside the main one, with the title, the description
+    # and the selector thumbnail it may carry: the baseline being valid is the
+    # proof that a well-formed one is accepted
+    alt_run = root / 'games/nes/testgame/runs/M900204'
+    alt_doc = json.loads((alt_run / 'run.json').read_text())
+    alt_doc['encodes'] = alt_doc['encodes'][:1] + [
+        {'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=altALTalt01',
+         'title': 'Commentary', 'description': 'The author talks it through.',
+         'thumbnail': ALT_THUMB},
+        # an imported run's second encode: a bare link, as it always was
+        {'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=altALTalt02'}]
+    (alt_run / 'run.json').write_text(json.dumps(alt_doc, indent=1) + '\n')
+    (alt_run / ALT_THUMB).write_bytes(b'\x89PNG\r\n\x1a\n' + b'\0' * 50)
     # the validator lives beside the data it checks
     shutil.copy2(REAL_ARCHIVE / 'validate.py', root / 'validate.py')
     shutil.copytree(REAL_ARCHIVE / 'schema', root / 'schema', dirs_exist_ok=True)
@@ -101,7 +114,44 @@ def rdir(root, rid, game='nes/testgame'):
     return root / 'games' / game / 'runs' / rid
 
 
+ALT_THUMB = 'alt-0123456789ab.png'
+
+
+def alt_edit(root, fn):
+    """Change the fixture's titled alternate encode (M900204, the second encode)."""
+    edit(root, 'M900204', lambda d: fn(d['encodes'][1]))
+
+
 # ---------------------------------------------------------------- mutations
+def m_alt_thumb_missing(root):
+    (rdir(root, 'M900204') / ALT_THUMB).unlink()
+
+def m_alt_thumb_not_an_image(root):
+    (rdir(root, 'M900204') / ALT_THUMB).write_bytes(b'<svg onload=alert(1)>')
+
+def m_alt_thumb_too_big(root):
+    (rdir(root, 'M900204') / ALT_THUMB).write_bytes(b'\x89PNG\r\n\x1a\n' + b'\0' * (300 * 1024))
+
+def m_alt_thumb_elsewhere(root):
+    alt_edit(root, lambda e: e.update(thumbnail='../M900201/thumb.png'))
+
+def m_alt_thumb_undeclared(root):
+    (rdir(root, 'M900204') / 'alt-ffffffffffff.png').write_bytes(b'\x89PNG\r\n\x1a\n' + b'\0' * 50)
+
+def m_alt_title_too_long(root):
+    alt_edit(root, lambda e: e.update(title='T' * 61))
+
+def m_alt_description_too_long(root):
+    alt_edit(root, lambda e: e.update(description='d' * 301))
+
+def m_main_encode_titled(root):
+    edit(root, 'M900204', lambda d: d['encodes'][0].update(title='The main one'))
+
+def m_too_many_alternates(root):
+    edit(root, 'M900204', lambda d: d['encodes'].extend(
+        {'kind': 'youtube', 'url': f'https://www.youtube.com/watch?v=extraALT0{n:02d}',
+         'title': f'Extra {n}'} for n in range(5)))
+
 def m_stray_file(root):
     (root / 'games/nes/testgame/runs/stray.txt').write_text('x')
 
@@ -432,6 +482,18 @@ CASES = [
     ('status.reproduced cannot lie', m_status_reproduced_lies, 'status.reproduced'),
     ('status.verified cannot lie', m_status_verified_lies, 'status.verified'),
     ('no undeclared files', m_undeclared_file, 'undeclared file'),
+    ("an alternate encode's thumbnail that is not there", m_alt_thumb_missing,
+     'alternate encode thumbnail'),
+    ("an alternate encode's thumbnail that is no image", m_alt_thumb_not_an_image,
+     'is not a real'),
+    ("an alternate encode's thumbnail over the cap", m_alt_thumb_too_big, 'exceeds'),
+    ("an alternate encode's thumbnail outside the run", m_alt_thumb_elsewhere,
+     'thumbnail'),
+    ('a thumbnail no alternate encode declares', m_alt_thumb_undeclared, 'undeclared file'),
+    ("an alternate encode's title over 60", m_alt_title_too_long, 'title'),
+    ("an alternate encode's description over 300", m_alt_description_too_long, 'description'),
+    ('a main encode that carries a title', m_main_encode_titled, 'first encode is the main one'),
+    ('more alternate encodes than a run takes', m_too_many_alternates, 'alternate encodes at most'),
     ('run schema enforced', m_schema_violation_run, 'schema violation'),
     ('author schema enforced', m_schema_violation_author, 'schema violation'),
     ('missing categories.json is reported', m_missing_categories, 'categories.json'),

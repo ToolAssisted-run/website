@@ -178,6 +178,14 @@ ATTACH_MAX_TOTAL = 512 * 1024
 
 ATTACH_MAX_COUNT = 8
 
+# A run has one main encode: its thumbnail is the run's, and it is the one a
+# verifier judges. It may carry alternates beside it (another angle, a
+# commentary, a higher resolution), each with a title and a description the
+# run page shows in its selector. Few, short, plain text.
+ENCODE_ALT_MAX = 5
+ENCODE_TITLE_MAX = 60
+ENCODE_DESC_MAX = 300
+
 # An attachment keeps the name it was uploaded under, below a path the archive
 # decides (games/<system>/<game>/runs/<id>/attachments/), and Windows refuses
 # a whole path over 260 characters: a 102-character name once made a checkout

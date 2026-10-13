@@ -369,3 +369,90 @@ html:has(.agegate) .nav {
 html:has(.agegate) {
   overflow: hidden;
 }
+
+/* the encode selector under the player: one key per encode, the run's main
+   one first; the key of the encode playing is held down */
+.encsel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.encopt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1 1 220px;
+  max-width: 340px;
+  min-width: 0;
+  padding: 8px;
+  border: 2.5px solid var(--hairs);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 3px 0 var(--hairs);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.encopt:hover {
+  border-color: var(--accent);
+  box-shadow: 0 3px 0 var(--accent);
+}
+
+.encopt:active,
+.encopt.on {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.encopt.on {
+  border-color: var(--accent);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.encthumb {
+  flex: none;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* an alternate with no thumbnail of its own still reads as a video */
+.encthumb:empty::before {
+  content: "▶";
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+.encthumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.enctext {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.enctext b {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.encdesc {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}

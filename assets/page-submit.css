@@ -673,3 +673,69 @@
   margin: 0 0 4px;
   font-size: 0.9rem;
 }
+
+/* alternate encodes: one row each, its three fields and its controls */
+.altencs {
+  margin-top: 14px;
+}
+
+.altenc {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 8px 0;
+  padding: 10px;
+  border: 2.5px solid var(--hair);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.altenc-fields {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.altenc-fields input[name="alt_desc"],
+.altenc-status {
+  grid-column: 1 / -1;
+}
+
+.altenc-status {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.altenc-status:empty {
+  display: none;
+}
+
+.altenc-status.enc-bad {
+  color: #dc2626;
+}
+
+.altenc-status.enc-good {
+  color: var(--accent-text);
+}
+
+.altenc-acts {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .altenc {
+    flex-direction: column;
+  }
+  .altenc-fields {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .altenc-acts {
+    max-width: none;
+  }
+}

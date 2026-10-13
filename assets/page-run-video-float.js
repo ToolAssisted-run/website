@@ -212,6 +212,8 @@ function initRunVideoFloat() {
   }
 
   function subscribeToProviderEvents() {
+    // the encode selector may have put another platform's video in the frame
+    provider = providerFor(frame.src);
     if (provider === 'youtube') {
       frame.contentWindow.postMessage(
         JSON.stringify({ event: 'listening', id: 'run-player' }),

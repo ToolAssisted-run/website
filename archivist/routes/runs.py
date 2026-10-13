@@ -8,7 +8,7 @@ import time
 from flask import jsonify, request
 import movieparse
 import providers
-from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, BRANCH, IMAGE_MAGIC, NOTES_MAX, SHOT_MAX_EACH, SHOT_MAX_TOTAL, SITE_URL, THUMB_MAX, movie_refusal, slugify
+from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, BRANCH, ENCODE_ALT_MAX, ENCODE_DESC_MAX, ENCODE_TITLE_MAX, IMAGE_MAGIC, NOTES_MAX, SHOT_MAX_EACH, SHOT_MAX_TOTAL, SITE_URL, THUMB_MAX, movie_refusal, slugify
 from webutil import fail
 from identity import current_name, run_authors_now, session_user
 from gitstore import checkout_branch, commit_push, duplicate_of, find_run, load_game, lock, next_id, refresh_archive
@@ -199,6 +199,91 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             return None, files_error
         return (encode, encode_provider, thumb_bytes, thumb_ext, attachments, completed, notes, content_warnings, files), None
 
+    def _alternate_encodes(form, main_provider, known=()):
+        """Read the alternate encodes a form states, in the order it states them.
+
+        One alt_url, alt_title and alt_desc per alternate, repeated. Each is a
+        watchable video on a platform we accept, a different video from the
+        main encode and from the others, with a title and optionally a
+        description, both plain text. Its selector thumbnail is taken from it
+        here, as the run's is from the main encode, so a link no thumbnail can
+        be had from is refused.
+
+        `known` is the alternates the run already has. One of them that
+        arrives unchanged keeps the thumbnail it has (nothing is fetched), and
+        one that never had a title (an imported run's second encode) may stay
+        without: a title is asked of what the member states, not of what was
+        there. Answers ((entries, [(file name, bytes)]), error).
+        """
+        urls, titles, descs = (form.getlist('alt_url'), form.getlist('alt_title'),
+                               form.getlist('alt_desc'))
+        was = {}
+        for entry in known:
+            provider = providers.resolve(entry.get('url', ''))
+            if provider:
+                was[(provider['kind'], provider['id'])] = entry
+        seen = {(main_provider['kind'], main_provider['id'])} if main_provider else set()
+        entries, thumbs = [], []
+        for i, raw in enumerate(urls):
+            url = (raw or '').strip()
+            title = ' '.join((titles[i] if i < len(titles) else '').split())
+            desc = ' '.join((descs[i] if i < len(descs) else '').split())
+            if not url:
+                if title or desc:
+                    return None, fail(f'the alternate encode "{(title or desc)[:40]}" has no link')
+                continue
+            provider = providers.resolve(url)
+            if not provider:
+                return None, fail('an alternate encode must be a watchable URL on a platform '
+                                  'we accept: ' + ', '.join(providers.names()))
+            ident = (provider['kind'], provider['id'])
+            if ident in seen:
+                return None, fail('the same video is listed twice among the encodes: '
+                                  + url[:120])
+            seen.add(ident)
+            before = was.get(ident)
+            if not title and not (before and not before.get('title')):
+                return None, fail('an alternate encode needs a title, to tell it from the '
+                                  'main one in the selector')
+            if len(title) > ENCODE_TITLE_MAX:
+                return None, fail(f"an alternate encode's title fits in {ENCODE_TITLE_MAX} characters")
+            if len(desc) > ENCODE_DESC_MAX:
+                return None, fail(f"an alternate encode's description fits in {ENCODE_DESC_MAX} characters")
+            entry = {'kind': provider['kind'], 'url': url}
+            if title:
+                entry['title'] = title
+            if desc:
+                entry['description'] = desc
+            if before and before.get('thumbnail'):
+                entry['thumbnail'] = before['thumbnail']
+            elif title:
+                thumb_bytes, thumb_ext = providers.thumbnail(provider['kind'], provider['id'], THUMB_MAX)
+                if not thumb_bytes:
+                    return None, fail(f'the alternate encode "{title}" does not resolve to a '
+                                      f'watchable {provider["name"]} video; check the URL')
+                entry['thumbnail'] = ('alt-' + hashlib.sha1(
+                    f'{provider["kind"]}:{provider["id"]}'.encode()).hexdigest()[:12] + thumb_ext)
+                thumbs.append((entry['thumbnail'], thumb_bytes))
+            entries.append(entry)
+        if len(entries) > ENCODE_ALT_MAX:
+            return None, fail(f'a run takes {ENCODE_ALT_MAX} alternate encodes at most')
+        return (entries, thumbs), None
+
+    def _alternates_said(alternates):
+        """The alternates as one line, for the edit log."""
+        return '; '.join(f"{e.get('title') or '(untitled)'} {e.get('url', '')}"
+                         + (f" ({e['description']})" if e.get('description') else '')
+                         for e in alternates) or '(none)'
+
+    def _write_alternate_thumbs(run, run_dir, thumbs):
+        """Keep the selector thumbnails of the alternates the run has, and no others."""
+        for name, data in thumbs:
+            (run_dir / name).write_bytes(data)
+        wanted = {e.get('thumbnail') for e in (run.get('encodes') or [])[1:]}
+        for stale in run_dir.glob('alt-*'):
+            if stale.is_file() and stale.name not in wanted:
+                stale.unlink(missing_ok=True)
+
     def _submission_duplicate(video_only, encode, movie_sha1, system, slug, dim_keys, parsed, authors):
         """Refuse an active run with the same encode or movie under the archive lock."""
         if video_only:
@@ -223,13 +308,15 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
 
     def _save_submission(submitter, run_dir, run, run_id, video_only, ext, movie_bytes,
                          thumb_ext, thumb_bytes, notes, attachments, game, goal,
-                         authors, system, slug):
+                         authors, system, slug, alternate_thumbs=()):
         """Persist one run, create discussion pointers, commit, then notify."""
         ensure_member(submitter)
         run_dir.mkdir(parents=True)
         if not video_only:
             (run_dir / f'{run_id}.{ext}').write_bytes(movie_bytes)
         (run_dir / ('thumb' + thumb_ext)).write_bytes(thumb_bytes)
+        for name, data in alternate_thumbs:
+            (run_dir / name).write_bytes(data)
         (run_dir / 'run.json').write_text(json.dumps(run, indent=1))
         if notes:
             (run_dir / 'notes.md').write_text(notes + '\n')
@@ -339,6 +426,11 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             return error
         (encode, encode_provider, thumb_bytes, thumb_ext, attachments,
          completed, notes, content_warnings, files) = metadata
+        # --- alternate encodes beside the main one, each with its own frame ---
+        alternates_data, error = _alternate_encodes(submission, encode_provider)
+        if error:
+            return error
+        alternates, alternate_thumbs = alternates_data
 
         dry_run = submission.get('dry_run') in ('1', 'true', 'yes')
 
@@ -359,12 +451,14 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                                      parsed, thumb_ext, goal_description, content_warnings,
                                      files, submission, encode_provider, encode, attachments,
                                      completed, submitter)
+            run['encodes'] += alternates
             if dry_run:
                 return jsonify({'ok': True, 'dry_run': True, 'would_be': run_id, 'run': run,
                                 'game_key': f'{system}/{slug}'})
             _save_submission(submitter, run_dir, run, run_id, video_only, ext,
                              movie_bytes, thumb_ext, thumb_bytes, notes,
-                             attachments, game, goal, authors, system, slug)
+                             attachments, game, goal, authors, system, slug,
+                             alternate_thumbs)
 
         return jsonify({'ok': True, 'id': run_id,
                         'archive': f'https://github.com/ToolAssisted-run/archive/tree/{BRANCH}/games/{system}/{slug}/runs/{run_id}',
@@ -621,6 +715,20 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         run['thumbnail'] = new_thumb
         return None
 
+    def _set_main_encode(run, encode_provider, url):
+        """Put a new main encode first and keep the alternates behind it.
+
+        An alternate that is the same video as the new main one is dropped
+        from the alternates: it was promoted, and a video is listed once.
+        """
+        main_ident = (encode_provider['kind'], encode_provider['id'])
+        kept = []
+        for entry in (run.get('encodes') or [])[1:]:
+            provider = providers.resolve(entry.get('url', ''))
+            if not provider or (provider['kind'], provider['id']) != main_ident:
+                kept.append(entry)
+        run['encodes'] = [{'kind': encode_provider['kind'], 'url': url}] + kept
+
     def _expert_run_encode(run, run_dir, value, field, dry_run):
         """Validate and apply the expert correction to the run's encode."""
         encode_provider = providers.resolve(value)
@@ -632,7 +740,9 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             thumb_error = _retake_thumbnail(run, run_dir, encode_provider, dry_run)
             if thumb_error is not None:
                 return thumb_error
-        run['encodes'] = [{'kind': encode_provider['kind'], 'url': value}]
+        _set_main_encode(run, encode_provider, value)
+        if not dry_run:
+            _write_alternate_thumbs(run, run_dir, ())
         return old_value, value, None
 
     def _expert_run_goal_description(run, run_dir, value, field, dry_run):
@@ -1526,7 +1636,13 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         return None
 
     def _edit_encode(edit_form, run, run_dir, run_id, user, is_author, dry_run, changed, befores):
-        """Validate and apply the run's encode revision, if supplied."""
+        """Validate and apply the run's encode revision, if supplied.
+
+        `encode` is the main encode. The alternates are replaced as a whole,
+        and only when the form says it is stating them (`alts=1`), so a caller
+        that knows nothing of alternates never erases them.
+        """
+        alternates_before = list((run.get('encodes') or [])[1:])
         if 'encode' in edit_form:
             encode_url = (edit_form.get('encode') or '').strip()
             if encode_url:
@@ -1538,8 +1654,25 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                     if thumb_error is not None:
                         return thumb_error
                     befores['encode'] = (run.get('encodes') or [{}])[0].get('url', '')
-                    run['encodes'] = [{'kind': encode_provider['kind'], 'url': encode_url}]
+                    _set_main_encode(run, encode_provider, encode_url)
                     changed.append('encode')
+        if edit_form.get('alts') in ('1', 'true', 'yes'):
+            main = (run.get('encodes') or [])[:1]
+            if not main:
+                return fail('a run takes alternate encodes beside a main one, and this run has none')
+            alternates_data, error = _alternate_encodes(
+                edit_form, providers.resolve(main[0].get('url', '')), alternates_before)
+            if error:
+                return error
+            alternates, alternate_thumbs = alternates_data
+            if alternates != alternates_before:
+                befores['alternates'] = _alternates_said(alternates_before)
+                run['encodes'] = main + alternates
+                changed.append('alternates')
+                if not dry_run:
+                    _write_alternate_thumbs(run, run_dir, alternate_thumbs)
+        elif 'encode' in changed and not dry_run:
+            _write_alternate_thumbs(run, run_dir, ())
         return None
 
     def _edit_metric_value(run, metric_key, raw, metric_keys, changed, befores):
@@ -1724,6 +1857,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                            'completed': run.get('completed', ''),
                            'goalDescription': run.get('goalDescription', ''),
                            'encode': (run.get('encodes') or [{}])[0].get('url', ''),
+                           'alternates': _alternates_said((run.get('encodes') or [])[1:]),
                            'duration': run.get('duration', ''),
                            'contentWarnings': ', '.join(run.get('contentWarnings', [])),
                            'related': ', '.join(run.get('related', [])),
@@ -1850,7 +1984,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         if not changed:
             return fail('nothing to change: every value sent already matches the '
                         'record (send notes, emulator, completed, goalDescription, '
-                        'encode, attachments, or time)')
+                        'encode, alternate encodes, attachments, or time)')
         # what this revision would void (the form asks before sending)
         preview = _preview_run_edit(run, changed, dry_run)
         if preview is not None:

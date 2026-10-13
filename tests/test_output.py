@@ -460,6 +460,21 @@ def main():
             rj_ = json.loads(rj_path_.read_text())
             rj_.setdefault('contract', {})['emulator'] = stated_
             rj_path_.write_text(json.dumps(rj_, indent=1))
+        # alternate encodes beside a run's main one (#108): one titled and
+        # described in hostile text with a thumbnail of its own, one on
+        # another platform, one bare link as an imported run has, and one on
+        # no platform at all, which no page can play
+        alt_dir_ = next(arch.glob('games/*/*/runs/M900102'))
+        alt_doc_ = json.loads((alt_dir_ / 'run.json').read_text())
+        alt_doc_['encodes'] = alt_doc_['encodes'][:1] + [
+            {'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=altALTalt01',
+             'title': 'Commentary <b>loud</b>', 'description': 'Talked through & "quoted" <i>x</i>',
+             'thumbnail': 'alt-0123456789ab.png'},
+            {'kind': 'vimeo', 'url': 'https://vimeo.com/76979871', 'title': '4K capture'},
+            {'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=altALTalt02'},
+            {'kind': 'elsewhere', 'url': 'https://example.org/video/9', 'title': 'Nowhere we know'}]
+        (alt_dir_ / 'run.json').write_text(json.dumps(alt_doc_, indent=1))
+        (alt_dir_ / 'alt-0123456789ab.png').write_bytes(mkarchive.PNG)
         out = td / 'out'
         r = build(arch, out, ref='staging')
         ck('controlled build succeeds', r.returncode == 0, r.stderr[-400:])
@@ -485,6 +500,42 @@ def main():
         ck('browse index json cannot break out of its script tag',
            script_opens == script_closes, f'{script_opens} open vs {script_closes} close')
         ck('browse json escapes angle brackets', '\\u003c' in browse)
+        # ---------- the encode selector (#108) ----------
+        ralt_ = all_html[out / 'runs' / 'M900102' / 'index.html']
+        sel_ = re.search(r'<div class="encsel".*?</div>', ralt_, re.S)
+        opts_ = re.findall(r'<a class="encopt[^"]*"[^>]*>.*?</a>', sel_.group(0) if sel_ else '', re.S)
+        ck('a run with alternate encodes shows a selector, one key per playable encode',
+           len(opts_) == 4, f'{len(opts_)} options')
+        ck('the main encode is first, held down, and named for what it is',
+           opts_ and 'class="encopt on"' in opts_[0] and 'aria-current="true"' in opts_[0]
+           and '<b>Main encode</b>' in opts_[0] and '/thumbs/M900102.png' in opts_[0], opts_[0][:300] if opts_ else '')
+        ck('and no other key is held down', all('class="encopt"' in o for o in opts_[1:]))
+        ck("an alternate shows its author's title and description, as text and never as markup",
+           len(opts_) > 1 and 'Commentary &lt;b&gt;loud&lt;/b&gt;' in opts_[1]
+           and 'Talked through &amp; &#34;quoted&#34; &lt;i&gt;x&lt;/i&gt;' in opts_[1]
+           and '<b>loud</b>' not in ralt_ and '<i>x</i>' not in opts_[1], opts_[1][:400] if len(opts_) > 1 else '')
+        ck('and the thumbnail that is its own, served from the site',
+           len(opts_) > 1 and 'src="/thumbs/M900102-alt-0123456789ab.png"' in opts_[1]
+           and (out / 'thumbs' / 'M900102-alt-0123456789ab.png').read_bytes() == mkarchive.PNG)
+        ck('each key carries the player address of its own platform',
+           len(opts_) > 2 and 'data-embed="https://www.youtube-nocookie.com/embed/altALTalt01' in opts_[1]
+           and 'data-embed="https://player.vimeo.com/video/76979871' in opts_[2]
+           and 'data-name="Vimeo"' in opts_[2] and 'href="https://vimeo.com/76979871"' in opts_[2],
+           opts_[2][:300] if len(opts_) > 2 else '')
+        ck('an alternate that came with no title is named for what it is, with no picture',
+           len(opts_) > 3 and '<b>Alternate encode</b>' in opts_[3]
+           and '<span class="encthumb"></span>' in opts_[3], opts_[3][:300] if len(opts_) > 3 else '')
+        ck('an encode on no platform we know is not offered', 'Nowhere we know' not in ralt_)
+        ck('the player opens on the main encode',
+           re.search(r'id="run-player"><iframe src="https://www\.youtube-nocookie\.com/embed/abc123DEF45', ralt_) is not None)
+        ck('a run with one encode has no selector at all',
+           'class="encsel"' not in all_html[out / 'runs' / 'M900101' / 'index.html']
+           and 'class="encopt' not in all_html[out / 'runs' / 'M900101' / 'index.html'])
+        submit_page_ = all_html[out / 'submit' / 'index.html']
+        ck('the submit form carries the alternate encode rows',
+           'id="s-altenc-list"' in submit_page_ and 'name="alt_url"' in submit_page_
+           and 'name="alt_title"' in submit_page_ and 'name="alt_desc"' in submit_page_
+           and 'maxlength="60"' in submit_page_)
         # ---------- the systems index, and the one list of cores (#110) ----------
         import html as html_
         cores_ = json.loads((REPO / 'generator' / 'cores.json').read_text())['cores']

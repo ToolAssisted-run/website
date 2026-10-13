@@ -27,7 +27,17 @@
 {% set vid %}
 {% if pv %}
 <div class="player" id="run-player"><iframe src="{{ pv['embed'] }}" title="Run encode" allowfullscreen></iframe></div>
-<p class="srcnote">External embedded video, not hosted at toolAssisted.run · <a href="{{ enc['url'] }}">watch on {{ pv['name'] }}</a></p>
+<p class="srcnote">External embedded video, not hosted at toolAssisted.run · <a id="run-encode-watch" href="{{ enc['url'] }}">watch on {{ pv['name'] }}</a></p>
+{# the selector: only when the run has encodes beside its main one. Each is a
+   key that puts its video in the player above; the one playing is held down.
+   Without script each is a plain link to the video where it is hosted. #}
+{% if encs|length > 1 %}
+<div class="encsel" id="run-encodes" role="group" aria-label="The encodes of this run">
+{% for e in encs %}<a class="encopt{% if loop.first %} on{% endif %}" href="{{ e.url }}" data-embed="{{ e.embed }}" data-name="{{ e.name }}"{% if loop.first %} aria-current="true"{% endif %}>
+<span class="encthumb">{% if e.thumb %}<img src="{{ e.thumb }}" alt="" loading="lazy">{% endif %}</span>
+<span class="enctext"><b>{{ e.title }}</b>{% if e.description %}<span class="encdesc">{{ e.description }}</span>{% endif %}</span></a>
+{% endfor %}</div>
+{% endif %}
 {% elif thumb_url(r) %}
 {% set rbh = thumb_blurhash(r) %}
 {% set rdurl = thumb_data_url(r) %}

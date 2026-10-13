@@ -1072,6 +1072,31 @@ archivist, module responsibilities). What matters designwise:
   host list, import resolution) derives from the registry; adding a platform
   is one entry. Twitch absent (authenticated thumbnails); Dailymotion cannot
   prove existence (community catches dead links).
+- **A run has one main encode and may have alternates beside it.** The
+  first entry of `encodes` is the main one: the run's thumbnail is a frame of
+  it and it is the one a verifier judges; it carries no title. Up to five
+  more may follow (another angle, a commentary, a higher resolution), each
+  with a **title** (1 to 60 characters, required), a **description** (up to
+  300, optional), both plain text, and a selector thumbnail of its own, taken
+  from the video when it is added and kept in the run's folder as
+  `alt-<hash>.<ext>` (the archive's validator accounts for it as it does for
+  the run's own). The same video is listed once, whatever address it is
+  written under, and a link no thumbnail can be had from is refused, as the
+  main one is. The submit form states them as rows under the main encode
+  (link, title, description; add, remove, reorder, and **Make main**, which
+  swaps a row with the main encode and asks for the title a main encode
+  never had), and the same rows are how the run's edit page changes them:
+  an edit states the alternates as a whole (`alts=1`), so a caller that
+  knows nothing of them never erases them, and an expert's correction of the
+  main encode keeps them behind it. On the run page the **selector** sits
+  under the player, one key per playable encode with its thumbnail, title
+  and description, the main one first and named "Main encode"; pressing a
+  key puts that video in the player, and the key of the one playing is held
+  down. **A run with no alternates has no selector.** Without script each
+  key is a plain link to the video where it is hosted. An imported run's
+  second bare link is offered as "Alternate encode" and may stay untitled:
+  a title is asked of what a member states, not of what was there. Changing
+  alternates is logged like any edit and voids nothing.
 - **The forum** (Discourse, self-hosted): identity provider, discussion
   home, notifications. Every run gets a topic in the **Movies** category
   (id 13, `MOVIES_CATEGORY_ID`; created in the same commit as the archival,

@@ -303,6 +303,11 @@ def main():
             (pages / 'thumbs' / vid).mkdir(parents=True)
             (pages / 'thumbs' / vid / 'maxresdefault.jpg').write_bytes(
                 b'\xff\xd8\xff' + b'\0' * size)
+        # alternate encodes (#108): seven videos, each with a frame of its own
+        for n in range(1, 8):
+            (pages / 'thumbs' / f'altvid0000{n}').mkdir(parents=True)
+            (pages / 'thumbs' / f'altvid0000{n}' / 'maxresdefault.jpg').write_bytes(
+                b'\xff\xd8\xff' + b'\0' * (100 + n))
         hport = free_port()
 
         # Providers whose thumbnail needs an API call are asked through
@@ -1701,6 +1706,119 @@ def main():
                             'value': 'https://youtu.be/X7oXnw7X0kQ',
                             'reason': 'back to the encode the author gave'})
             ck('the encode goes back', c == 200, str(r))
+
+            # ---- alternate encodes beside the main one (#108) ----
+            def alts_form(rows, **more):
+                # one alt_url, alt_title, alt_desc per alternate, in order
+                return {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010', 'alts': '1',
+                        'alt_url': [row[0] for row in rows],
+                        'alt_title': [row[1] for row in rows],
+                        'alt_desc': [row[2] for row in rows], **more}
+            def alt(n): return f'https://youtu.be/altvid0000{n}'
+            def encodes_now():
+                subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+                return json.loads((rdir / 'run.json').read_text())['encodes']
+            def alt_files(): return sorted(x.name for x in rdir.glob('alt-*'))
+            MAIN = 'https://youtu.be/X7oXnw7X0kQ'
+
+            c, r, _ = call(U + '/api/edit', alts_form([(alt(1), 'Commentary', 'The authors talk it through.'),
+                                                       (alt(2), '  4K   capture ', '')]))
+            enc = encodes_now()
+            ck('an author adds alternate encodes, each with a title',
+               c == 200 and r['changed'] == ['alternates'] and len(enc) == 3, str(r))
+            ck('the main encode stays first and carries no title',
+               enc[0] == {'kind': 'youtube', 'url': MAIN}, str(enc[0]))
+            ck('an alternate keeps its title and description, as plain single-spaced text',
+               enc[1].get('title') == 'Commentary'
+               and enc[1].get('description') == 'The authors talk it through.'
+               and enc[2].get('title') == '4K capture' and 'description' not in enc[2], str(enc[1:]))
+            ck('each alternate has a selector thumbnail of its own, a frame of that video',
+               len(alt_files()) == 2 and all(e['thumbnail'] in alt_files() for e in enc[1:])
+               and (rdir / enc[1]['thumbnail']).read_bytes() == b'\xff\xd8\xff' + b'\0' * 101
+               and (rdir / enc[2]['thumbnail']).read_bytes() == b'\xff\xd8\xff' + b'\0' * 102,
+               str(alt_files()))
+            ck("the run's own thumbnail is still the main encode's",
+               (rdir / 'thumb.jpg').read_bytes() == b'\xff\xd8\xff' + b'\0' * 71)
+            elog = json.loads((work / 'edits.json').read_text())['events']
+            ck('the change of alternates is logged, before and after',
+               any(e['field'] == 'alternates' and e['from'] == '(none)'
+                   and 'Commentary' in e['to'] and alt(2) in e['to'] for e in elog), str(elog[-1]))
+
+            for rows, what in (([(alt(3), '', 'no title')], 'without a title'),
+                               ([('', 'Orphan', '')], 'without a link'),
+                               ([(MAIN, 'Same as main', '')], 'that is the main encode'),
+                               ([('https://www.youtube.com/watch?v=X7oXnw7X0kQ', 'Main, other spelling', '')],
+                                'that is the main encode under another address'),
+                               ([(alt(3), 'One', ''), (alt(3), 'Two', '')], 'listed twice'),
+                               ([('https://example.com/video', 'Elsewhere', '')], 'on no platform we accept'),
+                               ([('https://youtu.be/nosuchvid99', 'Gone', '')], 'no thumbnail can be had from'),
+                               ([(alt(3), 'T' * 61, '')], 'with a title over 60'),
+                               ([(alt(3), 'Long', 'd' * 301)], 'with a description over 300'),
+                               ([(alt(n), f'Number {n}', '') for n in range(1, 7)], 'when there are six')):
+                c, r, _ = call(U + '/api/edit', alts_form(rows, dry_run='1'))
+                ck(f'an alternate encode {what} is refused', c == 400, str(r)[:160])
+            ck('and none of those refusals changed the record or left a file',
+               encodes_now() == enc and len(alt_files()) == 2, str(alt_files()))
+
+            c, r, _ = call(U + '/api/edit', alts_form([(alt(2), '4K capture', ''),
+                                                       (alt(1), 'Commentary', 'The authors talk it through.')]))
+            enc2 = encodes_now()
+            ck('the alternates are reordered, each keeping the thumbnail it had',
+               c == 200 and r['changed'] == ['alternates']
+               and [e['title'] for e in enc2[1:]] == ['4K capture', 'Commentary']
+               and enc2[1]['thumbnail'] == enc[2]['thumbnail'] and len(alt_files()) == 2, str(enc2))
+            c, r, _ = call(U + '/api/edit', alts_form([(alt(2), '4K capture', ''),
+                                                       (alt(1), 'Commentary', 'The authors talk it through.')]))
+            ck('stating the alternates as they are changes nothing', c == 400, str(r))
+
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'emulator': 'BizHawk 2.11 (an edit that knows nothing of alternates)'})
+            ck('an edit that does not state the alternates leaves them be',
+               c == 200 and encodes_now() == enc2, str(r))
+
+            # an alternate is made the main encode, and the old main becomes one
+            promoted_thumb = enc2[2]['thumbnail']
+            c, r, _ = call(U + '/api/edit', alts_form([(alt(2), '4K capture', ''),
+                                                       (MAIN, 'First upload', 'The encode this run went up with.')],
+                                                      encode=alt(1)))
+            enc3 = encodes_now()
+            ck('an alternate is promoted to main, and the main it replaces becomes an alternate',
+               c == 200 and sorted(r['changed']) == ['alternates', 'encode']
+               and enc3[0] == {'kind': 'youtube', 'url': alt(1)}
+               and [e['url'] for e in enc3[1:]] == [alt(2), MAIN]
+               and enc3[2]['title'] == 'First upload', str(enc3))
+            ck("the run's thumbnail follows the new main encode",
+               (rdir / 'thumb.jpg').read_bytes() == b'\xff\xd8\xff' + b'\0' * 101)
+            ck('the promoted one leaves the selector thumbnails and the demoted one joins them',
+               promoted_thumb not in alt_files() and len(alt_files()) == 2
+               and (rdir / enc3[2]['thumbnail']).read_bytes() == b'\xff\xd8\xff' + b'\0' * 71,
+               str(alt_files()))
+
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run',
+                            'target': 'M900010', 'field': 'encode', 'value': alt(4),
+                            'reason': 'the main encode was taken down'})
+            enc4 = encodes_now()
+            ck("an expert's correction of the main encode keeps the alternates behind it",
+               c == 200 and enc4[0]['url'] == alt(4) and enc4[1:] == enc3[1:], str(enc4))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run',
+                            'target': 'M900010', 'field': 'encode', 'value': alt(2),
+                            'reason': 'the 4K capture is the better main encode'})
+            enc5 = encodes_now()
+            ck('a main encode that was an alternate is listed once, as the main',
+               c == 200 and [e['url'] for e in enc5] == [alt(2), MAIN] and len(alt_files()) == 1,
+               str(enc5) + str(alt_files()))
+
+            c, r, _ = call(U + '/api/edit', alts_form([], encode=MAIN))
+            enc6 = encodes_now()
+            ck('the alternates are all removed, and their thumbnails with them',
+               c == 200 and enc6 == [{'kind': 'youtube', 'url': MAIN}] and alt_files() == [], str(enc6))
+            ck('and the run is back on the encode the checks below expect',
+               (rdir / 'thumb.jpg').read_bytes() == b'\xff\xd8\xff' + b'\0' * 71)
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'emulator': 'BizHawk 2.11'})
+            ck('the tool goes back too', c == 200, str(r))
             c, r, _ = call(U + '/api/edit',
                            {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                             'completed': '2099-01-01'})

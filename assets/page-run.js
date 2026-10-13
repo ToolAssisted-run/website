@@ -554,5 +554,34 @@ document.addEventListener('click', function (ev) {
     });
 });
 
+// ---- the encode selector: a run's alternate encodes beside its main one ----
+// Each key puts its video in the player above it, and the key of the one
+// playing is held down. Delegated, because the player of an age-gated run
+// joins the page only once the reader has declared. With no player to put
+// it in, or a click that asks for a new tab, the key is the plain link it
+// is: the video where it is hosted.
+document.addEventListener('click', function (ev) {
+  var opt = ev.target.closest && ev.target.closest('.encopt');
+  if (!opt || !opt.dataset.embed) return;
+  if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey)
+    return;
+  var frame = document.querySelector('#run-player iframe');
+  if (!frame) return;
+  ev.preventDefault();
+  if (opt.classList.contains('on')) return;
+  frame.src = opt.dataset.embed;
+  var watch = document.getElementById('run-encode-watch');
+  if (watch) {
+    watch.href = opt.href;
+    watch.textContent = 'watch on ' + opt.dataset.name;
+  }
+  document.querySelectorAll('.encopt').forEach(function (other) {
+    var playing = other === opt;
+    other.classList.toggle('on', playing);
+    if (playing) other.setAttribute('aria-current', 'true');
+    else other.removeAttribute('aria-current');
+  });
+});
+
 export const page = 'run';
 window.TARApp.page = page;

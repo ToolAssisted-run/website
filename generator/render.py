@@ -294,6 +294,7 @@ def frames_html(r):
         return '<span class="u" title="the movie format could not be read; time as stated">—</span>'
     return f'<b>{r["movie"]["frames"]:,}</b><span class="u">f</span>'
 
+import providers  # noqa: E402  (config put archivist/ on the path)
 import wikitext  # noqa: E402  (config put archivist/ on the path)
 
 def wiki_html(text, rel='../../'):
@@ -366,6 +367,7 @@ CW_LABELS = {'mature-violence': 'Mature / violent content',
              'strong-language': 'Strong language'}
 
 SHIPPED_THUMBS = {}      # run id -> the file name we serve it under
+SHIPPED_ALT_THUMBS = {}  # (run id, an alternate encode's thumbnail) -> the file name we serve it under
 
 SHIPPED_GAME_THUMBS = {} # game key -> the expert-set game face, if any
 
@@ -412,6 +414,18 @@ def ship_thumbnails():
         name = f"{r['id']}{pathlib.Path(t).suffix.lower()}"
         shutil.copy2(src, dest / name)
         SHIPPED_THUMBS[r['id']] = name
+    # the selector thumbnails of a run's alternate encodes, beside the run's own
+    for r in runs:
+        for enc in (r.get('encodes') or [])[1:]:
+            t = enc.get('thumbnail') if isinstance(enc, dict) else None
+            if not t or pathlib.PurePosixPath(t).name != t:
+                continue
+            src = r['_dir'] / t
+            if not src.is_file():
+                continue
+            name = f"{r['id']}-{t.lower()}"
+            shutil.copy2(src, dest / name)
+            SHIPPED_ALT_THUMBS[(r['id'], t)] = name
     # a game an expert gave its own face to
     for g_ in games.values():
         t = g_.get('thumbnail')
@@ -423,6 +437,32 @@ def ship_thumbnails():
         name = f"g-{g_['key'].replace('/', '-')}{pathlib.Path(t).suffix.lower()}"
         shutil.copy2(src, dest / name)
         SHIPPED_GAME_THUMBS[g_['key']] = name
+
+def run_encodes(r):
+    """The encodes a run page can play, the main one first.
+
+    The first encode is the main one: the page opens on it and its thumbnail
+    is the run's. Any after it is an alternate the page's selector offers,
+    under the title and description its author gave it and a thumbnail of its
+    own. An encode on no platform we know cannot be embedded and is left out;
+    an alternate that came with no title (an imported run's second link) is
+    named for what it is.
+    """
+    listed = []
+    for n, enc in enumerate(r.get('encodes') or []):
+        provider = providers.resolve(enc.get('url', '')) if isinstance(enc, dict) else None
+        if not provider:
+            continue
+        main = n == 0
+        shipped = SHIPPED_ALT_THUMBS.get((r['id'], enc.get('thumbnail')))
+        listed.append({
+            'url': enc['url'], 'embed': provider['embed'], 'name': provider['name'],
+            'main': main,
+            'title': 'Main encode' if main else (enc.get('title') or 'Alternate encode'),
+            'description': '' if main else (enc.get('description') or ''),
+            'thumb': thumb_url(r) if main else (f'/thumbs/{shipped}' if shipped else None),
+        })
+    return listed
 
 def thumb_url(r):
     t = r.get('thumbnail')

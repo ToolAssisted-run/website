@@ -2505,6 +2505,15 @@ if (submitForm) {
           rowsBox.querySelector('.addfile').click();
         });
       }
+      // and the alternate encode rows, one per link the draft kept. Only
+      // when it kept any: an edit comes through here too, with the record's
+      // fields, and its rows are already in place
+      if ('alt_url' in fields)
+        altSet(
+          [].concat(fields.alt_url).map(function () {
+            return {};
+          })
+        );
       var seen = {};
       Array.prototype.forEach.call(submitForm.elements, function (e) {
         if (!e.name || !(e.name in fields) || e.type === 'file') return;
@@ -2677,6 +2686,8 @@ if (submitForm) {
           submitForm
             .querySelector('[name=encode]')
             .dispatchEvent(new Event('input'));
+          // and the alternates the run has beside it, in their order
+          altSet((run.encodes || []).slice(1));
           var pick = submitForm.querySelector('.authpick');
           if (pick && pick.setAuthors)
             pick.setAuthors(
@@ -2871,7 +2882,7 @@ if (submitForm) {
       if (step === 2)
         return document.getElementById('enc-status').className !== 'enc-good'
           ? 'the encode link is not valid'
-          : 'name at least one author';
+          : altsProblem() || 'name at least one author';
       if (step === 3)
         return 'the movie file could not be checked; pick it again or remove it';
       if (step === 4)
@@ -2907,6 +2918,7 @@ if (submitForm) {
       if (step === 2) {
         return (
           document.getElementById('enc-status').className === 'enc-good' &&
+          !altsProblem() &&
           !!submitForm.querySelector('[name=authors]').value
         );
       }
@@ -2948,6 +2960,207 @@ if (submitForm) {
           : submitForm.querySelector('[name=consent]').checked;
       return false;
     }
+    // ---- alternate encodes: rows beside the main encode ----
+    // Each row is a link with the title and description the run page's
+    // selector shows for it. The rows are plain named inputs, so a new run
+    // sends them with the form and a draft keeps them; an edit states them
+    // as a whole. A link is checked the way the main one is, by the
+    // archivist. These are declarations on purpose: a draft or a record may
+    // fill the rows before the lines below them have run.
+    function altRows() {
+      return Array.prototype.slice.call(
+        document.querySelectorAll('#s-altenc-list .altenc')
+      );
+    }
+    function altFields(row) {
+      return {
+        url: row.querySelector('[name=alt_url]'),
+        title: row.querySelector('[name=alt_title]'),
+        desc: row.querySelector('[name=alt_desc]'),
+        status: row.querySelector('.altenc-status'),
+      };
+    }
+    function altSay(row, text, cls) {
+      var status = altFields(row).status;
+      status.textContent = text;
+      status.className = 'altenc-status' + (cls ? ' ' + cls : '');
+    }
+    // what is wrong with a row, in a few words; '' when nothing is. A row
+    // left wholly empty is no row at all.
+    function altProblem(row) {
+      var f = altFields(row);
+      var url = f.url.value.trim();
+      if (!url && !f.title.value.trim() && !f.desc.value.trim()) return '';
+      if (!url) return 'an alternate encode has no link';
+      if (row.dataset.checked !== url)
+        return 'an alternate encode link is still being checked';
+      if (row.dataset.good !== '1')
+        return 'an alternate encode link is not valid';
+      // an alternate that came without a title (an imported run's second
+      // link) may stay as it came; one the member states needs its title
+      if (!f.title.value.trim() && row.dataset.untitled !== url)
+        return 'an alternate encode has no title';
+      return '';
+    }
+    function altsProblem() {
+      var rows = altRows();
+      for (var i = 0; i < rows.length; i++) {
+        var why = altProblem(rows[i]);
+        if (why) return why;
+      }
+      return '';
+    }
+    function altCheck(row) {
+      var f = altFields(row);
+      var url = f.url.value.trim();
+      row.dataset.checked = '';
+      row.dataset.good = '';
+      if (!url) {
+        altSay(row, '', '');
+        paintPanels();
+        return;
+      }
+      var main = document.getElementById('s-encode');
+      if (main && main.value.trim() === url) {
+        row.dataset.checked = url;
+        altSay(row, '✗ this is the main encode', 'enc-bad');
+        paintPanels();
+        return;
+      }
+      altSay(row, 'checking…', '');
+      paintPanels();
+      fetch(api + '/api/encode/check?url=' + encodeURIComponent(url), {
+        credentials: 'include',
+      })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (j) {
+          if (f.url.value.trim() !== url) return; // the field moved on
+          row.dataset.checked = url;
+          row.dataset.good = j.ok ? '1' : '';
+          altSay(
+            row,
+            j.ok
+              ? '✓ ' + j.name
+              : '✗ ' + (j.error || 'that link does not work'),
+            j.ok ? 'enc-good' : 'enc-bad'
+          );
+          paintPanels();
+        })
+        .catch(function () {
+          if (f.url.value.trim() !== url) return;
+          row.dataset.checked = url;
+          altSay(
+            row,
+            '✗ could not reach the archivist to check the link',
+            'enc-bad'
+          );
+          paintPanels();
+        });
+    }
+    // the first row cannot go up, the last cannot go down, and a run takes
+    // five alternates at most
+    function altPaint() {
+      var rows = altRows();
+      rows.forEach(function (row, i) {
+        row.querySelector('.orderbtn.up').disabled = i === 0;
+        row.querySelector('.orderbtn.down').disabled = i === rows.length - 1;
+      });
+      var add = document.getElementById('s-altenc-add');
+      if (add) {
+        add.disabled = rows.length >= 5;
+        add.title =
+          rows.length >= 5 ? 'A run takes five alternate encodes at most' : '';
+      }
+    }
+    function altChanged() {
+      altPaint();
+      submitForm.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function altAdd(entry) {
+      var list = document.getElementById('s-altenc-list');
+      var tpl = document.getElementById('s-altenc-tpl');
+      if (!list || !tpl || altRows().length >= 5) return null;
+      var row = tpl.content.firstElementChild.cloneNode(true);
+      var f = altFields(row);
+      if (entry) {
+        f.url.value = entry.url || '';
+        f.title.value = entry.title || '';
+        f.desc.value = entry.description || '';
+        if (entry.url && !entry.title) row.dataset.untitled = entry.url;
+      }
+      f.url.addEventListener('input', function () {
+        clearTimeout(row.altTimer);
+        row.altTimer = setTimeout(function () {
+          altCheck(row);
+        }, 400);
+      });
+      row.querySelector('.orderbtn.up').addEventListener('click', function () {
+        if (row.previousElementSibling)
+          list.insertBefore(row, row.previousElementSibling);
+        altChanged();
+      });
+      row
+        .querySelector('.orderbtn.down')
+        .addEventListener('click', function () {
+          if (row.nextElementSibling)
+            list.insertBefore(row.nextElementSibling, row);
+          altChanged();
+        });
+      row.querySelector('.altenc-rm').addEventListener('click', function () {
+        row.remove();
+        altChanged();
+      });
+      // this one becomes the main encode, and the main one takes its place
+      // here: it needs the title a main encode never had
+      row
+        .querySelector('.altenc-promote')
+        .addEventListener('click', function () {
+          var main = document.getElementById('s-encode');
+          var mine = f.url.value.trim();
+          if (!main || !mine) return;
+          var was = main.value.trim();
+          main.value = mine;
+          main.dispatchEvent(new Event('input', { bubbles: true }));
+          if (!was) {
+            row.remove();
+            altChanged();
+            return;
+          }
+          f.url.value = was;
+          f.title.value = '';
+          f.desc.value = '';
+          delete row.dataset.untitled;
+          f.title.placeholder = 'Title for the encode that was the main one';
+          altCheck(row);
+          altChanged();
+          f.title.focus();
+        });
+      list.appendChild(row);
+      altPaint();
+      // checked once whoever is filling the form has finished: a record
+      // being loaded has not set the rest of the form up yet
+      if (f.url.value.trim())
+        setTimeout(function () {
+          altCheck(row);
+        }, 0);
+      return row;
+    }
+    // the rows as a record or a draft has them
+    function altSet(entries) {
+      altRows().forEach(function (row) {
+        row.remove();
+      });
+      (entries || []).forEach(altAdd);
+      altPaint();
+    }
+    var altAddBtn = document.getElementById('s-altenc-add');
+    if (altAddBtn)
+      altAddBtn.addEventListener('click', function () {
+        var row = altAdd();
+        if (row) altFields(row).url.focus();
+      });
     function paintPanels() {
       var chain = true; // a step counts only with every step before it
       var broken = null; // the first step that is open but not done
@@ -3400,6 +3613,18 @@ if (submitForm) {
             'authors',
             submitForm.querySelector('[name=authors]').value
           );
+        // the alternates, as a whole and in the order of the rows
+        fd.append('alts', '1');
+        altRows().forEach(function (row) {
+          var f = altFields(row);
+          var url = f.url.value.trim(),
+            title = f.title.value.trim(),
+            desc = f.desc.value.trim();
+          if (!url && !title && !desc) return;
+          fd.append('alt_url', url);
+          fd.append('alt_title', title);
+          fd.append('alt_desc', desc);
+        });
         fd.append('content_warnings_set', '1');
         submitForm
           .querySelectorAll('[name=content_warnings]:checked')

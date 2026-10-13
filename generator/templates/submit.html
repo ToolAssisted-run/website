@@ -82,6 +82,31 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
   <input id="s-encode" name="encode" type="url" required placeholder="https://youtu.be/…">
   <div id="enc-check" class="enccheck" hidden><img id="enc-thumb" alt="" hidden>
   <span id="enc-status"></span></div>
+  {# alternate encodes: rows added at will, each a link with the title and
+     description the run page's selector shows for it. page-submit.js runs it. #}
+  <div class="altencs" id="s-altencs">
+  <label>Alternate encodes (optional, up to 5): another angle, a commentary, a higher
+  resolution. The run page offers them under the player, each by its title. The encode
+  above stays the main one: the thumbnail is its, and it is the one verified.</label>
+  <div class="altenc-list" id="s-altenc-list"></div>
+  <div class="btnrow filerow-actions"><button type="button" class="btn leave addfile" id="s-altenc-add">+ Add an alternate encode</button></div>
+  <template id="s-altenc-tpl">
+    <div class="altenc">
+      <div class="altenc-fields">
+        <input name="alt_url" type="url" placeholder="Link to the alternate encode" autocomplete="off" aria-label="Alternate encode link">
+        <input name="alt_title" maxlength="60" placeholder="Title, e.g. Commentary" autocomplete="off" aria-label="Alternate encode title">
+        <input name="alt_desc" maxlength="300" placeholder="Description (optional): what this one shows" autocomplete="off" aria-label="Alternate encode description">
+        <span class="altenc-status" aria-live="polite"></span>
+      </div>
+      <div class="altenc-acts">
+        <button type="button" class="orderbtn up" title="Move this encode up">Up</button>
+        <button type="button" class="orderbtn down" title="Move this encode down">Down</button>
+        <button type="button" class="att-btn altenc-promote" title="Make this the main encode; the main one takes its place here">Make main</button>
+        <button type="button" class="att-btn att-del altenc-rm" title="Remove this encode">Remove</button>
+      </div>
+    </div>
+  </template>
+  </div>
   <div id="s-relatedwrap" hidden>
   <label>You may also like: up to 8 runs you designate, shown first on this run's page
   (type a game name or run id; picking adds it)</label>

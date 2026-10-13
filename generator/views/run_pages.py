@@ -22,7 +22,7 @@ from model import (
     systems,
     withdrawn_runs,
 )
-from render import SITE_URL, breadcrumb_ld, page, primary_metric_text, run_clock, thumb_url, tpl
+from render import SITE_URL, breadcrumb_ld, page, primary_metric_text, run_clock, run_encodes, thumb_url, tpl
 
 # ---- run pages ----
 # ---- "You may also like": eight runs, closest first ----
@@ -237,6 +237,7 @@ for r in runs:
                  'authors': [canon(a['user']) for a in r['authors']],
                  'likes': [l['user'].lower() for l in r.get('likes', [])]}
     body = tpl('run_pages.html', r=r, g=g, t=t, cl=cl, rs=rs, vs=vs, enc=enc, enc_url=enc_url,
+               encs=run_encodes(r),
                reel=reel_for(r),
                pv=pv, warns=warns, files=files, imported=imported, is_leg=is_leg,
                reps=reps, vers=vers, cases=cases,
