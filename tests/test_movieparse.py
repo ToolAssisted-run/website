@@ -759,6 +759,27 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(swf).encode())
     ck('chimeraProject: the same 60 from a console core is still a placeholder',
        res.get('fps') is None and any('nominal' in w for w in res['warnings']), str(res))
+    # MAME's Arcade is every board, each with its own refresh, and the core
+    # reports the running board's: an exact 60 is that board's rate, and the
+    # archive's one figure for Arcade (59.637) is no better than a default
+    board = json.loads(f_chimeraproject().decode())
+    board['headers'].update({'Platform': 'ARCADE', 'VsyncNumerator': '60000',
+                             'VsyncDenominator': '1000'})
+    board['core'] = {'name': 'MAME', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(board).encode())
+    ck('chimeraProject: an arcade board at exactly 60 Hz is timed at 60',
+       res.get('fps') == 60.0 and res.get('system') == 'arcade'
+       and not any('nominal' in w for w in res['warnings']), str(res))
+    board['headers'].update({'VsyncNumerator': '57500'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(board).encode())
+    ck('chimeraProject: and a board at 57.5 Hz at 57.5',
+       res.get('fps') == 57.5, str(res))
+    board['headers'].update({'Platform': 'X68000', 'VsyncNumerator': '60000'})
+    board['core'] = {'name': 'MAME X68000', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(board).encode())
+    ck('chimeraProject: MAME X68000 is another core, and keeps the rule',
+       res.get('fps') is None and res.get('system') == 'x68k'
+       and any('nominal' in w for w in res['warnings']), str(res))
     # ---- what a project says it was made with (#102) ----
     made_doc = json.loads(f_chimeraproject().decode())
     made_doc['headers']['emuVersion'] = 'Commit e9dc5ecf1'

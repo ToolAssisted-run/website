@@ -188,7 +188,11 @@ VARIABLE_STEP_CORES = {'sdlpop', 'sdlpop2'}
 # kept: what they play states its own rate, and the core reports exactly
 # that. A Flash movie's rate is a number in its header, 50 as readily as 24,
 # so the project's rate is the run's and the system's is only a default.
-CONTENT_RATE_CORES = {'ruffle'}
+# MAME's Arcade is every board there is, each with a refresh of its own, and
+# the core reports the running board's: one at exactly 60 Hz says 60 and
+# means it, where the archive's figure for Arcade is one board's 59.637.
+# (MAME X68000 is another core, by its full name, and is not one of these.)
+CONTENT_RATE_CORES = {'ruffle', 'mame'}
 
 # A game core may let the player choose what its own timer counts from, which
 # changes what the time MEANS and so what it may be ranked against. SDLPoP2's
