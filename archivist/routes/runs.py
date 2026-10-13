@@ -597,6 +597,30 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         run['category'] = new_category
         return old_value, value, None
 
+    def _retake_thumbnail(run, run_dir, encode_provider, dry_run):
+        """Take the run's thumbnail again from the encode it now has.
+
+        The thumbnail is a frame of the encode, so a run whose encode changed
+        and whose thumbnail did not shows a picture of a video it no longer
+        links (#109). The same refusal as at submission: an encode no
+        thumbnail can be had from is not a watchable one. A dry run fetches
+        too, so the refusal comes before anything is written.
+        """
+        thumb_bytes, thumb_ext = providers.thumbnail(encode_provider['kind'], encode_provider['id'], THUMB_MAX)
+        if not thumb_bytes:
+            return fail(f'the encode link does not resolve to a watchable '
+                        f'{encode_provider["name"]} video; check the URL (the run thumbnail is '
+                        f'derived from it)')
+        if dry_run:
+            return None
+        old_thumb = str(run.get('thumbnail') or '')
+        new_thumb = 'thumb' + thumb_ext
+        if old_thumb and old_thumb != new_thumb and pathlib.PurePosixPath(old_thumb).name == old_thumb:
+            (run_dir / old_thumb).unlink(missing_ok=True)
+        (run_dir / new_thumb).write_bytes(thumb_bytes)
+        run['thumbnail'] = new_thumb
+        return None
+
     def _expert_run_encode(run, run_dir, value, field, dry_run):
         """Validate and apply the expert correction to the run's encode."""
         encode_provider = providers.resolve(value)
@@ -604,6 +628,10 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             return fail('value must be a watchable encode URL on a platform '
                         'we accept')
         old_value = (run.get('encodes') or [{}])[0].get('url', '')
+        if value != old_value:
+            thumb_error = _retake_thumbnail(run, run_dir, encode_provider, dry_run)
+            if thumb_error is not None:
+                return thumb_error
         run['encodes'] = [{'kind': encode_provider['kind'], 'url': value}]
         return old_value, value, None
 
@@ -1506,6 +1534,9 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                 if not encode_provider:
                     return fail('encode must be a watchable URL on a platform we accept')
                 if encode_url != (run.get('encodes') or [{}])[0].get('url', ''):
+                    thumb_error = _retake_thumbnail(run, run_dir, encode_provider, dry_run)
+                    if thumb_error is not None:
+                        return thumb_error
                     befores['encode'] = (run.get('encodes') or [{}])[0].get('url', '')
                     run['encodes'] = [{'kind': encode_provider['kind'], 'url': encode_url}]
                     changed.append('encode')

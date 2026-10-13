@@ -178,6 +178,14 @@ ATTACH_MAX_TOTAL = 512 * 1024
 
 ATTACH_MAX_COUNT = 8
 
+# An attachment keeps the name it was uploaded under, below a path the archive
+# decides (games/<system>/<game>/runs/<id>/attachments/), and Windows refuses
+# a whole path over 260 characters: a 102-character name once made a checkout
+# that could not be copied (#105). 80 leaves room for the longest game address
+# and for a folder of the reader's own in front. The member shortens the name;
+# the archive never renames what it was given.
+ATTACH_NAME_MAX = 80
+
 SHOT_MAX_EACH = 512 * 1024
 
 SHOT_MAX_TOTAL = 8 * 1024 * 1024

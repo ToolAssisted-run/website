@@ -1013,6 +1013,19 @@ if (submitForm) {
       var p = (fn || '').split('.');
       return p.length > 1 ? p.pop().toLowerCase() : '';
     }
+    // the archivist refuses a longer name: it is kept as given, under a
+    // path the archive decides, and Windows cannot copy a path over 260
+    var ATTACH_NAME_MAX = 80;
+    function attachNameTooLong(fn) {
+      return (
+        fn.slice(0, 40) +
+        '\u2026 has a name of ' +
+        fn.length +
+        ' characters and ' +
+        ATTACH_NAME_MAX +
+        ' is the most a name may be: give the file a shorter name'
+      );
+    }
     function isAttachExt(fn) {
       var e = extOf(fn);
       return ATTACH_TEXT_EXTS.has(e) || ATTACH_MOVIE_EXTS.has(e);
@@ -1267,6 +1280,10 @@ if (submitForm) {
           errs.push(file.name + ': unsupported extension');
           return;
         }
+        if (file.name.length > ATTACH_NAME_MAX) {
+          errs.push(attachNameTooLong(file.name));
+          return;
+        }
         var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
         if (isMovie && file.size > 95 * 1024 * 1024) {
           errs.push(file.name + ' exceeds 95 MB');
@@ -1326,6 +1343,10 @@ if (submitForm) {
         if (!file || !replaceTargetName) return;
         if (!isAttachExt(file.name)) {
           setAttError(file.name + ': unsupported extension');
+          return;
+        }
+        if (file.name.length > ATTACH_NAME_MAX) {
+          setAttError(attachNameTooLong(file.name));
           return;
         }
         var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
@@ -2795,7 +2816,8 @@ if (submitForm) {
           !/^(\d+:)?\d{1,2}:\d{2}/.test(document.getElementById('s-time').value)
           ? 'state the time'
           : 'every value the category ranks by is needed';
-      if (step === 5) return 'preview your notes';
+      if (step === 5)
+        return 'write your notes, or press Preview to go on without any';
       if (step === 6)
         return editRunId
           ? 'say why, publicly (at least 8 characters)'
@@ -2850,7 +2872,11 @@ if (submitForm) {
           ok = false;
         return ok;
       }
-      if (step === 5) return previewed;
+      // notes that are written count; Preview stays the way on with none
+      if (step === 5)
+        return (
+          previewed || !!submitForm.querySelector('[name=notes]').value.trim()
+        );
       if (step === 6)
         return editRunId
           ? editMay && editMay.author
@@ -2871,8 +2897,10 @@ if (submitForm) {
         pn.classList.toggle('done', done);
         // the first step undone while later ones are open: say so on its
         // badge (the ones after it are merely waiting on it)
-        var later = revealed[step + 1];
-        var bad = chainBefore && !done && revealed[step] && later;
+        // a plain yes or no: toggle(name, undefined) flips the class on
+        // every call, which made the badge blink with each keystroke (#107)
+        var later = !!revealed[step + 1];
+        var bad = !!(chainBefore && !done && revealed[step] && later);
         pn.classList.toggle('broken', bad);
         if (bad && !broken) broken = step;
         chain = done;
@@ -3438,22 +3466,34 @@ if (submitForm) {
           voided = [];
         (function step() {
           if (!steps.length) {
-            submitting = false;
             submitFormDirty = false;
             setLastBtn(submitBtn);
             var editRunUrl = runPageUrl(editRunId);
-            var editRunLines = [
+            var savedLine =
               'Saved.' +
-                (voided.length
-                  ? ' Invalidated: ' + voided.join(', ') + '.'
-                  : ''),
-              'The run page shows it now: <a href="' +
-                escapeHtml(editRunUrl) +
-                '">' +
-                escapeHtml(editRunUrl) +
-                '</a>.',
-            ];
-            noteHtml(msg, true, editRunLines);
+              (voided.length ? ' Invalidated: ' + voided.join(', ') + '.' : '');
+            var editRunLink =
+              '<a href="' +
+              escapeHtml(editRunUrl) +
+              '">' +
+              escapeHtml(editRunUrl) +
+              '</a>';
+            // saved is not yet shown: the run page is the old one until the
+            // rebuilt site serves this revision, so say which it is (#103)
+            setMark(submitBtn, 'spin', 'Saved. Publishing to the site\u2026');
+            noteHtml(msg, true, [savedLine, 'Publishing to the site\u2026']);
+            waitBuilt(serial, function (live) {
+              submitting = false;
+              setMark(submitBtn, 'ok', 'Saved.');
+              noteHtml(msg, true, [
+                savedLine,
+                (live
+                  ? 'The run page shows it now: '
+                  : 'The run page will show it shortly: ') +
+                  editRunLink +
+                  '.',
+              ]);
+            });
             return;
           }
           steps
@@ -3518,6 +3558,12 @@ if (submitForm) {
           submitForm.hidden = true;
           var forumUrl = res.j.forum ? String(res.j.forum) : '';
           var runUrl = runPageUrl(res.j.id);
+          var runLink =
+            '<a href="' +
+            escapeHtml(runUrl) +
+            '">' +
+            escapeHtml(runUrl) +
+            '</a>';
           var lines = [
             'Archived as ' + escapeHtml(String(res.j.id)) + '.',
             forumUrl
@@ -3527,13 +3573,22 @@ if (submitForm) {
                 escapeHtml(forumUrl) +
                 '</a>'
               : '',
-            'Your run page is live at <a href="' +
-              escapeHtml(runUrl) +
-              '">' +
-              escapeHtml(runUrl) +
-              '</a>.',
           ];
-          noteHtml(msg, true, lines);
+          // the page does not exist until the rebuilt site serves it
+          noteHtml(msg, true, lines.concat('Publishing your run page\u2026'));
+          waitBuilt(res.j.serial, function (live) {
+            noteHtml(
+              msg,
+              true,
+              lines.concat(
+                (live
+                  ? 'Your run page is live at '
+                  : 'Your run page will be live shortly at ') +
+                  runLink +
+                  '.'
+              )
+            );
+          });
         } else {
           if (res.j && res.j.error && res.j.error.indexOf('attachment') !== -1)
             setAttError(res.j.error);

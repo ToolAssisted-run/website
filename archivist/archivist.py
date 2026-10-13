@@ -51,6 +51,7 @@ from settings import (
     allowed_movie_exts,
     ATTACH_MAX_COUNT,
     ATTACH_MAX_EACH,
+    ATTACH_NAME_MAX,
     ATTACH_MAX_TOTAL,
     BOT_USER,
     BRANCH,
@@ -584,6 +585,10 @@ def read_attachments(existing=None):
         if not upload.filename:
             continue
         name = re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(upload.filename).name)
+        if len(name) > ATTACH_NAME_MAX:
+            return None, fail(f'the attachment name {name[:40]}\u2026 is {len(name)} characters '
+                              f'long and a name may be {ATTACH_NAME_MAX} at most; give the file '
+                              f'a shorter name and attach it again')
         suffix = pathlib.Path(name).suffix.lower()
         data = upload.read()
         is_movie, error = _attachment_content(name, data, suffix, movie_exts, attach_exts)

@@ -297,6 +297,12 @@ def main():
         (pages / 'thumbs' / 'goodvid12345').mkdir(parents=True)
         (pages / 'thumbs' / 'goodvid12345' / 'maxresdefault.jpg').write_bytes(
             b'\xff\xd8\xff' + b'\0' * 60)
+        # two encodes a run is moved onto, each with a frame of its own, so a
+        # thumbnail left over from the encode before is told from a new one
+        for vid, size in (('X7oXnw7X0kQ', 71), ('expertvid01', 93)):
+            (pages / 'thumbs' / vid).mkdir(parents=True)
+            (pages / 'thumbs' / vid / 'maxresdefault.jpg').write_bytes(
+                b'\xff\xd8\xff' + b'\0' * size)
         hport = free_port()
 
         # Providers whose thumbnail needs an API call are asked through
@@ -1643,6 +1649,51 @@ def main():
             rdoc = json.loads((work / 'games/nes/pinball/runs/M900010/run.json').read_text())
             ck('the replaced encode is saved in the archive record',
                rdoc['encodes'][0]['url'] == 'https://youtu.be/X7oXnw7X0kQ', str(rdoc['encodes']))
+            # the thumbnail is a frame of the encode: it follows the encode (#109)
+            rdir = work / 'games/nes/pinball/runs/M900010'
+            ck('a changed encode takes the thumbnail again',
+               rdoc['thumbnail'] == 'thumb.jpg'
+               and (rdir / 'thumb.jpg').read_bytes() == b'\xff\xd8\xff' + b'\0' * 71,
+               str(rdoc.get('thumbnail')))
+            ck('and the thumbnail of the encode before is gone',
+               not (rdir / 'thumb.png').exists(), str(sorted(x.name for x in rdir.iterdir())))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                            'encode': 'https://youtu.be/nosuchvid99', 'dry_run': '1'})
+            ck('an encode no thumbnail can be had from is refused before the save',
+               c == 400 and 'watchable' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/edit',
+                           {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                            'encode': 'https://youtu.be/nosuchvid99'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rdoc = json.loads((rdir / 'run.json').read_text())
+            ck('and refused at the save, with the record and its thumbnail as they were',
+               c == 400 and rdoc['encodes'][0]['url'] == 'https://youtu.be/X7oXnw7X0kQ'
+               and (rdir / 'thumb.jpg').read_bytes() == b'\xff\xd8\xff' + b'\0' * 71, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run',
+                            'target': 'M900010', 'field': 'encode',
+                            'value': 'https://youtu.be/expertvid01',
+                            'reason': 'the encode before was taken down'})
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rdoc = json.loads((rdir / 'run.json').read_text())
+            ck("an expert's change of encode takes the thumbnail again too",
+               c == 200 and rdoc['encodes'][0]['url'] == 'https://youtu.be/expertvid01'
+               and (rdir / 'thumb.jpg').read_bytes() == b'\xff\xd8\xff' + b'\0' * 93, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run',
+                            'target': 'M900010', 'field': 'encode',
+                            'value': 'https://youtu.be/nosuchvid99',
+                            'reason': 'a link that is not a video'})
+            ck('and an expert is refused an encode with no thumbnail to take',
+               c == 400 and 'watchable' in r.get('error', ''), str(r))
+            # back onto the encode the checks below expect
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run',
+                            'target': 'M900010', 'field': 'encode',
+                            'value': 'https://youtu.be/X7oXnw7X0kQ',
+                            'reason': 'back to the encode the author gave'})
+            ck('the encode goes back', c == 200, str(r))
             c, r, _ = call(U + '/api/edit',
                            {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                             'completed': '2099-01-01'})
@@ -1976,6 +2027,22 @@ def main():
                                              'run': 'M900010'},
                            {'attachments': ('extra.txt', b'same name again')})
             ck('the same attachment name is not taken twice', c == 400, str(r))
+            # a name is kept as given, so its length is the archive's path (#105)
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010'},
+                           {'attachments': ('n' * 77 + '.txt', b'a name of 81')})
+            ck('an attachment name over 80 characters is refused',
+               c == 400 and 'attachment name' in r.get('error', '')
+               and '81 characters' in r.get('error', ''), str(r))
+            ck('and nothing of it is kept',
+               not list((work / 'games/nes/pinball/runs/M900010/attachments').glob('nnn*')))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
+                                             'run': 'M900010'},
+                           {'attachments': ('n' * 76 + '.txt', b'a name of 80')})
+            ck('a name of exactly 80 is taken', c == 200 and r['changed'] == ['attachments'], str(r))
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'attachments_delete': 'n' * 76 + '.txt'})
+            ck('and removed again', c == 200, str(r))
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'eien86',
                                              'run': 'M900010',
                                              'reason': 'An expert bearing gifts.'},

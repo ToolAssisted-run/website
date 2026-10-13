@@ -256,7 +256,7 @@ pick, metric definitions included; "Category not there?" points at
 `/create-category/?game=<key>`) · the category's stated metrics, required,
 in a dashed box (§5) · authors (chips picker; may credit non-members as
 text) · **encode link,
-mandatory** (six platforms; the run's thumbnail derives from it) · emulator/
+mandatory** (six platforms; the run's thumbnail derives from it, and is taken again whenever the encode is changed, by its author or by an expert: a link no thumbnail can be had from is refused there as it is at submission) · emulator/
 core (optional) · the files the movie was made against, 0 to n rows of
 name+sha1 (`contract.files`: ROMs, disc images, executables, sources; each
 picked and hashed locally, **the file never leaves the machine**, or typed;
@@ -273,7 +273,11 @@ frame anything is pressed on, Chimera's own rule for its "Last input"
 marker, and idle frames left after it are warned about rather than counted.
 Its rate is read the way Chimera reads it: the cycle count over the clock
 rate first (measured), then the recorded vsync, then the archive's figure
-for the system, with a round 50 or 60 treated as nominal and deferred. Two
+for the system, with a round 50 or 60 treated as nominal and deferred. The
+exception is a core with no machine under it whose rate could be kept
+(`CONTENT_RATE_CORES`: Ruffle): what it plays states its own rate, a Flash
+movie's is a number in its header and as readily 50 as 24, so the project's
+rate is the run's and the system's is only a default. Two
 of Chimera's cores (PCSX2, Flycast) end a frame when the machine presents a
 picture rather than at a vblank, so a game that drops frames makes a
 frames-over-rate time a lower bound; the form says so, and the author states
@@ -291,7 +295,10 @@ sexual, photosensitivity, strong language; sexual blurs thumbnails behind a
 session-scoped 18+ overlay) · text attachments (allowlisted plain-text extensions
 for configs, scripts, solvers, memory watches, cheats, subtitles, and diffs,
 UTF-8, ≤128 KB each/≤512 KB total/≤8 files, plus up to 4 extra movie
-files) · notes (the author's write-up) · consent: **CC BY 4.0** license grant
+files; a name over 80 characters is refused, at the form and at the door,
+because the name is kept as given under a path the archive decides and
+Windows cannot copy a path over 260: the member shortens it, the archive
+never renames) · notes (the author's write-up) · consent: **CC BY 4.0** license grant
 plus agreement with the Community Principles (§1), the Run submission policy
 (§3.1) and the Multiple author submission policy (§3.2); the constitution's
 §3 intro says submitting is that agreement, so the checkbox and the
@@ -1196,8 +1203,12 @@ archivist, module responsibilities). What matters designwise:
   category's metric values, and the time, stated by the author, never
   filled in for them (Import from movie fills it on demand when the movie
   parsed); 5 submission notes: disclosures, notes, Preview;
-  6 agreement and Submit, which appears once Preview was pressed. An
-  unfolded panel stays open, a folded one says what it waits for.
+  6 agreement and Submit, which appears once the notes have text, or once
+  Preview was pressed for a run with none. An unfolded panel stays open, a
+  folded one says what it waits for. A save or a submission is reported in
+  two beats, like every other write: "Saved" at once, and the link to the
+  run page only when the rebuilt site is serving that revision, so the link
+  never opens the page as it was.
   The submit form arms the standard leave-page dialog once anything changes,
   and keeps a **draft** in the browser's localStorage (every field but the
   movie, which browsers refuse to restore; saved 300 ms after each change,
