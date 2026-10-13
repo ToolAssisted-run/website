@@ -14,13 +14,14 @@
 from .common import *
 
 
-def _chimera_rate(lower, lines, warnings):
+def _chimera_rate(lower, lines, warnings, core_name=''):
     """Choose measured cycle timing before recorded vsync or nominal system timing."""
     cycles, clock = lower.get('cyclecount'), lower.get('clockrate')
     fps = _chimera_cycle_rate(cycles, clock, len(lines))
     if fps is None:
         fps = _chimera_vsync_rate(lower)
-    if (fps is not None and not (cycles and clock)
+    content_rate = str(core_name).strip().lower() in CONTENT_RATE_CORES
+    if (fps is not None and not (cycles and clock) and not content_rate
             and abs(fps - round(fps)) < 1e-9 and round(fps) in (50, 60)):
         warnings.append(f'the project states a nominal {round(fps)} fps: the '
                         f'archive times this system at its own rate instead')
@@ -247,13 +248,13 @@ def parse_chimeraproject(data):
     if not lines:
         return _err(fmt, 'The input log holds no frames, can not parse')
 
-    fps = _chimera_rate(lower, lines, warnings)
+    core_name = ((doc.get('core') or {}).get('name') or '') if isinstance(doc.get('core'), dict) else ''
+    fps = _chimera_rate(lower, lines, warnings, core_name)
     # Two of Chimera's cores end a frame when the machine PRESENTS a picture
     # rather than at a vblank, so a game that renders slowly spans more than
     # one vblank in a frame. Frames over the rate then understate the elapsed
     # time by however much the game dropped: a lower bound, not a wrong
     # number, and the author states the time anyway.
-    core_name = ((doc.get('core') or {}).get('name') or '') if isinstance(doc.get('core'), dict) else ''
     if str(core_name).strip().lower() in ('pcsx2', 'flycast'):
         warnings.append(f'{core_name} ends a frame when the machine presents a '
                         f'picture, so a game that drops frames makes this time a '

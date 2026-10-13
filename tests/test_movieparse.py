@@ -740,6 +740,25 @@ def main():
     ck('chimeraProject: a nominal 60 defers to the system rate the archive keeps',
        res.get('fps') is None and res.get('system') == 'a2600'
        and any('nominal' in w for w in res['warnings']), str(res))
+    # Ruffle plays a movie at the rate the movie's own header states, so a
+    # whole 50 there is the run's rate and no placeholder (#112: 3,111 frames
+    # were timed at Flash's default 24 and came out at 2:09 for a 1:02 run)
+    swf = json.loads(f_chimeraproject().decode())
+    swf['headers'].update({'Platform': 'Flash', 'VsyncNumerator': '50',
+                           'VsyncDenominator': '1'})
+    swf['core'] = {'name': 'Ruffle', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(swf).encode())
+    ck('chimeraProject: a Flash movie runs at the rate it states, whole or not',
+       res.get('fps') == 50.0 and res.get('system') == 'flash'
+       and not any('nominal' in w for w in res['warnings']), str(res))
+    swf['headers'].update({'VsyncNumerator': '60'})
+    res = movieparse.parse('run.chimeraProject', json.dumps(swf).encode())
+    ck('chimeraProject: and a Flash movie at 60 is at 60',
+       res.get('fps') == 60.0, str(res))
+    swf['core'] = {'name': 'Stella', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(swf).encode())
+    ck('chimeraProject: the same 60 from a console core is still a placeholder',
+       res.get('fps') is None and any('nominal' in w for w in res['warnings']), str(res))
     # ---- which system a project lands in ----
     # The Platform header is the core's machine id, and the archive keeps some
     # machines under a different key. A game core is the game itself with no

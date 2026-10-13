@@ -182,6 +182,14 @@ CHIMERA_LAST_INPUT_KEYS = ('lastInputFrame', 'lastInput')
 # and _chimera_cycle_rate prefers it.
 VARIABLE_STEP_CORES = {'sdlpop', 'sdlpop2'}
 
+# A whole 50 or 60 with no cycle count behind it is, for a console core, a
+# placeholder: the machine's real rate is a fraction near it, and the archive
+# keeps that. These cores have no machine under them whose rate could be
+# kept: what they play states its own rate, and the core reports exactly
+# that. A Flash movie's rate is a number in its header, 50 as readily as 24,
+# so the project's rate is the run's and the system's is only a default.
+CONTENT_RATE_CORES = {'ruffle'}
+
 # A game core may let the player choose what its own timer counts from, which
 # changes what the time MEANS and so what it may be ranked against. SDLPoP2's
 # clock starts only with the first story scene after level 4; its
@@ -227,4 +235,4 @@ def _chimera_split(line):
 
 
 
-__all__ = ['NTSC_NES', 'NTSC_SNES', 'PAL_SNES', 'NTSC_SAT', 'NTSC_PSX', 'PAL_PSX', 'DOOM_FPS', '_ok', '_err', '_lines', '_value_for', '_has_value', '_bool_for', '_int_for', '_pipe_header_and_frames', 'BIZ_TO_TASV', 'CYCLE_BASED_CORES', 'VALID_CLOCK_RATES', 'BK2_INVALID', 'TASPROJ_INVALID', 'CHIMERA_LAST_INPUT_KEYS', 'VARIABLE_STEP_CORES', 'IGT_BASIS_SETTINGS', '_chimera_neutral_axes', '_chimera_split', 'gzip', 'io', 'json', 'math', 're', 'struct', 'tarfile', 'zipfile', 'zlib', 'ET']
+__all__ = ['NTSC_NES', 'NTSC_SNES', 'PAL_SNES', 'NTSC_SAT', 'NTSC_PSX', 'PAL_PSX', 'DOOM_FPS', '_ok', '_err', '_lines', '_value_for', '_has_value', '_bool_for', '_int_for', '_pipe_header_and_frames', 'BIZ_TO_TASV', 'CYCLE_BASED_CORES', 'VALID_CLOCK_RATES', 'BK2_INVALID', 'TASPROJ_INVALID', 'CHIMERA_LAST_INPUT_KEYS', 'VARIABLE_STEP_CORES', 'CONTENT_RATE_CORES', 'IGT_BASIS_SETTINGS', '_chimera_neutral_axes', '_chimera_split', 'gzip', 'io', 'json', 'math', 're', 'struct', 'tarfile', 'zipfile', 'zlib', 'ET']
