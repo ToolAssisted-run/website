@@ -377,6 +377,51 @@ setTimeout(function () {
     .catch(function () {});
 }, 1500);
 
+// ---- roles need two-factor authentication ----
+// A member who holds a role is told where they stand, on every page, until
+// their forum account has a second factor: before the rule takes force, the
+// day it does; after, that their roles are out of force and what puts them
+// back. Members with no role, and role holders with it on, see nothing.
+mePromise.then(function (d) {
+  var rule = d && d.roles2fa;
+  if (!rule || rule.state === 'on') return;
+  var wrap = document.querySelector('.wrap');
+  if (!wrap) return;
+  var day = formatDate(rule.from);
+  var bar = el('div', 'rolebar' + (rule.enforced ? ' off' : ''));
+  var text,
+    tail = '';
+  if (rule.state === 'off') {
+    text = rule.enforced
+      ? 'Your roles here are out of force: they need two-factor ' +
+        'authentication on your forum account, and it is off. '
+      : 'From ' +
+        day +
+        ', your roles here need two-factor authentication on your forum ' +
+        'account, and it is off. ';
+    tail = rule.enforced
+      ? ', and they are back within a minute.'
+      : ' before then to keep them in force.';
+  } else
+    text = rule.enforced
+      ? 'Your roles here are out of force for now: the forum could not be ' +
+        'asked whether two-factor authentication is on for your account. ' +
+        'This clears by itself once it answers.'
+      : 'From ' +
+        day +
+        ', your roles here need two-factor authentication on your forum ' +
+        'account. The forum could not be asked whether yours is on; if ' +
+        'this notice stays, tell the staff.';
+  bar.appendChild(document.createTextNode(text));
+  if (rule.state === 'off') {
+    var link = el('a', '', 'Turn it on in your forum preferences');
+    link.href = 'https://forum.toolassisted.run/my/preferences/security';
+    bar.appendChild(link);
+    bar.appendChild(document.createTextNode(tail));
+  }
+  wrap.insertBefore(bar, wrap.firstChild);
+});
+
 // ---- nav auth: account menu (avatar dropdown) ----
 function setTheme(t) {
   try {

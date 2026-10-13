@@ -116,6 +116,27 @@ def main():
     with tempfile.TemporaryDirectory() as td:
         td = pathlib.Path(td)
 
+        # ---------- the day the second-factor rule takes force (#111) ----------
+        # A calendar question, so it is asked of the function with the days
+        # given, never of today: the suite must read the same in a year.
+        probe = subprocess.run(
+            [sys.executable, '-c',
+             'import identity, json; f = identity.role_2fa_enforced; print(json.dumps(['
+             'f("2026-10-26", "2026-10-27"), f("2026-10-27", "2026-10-27"), '
+             'f("2031-01-01", "2026-10-27"), f("2031-01-01", "never"), f("2031-01-01", ""), '
+             'f("2031-01-01", "soon"), identity.session_token("a", "7", True).split("|")[3], '
+             'identity.session_token("a", "7", False).split("|")[3], '
+             'identity.session_token("a", "7").split("|")[3]]))'],
+            cwd=str(REPO / 'archivist'), capture_output=True, text=True,
+            env=dict(os.environ, SESSION_SECRET='x' * 32, SUBMIT_KEY='probe',
+                     ARCHIVE_DIR=str(td)))
+        got = json.loads(probe.stdout) if probe.returncode == 0 else probe.stderr[-300:]
+        ck('the second-factor rule is not in force before its day', got[:1] == [False], str(got))
+        ck('it is in force on its day and after', got[1:3] == [True, True], str(got))
+        ck('"never", no day and a day that is no date all mean never', got[3:6] == [False] * 3, str(got))
+        ck('a session carries what the forum said at login: on, off, or not asked',
+           got[6:9] == ['1', '0', '?'], str(got))
+
         # ---------- scratch archive + bare remote ----------
         seed = td / 'seed'
         mkarchive.make_archive(seed, [
@@ -167,6 +188,9 @@ def main():
         env = dict(os.environ)
         env.update(dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
                         GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='',
+                        # sessions here are minted by hand and no forum stands behind
+                        # them, so the second-factor rule has nobody to ask
+                        ROLE_2FA_FROM='never',
                         CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
                         THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',
                         DISCOURSE_CONNECT_SECRET=SSO_SECRET, SESSION_SECRET=SESSION_SECRET,

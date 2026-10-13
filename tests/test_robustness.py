@@ -111,6 +111,7 @@ def main():
         env = dict(os.environ) if os.name == 'nt' else dict(PATH='/usr/bin:/bin')
         env.update(dict(SUBMIT_KEY=KEY, ARCHIVE_DIR=str(work), ARCHIVIST_BRANCH='main',
                    GIT_SSH_COMMAND='ssh', PORT=str(port), DISCOURSE_KEY='',
+                   ROLE_2FA_FROM='never',
                    CLAIMS_FILE=str(td / 'claims.json'),
                    CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
                    THUMB_FETCH_BASE=f'http://127.0.0.1:{hport}/thumbs/',

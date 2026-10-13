@@ -195,6 +195,28 @@ immediate. Forum tags stay enabled (every game's "Discuss" link is a tag
 page and the archivist tags each run's topic) but only staff may create or
 apply them, so members never meet a tag picker.
 
+**A role is in force only with a second factor.** From the day
+`ROLE_2FA_FROM` names (fourteen days after the rule shipped; `never` turns it
+off), a member's roles (expert, editor, Committee, Founder) are in force for
+a session only when the forum account behind it has two-factor
+authentication on. The forum is the one that knows, and it is asked at
+login, of everybody, since a member may be given a role tomorrow; the answer
+rides in the session. A session that logged in with a second factor keeps
+its roles for its life, so the forum being down takes nobody's powers away
+mid-session. One that logged in without, or when the forum could not be
+asked, is asked about again whenever a role is needed (a "no" is believed
+for a minute), so turning it on takes effect at once and without logging in
+again. **Not being able to ask counts as no**: the roles stay out of force
+until the forum answers. Out of force means the session is an ordinary
+member's: every role check answers no for the member making the request,
+and the refusal says why. Nothing is revoked and nothing is written; the
+record of who holds what is untouched, and the operator's key, which is no
+session, is not asked. A role holder without a second factor sees a notice
+on every page: before the day, the day; after it, that their roles are out
+of force and what puts them back. `/api/me` carries what the notice needs
+(`roles2fa`), for role holders only. It is a login-time protection: it does
+nothing against a stolen session cookie.
+
 Committee thresholds (§2): **simple majority** = >50% of votes cast in a 7-day
 window, no quorum (grants, and every removal except a Committee seat's);
 **hard majority** = two thirds of all sitting members (unseating the

@@ -336,6 +336,7 @@ def main():
         FORUM_POSTS = []           # replies posted into topics
         TOPIC_STATUS = []          # (topic id, status) changes
         RESERVED_WRITES = []       # every value written to reserved_usernames
+        SECOND_FACTOR = {}         # forum user id -> True, False, 'down' or 'silent' (default True)
 
         class MockHandler(http.server.SimpleHTTPRequestHandler):
             def do_GET(self):                                    # noqa: N802
@@ -418,6 +419,17 @@ def main():
                 # the reserved list: held names, plus one of Discourse's own
                 # wildcard patterns, which is a policy block and not a name
                 # held for anybody
+                # an account's admin view, which says whether it has a second
+                # factor: on unless the suite says otherwise for that id
+                m_admin_user = re.fullmatch(r'/admin/users/(\d+)\.json', path)
+                if m_admin_user:
+                    answer = SECOND_FACTOR.get(m_admin_user.group(1), True)
+                    if answer == 'down':
+                        self.send_response(503); self.end_headers(); return
+                    if answer == 'silent':
+                        return _json({'id': int(m_admin_user.group(1))})
+                    return _json({'id': int(m_admin_user.group(1)),
+                                  'second_factor_enabled': answer})
                 if path == '/admin/site_settings.json':
                     return _json({'site_settings': [
                         {'setting': 'title', 'value': 'mock'},
@@ -649,6 +661,10 @@ def main():
                         # read the roster fresh every time, so the staleness test is
                         # deterministic instead of racing a 20 second window
                         ARCHIVE_REFRESH_SECONDS='0', ROLE_RECONCILE_SECONDS='0',
+                        # roles need a second factor, here since long ago, and a
+                        # "no" from the forum is asked about again at once: the
+                        # mock says who has one
+                        ROLE_2FA_FROM='2000-01-01', ROLE_2FA_RECHECK_SECONDS='0',
                         # the mock stands in for the forum, so account lookups are real
                         DISCOURSE_URL=f'http://127.0.0.1:{hport}',
                         CLAIM_FETCH_BASE=f'http://127.0.0.1:{hport}/',
@@ -3166,6 +3182,92 @@ def main():
 
             c, r, _ = call(U + '/api/me', cookie=cookie)
             ck('session identity', r.get('user') == 'ssouser')
+            ck('a member with no role is told nothing about the second factor',
+               'roles2fa' not in r, str(r))
+
+            # ---- a role is in force only with a second factor (#111) ----
+            def sso_login(name, forum_id):
+                """Log in as the forum would have it; answers the session cookie."""
+                try:
+                    op.open(U + '/login')
+                except urllib.error.HTTPError as e:
+                    q_ = urllib.parse.parse_qs(urllib.parse.urlparse(e.headers['Location']).query)
+                    nonce_ = urllib.parse.parse_qs(base64.b64decode(q_['sso'][0]).decode())['nonce'][0]
+                b64_ = base64.b64encode(urllib.parse.urlencode(
+                    {'nonce': nonce_, 'username': name, 'external_id': forum_id}).encode()).decode()
+                sig_ = hmac.new(SSO_SECRET.encode(), b64_.encode(), hashlib.sha256).hexdigest()
+                try:
+                    op.open(U + '/login/callback?' + urllib.parse.urlencode({'sso': b64_, 'sig': sig_}))
+                except urllib.error.HTTPError as e:
+                    m_ = re.match(r'tar_session=([^;]+)', e.headers.get('Set-Cookie', ''))
+                    return m_ and f'tar_session={m_.group(1)}'
+                return None
+            # groupexpert covers nes; the dry run of a correction there is the
+            # question "is this session an expert here"
+            def expert_asks(cookie_):
+                return call(U + '/api/expert/edit',
+                            {'kind': 'run', 'target': 'M900010', 'field': 'goalDescription',
+                             'value': 'asked through a session', 'dry_run': '1',
+                             'reason': 'a correction, to see who may make one'}, cookie=cookie_)[:2]
+
+            SECOND_FACTOR['801'] = True
+            with_factor = sso_login('groupexpert', '801')
+            c, r, _ = call(U + '/api/me', cookie=with_factor)
+            ck('a role holder with a second factor is told it is on, and nothing is suspended',
+               r.get('roles2fa') == {'state': 'on', 'from': '2000-01-01',
+                                     'enforced': True, 'suspended': False}, str(r))
+            c, r = expert_asks(with_factor)
+            ck('and their role is in force', c == 200 and r.get('dry_run'), str(r))
+            SECOND_FACTOR['801'] = False
+            c, r = expert_asks(with_factor)
+            ck('a session that logged in with a second factor keeps its roles for its life',
+               c == 200, str(r))
+
+            without = sso_login('groupexpert', '801')
+            c, r, _ = call(U + '/api/me', cookie=without)
+            ck('a role holder without a second factor is told their roles are out of force',
+               r.get('roles2fa', {}).get('state') == 'off' and r['roles2fa']['suspended'] is True, str(r))
+            c, r = expert_asks(without)
+            ck('and is refused what the role would allow, with the reason',
+               c == 403 and r.get('roles2fa') == 'off'
+               and 'two-factor authentication' in r.get('error', '')
+               and 'it is off' in r.get('error', ''), str(r))
+            c, r, _ = call(U + '/api/like', {'run': 'M900009', 'dry_run': '1'}, cookie=without)
+            ck('while what any member may do, they still may',
+               c == 200 and 'two-factor' not in str(r), str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'groupexpert', 'kind': 'run', 'target': 'M900010',
+                            'field': 'goalDescription', 'value': 'asked by the operator', 'dry_run': '1',
+                            'reason': 'the operator key carries no session to suspend'})
+            ck("the operator's key is not a session, and is not asked for a second factor",
+               c == 200, str(r))
+            SECOND_FACTOR['801'] = True
+            c, r = expert_asks(without)
+            ck('turning the second factor on puts the roles back without logging in again',
+               c == 200, str(r))
+            c, r, _ = call(U + '/api/me', cookie=without)
+            ck('and the member is told it is on', r.get('roles2fa', {}).get('state') == 'on', str(r))
+
+            for forum_says, what in (('down', 'is down'), ('silent', 'does not say')):
+                SECOND_FACTOR['801'] = forum_says
+                unasked = sso_login('groupexpert', '801')
+                c, r, _ = call(U + '/api/me', cookie=unasked)
+                ck(f'when the forum {what}, the state is unknown and the roles are out of force',
+                   r.get('roles2fa', {}).get('state') == 'unknown'
+                   and r['roles2fa']['suspended'] is True, str(r))
+                c, r = expert_asks(unasked)
+                ck(f'and the refusal says the forum could not be asked ({what})',
+                   c == 403 and r.get('roles2fa') == 'unknown'
+                   and 'could not be asked' in r.get('error', ''), str(r))
+            SECOND_FACTOR['801'] = True
+            c, r = expert_asks(unasked)
+            ck('and the roles are back once the forum answers', c == 200, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'kind': 'run', 'target': 'M900010', 'field': 'goalDescription',
+                            'value': 'asked by a member with no role', 'dry_run': '1',
+                            'reason': 'a member with no role asking for an expert act'}, cookie=cookie)
+            ck('a refusal to a member who holds no role says nothing of a second factor',
+               c == 403 and 'roles2fa' not in r and 'two-factor' not in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/verify', {'run': 'M900010', 'dry_run': '1'}, cookie=cookie)
             ck('session drives acts', c == 200 and r['would_record']['user'] == 'ssouser', str(r))
             # CSRF: same cookie, foreign Origin header -> refused

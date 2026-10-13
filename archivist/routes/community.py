@@ -7,6 +7,7 @@ from flask import jsonify, request
 import selfimport
 from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, DISCOURSE_KEY, DISCOURSE_URL, DUMPS_DIR, SITE_URL, THUMB_FETCH_BASE
 from webutil import fail
+from identity import roles_suspended
 from gitstore import checkout_branch, commit_push, find_run, lock, refresh_archive
 from notify import member_md, notify_discord
 from records import already_covers, append_role_event, case_derived_status, ensure_member, expert_covers, held_roles, is_committee, is_editor, is_founder, is_site_expert, load_claims, load_experts, log_deletion, may_decide_claims, next_report_id, save_claims, scope_covers, scope_exists, sync_status
@@ -452,7 +453,10 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
         if not dry_run:
             checkout_branch()
         roster = load_experts()
-        appointer_scopes = [e for e in roster if e['user'].lower() == appointer.lower()]
+        # read off the roster directly, so the two-factor rule is asked here
+        # as the role checks ask it themselves
+        appointer_scopes = ([] if roles_suspended(appointer) else
+                            [e for e in roster if e['user'].lower() == appointer.lower()])
         # Two doors in (Governance 2.5.3 and 2.5.6): any single Committee
         # member may appoint an expert at any scope, the whole site included,
         # and an expert appoints downward into scopes their own scope covers.

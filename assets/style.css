@@ -4984,3 +4984,26 @@ input[type="radio"]:disabled {
   box-shadow: none;
   pointer-events: none;
 }
+
+/* the notice a role holder sees until their forum account has a second
+   factor: amber while the rule is still ahead, red once their roles are off */
+.rolebar {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 2.5px solid #f59e0b;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.rolebar.off {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.rolebar a {
+  color: inherit;
+  font-weight: 700;
+}

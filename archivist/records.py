@@ -31,7 +31,7 @@ from gitstore import (
     lock,
     refresh_archive,
 )
-from identity import current_name
+from identity import current_name, roles_suspended
 from notify import (
     member_md,
     notify_discord,
@@ -138,6 +138,15 @@ def append_role_event(event):
     doc['events'].append(event)
     p.write_text(json.dumps(doc, indent=1) + '\n')
 
+def holds_any_role(user):
+    """Does this member hold a role at all, in force or not?
+
+    The record's answer, never the session's: this is what decides who the
+    two-factor rule speaks to, so it cannot be asked through the checks the
+    rule itself turns off.
+    """
+    return any(u == (user or '').lower() for (u, role, scope) in held_roles())
+
 def held_roles(events=None):
     """Fold the log into what is held right now."""
     held = {}
@@ -168,6 +177,8 @@ def scopes_over(game_key):
 
 def is_site_expert(user):
     """Site-wide scope, and nothing narrower: an identity is not a game."""
+    if roles_suspended(user):
+        return False
     return any(e['user'].lower() == user.lower() and e['scope'] == 'site'
                for e in load_experts())
 
@@ -186,6 +197,8 @@ def already_covers(user, scope):
 
 def expert_covers(user, game_key):
     """Check whether an expert covers the given game."""
+    if roles_suspended(user):
+        return False
     reach = scopes_over(game_key)
     return any(e['user'].lower() == user.lower() and e['scope'] in reach
                for e in load_experts())
@@ -210,7 +223,10 @@ def covers_group(user, gr):
     group reaches nobody, so only site scope covers one: otherwise the first
     game added would decide, after the fact, who had authority all along.
     """
-    scopes = {e['scope'] for e in load_experts() if e['user'].lower() == user.lower()}
+    # a member whose roles are out of force holds no scope here; what they
+    # made while it is still empty stays theirs, which is no role at all
+    scopes = (set() if roles_suspended(user) else
+              {e['scope'] for e in load_experts() if e['user'].lower() == user.lower()})
     if 'site' in scopes or ('group:' + gr['key']) in scopes:
         return True
     games = gr.get('games', [])
@@ -313,11 +329,15 @@ def scope_covers(wider, narrower):
 
 def is_founder(user):
     """Check whether a member holds the founder role."""
+    if roles_suspended(user):
+        return False
     return any(u == user.lower() and role == 'founder'
                for (u, role, scope) in held_roles())
 
 def is_committee(user):
     """Check whether a member sits on the committee."""
+    if roles_suspended(user):
+        return False
     return any(u == user.lower() and role == 'committee'
                for (u, role, scope) in held_roles())
 
@@ -325,6 +345,8 @@ def is_editor(user):
     """The editor role: full control over the library's shape (groups,
     categories, game identity, which category a run sits in), no power over
     people and none over the runs themselves."""
+    if roles_suspended(user):
+        return False
     return any(u == user.lower() and role == 'editor'
                for (u, role, scope) in held_roles())
 
@@ -359,7 +381,7 @@ def expert_covers_system(user, system_key):
         return False
     if is_editor(user) or is_site_expert(user):
         return True
-    if system_key == 'default':
+    if system_key == 'default' or roles_suspended(user):
         return False
     scopes = {e['scope'] for e in load_experts() if e['user'].lower() == user.lower()}
     return system_key in scopes

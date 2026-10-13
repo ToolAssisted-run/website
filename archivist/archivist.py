@@ -66,6 +66,7 @@ from settings import (
     VISITS_FILE,
     NOTES_MAX,
     RECONCILE_SECONDS,
+    ROLE_2FA_FROM,
     SELF_URL,
     SESSION_TTL,
     SHOT_MAX_EACH,
@@ -87,7 +88,11 @@ from webutil import (
 from identity import (
     current_name,
     origin_ok,
+    role_2fa_enforced,
+    roles_suspended,
     run_authors_now,
+    second_factor_asked,
+    session_second_factor,
     session_token,
     session_user,
     sso_sign,
@@ -122,6 +127,7 @@ from records import (
     expert_covers,
     expert_covers_system,
     held_roles,
+    holds_any_role,
     is_committee,
     is_editor,
     is_founder,
@@ -309,6 +315,35 @@ def cors(resp):
     return resp
 
 @app.after_request
+def say_roles_are_off(resp):
+    """A refusal to a member whose roles are out of force says so.
+
+    Every role check answers no for them, so each endpoint refuses in its own
+    words ("not an expert covering this game"), which is true and explains
+    nothing. The reason is added here once, for all of them.
+
+    Who: every response (after_request hook)
+    Reads: the response, and the session's two-factor state when it is a 403
+    """
+    try:
+        if (resp.status_code == 403 and resp.is_json and request.path.startswith('/api/')
+                and roles_suspended() and holds_any_role(session_user())):
+            body = resp.get_json(silent=True)
+            if isinstance(body, dict) and body.get('error') and not body.get('roles2fa'):
+                state = session_second_factor()
+                body['roles2fa'] = state
+                body['error'] += (
+                    ' Your roles are out of force: they need two-factor authentication on '
+                    'your forum account, and '
+                    + ('the forum could not be asked whether it is on. Try again shortly.'
+                       if state == 'unknown' else
+                       'it is off. Turn it on in your forum preferences, under Security.'))
+                resp.set_data(json.dumps(body))
+    except Exception:                                          # noqa: BLE001
+        LOG.exception('could not add the two-factor reason to a refusal')
+    return resp
+
+@app.after_request
 def stamp_serial(resp):
     """A successful write answers with the archive revision it left behind.
 
@@ -382,8 +417,14 @@ def login_callback():
     if not username:
         return fail('SSO response has no username', 502)
     note_new_member(username)
+    # Whether the account has a second factor is asked now, of everybody (a
+    # member may be given a role tomorrow), and rides in the session. A role
+    # holder's roles are in force only with it, from ROLE_2FA_FROM on.
+    second_factor = second_factor_asked(username, external_id, fresh=True)
+    LOG.info('login: %s, second factor %s', username,
+             {True: 'on', False: 'off'}.get(second_factor, 'could not be asked'))
     resp = make_response(redirect(SITE_ORIGIN + '/'))
-    resp.set_cookie('tar_session', session_token(username, external_id),
+    resp.set_cookie('tar_session', session_token(username, external_id, second_factor),
                     max_age=SESSION_TTL, secure=True, httponly=True, samesite='None')
     return resp
 
@@ -415,12 +456,22 @@ def me():
     """Who the session cookie says is logged in.
 
     Who: anybody
-    Reads: the tar_session cookie only
-    Answers: {ok, user, loggedIn, avatar}
+    Reads: the tar_session cookie; for a member who holds a role, what the
+        forum says of two-factor authentication on their account
+    Answers: {ok, user, loggedIn, avatar}, and for a role holder also
+        roles2fa: {state ('on', 'off' or 'unknown'), from (the day the rule
+        takes force, absent when it never does), enforced, suspended}
     """
     username = session_user()
-    return jsonify({'ok': True, 'user': username, 'loggedIn': bool(username),
-                    'avatar': avatar_for(username) if username else None})
+    answer = {'ok': True, 'user': username, 'loggedIn': bool(username),
+              'avatar': avatar_for(username) if username else None}
+    # only a role holder is told, and only they are asked about: the rule
+    # says nothing to a member with no role
+    if username and re.fullmatch(r'\d{4}-\d{2}-\d{2}', ROLE_2FA_FROM) and holds_any_role(username):
+        answer['roles2fa'] = {'state': session_second_factor(), 'from': ROLE_2FA_FROM,
+                              'enforced': role_2fa_enforced(),
+                              'suspended': roles_suspended(username)}
+    return jsonify(answer)
 
 def auth_precheck(form):
     """Cheap auth gate to run BEFORE any git work: a valid session or the

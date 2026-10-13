@@ -103,6 +103,21 @@ SITE_ORIGINS = tuple(dict.fromkeys(
 
 SESSION_TTL = 14 * 24 * 3600
 
+# From this day on, a role (expert, editor, Committee, Founder) is only in
+# force for a session whose forum account has two-factor authentication on.
+# Until then nothing is enforced and a role holder without it is told the
+# date. The day is fourteen days after the rule shipped; 'never' turns the
+# rule off, which is also the lever if the forum ever stops answering the
+# question. An account's roles are public and its password is one phished
+# page away from somebody else's hands: the second factor is what stands
+# between that and every logged edit path an expert has.
+ROLE_2FA_FROM = os.environ.get('ROLE_2FA_FROM', '2026-10-27').strip()
+# how long a "no" from the forum is believed before it is asked again (a
+# "could not be asked" is believed for half as long): short enough that
+# turning the second factor on is felt at once, long enough that a role
+# holder without it does not turn every request into a call to the forum
+ROLE_2FA_RECHECK_SECONDS = float(os.environ.get('ROLE_2FA_RECHECK_SECONDS', '60'))
+
 MOVIE_EXTS = set(movieparse.PARSERS) | set(movieparse.KNOWN_UNPARSED)
 
 ATTACH_EXTS = {
