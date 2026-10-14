@@ -28,7 +28,7 @@
   {"name": "TIC-80", "url": "https://github.com/ToolAssisted-run/chimera-core-tic80", "shown": "TIC-80 (fantasy computer)", "systems": [{"id": "TIC80", "name": "TIC-80"}]},
   {"name": "Uzem", "url": "https://github.com/ToolAssisted-run/chimera-core-uzem", "shown": "Uzebox", "systems": [{"id": "UZE", "name": "Uzebox"}]},
   {"name": "AppleWin", "url": "https://github.com/ToolAssisted-run/chimera-core-applewin", "shown": "Apple II, II Plus, IIe", "systems": [{"id": "AppleII", "name": "Apple II"}]},
-  {"name": "PUAE", "url": "https://github.com/ToolAssisted-run/chimera-core-puae", "shown": "Commodore Amiga", "systems": [{"id": "AMIGA", "name": "Commodore Amiga"}]},
+  {"name": "PUAE", "url": "https://github.com/ToolAssisted-run/chimera-core-puae", "shown": "Commodore Amiga, Amiga CD32, Commodore CDTV", "systems": [{"id": "AMIGA", "name": "Commodore Amiga"}, {"id": "CD32", "name": "Amiga CD32"}, {"id": "CDTV", "name": "Commodore CDTV"}]},
   {"name": "Fuse", "url": "https://github.com/ToolAssisted-run/chimera-core-fuse", "shown": "ZX Spectrum", "systems": [{"id": "ZXS", "name": "ZX Spectrum"}]},
   {"name": "MAME X68000", "url": "https://github.com/ToolAssisted-run/chimera-core-x68k", "shown": "Sharp X68000", "systems": [{"id": "X68000", "name": "Sharp X68000"}]},
   {"name": "DOSBox-X", "url": "https://github.com/ToolAssisted-run/chimera-core-dosbox-x", "shown": "MS-DOS, Windows 3.1/95/98", "systems": [{"id": "DOS", "name": "MS-DOS"}]},
