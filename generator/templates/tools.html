@@ -23,7 +23,6 @@ is our recommended tool for TASing.</p>
 {# one row per core, from generator/cores.json: a new core is added there #}
 {% for c in cores if not c.get('game') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td>{{ c.shown }}</td></tr>
 {% endfor %}</tbody></table></div>
-<p class="rules fullw"><a href="../systems/">Every system, and the cores that run it &rarr;</a></p>
 <h3 class="corehead">Game cores</h3>
 <p class="rules fullw">One game each, run from the game's own files.</p>
 <div class="tblwrap"><table><thead><tr><th>Core</th><th>Games</th></tr></thead>

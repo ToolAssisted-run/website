@@ -550,7 +550,8 @@ def main():
                f'<td>{html_.escape(c["shown"])}</td>' in tools_page_ for c in cores_),
            str([c['name'] for c in cores_
                 if f'<a href="{c["url"]}">' not in tools_page_][:5]))
-        ck('and points at the systems index', 'href="../systems/"' in tools_page_)
+        ck('and carries no link to the systems index under the cores table',
+           'Every system, and the cores that run it' not in tools_page_)
         sysidx_ = all_html.get(out / 'systems' / 'index.html', '')
         sys_rows_ = dict((m.group(1), m.group(0)) for m in re.finditer(
             r'<tr data-hay="[^"]*">\s*<td>(?:<a href="[^"]*">)?<b>([^<]*)</b>.*?</tr>', sysidx_, re.S))
