@@ -44,6 +44,9 @@
   {"name": "OpenSamurai", "url": "https://github.com/ToolAssisted-run/chimera-core-opensamurai", "shown": "Sword of the Samurai (DOS)", "game": true, "systems": [{"id": "SwordOfTheSamurai", "name": "Sword of the Samurai"}]},
   {"name": "SyndicatFX", "url": "https://github.com/ToolAssisted-run/chimera-core-syndicatfx", "shown": "Syndicate (DOS)", "game": true, "systems": [{"id": "Syndicate", "name": "Syndicate"}]},
   {"name": "rawgl", "url": "https://github.com/ToolAssisted-run/chimera-core-rawgl", "shown": "Another World", "game": true, "systems": [{"id": "AnotherWorld", "name": "Another World"}]},
+  {"name": "RSDKv3", "url": "https://github.com/ToolAssisted-run/chimera-core-rsdkv3", "shown": "Sonic CD (the 2011 remake)", "game": true, "systems": [{"id": "SonicCD", "name": "Sonic CD"}]},
+  {"name": "RSDKv4", "url": "https://github.com/ToolAssisted-run/chimera-core-rsdkv4", "shown": "Sonic the Hedgehog and Sonic the Hedgehog 2 (the 2013 remasters)", "game": true, "systems": [{"id": "Sonic1", "name": "Sonic the Hedgehog (2013)"}, {"id": "Sonic2", "name": "Sonic the Hedgehog 2 (2013)"}]},
+  {"name": "RSDKv5", "url": "https://github.com/ToolAssisted-run/chimera-core-rsdkv5", "shown": "Sonic Mania", "game": true, "systems": [{"id": "SonicMania", "name": "Sonic Mania"}]},
   {"name": "DSDA-Doom", "url": "https://github.com/ToolAssisted-run/chimera-core-dsda", "shown": "Doom, Doom II, Final Doom, Heretic, Hexen, Chex Quest, Freedoom", "game": true, "systems": [{"id": "Doom", "name": "Doom"}]},
   {"name": "SRB2", "url": "https://github.com/P-AS/chimera-core-srb2", "shown": "Sonic Robo Blast 2", "game": true, "systems": [{"id": "SRB2", "name": "Sonic Robo Blast 2"}]}
  ]
