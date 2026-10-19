@@ -1,4 +1,4 @@
-{# The contribute page: the public worklist (needs verification / reproduction), latest acts, contributor board, open cases. #}
+{# The contribute page: the public worklist (needs verification / reproduction), the tAr points table, latest acts, open cases. #}
 {% macro run_cell(r) %}<td><b>{{ r['_game']['title'] }}</b><span class="bcat">{{ cat_label(r) }}</span></td>
 <td>{{ systems[r['_game']['system']]['name'] }}</td>
 <td>{{ r['authors']|map(attribute='user')|join(', ') }}</td>
@@ -85,7 +85,7 @@
 {% endmacro %}
 <header class="ghead"><div><h1>Contribute</h1>
 <p class="authline">The public worklist. No claiming, no assignment; anyone may do anything,
-anytime; the first to finish earns the points.</p></div></header>
+anytime; the first to finish earns the most. <a href="#points">How tAr points work</a>.</p></div></header>
 <div class="cols">
 <div class="main">
 <section><h2>Needs verification</h2>
@@ -108,8 +108,8 @@ wrong one. The bounty <b>rises one point per day</b> the run waits, up to {{ '{:
 <section><h2>Needs reproduction</h2>
 <p class="rules fullw">Load the movie file on your own setup, confirm it syncs to the end, and submit an
 ending screenshot as proof. Reproduction is the archive's assurance that the movie really
-plays, recorded and paid; it does not gate ranking. The bounty <b>rises the longer a run sits
-unreproduced</b>: the obscure long tail is the best-paying work on the board.</p>
+plays, recorded and paid; it does not gate ranking. The bounty <b>rises {{ PT_NEGLECT_PER_DAY }} a day the longer a run sits
+unreproduced</b>, up to {{ '{:,}'.format(PT_REPRO_MAX) }}: the obscure long tail is the best-paying work on the board.</p>
 {# the filter serves the reproduction list alone: verifying only takes
    watching a video, so what systems you can RUN is irrelevant there #}
 {% macro system_filter(fid, key, label, syslist, scroll) %}
@@ -179,6 +179,49 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 <p class="emptynote">Nothing waiting: every archived run has been reproduced. New submissions will appear here the moment they arrive.</p>
 {% endif %}
 </section>
+{# The one table of what earns tAr points, in full, where the worklist ends:
+   the Members page ranks by it and every profile links here. Every figure
+   is the model's constant, so the page can never disagree with the build.
+   Four short tables, one per family of acts, each under its own heading. #}
+<section id="points"><h2>How tAr points work</h2>
+<p class="rules fullw">One number for what you do here. It ranks the <a href="../authors/">Members page</a> and buys
+nothing. Every point is recomputed at each build from the archive's own records, so it can
+always be traced to a run, an act, a star or a post.</p>
+<h3>Making runs</h3>
+<div class="tblwrap pointstbl"><table><thead><tr><th>What</th><th>Who earns</th><th class="num">tAr points</th></tr></thead><tbody>
+<tr><td>Authorship of an archived run, imported ones included</td><td>each credited member author</td><td class="num">{{ PT_AUTHORSHIP }}</td></tr>
+<tr><td>Your run gets verified</td><td>each author, once per run</td><td class="num">{{ PT_RUN_VERIFIED }}</td></tr>
+<tr><td>Your run gets reproduced</td><td>each author, once per run</td><td class="num">{{ PT_RUN_REPRODUCED }}</td></tr>
+</tbody></table></div>
+<h3>Checking runs</h3>
+<div class="tblwrap pointstbl"><table><thead><tr><th>What</th><th>Who earns</th><th class="num">tAr points</th></tr></thead><tbody>
+<tr><td>First reproduction of a run</td><td>the reproducer</td><td class="num">{{ PT_REPRO_FIRST }}, +{{ PT_NEGLECT_PER_DAY }} a day while it waits, up to {{ PT_REPRO_MAX }}</td></tr>
+<tr><td>Later reproductions</td><td>the reproducer</td><td class="num">{{ PT_REPRO_LATER }}</td></tr>
+<tr><td>First verification of a run</td><td>the verifier</td><td class="num">{{ PT_VERIFY }}, +{{ PT_VERIFY_AGE_PER_DAY }} a day while it waits, up to {{ PT_VERIFY_MAX }}</td></tr>
+<tr><td>Later verifications</td><td>the verifier</td><td class="num">{{ PT_VERIFY_LATER }}</td></tr>
+</tbody></table></div>
+<h3>Building the library</h3>
+<div class="tblwrap pointstbl"><table><thead><tr><th>What</th><th>Who earns</th><th class="num">tAr points</th></tr></thead><tbody>
+<tr><td>Creating a game, a group or a system</td><td>the creator</td><td class="num">{{ PT_CREATE_GAME }}</td></tr>
+<tr><td>Adding a category to a game</td><td>the creator</td><td class="num">{{ PT_CREATE_CATEGORY }}</td></tr>
+<tr><td>Adding a subcategory</td><td>the creator</td><td class="num">{{ PT_CREATE_SUBCATEGORY }}</td></tr>
+</tbody></table></div>
+<h3>Stars and comments</h3>
+<div class="tblwrap pointstbl"><table><thead><tr><th>What</th><th>Who earns</th><th class="num">tAr points</th></tr></thead><tbody>
+<tr><td>Starring a run</td><td>you</td><td class="num">{{ PT_LIKE_GIVEN }}</td></tr>
+<tr><td>A star on your run</td><td>each author, per star</td><td class="num">{{ PT_LIKE_RECEIVED }}</td></tr>
+<tr><td>Your first post in a run's forum topic</td><td>you</td><td class="num">{{ PT_COMMENT_GIVEN }}</td></tr>
+<tr><td>A member's first post in your run's topic</td><td>each author, per member</td><td class="num">{{ PT_COMMENT_RECEIVED }}</td></tr>
+</tbody></table></div>
+<ul class="factlist">
+<li>Never on your own run: you cannot star, verify, reproduce, or be counted as a commenter on a run you are credited on.</li>
+<li>Importing a run, submitting one on somebody's behalf, editing records, reporting, moderating and holding a role pay nothing. Imported runs refuse acts, so only their authorship, stars and comments count.</li>
+<li>Points once earned are kept: an invalidation changes the run's status, never anybody's points. A star taken back or a post the forum deleted takes its points with it, because the record is gone.</li>
+<li>A game, group, system or category that an expert deletes as junk pays nothing: its record leaves with it.</li>
+<li>Commenting counts for members only: a forum account that has never logged in here has no record to earn under.</li>
+<li>The weights are provisional; the community settles them (Governance 2.7).</li>
+</ul>
+</section>
 
 </div>
 <aside class="side">
@@ -192,33 +235,13 @@ unreproduced</b>: the obscure long tail is the best-paying work on the board.</p
 <p class="emptynote">Nothing yet. The first reproduction or verification here will be the first thing on this list.</p>
 {% endfor %}
 </div>
-<div class="factbox"><h4>Contributor board</h4>
-{% if top %}
-<div class="tblwrap"><table><thead><tr><th>#</th><th>Member</th><th class="num">Points</th></tr></thead><tbody>
-{% for p in top %}
-<tr><td class="rank">{{ loop.index }}</td><td>{{ member_chip(p['user'], '../') }}{{ medals(p['user']) }}</td>
-<td class="num">{{ p['points'] }}</td></tr>
-{% endfor %}
-</tbody></table></div>
-{% else %}
-<p class="emptynote">Nobody has earned contributor points yet. The board is wide open.</p>
-{% endif %}
-</div>
-<div class="factbox"><h4>How points work</h4>
-<ul class="factlist">
-<li>First reproduction: <b>{{ PT_REPRO_FIRST }}+</b> pts, rising {{ PT_NEGLECT_PER_DAY }}/day while the run waits, up to {{ '{:,}'.format(PT_REPRO_MAX) }}</li>
-<li>Later reproductions: <b>{{ PT_REPRO_LATER }}</b> pts</li>
-<li>Hard-to-reproduce systems: <b>+{{ PT_REPRO_HARD }}</b> pts on any reproduction</li>
-<li>First verification: <b>{{ PT_VERIFY }}+</b> pts, rising 1/day while the run waits, up to {{ '{:,}'.format(PT_VERIFY_MAX) }}; later verifications {{ PT_VERIFY }}</li>
-<li>One <b>Contributor</b> badge, earned by the first act; medals on the board for the week's and the month's top contributor, for tens and hundreds of reproductions, verifications and firsts (hover one to read it)</li>
-</ul>
-<p class="statline muted">Weights are provisional while the community settles them.</p></div>
 <div class="factbox"><h4>The rules</h4>
 <ul class="factlist">
 <li>You cannot verify or confirm reproduction for your own run.</li>
 <li>One reproduction and one verification per member per run.</li>
 <li>You keep the points, even if an expert later overrules your contribution.</li>
 <li>Contradictions open a case; nothing is removed automatically.</li>
+<li>One <b>Contributor</b> badge, earned by the first tAr point; medals on the Members page for the week's and the month's top earner, for tens and hundreds of reproductions, verifications and firsts (hover one to read it).</li>
 </ul></div>
 {% if open_cases %}
 <div class="factbox"><h4>Open cases</h4>

@@ -383,13 +383,17 @@ def main():
                                status={'reproduced': 'none', 'verified': 'provisional'},
                                verifications=[{'user': 'Rep', 'date': '2026-02-09'}]),
         ] + [
-            # the contributor board shows medals, and the cheapest one is ten
+            # the members page shows medals, and the cheapest one is ten
             # acts by one member: Medalist verifies ten runs nobody else here
-            # touches
+            # touches. Talker spoke in one topic: a comment pointer, the fact
+            # the forum hook writes
             mkarchive.run_spec(f'M9001{20 + i}', game='nes/orphan', frames=20000 + i,
                                authors=['Ada'],
                                status={'reproduced': 'none', 'verified': 'provisional'},
-                               verifications=[{'user': 'Medalist', 'date': '2026-02-10'}])
+                               verifications=[{'user': 'Medalist', 'date': '2026-02-10'}],
+                               **({'comments': [{'user': 'Talker', 'date': '2026-02-11',
+                                                 'at': '2026-02-11T10:00:00Z', 'post': 2}]}
+                                  if i == 0 else {}))
             for i in range(10)
         ], nonmembers=['Nyx'],
             game_props={'nes/testgame': {'released': '1989-03', 'unofficial': True,
@@ -751,22 +755,38 @@ def main():
         badged = {n for n, h in member_pages.items() if 'role-contrib' in h}
         ck('the contributor badge is on their own page as well as the list',
            badged, str(sorted(member_pages)))
-        # everybody who earned a point wears the same plain badge: the
+        # everybody who earned a tAr point wears the same plain badge: the
         # milestone tiers are retired, the medals carry the honors
+        def points_shown(h):
+            m = re.search(r'<b>([\d,]+)</b><span>tAr points', h)
+            return int(m.group(1).replace(',', '')) if m else None
         for name in badged:
             page_ = member_pages[name]
-            score = re.search(r'<b>(\d+)</b><span>contributor score', page_)
             ck(f'{name} is badged a contributor because they earned it',
-               score and int(score.group(1)) >= 1, name + ': ' + str(score))
+               (points_shown(page_) or 0) >= 1, name + ': ' + str(points_shown(page_)))
             worn = re.search(r'class="rolechip role-contrib[^"]*"[^>]*>([^<]+)<', page_)
             ck(f'{name} wears the plain Contributor badge',
                worn and worn.group(1) == 'Contributor', str(worn and worn.group(1)))
         for name, h in member_pages.items():
             if name in badged:
                 continue
-            score = re.search(r'<b>(\d+)</b><span>contributor score', h)
             ck(f'{name} is not badged a contributor, having earned nothing',
-               score and int(score.group(1)) == 0, name + ': ' + str(score))
+               points_shown(h) == 0, name + ': ' + str(points_shown(h)))
+        # the ledger says where the points came from, and a commenter's
+        # stars and posts are summed, never listed run by run
+        talker = member_pages['talker']
+        ck('a commenter earns and the profile says from what',
+           'from stars you gave and runs you commented on' in talker
+           and '1 run commented on' in talker and 'M900120' not in talker.split('id="points"')[1],
+           talker[talker.find('id="points"'):][:600])
+        ada_prof = member_pages['ada']
+        ck('an author is paid for the star and the comment on their run, itemised by run',
+           'comment from Talker' in ada_prof and 'from stars and comments on your runs' in ada_prof,
+           ada_prof[ada_prof.find('id="points"'):][:600])
+        ck('a comment on your run is news',
+           'newsico commented' in ada_prof and 'Talker</a> commented' in ada_prof.replace('<span class="au">Talker</span>', 'Talker</a>')
+           or 'commented <a href="../../runs/M900120/"' in ada_prof,
+           ada_prof[ada_prof.find('id="news"'):][:500])
         root_page = all_html[out / 'authors' / 'root' / 'index.html']
         ck('a member page ends with their role history',
            '<h2>Roles' in root_page
@@ -1047,9 +1067,16 @@ def main():
            'Nyx' not in members_page and 'Ada' in members_page,
            members_page[members_page.find('<tbody>'):][:200])
         ck('the member list keeps the claim path visible', 'claim/' in members_page)
-        ck('authors index table is marked sortable with initial author score sort',
+        ck('authors index table is marked sortable with initial tAr points sort',
            '<table class="sortable">' in members_page
-           and 'class="num sort-desc"><span class="starglyph">★</span> Author score' in members_page)
+           and 'class="num sort-desc">tAr points' in members_page)
+        member_rows = re.findall(r'<tr onclick[^>]*>\s*<td><b>([^<]+)</b>.*?<td class="num">([\d,]+)</td>',
+                                 members_page, re.S)
+        member_pts = [int(n.replace(',', '')) for _, n in member_rows]
+        ck('the members page ranks by tAr points, most first',
+           member_pts and member_pts == sorted(member_pts, reverse=True), str(member_rows[:5]))
+        ck('and every row still shows the stars on their runs',
+           members_page.count('<span class="starglyph">★</span>') >= len(member_rows), str(len(member_rows)))
         ada_page = all_html[out / 'authors' / 'ada' / 'index.html']
         ck('member profile tables are marked sortable',
            '<table class="sortable">' in ada_page and '<th class="sort-desc">Date</th>' in ada_page)
@@ -1430,22 +1457,39 @@ def main():
            'policy/site-log/">Site log' in log_page
            and 'moderation-log/">Moderation log' not in log_page)
 
-        # ---------- contribute: what happened last ----------
+        # ---------- contribute: what happened last, and what earns what ----------
         # A worklist with nothing visibly moving on it reads as abandoned.
         contrib_page = all_html[out / 'contribute' / 'index.html']
         aside = contrib_page[contrib_page.find('<aside'):]
         ck('the contribute page leads its side rail with the latest contributions',
            aside.find('Latest contributions') >= 0
-           and aside.find('Latest contributions') < aside.find('Contributor board'),
+           and aside.find('Latest contributions') < aside.find('The rules'),
            aside[:160])
-        board = aside[aside.find('Contributor board'):]
-        ck('the board carries no points-tier chip beside the points (#59)',
-           'role-contrib' not in board, board[:300])
-        ck('an achievement wears a tooltipped medal on the board',
-           re.search(r'<span class="medal medal-(gold|silver|bronze)" title="[^"]+: [^"]+"', board) is not None,
-           board[:400])
+        ck('the contributor board is gone; the Members page is the one ranking',
+           'Contributor board' not in contrib_page, 'board still rendered')
+        ck('an achievement wears a tooltipped medal on the members page',
+           re.search(r'<span class="medal medal-(gold|silver|bronze)" title="[^"]+: [^"]+"', members_page) is not None,
+           members_page[:400])
+        main_col = contrib_page[contrib_page.find('<div class="main">'):contrib_page.find('<aside')]
+        table = main_col[main_col.find('id="points"'):]
+        ck('the tAr points table closes the main column, after both worklists',
+           table and main_col.find('Needs reproduction') < main_col.find('id="points"'),
+           main_col[-300:])
+        # the page's figures are the model's constants, every one: read off
+        # the source rather than imported, since importing the model loads
+        # an archive
+        weights = dict(re.findall(r'^(PT_[A-Z_]+) = (\d+)', (REPO / 'generator' / 'model.py').read_text(), re.M))
+        for name in ('PT_AUTHORSHIP', 'PT_REPRO_FIRST', 'PT_REPRO_LATER', 'PT_REPRO_MAX', 'PT_VERIFY',
+                     'PT_VERIFY_LATER', 'PT_VERIFY_MAX', 'PT_CREATE_GAME', 'PT_CREATE_CATEGORY',
+                     'PT_CREATE_SUBCATEGORY', 'PT_LIKE_GIVEN', 'PT_LIKE_RECEIVED', 'PT_COMMENT_GIVEN',
+                     'PT_COMMENT_RECEIVED', 'PT_RUN_VERIFIED', 'PT_RUN_REPRODUCED'):
+            ck(f'the table states {name}', name in weights
+               and re.search(rf'(?<![\d,]){weights[name]}(?![\d,])', table) is not None, name)
+        ck('the table groups the acts into four families, each a short table of its own',
+           table.count('<h3>') == 4 and table.count('class="tblwrap pointstbl"') == 4,
+           str((table.count('<h3>'), table.count('pointstbl'))))
         feed = aside[aside.find('Latest contributions'):]
-        feed = feed[:feed.find('Contributor board')]
+        feed = feed[:feed.find('The rules')]
         entries = re.findall(r'<p class="statline newsline">(.*?)</p>', feed, re.S)
         ck('it shows a handful, not a history', 0 < len(entries) <= 10, str(len(entries)))
         dates = [re.search(r'(\d{4}-\d{2}-\d{2})', e).group(1) for e in entries

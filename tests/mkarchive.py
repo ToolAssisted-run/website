@@ -73,13 +73,14 @@ def prune_superseded(root):
                     act['invalidated'] = {'by': 'fixture', 'date': '2026-08-19',
                                           'reason': 'self-act through a rename'}
                     changed = True
-        r.setdefault('likes', [])
-        kept = [l for l in r['likes'] if canon(l['user']) not in anames]
-        if kept != r['likes']:
-            r['likes'] = kept
-            changed = True
-        if not r['likes']:
-            r.pop('likes')
+        for roster in ('likes', 'comments'):
+            r.setdefault(roster, [])
+            kept = [l for l in r[roster] if canon(l['user']) not in anames]
+            if kept != r[roster]:
+                r[roster] = kept
+                changed = True
+            if not r[roster]:
+                r.pop(roster)
         if changed:
             live_v = [a for a in r.get('verifications', []) if not a.get('invalidated')]
             live_r = [a for a in r.get('reproductions', []) if not a.get('invalidated')]
@@ -265,7 +266,7 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
         for act in ('reproductions', 'verifications'):
             for x in spec.get(act, []):
                 names.setdefault(x['user'].lower(), x['user'])
-        for l in spec.get('likes', []):
+        for l in spec.get('likes', []) + spec.get('comments', []):
             names.setdefault(l['user'].lower(), l['user'])
     for e in (experts or []):          # an expert is a member like anyone else
         names.setdefault(e['user'].lower(), e['user'])

@@ -533,12 +533,12 @@ mePromise.then(function (d) {
       return r.json();
     })
     .then(function (all) {
-      var s = all[d.user.toLowerCase()] || { runs: 0, author: 0, contrib: 0 };
+      var s = all[d.user.toLowerCase()] || { runs: 0, likes: 0, points: 0 };
       statsRow.innerHTML = '';
       [
+        [String(s.points), 'tAr points', ''],
         [String(s.runs), 'runs', ''],
-        ['<span class="starglyph">★</span>' + s.author, 'author score', ''],
-        [String(s.contrib), 'contributor score', ''],
+        ['<span class="starglyph">★</span>' + s.likes, 'stars', ''],
       ].forEach(function (pair) {
         var box = el('span', 'am-stat');
         var b = el('b', pair[2]);

@@ -1,0 +1,17 @@
+/* toolAssisted.run — /contribute/ page stylesheet.
+   Shipped verbatim by the generator. */
+
+/* the tAr points tables: one short table per family of acts, under a
+   heading of its own, so the whole reads as one list */
+#points h3 {
+  margin: 18px 0 6px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.pointstbl td.num {
+  white-space: normal;
+}

@@ -56,6 +56,7 @@ def baseline(root):
             verifications=[{'user': 'Ver', 'date': '2026-03-02'},
                            {'user': 'Ver2', 'date': '2026-03-03'}],
             likes=[{'user': 'Fan', 'date': '2026-03-04'}],
+            comments=[{'user': 'Fan', 'date': '2026-03-05', 'at': '2026-03-05T10:00:00Z', 'post': 2}],
             cases=[{'id': 1, 'openedBy': 'Skeptic', 'date': '2026-03-05',
                     'reason': 'Closed case fixture.',
                     'verifiers': ['Ver', 'Ver2'],
@@ -274,6 +275,24 @@ def m_self_like(root):
 def m_duplicate_like(root):
     edit(root, 'M900202', lambda d: d['likes'].append({'user': 'Fan', 'date': '2026-03-09'}))
 
+def m_self_comment(root):
+    edit(root, 'M900202', lambda d: d['comments'].append({'user': 'Bo', 'date': '2026-03-09', 'post': 3}))
+
+def m_duplicate_comment(root):
+    edit(root, 'M900202', lambda d: d['comments'].append({'user': 'Fan', 'date': '2026-03-09', 'post': 3}))
+
+def m_comment_by_nobody(root):
+    edit(root, 'M900202', lambda d: d['comments'].append({'user': 'Ghost', 'date': '2026-03-09', 'post': 3}))
+
+def m_comment_without_post(root):
+    edit(root, 'M900202', lambda d: d['comments'].append({'user': 'Ver', 'date': '2026-03-09'}))
+
+def m_system_creator_half_recorded(root):
+    sp = root / 'systems.json'
+    doc = json.loads(sp.read_text())
+    doc['nes']['createdBy'] = 'Root'
+    sp.write_text(json.dumps(doc, indent=1) + '\n')
+
 def m_report_id_collision(root):
     edit(root, 'M900201', lambda d: d.update(reports=[
         {'id': 1, 'kind': 'other', 'by': 'Fan', 'date': '2026-03-09',
@@ -469,6 +488,11 @@ CASES = [
     ('screenshot must be a real image', m_screenshot_not_image, 'not a real'),
     ('no self-like', m_self_like, 'cannot like their own run'),
     ('no duplicate like', m_duplicate_like, 'duplicate like'),
+    ('an author is not a commenter on their own run', m_self_comment, 'not listed as commenters'),
+    ('one comment pointer per member', m_duplicate_comment, 'duplicate comment'),
+    ('a commenter is a member', m_comment_by_nobody, 'no member record'),
+    ('a comment pointer names its post', m_comment_without_post, 'post'),
+    ('a system creator comes with the date', m_system_creator_half_recorded, 'createdBy and createdAt out of step'),
     ('report ids are globally unique', m_report_id_collision, 'collides'),
     ('resolved report needs a resolver', m_resolved_without_resolver, 'resolvedBy'),
     ('no duplicate case id', m_duplicate_case_id, 'duplicate case id'),

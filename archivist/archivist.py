@@ -140,6 +140,7 @@ from records import (
     log_deletion,
     log_edit,
     may_decide_claims,
+    member_exists,
     next_report_id,
     note_new_member,
     save_claims,
@@ -1337,18 +1338,98 @@ def github_hook():
 
     return jsonify({'ok': True, 'ignored': f'not an event we act on ({event})'})
 
+def _run_for_topic(topic_id):
+    """The run whose forum topic this is, as (run dir, run), or (None, None).
+    Read under the archive lock, from the checkout as it stands."""
+    for rjson in (ARCHIVE / 'games').glob('*/*/runs/*/run.json'):
+        try:
+            run = json.loads(rjson.read_text())
+        except ValueError:
+            continue
+        if (run.get('forum') or {}).get('topicId') == topic_id:
+            return rjson.parent, run
+    return None, None
+
+
+def _post_moment(post):
+    """(date, at) of a forum post from its own timestamp, now when it has none."""
+    stamp = (post.get('created_at') or '').strip()
+    try:
+        when = datetime.datetime.strptime(stamp[:19], '%Y-%m-%dT%H:%M:%S')
+    except ValueError:
+        when = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    return when.strftime('%Y-%m-%d'), when.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def record_comment(post, event):
+    """The pointer that says a member spoke in a run's forum topic.
+
+    One per member per run, their first post there, written on the forum's
+    post event and taken back when the forum deletes that post (a comment
+    removed is a comment that never was, as an unlike is). Never the run's
+    own authors, never the bot, and only people with a member record: a
+    forum account that has never logged in here gets no profile it never
+    asked for. Answers why nothing was written, or None when it was.
+    """
+    poster = post.get('username') or ''
+    topic_id, number = post.get('topic_id'), post.get('post_number')
+    if not isinstance(topic_id, int) or not isinstance(number, int) or number < 2:
+        return 'not a reply in a topic'
+    if post.get('post_type') not in (None, 1):
+        return 'not a regular post'           # whispers, small actions, moderator notes
+    if not USERNAME_RE.fullmatch(poster):
+        return 'not a name the archive can hold'
+    if not member_exists(poster):
+        return 'not a member here'
+    user = current_name(poster)
+    with lock:
+        checkout_branch()
+        run_dir, run = _run_for_topic(topic_id)
+        if not run_dir:
+            return 'not a run topic'
+        if run.get('withdrawn'):
+            return 'the run is withdrawn'
+        if user.lower() in run_authors_now(run):
+            return 'an author of the run'
+        mine = [c for c in run.get('comments', []) if c['user'].lower() == user.lower()]
+        if event == 'post_destroyed':
+            if not mine or mine[0].get('post') != number:
+                return 'not the recorded post'
+            run['comments'] = [c for c in run['comments'] if c['user'].lower() != user.lower()]
+            if not run['comments']:
+                del run['comments']
+            verb = 'Uncomment'
+        else:
+            if mine:
+                return 'already recorded'
+            date, at = _post_moment(post)
+            run.setdefault('comments', []).append({'user': user, 'date': date, 'at': at,
+                                                   'post': number})
+            verb = 'Comment'
+        (run_dir / 'run.json').write_text(json.dumps(
+            {k: v for k, v in run.items() if not k.startswith('_')}, indent=1))
+        commit_push(f'{verb} {run["id"]}: by {user}\n\n'
+                    f'Forum post {number} in topic {topic_id}\nVia: archivist (forum hook)')
+    return None
+
+
 @app.post('/api/hooks/discourse')
 def discourse_hook():
-    """Discourse tells us a post happened; we relay it to Discord.
+    """Discourse tells us a post happened; we record who spoke on a run,
+    and relay the post to Discord.
 
     Signature first: the body is only trusted if Discourse's HMAC matches our
-    shared secret. Private messages are never relayed, whatever they are, and
-    neither are the archivist bot's own posts, which announce things the other
-    notifications already said.
+    shared secret. Private messages are never relayed or recorded, whatever
+    they are, and neither are the archivist bot's own posts, which announce
+    things the other notifications already said. A post in a run's topic by
+    a member who is not one of its authors becomes the run's `comments[]`
+    pointer (their first one there); the forum deleting that post takes it
+    back. Recording comes first and is idempotent, so a delivery the forum
+    retries never reaches Discord twice.
 
     Who: Discourse, proven by the HMAC in X-Discourse-Event-Signature
     Reads: the raw JSON body (post) and the X-Discourse-Event header
-    Answers: {ok} or {ok, ignored: why}
+    Answers: {ok, comment: recorded | removed | why not} or {ok, ignored: why}
     """
     if not DISCOURSE_HOOK_SECRET:
         return fail('forum hooks are not configured on this server', 503)
@@ -1358,8 +1439,9 @@ def discourse_hook():
                                 hashlib.sha256).hexdigest()
     if not hmac.compare_digest(sig, expected_sig):
         return fail('bad hook signature', 403)
-    if request.headers.get('X-Discourse-Event') != 'post_created':
-        return jsonify({'ok': True, 'ignored': 'not a post_created event'})
+    event = request.headers.get('X-Discourse-Event')
+    if event not in ('post_created', 'post_destroyed', 'post_recovered'):
+        return jsonify({'ok': True, 'ignored': f'not a post event ({event})'})
     try:
         post = json.loads(raw).get('post') or {}
     except ValueError:
@@ -1370,13 +1452,17 @@ def discourse_hook():
     poster = post.get('username') or 'somebody'
     if poster == BOT_USER:
         return jsonify({'ok': True, 'ignored': 'our own bot'})
+    why_not = record_comment(post, event)
+    comment = why_not or ('removed' if event == 'post_destroyed' else 'recorded')
+    if event != 'post_created':
+        return jsonify({'ok': True, 'comment': comment})
     title = post.get('topic_title') or 'a topic'
     excerpt = re.sub(r'<[^>]+>', '', post.get('cooked') or '').strip()
     excerpt = (excerpt[:140] + '\u2026') if len(excerpt) > 140 else excerpt
     link = (f'{DISCOURSE_URL}/t/{post.get("topic_id")}/{post.get("post_number")}'
             if post.get('topic_id') else DISCOURSE_URL)
     notify_discord(f'\U0001f4ac **{member_md(poster)}** posted in [{title}](<{link}>): {excerpt}')
-    return jsonify({'ok': True})
+    return jsonify({'ok': True, 'comment': comment})
 
 
 

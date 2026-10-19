@@ -1,15 +1,18 @@
-{# The members index: one sortable row per member with author score, run count and contributor score. #}
+{# The members index: one sortable row per member with tAr points, stars, run count. #}
 <header class="ghead"><div><h1>Members</h1>
-<p class="authline">Everybody who has logged in here at least once, sorted by author score:
-the stars their runs have earned. Click any column to re-sort.</p></div>
+<p class="authline">Everybody who has logged in here at least once, sorted by tAr points:
+what they have done here, as runs, checks, stars and comments. Click any column to re-sort;
+<a href="../contribute/#points">how tAr points work</a>.</p></div>
 </header>
 {# views are host state (absent on CI and the standby): the column appears only where they are known #}
-<div class="tblwrap" data-pagesize-key="members" data-item-label="member"><table class="sortable"><thead><tr><th>Member</th><th class="num sort-desc"><span class="starglyph">★</span> Author score</th>
+<div class="tblwrap" data-pagesize-key="members" data-item-label="member"><table class="sortable"><thead><tr><th>Member</th><th class="num sort-desc">tAr points</th>
+<th class="num" title="stars on their runs"><span class="starglyph">★</span> Stars</th>
 {% if visits_known %}<th class="num" title="visits to all their runs">{{ EYE_ICON }} Views</th>{% endif %}
-<th class="num">Runs</th><th class="num">Contributor score</th></tr></thead>
+<th class="num">Runs</th></tr></thead>
 <tbody>{% for uname, a, st_ in members %}<tr onclick="if(!event.target.closest('a'))location='{{ profile_slug(uname) }}/'">
-<td><b>{{ a['username'] }}</b>{{ role_badges(a['username']) }}</td>
-<td class="num"><span class="starglyph">★</span>{{ st_['author'] }}</td>
+<td><b>{{ a['username'] }}</b>{{ role_badges(a['username']) }}{{ medals(a['username']) }}</td>
+<td class="num">{{ '{:,}'.format(st_['points']) }}</td>
+<td class="num"><span class="starglyph">★</span>{{ st_['likes'] }}</td>
 {% if visits_known %}<td class="num">{{ '{:,}'.format(st_['views']) }}</td>{% endif %}
-<td class="num">{{ st_['runs'] }}</td><td class="num">{{ st_['contrib'] }}</td></tr>{% endfor %}</tbody></table></div>
+<td class="num">{{ st_['runs'] }}</td></tr>{% endfor %}</tbody></table></div>
 <p class="legend">Do you come from another community? <a href="../claim/">Claim your name</a></p>

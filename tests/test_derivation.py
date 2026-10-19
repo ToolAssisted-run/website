@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Derivation tests: the numbers and orderings the site computes.
 
-Status, ranking, contributor points, stars and the superseded chain are all
+Status, ranking, tAr points, stars and the superseded chain are all
 derived at build time from facts in the archive. Nothing else asserts the
 arithmetic, so a sign flip or a lost bonus would change everyone's standing
 with a green build. Every fixture here lives in a controlled archive
@@ -33,9 +33,16 @@ VALIDATOR = pathlib.Path.home() / 'ToolAssisted-archive' / 'validate.py'
 
 # weights mirrored from generator/build.py; if they change there, these
 # expectations must be updated deliberately (that is the point)
-PT_REPRO_FIRST, PT_REPRO_LATER, PT_VERIFY = 100, 25, 20
-PT_NEGLECT_PER_DAY, PT_REPRO_MAX, PT_REPRO_HARD = 2, 2000, 50
-PT_VERIFY_MAX = 1000
+# the tAr points weights, as DESIGN.md §7 states them; the build's own
+# constants live in generator/model.py and the suite asserts the figures
+# the page shows, so a drift between the two fails here
+PT_AUTHORSHIP = 500
+PT_REPRO_FIRST, PT_REPRO_LATER, PT_NEGLECT_PER_DAY, PT_REPRO_MAX = 100, 20, 2, 300
+PT_VERIFY, PT_VERIFY_LATER, PT_VERIFY_MAX = 50, 10, 100
+PT_LIKE_GIVEN, PT_LIKE_RECEIVED = 5, 50
+PT_COMMENT_GIVEN, PT_COMMENT_RECEIVED = 10, 5
+PT_RUN_VERIFIED, PT_RUN_REPRODUCED = 5, 5
+PT_CREATE_GAME, PT_CREATE_CATEGORY, PT_CREATE_SUBCATEGORY = 20, 10, 5
 
 failures = []
 
@@ -129,11 +136,12 @@ def main():
                (in_ranked if want == 'ranked' else in_pending),
                f'ranked={in_ranked} pending={in_pending}')
 
-        # ---------------- contributor points ----------------
-        # hard system (dos), submitted 150 days ago, first reproduction today:
-        # 100 base + 50 hard + 150*2 = 450 (tops out at 2000); second reproduction 75;
-        # first verification ages 1/day to double (20 + min(150,20) = 40),
-        # later verifications pay the flat 20.
+        # ---------------- tAr points ----------------
+        # a run on a hard system (no bonus for that any more), submitted 150
+        # days ago, first reproduction today: 100 + 150*2, topping out at 300;
+        # second reproduction 20; first verification 50 + 1/day, topping out
+        # at 100; later verifications 10. The author takes 500 for the run
+        # plus 5 each for its being verified and reproduced, and 50 per star.
         pts_runs = [
             mkarchive.run_spec('M900311', game='dos/hardgame', frames=5000,
                                authors=['Ada'], submitted=d(150),
@@ -142,36 +150,51 @@ def main():
                                               {'user': 'Rep2', 'date': d(0)}],
                                verifications=[{'user': 'Ver', 'date': d(0)},
                                               {'user': 'Ver2', 'date': d(0)}],
+                               likes=[{'user': 'Rep', 'date': d(0)}],
                                ),
-            # imported runs pay nobody
+            # an imported run pays its author the authorship and the stars on
+            # it; the importer, nothing; and it refuses acts, so there are none
             mkarchive.run_spec('M900312', frames=5000, authors=['Bo'], submitted=d(150),
                                status={'reproduced': 'imported', 'verified': 'imported'},
                                imported={'source': 'https://tasvideos.org/2M',
-                                         'importedBy': 'Bo', 'importedAt': d(9)}),
+                                         'importedBy': 'Importer', 'importedAt': d(9)},
+                               likes=[{'user': 'Ver', 'date': d(0)}, {'user': 'Ver2', 'date': d(0)}]),
+            # a comment pointer: the commenter earns, every author earns
+            mkarchive.run_spec('M900313', frames=5000, authors=['Ada', 'Bo'], submitted=d(3),
+                               comments=[{'user': 'Ver', 'date': d(1), 'post': 2}]),
         ]
-        arch = mkarchive.make_archive(td / 'a2', pts_runs)
+        arch = mkarchive.make_archive(td / 'a2', pts_runs, authors_extra=['Importer'])
         out = td / 'o2'
         r = build(arch, out)
         ck('points build succeeds', r.returncode == 0, r.stderr[-300:])
         stats = json.loads((out / 'assets/authorstats.json').read_text())
-        want_first = min(PT_REPRO_FIRST + PT_REPRO_HARD + 150 * PT_NEGLECT_PER_DAY, PT_REPRO_MAX)
-        ck('first reproduction on a hard system, long neglected',
-           stats.get('rep', {}).get('contrib') == want_first,
-           f'got {stats.get("rep", {}).get("contrib")} want {want_first}')
-        ck('later reproduction pays base + hard bonus only',
-           stats.get('rep2', {}).get('contrib') == PT_REPRO_LATER + PT_REPRO_HARD,
-           str(stats.get('rep2')))
-        ck('the first verification ages a point a day',
-           stats.get('ver', {}).get('contrib') == min(PT_VERIFY + 150, PT_VERIFY_MAX),
+        pts = lambda who: stats.get(who, {}).get('points')   # noqa: E731
+        want_first = min(PT_REPRO_FIRST + 150 * PT_NEGLECT_PER_DAY, PT_REPRO_MAX)
+        ck('the first reproduction of a long-neglected run tops out, hard system or not',
+           pts('rep') == want_first + PT_LIKE_GIVEN, f'got {pts("rep")} want {want_first + PT_LIKE_GIVEN}')
+        ck('a later reproduction pays its flat weight',
+           pts('rep2') == PT_REPRO_LATER, str(stats.get('rep2')))
+        ck('the first verification ages a point a day to its cap',
+           pts('ver') == min(PT_VERIFY + 150, PT_VERIFY_MAX) + PT_LIKE_GIVEN + PT_COMMENT_GIVEN,
            str(stats.get('ver')))
-        ck('a later verification pays the flat weight',
-           stats.get('ver2', {}).get('contrib') == PT_VERIFY, str(stats.get('ver2')))
-        ck('imported runs award nothing', 'importer' not in stats)
+        ck('a later verification pays its flat weight',
+           pts('ver2') == PT_VERIFY_LATER + PT_LIKE_GIVEN, str(stats.get('ver2')))
+        ck('an author is paid for the run, its checks, its star and its comment',
+           pts('ada') == 2 * PT_AUTHORSHIP + PT_RUN_VERIFIED + PT_RUN_REPRODUCED
+           + PT_LIKE_RECEIVED + PT_COMMENT_RECEIVED, str(stats.get('ada')))
+        ck('an imported run pays its author the authorship and the stars, and a co-author the comment',
+           pts('bo') == 2 * PT_AUTHORSHIP + 2 * PT_LIKE_RECEIVED + PT_COMMENT_RECEIVED, str(stats.get('bo')))
+        ck('importing pays nothing', 'importer' not in stats or pts('importer') == 0, str(stats.get('importer')))
+        ck('the stats say where the points came from',
+           stats['ada']['by']['authorship'] == 2 * PT_AUTHORSHIP + PT_RUN_VERIFIED + PT_RUN_REPRODUCED
+           and stats['ada']['by']['received'] == PT_LIKE_RECEIVED + PT_COMMENT_RECEIVED
+           and stats['ver']['by']['curation'] == min(PT_VERIFY + 150, PT_VERIFY_MAX)
+           and stats['ver']['by']['audience'] == PT_LIKE_GIVEN + PT_COMMENT_GIVEN,
+           str({k: stats[k]['by'] for k in ('ada', 'ver')}))
+        ck('stars on their runs are still counted as stars',
+           stats['ada']['likes'] == 1 and stats['bo']['likes'] == 2, str(stats['bo']))
 
-        # ---- contributor tiers: the badge a member wears is the one their
-        # score buys, at every threshold. The fixtures elsewhere only ever
-        # reach the first one, so the upper branches would otherwise ship
-        # having never once been evaluated.
+        # ---- the contributor badge: one plain badge for the first tAr point.
         # Later verifications pay the flat weight, so a member's score is
         # exactly how many of these runs they appear on. 'Pathfinder' takes
         # the first verification of each run, which is the one that ages.
@@ -196,10 +219,10 @@ def main():
         stats = json.loads((out / 'assets/authorstats.json').read_text())
         # the milestone tiers are retired: every contributor wears the same
         # plain badge, and the medals carry the honors
-        for who, want_pts in (('tiera', 1 * PT_VERIFY), ('tierb', 5 * PT_VERIFY),
-                              ('tierc', 10 * PT_VERIFY), ('tierd', 25 * PT_VERIFY)):
+        for who, want_pts in (('tiera', 1 * PT_VERIFY_LATER), ('tierb', 5 * PT_VERIFY_LATER),
+                              ('tierc', 10 * PT_VERIFY_LATER), ('tierd', 25 * PT_VERIFY_LATER)):
             ck(f'{who} earned exactly {want_pts}',
-               stats.get(who, {}).get('contrib') == want_pts, str(stats.get(who)))
+               stats.get(who, {}).get('points') == want_pts, str(stats.get(who)))
             page_ = (out / 'authors' / who / 'index.html').read_text()
             worn = re.search(r'class="rolechip role-contrib ([^"]+)"[^>]*>([^<]+)<', page_)
             ck(f'{want_pts} points wears the plain Contributor badge',
@@ -216,7 +239,7 @@ def main():
         build(arch, out)
         stats = json.loads((out / 'assets/authorstats.json').read_text())
         ck('the first-reproduction payout tops out at its maximum',
-           stats.get('late', {}).get('contrib') == PT_REPRO_MAX,
+           stats.get('late', {}).get('points') == PT_REPRO_MAX,
            str(stats.get('late')))
 
         # ---------------- what counts as pending ----------------
@@ -255,13 +278,19 @@ def main():
             mkarchive.run_spec('M900323', game='dos/hardgame', frames=7000,
                                authors=['Bo'], likes=[{'user': 'F1', 'date': d(1)}]),
         ]
-        arch = mkarchive.make_archive(td / 'a4', star_runs)
-        out = td / 'o4'
+        # a directory of its own: the tier archive above lives in a4, and a
+        # fixture written over it would carry those runs into these sums
+        arch = mkarchive.make_archive(td / 'a4s', star_runs)
+        out = td / 'o4s'
         build(arch, out)
         stats = json.loads((out / 'assets/authorstats.json').read_text())
-        ck('author score sums the stars on their runs',
-           stats['ada']['author'] == 3 and stats['bo']['author'] == 1,
-           str({k: v['author'] for k, v in stats.items()}))
+        ck('the stars on their runs are summed per member',
+           stats['ada']['likes'] == 3 and stats['bo']['likes'] == 1,
+           str({k: v['likes'] for k, v in stats.items()}))
+        ck('and paid as tAr points to the author and the giver',
+           stats['ada']['points'] == 2 * PT_AUTHORSHIP + 3 * PT_LIKE_RECEIVED
+           and stats['f1']['points'] == 2 * PT_LIKE_GIVEN,
+           str({k: v['points'] for k, v in stats.items()}))
         games_page = (out / 'games/index.html').read_text()
         cards = re.findall(r'<a class="card" data-stars="(\d+)"', games_page)
         ck('system card star totals equal the sum of their games',
@@ -460,8 +489,9 @@ def main():
         ck('the most liked shelf holds the starred run',
            'Most liked' in home6 and 'M900342' in home6.split('Most liked')[1],
            home6[:100])
-        # an act voided by an edit of the run (cause: edit) keeps its points;
-        # one an expert invalidated for fault does not
+        # points once earned are kept: an act voided by an edit of the run
+        # and one an expert invalidated for fault both keep theirs (an
+        # invalidation changes the run's status, never anybody's points)
         arch6d = mkarchive.make_archive(td / 'a6d', [
             mkarchive.run_spec('M900345', frames=5000, authors=['Ada'],
                                status={'reproduced': 'none', 'verified': 'none'},
@@ -471,8 +501,10 @@ def main():
         out6d = td / 'o6d'
         build(arch6d, out6d)
         stats6d = json.loads((out6d / 'assets' / 'authorstats.json').read_text())
-        ck('an act voided by an edit keeps its points', stats6d.get('kept', {}).get('contrib', 0) > 0, str(stats6d.get('kept')))
-        ck('an act an expert invalidated forfeits them', stats6d.get('lost', {}).get('contrib', 0) == 0, str(stats6d.get('lost')))
+        ck('an act voided by an edit keeps its points', stats6d.get('kept', {}).get('points', 0) > 0, str(stats6d.get('kept')))
+        ck('an act an expert invalidated keeps them too', stats6d.get('lost', {}).get('points', 0) > 0, str(stats6d.get('lost')))
+        ck('and the author keeps the verified bonus with them',
+           stats6d.get('ada', {}).get('points') == PT_AUTHORSHIP + PT_RUN_VERIFIED, str(stats6d.get('ada')))
         # visit counts are host state beside the checkout: with a file the
         # shelf renders, without one (CI, the Pages standby) it stays away
         vfile = td / 'visits-a6b.json'
@@ -492,14 +524,14 @@ def main():
         ck('members index carries a Views column only with visit counts',
            'Views</th>' in members6c and 'Views</th>' not in members6)
         ada_row = [ln for ln in members6c.split('<tr') if '<b>Ada</b>' in ln][0]
-        ck('the member row sums the views of their runs, right of author score',
+        ck('the member row sums the views of their runs, right of the stars',
            '<td class="num">7</td>' in ada_row
            and ada_row.index('starglyph') < ada_row.index('<td class="num">7</td>'),
            ada_row[:300])
         prof6c = (out2 / 'authors' / 'ada' / 'index.html').read_text()
-        ck('the profile shows the views stat beside author score',
+        ck('the profile shows the views stat after tAr points and the stars',
            '<span>views</span>' in prof6c and '7</b><span>views</span>' in prof6c
-           and prof6c.index('author score') < prof6c.index('<span>views</span>'),
+           and prof6c.index('tAr points') < prof6c.index('stars on their runs') < prof6c.index('<span>views</span>'),
            prof6c[prof6c.find('statstrip'):prof6c.find('statstrip') + 400])
 
         # ---------------- per-category metrics ranking ----------------

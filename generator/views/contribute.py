@@ -39,21 +39,23 @@ def act_verb(desc):
         desc = desc.replace(key, ACT_VERB[key])
     return desc
 
+# the worklist's own acts: what the ledger files under curation
 latest_acts = [
-    {'date': date, 'pts': pts, 'run': r, 'who': who, 'verb': act_verb(desc),
-     'cls': ACT_ICON.get(desc, ('verified', '✓'))[0],
-     'icon': ACT_ICON.get(desc, ('verified', '✓'))[1]}
-    for date, desc, pts, r, who in sorted(
-        ((date, desc, pts, r, p['user'])
-         for p in points.values() for date, desc, pts, r in p['acts'] if date),
-        key=lambda a: (a[0], a[3]['id']), reverse=True)[:LATEST_N]]
-top = sorted(points.values(), key=lambda p: -p['points'])[:10]
+    {'date': a['date'], 'pts': a['pts'], 'run': a['run'], 'who': who, 'verb': act_verb(a['desc']),
+     'cls': ACT_ICON.get(a['desc'], ('verified', '✓'))[0],
+     'icon': ACT_ICON.get(a['desc'], ('verified', '✓'))[1]}
+    for a, who in sorted(
+        ((a, p['user']) for p in points.values() for a in p['acts']
+         if a['source'] == 'curation' and a['date']),
+        key=lambda aw: (aw[0]['date'], aw[0]['run']['id']), reverse=True)[:LATEST_N]]
 body = tpl('contribute.html', need_repro=need_repro, need_verify=need_verify,
            worklist_systems=worklist_systems, open_cases=open_cases,
-           latest_acts=latest_acts, top=top)
+           latest_acts=latest_acts)
 (OUT / 'contribute').mkdir(exist_ok=True)
 (OUT / 'contribute' / 'index.html').write_text(page(
     'Contribute: verify and reproduce TAS runs', body, '../', '', 'Contribute',
     seo={'path': 'contribute/',
          'description': ('The public worklist: verify and reproduce tool-assisted speedruns, '
-                         'earn contributor points, no assignment needed.')}), encoding='utf-8')
+                         'earn tAr points, no assignment needed; and the full table of '
+                         'what earns tAr points.')},
+    styles=['page-contribute.css']), encoding='utf-8')

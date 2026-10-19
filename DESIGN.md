@@ -172,8 +172,10 @@ A person can relate to the site in these ways, from lightest to heaviest:
   member; the validator enforces that every actor has a record.
 - **An author**: a member credited on archived runs. Their profile lists their
   runs, stars, contributions, news, and role history.
-- **A contributor**: a member who has earned contributor points (one
-  reproduction or verification suffices).
+- **A contributor**: a member who has earned tAr points (§7): a run of
+  their own, a reproduction, a verification, a creation, a star or a comment
+  given, any one of them. The Contributor badge says exactly this, and this
+  is the "contributor base" of Governance 2.7.
 
 **Roles** (all recorded in `roles.json`, an append-only event log; who holds
 what is the fold of it, never stored twice):
@@ -184,7 +186,7 @@ what is the fold of it, never stored twice):
 | **Steering Committee** | The Founder (directly), or the Committee's own poll | Decides name claims and identity (it ALONE assesses identity — §2.5.8, §4.8); appoints experts at any scope (§2.5.3); records role decisions from Committee polls; deletes member records (never a seated member: the Committee does not eat itself); decides appeals |
 | **Expert** (scoped) | Any Committee seat at any scope, or a strictly wider expert scope (downward, never sideways: equal scope cannot clone itself); annulled by Committee poll (simple majority, §2.5.4); resignation needs nobody | See "what experts do" below |
 | **Moderator** | Committee poll | Forum moderation; enforce on everyone; may admonish but never remove Founder/Committee |
-| **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, curate emulator presets and quick chips across systems (`/api/emulators/edit`), edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the contributor tiers. |
+| **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, curate emulator presets and quick chips across systems (`/api/emulators/edit`), edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the Contributor badge. |
 
 A Committee seat is a forum administrator by virtue of the seat: the
 archivist's role publishing (`forumapi.publish_group`) requests forum admin
@@ -246,10 +248,9 @@ the trust layer's quality and curate taxonomy.
 
 **Badges**: the site shows four chips beside a name: **Steering Committee**
 (red), **Expert** (unqualified; which scopes is on the member's page),
-**Editor** (blue), and **Contributor** with its milestone (Contributor, then
-1k/5k/10k/25k: the leaderboard thresholds themselves, one green chip filling
-up). Founder and Moderator are recorded and shown in each member's role log,
-never as chips.
+**Editor** (blue), and **Contributor** (green, earned by the first tAr
+point; the medals carry the honors, §7). Founder and Moderator are recorded
+and shown in each member's role log, never as chips.
 
 **Standing interpretation, the Founder panel**: the constitution names no
 seat/unseat mechanism, and the panel IS that mechanism: the Founder seats and
@@ -530,6 +531,16 @@ invalidation of a faulty act does not)
 - **Like** (★): anyone, once per run, never your own (rename-resolved). The
   one reversible act: a second press erases the like outright, no tombstone,
   no log — a like is a mood, not a judgement. Orders the Unclassified shelves.
+- **Comment** (a recorded fact, not an act through the site): a member's
+  first post in the run's forum topic becomes a pointer in the run's
+  `comments[]` (member, day, moment, post number; never the text, which
+  stays on the forum). The archivist writes it from the forum's signed post
+  event, and takes it back when the forum deletes that post, as an unlike
+  erases a like. Never the run's own authors, never the bot, and only
+  people with a member record: a forum account that never logged in here
+  gets no record it never asked for (§6), so its posts are read and not
+  counted. Imported runs take comments as they take likes. Feeds author news
+  ("commented") and tAr points (§7).
 
 Author self-acts are refused with names resolved through renames (see §6).
 Imported runs refuse all acts: they are irrevocably verified.
@@ -883,40 +894,99 @@ A category defines what it ranks by.
 
 ---
 
-## 7. Points and gamification
+## 7. tAr points
 
-Two currencies, recomputed at every build from the rosters, never stored:
-**author score** (★ likes on your runs) and **contributor points**. Weights
-(provisional, marked so on the site): first reproduction 100 + 2/day the run
-sat waiting, the whole payout topping out at 2,000 · later reproductions 25 ·
-hard-to-reproduce systems (flagged in systems.json) +50 on any reproduction ·
-first verification 20 + 1/day waiting, topping out at 1,000; later
-verifications 20. Both contribute worklists sort by bounty.
-One plain **Contributor** badge, earned by the first act; the milestone
-tiers (1k/5k/10k/25k) are retired, since the medals carry the honors. The
-badge shows beside a name everywhere except on the contributor board, where
-the points column already says it (#59). There, and on the member page, **medals**
-take its place: little gold/silver/bronze discs, one letter each, the
-achievement in the tooltip. All recomputed from the recorded acts at build
-time, nothing stored: top contributor of the last 7 / 30 days (W, M; ties
-share), ten / a hundred / five hundred reproductions (R) or verifications (V),
-twenty-five / a hundred firsts (1); one medal per family, the highest
-earned. **No currency
-buys anything** (anti-farming: a currency without privileges is not worth
-gaming). Imports award nothing.
+**One currency, tAr points**, recomputed at every build from the archive's
+facts and never stored: every point traces to a run, a roster entry, a
+star, a comment pointer, an edit event or a `createdBy`. It is the
+Members page's ranking and the one number on a profile, the account menu
+and the member log; the stars on a member's runs stay beside it as a
+plain count (the ★ button, the per-run count, the home counter, the Most
+liked shelf and the Unclassified ordering are untouched). **No currency
+buys anything**: tAr points rank members and nothing else (a currency
+without privileges is not worth gaming), and every act stays open to
+everyone regardless of it.
 
-The **Contribute board** is the public worklist: needs-verification and
-needs-reproduction tables with rising bounties, recent contributions in the
-side rail (only work that actually scored), open cases, the contributor
-leaderboard. A run page carries the board's ask ("This run needs help")
-only while the run is still waiting for the verification that would rank
-it; an Unclassified run ranks by likes, so it never asks. **No claiming,
-no assignment**: anyone may do anything anytime;
-first to finish earns. Anti-rubber-stamp posture: reward-first,
-punish-manually — points mint immediately, contradiction opens a case, a
-pattern of forgery is a human, logged, appealable matter, never automatic.
-Accepted residual risk: a determined faker can farm unchecked runs until
-caught; structural prevention was deliberately traded for openness.
+The weights (`generator/model.py`, the one place they live; the Contribute
+page prints them from the same constants):
+
+| What | Who earns | tAr points |
+|---|---|---|
+| Authorship of an archived run, imports included | each credited member author | 500 |
+| Your run gets verified / reproduced | each author, once per run each | 5 / 5 |
+| First reproduction of a run | the reproducer | 100, +2 a day the run waited, up to 300 |
+| Later reproductions | the reproducer | 20 |
+| First verification of a run | the verifier | 50, +1 a day the run waited, up to 100 |
+| Later verifications | the verifier | 10 |
+| Creating a game, a group or a system | the creator | 20 |
+| Adding a category / a subcategory | the creator | 10 / 5 |
+| Starring a run | the giver | 5 |
+| A star on your run | each author, per star | 50 |
+| Your first post in a run's forum topic | the commenter | 10 |
+| A member's first post in your run's topic | each author, per member | 5 |
+
+Everything else pays nothing: importing a run (the authorship pays its
+authors, the importer earns nothing), submitting one you are not credited
+on, edits and moves, reports, cases, invalidations, appointments, claims,
+deletions, withdrawals, visits (host state, not a fact), forum likes and
+posts outside run topics, the bot's posts. Governance and moderation are
+duties, not scores (Principles 1.7).
+
+Rules around the table:
+- **Never on your own run**: you cannot star, verify, reproduce, or be
+  counted as a commenter on a run you are credited on (rename-resolved).
+- **Points once earned are kept.** An invalidation, by an edit of the run
+  or by an expert finding the act faulty, changes the run's status and
+  never anybody's points; the author's verified and reproduced bonuses
+  stay with it. The archive is permanent and so is what it paid. A star
+  taken back or a post the forum deleted takes its points with it, because
+  the fact is gone: those are the only points that ever go down.
+- **What no longer stands pays nothing**: a withdrawn or deleted run, a
+  game, group, system or category an expert deleted as junk (its
+  `createdBy` leaves with it).
+- **A credit without a record earns nothing** until its owner claims the
+  name; the next build pays them everything at once. Co-authors each take
+  the full payout: collaboration is not taxed.
+- **No guard on audience payouts** (a friend starring every run you have
+  is worth 50 a star): the posture of reward-first, punish-manually holds.
+  Points mint immediately, contradiction opens a case, a pattern of farming
+  is a human, logged, appealable matter, never automatic. Accepted residual
+  risk, deliberately traded for openness and simplicity.
+- **Hard-to-reproduce systems** keep their flag (it names the systems a
+  reproducer should expect to fight) but pay no bonus.
+- **Bounties** on the Contribute worklists are the first-act payouts as
+  they stand today (rising daily to their caps); the lists sort by them.
+- The weights are provisional; the community settles them (Governance 2.7).
+
+**Surfaces**: the Members page sorts by tAr points (then runs, then name)
+and keeps ★ and run count beside it; a profile opens with the number, a
+one-line breakdown by source (reproducing and verifying · runs you
+authored · stars and comments on your runs · creations · stars you gave
+and runs you commented on) and the itemised ledger (date, what, where,
+points), in which the audience lines are summed into "N stars given" and
+"N runs commented on", never listed run by run: a profile says how much
+somebody took part, not what they looked at. The Contribute page carries
+the whole table at the bottom of its main column (`#points`), where the
+worklist ends; the About page and every profile link there. The
+**Contributor board is retired**: the Members page is the one ranking.
+
+**Badge and medals**: one plain **Contributor** badge, earned by the first
+tAr point, shown beside a name everywhere. **Medals** (#59) on the Members
+page and the profile, little gold/silver/bronze discs with the achievement
+in the tooltip, all recomputed from the facts: **W** and **M** for whoever
+earned the most tAr points, from any source, in the last 7 / 30 days
+(ties share), ten / a hundred / five hundred reproductions (R) or
+verifications (V), twenty-five / a hundred firsts (1); one medal per
+family, the highest earned.
+
+The **Contribute page** is the public worklist: needs-verification and
+needs-reproduction tables with rising bounties, recent contributions in
+the side rail (the curation acts alone: the list sits beside the work it
+is about), open cases, and the points table. A run page carries the
+board's ask ("This run needs help") only while the run is still waiting
+for the verification that would rank it; an Unclassified run ranks by
+likes, so it never asks. **No claiming, no assignment**: anyone may do
+anything anytime; first to finish earns the most.
 
 ---
 
@@ -930,8 +1000,10 @@ archivist, module responsibilities). What matters designwise:
   runs/M<id>/{run.json, movie, notes.md, attachments/, reproductions/}}`
   plus `authors/`, `groups.json`, `roles.json`, `claims.json`,
   `edits.json`, `deletions.json`, `systems.json`, `schema/`, `validate.py`.
-  Rosters are the facts; the stored `status` is a checked cache that CI
-  refuses to let lie. Invalidated acts stay on the record with by/date/reason.
+  Rosters are the facts (`reproductions[]`, `verifications[]`, `likes[]`,
+  `comments[]`); the stored `status` is a checked cache that CI refuses to
+  let lie. Invalidated acts stay on the record with by/date/reason. Games,
+  groups and systems made here carry `createdBy`/`createdAt`.
 - **Intake reads the archive's rules, it does not copy them.** The extensions
   intake accepts (`settings.allowed_movie_exts` / `allowed_attach_exts`) are
   this service's own roster narrowed by the lists in the archive's
@@ -1159,7 +1231,12 @@ archivist, module responsibilities). What matters designwise:
   system correction, each naming the fields that changed, what the change
   invalidated, and the public reason where one was owed (an author revising
   their own work owes none). Forum posts relay through a
-  HMAC-verified Discourse webhook, skipping PMs and the bot's own posts.
+  HMAC-verified Discourse webhook, skipping PMs and the bot's own posts;
+  the same hook writes the run's comment pointer first (§4, idempotent, so
+  a delivery the forum retries never reaches Discord twice) and handles
+  the forum's post deletions and restorations, which are recorded and never
+  relayed. `tools/backfill_comments.py` wrote the pointers for the replies
+  that predate the hook, once, from the forum's public JSON.
 - **Static-first is a commitment**: no server search endpoints, no
   server-rendered pages. Pages carry small indexes; per-game payloads are
   fetched from the archive's raw URL on demand.
@@ -1560,8 +1637,11 @@ to 2; registration stays open by principle (§1.5).
 
 ## 13. Open items
 
-- Contributor point weights are provisional; the community settles them.
+- tAr point weights are provisional; the community settles them (§7).
 - Full-launch checklist: re-review policy drafts and point weights.
+- Privacy 6.7 lists what the archive holds without naming comment
+  pointers; they are read as "what you contributed" (the same class as
+  stars), and an amendment naming them is worth filing.
 - **v2, deferred by explicit decision**: automated client-side reproduction
   (browser/desktop Chimera replays locally, ROMs never leave the machine,
   signed receipts with state-hash samples corroborate independently). Revive

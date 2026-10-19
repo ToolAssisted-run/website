@@ -666,7 +666,7 @@ const ths = [
     _handlers: {}, addEventListener(t, f){ (this._handlers[t] = this._handlers[t] || []).push(f); },
     click(){ (this._handlers['click'] || []).forEach(f => f({ preventDefault(){} })); }
   },
-  { textContent: 'Author score', dataset: {}, classes: new Set(['num', 'sort-desc']), _attrs: {},
+  { textContent: 'tAr points', dataset: {}, classes: new Set(['num', 'sort-desc']), _attrs: {},
     setAttribute(k, v){ this._attrs[k] = v; }, getAttribute(k){ return this._attrs[k] || null; },
     classList: { add(...c){ c.forEach(x => ths[1].classes.add(x)); }, remove(...c){ c.forEach(x => ths[1].classes.delete(x)); }, contains(c){ return ths[1].classes.has(c); } },
     _handlers: {}, addEventListener(t, f){ (this._handlers[t] = this._handlers[t] || []).push(f); },

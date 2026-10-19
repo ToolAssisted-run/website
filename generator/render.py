@@ -37,6 +37,7 @@ from model import (
     canon,
     cat_label,
     contrib_tier,
+    points_of,
     medals_of,
     credited,
     eff_state,
@@ -60,21 +61,21 @@ from model import (
 def role_badges(name):
     """What a member is, as chips, in as few words as the truth allows.
 
-    Steering Committee, Expert, Editor, and the earned Contributor tier.
+    Steering Committee, Expert, Editor, and the earned Contributor badge.
     Expert says 'Expert' and stops: it used to name the scope, which reads
     well for one game and falls apart for the real case, since scopes need
     not be related, so the chip either lies by naming one of them or turns
-    into a list. Contributor is earned rather than granted, by a single act
-    on a run. No Founder or Moderator chip.
+    into a list. Contributor is earned rather than granted, by the first
+    tAr point. No Founder or Moderator chip.
     """
     # one chip per role, not per scope: three expert scopes is still one Expert
     held = {role for role, scope in roles_of(name)}
     out = [f'<span class="rolechip role-{role}">{ROLE_LABEL[role]}</span>'
            for role in BADGED_ROLES if role in held]
-    tier = contrib_tier(points.get(name.lower(), {}).get('points', 0))
+    tier = contrib_tier(points_of(name))
     if tier:
         out.append(f'<span class="rolechip role-contrib {tier[1]}" '
-                   f'title="{esc(tier[0])}: earned by reproducing and verifying runs">'
+                   f'title="{esc(tier[0])}: has earned tAr points here">'
                    f'{esc(tier[0])}</span>')
     return ''.join(out)
 

@@ -26,7 +26,7 @@ never derived state** (who verified what, when; never "this run is ranked").
 
 **Model** — what is true.
 - `generator/model.py`: the archive loaded, plus every derivation
-  (effective verification state, rankings, contributor points, author
+  (effective verification state, rankings, tAr points, author
   stats/news, rename resolution). Writes nothing, builds no HTML.
 - `archivist/records.py` + `archivist/gitstore.py`: the same facts on the
   write side — records (members, roles, groups, claims, logs) and the git

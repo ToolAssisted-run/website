@@ -2130,8 +2130,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
     @app.post('/api/like')
     def like():
         """Thumbs-up: everybody except the run's own authors, one per run.
-        Works on any run, Imported included — it feeds player points and orders
-        the Unclassified rankings.
+        Works on any run, Imported included: it feeds tAr points (the giver's
+        and every author's) and orders the Unclassified rankings.
 
         Who: any member except the run's authors
         Reads: form fields run, dry_run

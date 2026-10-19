@@ -56,8 +56,9 @@ games no group claimed).
 
 **Tier 2 — derivation**: the full (reproductions × verifications ×
 invalidated × imported × unclassified) matrix mapped to ranked/pending/history
-· exact contributor points including the hard-system bonus, the neglect
-escalator and its cap · star sums per game and system · supersession by author
+· exact tAr points per source (authorship, curation with the neglect
+escalator and its caps, stars and comments given and received, creations;
+points kept through invalidations) · star sums per game and system · supersession by author
 set with frame deltas · author news across co-authors · exhaustive parity
 between the archivist's and the validator's case resolution.
 

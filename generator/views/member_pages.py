@@ -5,6 +5,8 @@ from model import (
     REPORT_CHIPS,
     REPORT_LABELS,
     ROLE_LABEL,
+    SOURCE_WORDS,
+    SOURCES,
     author_news,
     author_stats,
     authors,
@@ -33,7 +35,7 @@ from render import SITE_URL, breadcrumb_ld, page, tpl
     {u: [e['date'] for e in lst] for u, lst in author_news.items()}), encoding='utf-8')
 (OUT / 'assets' / 'authorstats.json').write_text(json.dumps(author_stats), encoding='utf-8')
 
-NEWS_ICON = {'reproduced': '↻', 'verified': '✓', 'liked': '★'}
+NEWS_ICON = {'reproduced': '↻', 'verified': '✓', 'liked': '★', 'commented': '💬'}
 
 # Pre-index audit log events across all runs and edits
 all_runs = runs + withdrawn_runs
@@ -210,13 +212,32 @@ for uname, a in authors.items():
                   # the date the row shows is the date the list sorts by,
                   # most recent first (#47)
                   key=lambda r: (board_date(r), r.get('submitted') or ''), reverse=True)
-    contrib = points.get(uname)
-    cpts = contrib['points'] if contrib else 0
-    acts = sorted(contrib['acts'],
-                  # sort on comparable fields only: two acts sharing a date,
-                  # description and payout would otherwise compare run dicts
-                  key=lambda a: (a[0], a[1], a[2], a[3]['id']), reverse=True
-                  ) if contrib and contrib['acts'] else []
+    ledger = points.get(uname)
+    cpts = ledger['points'] if ledger else 0
+    # the itemised ledger: everything but the audience lines, which are
+    # summed into one row each (a profile says how much you took part, never
+    # which runs you looked at)
+    acts = []
+    audience = {}
+    for e in (ledger['acts'] if ledger else []):
+        if e['source'] == 'audience':
+            tot = audience.setdefault(e['desc'], {'n': 0, 'pts': 0, 'date': ''})
+            tot['n'] += 1
+            tot['pts'] += e['pts']
+            tot['date'] = max(tot['date'], e['date'])
+        else:
+            acts.append(e)
+    for desc, tot in audience.items():
+        what = f'{tot["n"]} star{"s" if tot["n"] != 1 else ""} given' if desc == 'star given' \
+            else f'{tot["n"]} run{"s" if tot["n"] != 1 else ""} commented on'
+        acts.append({'date': tot['date'], 'desc': what, 'pts': tot['pts'],
+                     'source': 'audience', 'run': None, 'where': '', 'href': ''})
+    # sort on comparable fields only: two acts sharing a date, description
+    # and payout would otherwise compare run dicts
+    acts.sort(key=lambda e: (e['date'], e['desc'], e['pts'], e['run']['id'] if e['run'] else ''),
+              reverse=True)
+    by = ledger['by'] if ledger else {k: 0 for k in SOURCES}
+    breakdown = [(SOURCE_WORDS[k], by[k]) for k in SOURCES if by[k]]
     # the roles this member has held, and lost, in order: the log belongs to the
     # person it is about, at the bottom of their own page
     role_rows = []
@@ -229,7 +250,7 @@ for uname, a in authors.items():
                               by_name=authors.get(by.lower(), {}).get('username', by)))
     body = tpl('member_pages_author.html', a=a, st=author_stats[uname], mine=mine,
                my_news=author_news.get(uname, [])[:50], NEWS_ICON=NEWS_ICON,
-               cpts=cpts, acts=acts, role_rows=role_rows)
+               cpts=cpts, acts=acts, breakdown=breakdown, role_rows=role_rows)
     (OUT / 'authors' / profile_slug(uname)).mkdir(parents=True, exist_ok=True)
     (OUT / 'authors' / profile_slug(uname) / 'index.html').write_text(
         page(f'{a["username"]} · TAS runs and contributions', body, '../../',
@@ -237,7 +258,7 @@ for uname, a in authors.items():
              seo={'path': f'authors/{profile_slug(uname)}/',
                   'description': (f'{a["username"]} on toolAssisted.run: '
                                   f'{len(mine)} tool-assisted speedrun{"s" if len(mine) != 1 else ""}, '
-                                  f'contributions and role history.'),
+                                  f'{cpts:,} tAr points and role history.'),
                   'type': 'profile',
                   'ld': [{'@context': 'https://schema.org', '@type': 'Person',
                           'name': a['username'],

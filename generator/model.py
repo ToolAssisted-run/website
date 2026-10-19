@@ -30,21 +30,49 @@ def profile_slug(name):
     username can never shape a path or break a link."""
     return re.sub(r'[^a-z0-9._-]+', '-', name.lower()).strip('-.') or 'author'
 
-PT_REPRO_FIRST = 100
+# tAr points: the one currency, every weight in one place (DESIGN.md §7).
+# Everything below is recomputed at each build from facts in the archive and
+# never stored; a point that cannot be traced to a recorded fact does not
+# exist.
+PT_AUTHORSHIP = 500         # per credited member author of an archived run
 
-PT_REPRO_LATER = 25
+PT_REPRO_FIRST = 100        # the first reproduction of a run, rising while it waits
 
-PT_VERIFY = 20
+PT_REPRO_LATER = 20
 
-PT_VERIFY_AGE_PER_DAY = 1   # the first verification pays more the longer a
+PT_NEGLECT_PER_DAY = 2      # the first-reproduction payout grows by this a day
 
-PT_VERIFY_MAX = 1000        # run waits; the whole payout tops out here
+PT_REPRO_MAX = 300          # and tops out here
 
-PT_NEGLECT_PER_DAY = 2
+PT_VERIFY = 50              # the first verification of a run, rising while it waits
 
-PT_REPRO_MAX = 2000         # the whole first-reproduction payout tops out here
+PT_VERIFY_LATER = 10
 
-PT_REPRO_HARD = 50   # extra for hard-to-reproduce systems (systems.json flag)
+PT_VERIFY_AGE_PER_DAY = 1   # the first-verification payout grows by this a day
+
+PT_VERIFY_MAX = 100         # and tops out here
+
+PT_CREATE_GAME = 20         # a game, group or system created here
+
+PT_CREATE_GROUP = 20
+
+PT_CREATE_SYSTEM = 20
+
+PT_CREATE_CATEGORY = 10
+
+PT_CREATE_SUBCATEGORY = 5
+
+PT_LIKE_GIVEN = 5           # to the member who stars a run
+
+PT_LIKE_RECEIVED = 50       # to each author of the run, per star
+
+PT_COMMENT_GIVEN = 10       # to the member whose first post in a run's topic this is
+
+PT_COMMENT_RECEIVED = 5     # to each author of the run, per commenter
+
+PT_RUN_VERIFIED = 5         # to each author, once, when the run is first verified
+
+PT_RUN_REPRODUCED = 5       # to each author, once, when the run is first reproduced
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'archivist'))
 
@@ -461,20 +489,21 @@ def cat_label(r):
     sub = sub_of(r)
     return f'{label} · {sub["label"]}' if sub else label
 
-def hard_bonus(r):
-    return PT_REPRO_HARD if systems[r['_game']['system']].get('hardToReproduce') else 0
-
 def nlikes(r):
     return len(r.get('likes', []))
+
+def ncomments(r):
+    return len(r.get('comments', []))
 
 def live(acts):
     return [a for a in acts if not a.get('invalidated')]
 
 def earning(acts):
-    """The acts that earned their points: the live ones, and those an edit
-    of the run voided afterwards (the act was honest work on what the run
-    was then; only an expert finding it faulty forfeits the points)."""
-    return [a for a in acts if not a.get('invalidated') or a['invalidated'].get('cause') == 'edit']
+    """The acts that earned their points: all of them. Points once earned
+    are kept; an invalidation, by an edit of the run or by an expert finding
+    the act faulty, changes the run's status and never anybody's points
+    (a pattern of forgery is a human, logged matter, DESIGN.md §7)."""
+    return list(acts)
 
 def eff_state(r):
     """(reproduced, verified) derived from rosters; 'imported' passes through.
@@ -563,51 +592,128 @@ def days_pending(r):
 
 def repro_bounty(r):
     """Current first-reproduction payout for a still-unreproduced run."""
-    return min(PT_REPRO_FIRST + hard_bonus(r) + days_pending(r) * PT_NEGLECT_PER_DAY,
-               PT_REPRO_MAX)
+    return min(PT_REPRO_FIRST + days_pending(r) * PT_NEGLECT_PER_DAY, PT_REPRO_MAX)
 
 def verify_bounty(r):
     """Current first-verification payout for a still-unverified run:
-    the base, plus one point per day waiting, capped at double."""
+    the base, plus one point per day waiting, up to its cap."""
     return min(PT_VERIFY + days_pending(r) * PT_VERIFY_AGE_PER_DAY, PT_VERIFY_MAX)
 
 def contrib_tier(pts):
-    """One badge, earned by the first act: Contributor. The medals carry
-    the honors (top of the week, act counts); the badge only says this
-    member has contributed."""
+    """One badge, earned by the first tAr point: Contributor. The medals
+    carry the honors (top of the week, act counts); the badge only says this
+    member has done something here."""
     return ('Contributor', 'tier-first') if pts >= 1 else None
 
-points = {}   # user(lower) -> {'points': n, 'acts': [(date, html-free desc, pts, run)]}
+# ---- the ledger: every tAr point, traced to the fact that earned it ----
+# user(lower) -> {'user', 'points', 'by': {source: n}, 'acts': [...]}. An act
+# is {'date', 'desc', 'pts', 'source', 'run' (or None), 'where' (text when
+# there is no run), 'href' (a link when there is no run)}. Sources:
+#   curation    reproducing and verifying runs
+#   authorship  being credited on an archived run, and what happened to it
+#   received    stars and comments on your runs
+#   library     games, groups, systems and categories you created
+#   audience    stars you gave and runs you commented on, summed, never
+#               itemised: a profile is not a trail of what you looked at
+SOURCES = ('curation', 'authorship', 'received', 'library', 'audience')
+SOURCE_WORDS = {'curation': 'reproducing and verifying',
+                'authorship': 'runs you authored',
+                'received': 'stars and comments on your runs',
+                'library': 'games, groups, systems and categories you created',
+                'audience': 'stars you gave and runs you commented on'}
 
-def award(user, pts, desc, r, date):
-    p = points.setdefault(canon(user), {'user': user, 'points': 0, 'acts': []})
+points = {}
+
+def award(user, pts, desc, r, date, source, where='', href=''):
+    if not pts:
+        return
+    p = points.setdefault(canon(user), {'user': user, 'points': 0, 'acts': [],
+                                        'by': {k: 0 for k in SOURCES}})
     p['points'] += pts
-    p['acts'].append((date or '', desc, pts, r))
+    p['by'][source] += pts
+    p['acts'].append({'date': date or '', 'desc': desc, 'pts': pts, 'source': source,
+                      'run': r, 'where': where, 'href': href})
+
+def _run_date(r):
+    return archived_at(r)
 
 for r in runs:
-    if r.get('status', {}).get('reproduced') == 'imported':
-        continue
-    reps = sorted(earning(r.get('reproductions', [])), key=lambda a: a.get('date') or '')
-    sub = parse_date(r.get('submitted'))
-    for i, act in enumerate(reps):
-        if i == 0:
-            ad = parse_date(act.get('date'))
-            neglect = (ad - sub).days * PT_NEGLECT_PER_DAY if ad and sub and ad > sub else 0
-            award(act['user'], min(PT_REPRO_FIRST + hard_bonus(r) + neglect, PT_REPRO_MAX),
-                  'first reproduction', r, act.get('at') or act.get('date'))
-        else:
-            award(act['user'], PT_REPRO_LATER + hard_bonus(r), 'reproduction', r,
-              act.get('at') or act.get('date'))
-    vers = sorted(earning(r.get('verifications', [])), key=lambda a: a.get('date') or '')
-    for i, act in enumerate(vers):
-        if i == 0:
-            ad = parse_date(act.get('date'))
-            aged = (ad - sub).days * PT_VERIFY_AGE_PER_DAY if ad and sub and ad > sub else 0
-            award(act['user'], min(PT_VERIFY + aged, PT_VERIFY_MAX), 'first verification', r,
-                  act.get('at') or act.get('date'))
-        else:
-            award(act['user'], PT_VERIFY, 'verification', r,
-                  act.get('at') or act.get('date'))
+    imported = r.get('status', {}).get('reproduced') == 'imported'
+    # the credited member authors; a credit without a record is text, and
+    # earns when its owner claims the name (the next build sees the record)
+    author_names = [a['user'] for a in r['authors'] if canon(a['user']) in authors]
+    for a in author_names:
+        award(a, PT_AUTHORSHIP, 'authorship', r, _run_date(r), 'authorship')
+    if not imported:
+        reps = sorted(earning(r.get('reproductions', [])), key=lambda a: a.get('date') or '')
+        sub = parse_date(r.get('submitted'))
+        for i, act in enumerate(reps):
+            if i == 0:
+                ad = parse_date(act.get('date'))
+                neglect = (ad - sub).days * PT_NEGLECT_PER_DAY if ad and sub and ad > sub else 0
+                award(act['user'], min(PT_REPRO_FIRST + neglect, PT_REPRO_MAX),
+                      'first reproduction', r, act.get('at') or act.get('date'), 'curation')
+                for a in author_names:
+                    award(a, PT_RUN_REPRODUCED, 'your run was reproduced', r,
+                          act.get('at') or act.get('date'), 'authorship')
+            else:
+                award(act['user'], PT_REPRO_LATER, 'reproduction', r,
+                      act.get('at') or act.get('date'), 'curation')
+        vers = sorted(earning(r.get('verifications', [])), key=lambda a: a.get('date') or '')
+        for i, act in enumerate(vers):
+            if i == 0:
+                ad = parse_date(act.get('date'))
+                aged = (ad - sub).days * PT_VERIFY_AGE_PER_DAY if ad and sub and ad > sub else 0
+                award(act['user'], min(PT_VERIFY + aged, PT_VERIFY_MAX), 'first verification',
+                      r, act.get('at') or act.get('date'), 'curation')
+                for a in author_names:
+                    award(a, PT_RUN_VERIFIED, 'your run was verified', r,
+                          act.get('at') or act.get('date'), 'authorship')
+            else:
+                award(act['user'], PT_VERIFY_LATER, 'verification', r,
+                      act.get('at') or act.get('date'), 'curation')
+    # the audience: a star or a comment pays its giver and every author.
+    # Imported runs take both (they refuse acts, never a mood).
+    for like in r.get('likes', []):
+        when = like.get('at') or like.get('date')
+        award(like['user'], PT_LIKE_GIVEN, 'star given', None, when, 'audience')
+        for a in author_names:
+            award(a, PT_LIKE_RECEIVED, f'star from {like["user"]}', r, when, 'received')
+    for c in r.get('comments', []):
+        when = c.get('at') or c.get('date')
+        award(c['user'], PT_COMMENT_GIVEN, 'run commented on', None, when, 'audience')
+        for a in author_names:
+            award(a, PT_COMMENT_RECEIVED, f'comment from {c["user"]}', r, when, 'received')
+
+# the library: what somebody created here, as long as it still stands. A
+# creation an expert deleted as junk leaves with its record, and so does its
+# payout. Imported games and groups name no creator and pay nobody.
+for g in games.values():
+    if g.get('createdBy') and not g.get('removed'):
+        award(g['createdBy'], PT_CREATE_GAME, 'created a game', None,
+              g.get('createdAt', ''), 'library', g['title'], f'games/{g["key"]}/')
+for gr in groups:
+    if gr.get('createdBy') and not gr.get('removed'):
+        award(gr['createdBy'], PT_CREATE_GROUP, 'created a group', None,
+              gr.get('createdAt', ''), 'library', gr['title'], f'groups/{gr["key"]}/')
+for skey, sdoc in systems.items():
+    if sdoc.get('createdBy'):
+        award(sdoc['createdBy'], PT_CREATE_SYSTEM, 'created a system', None,
+              sdoc.get('createdAt', ''), 'library', sdoc['name'], f'systems/{skey}/')
+for _e in edit_events:
+    # a category added is logged as an edit event on the game; a key with a
+    # slash under the game is a subcategory. The game must still exist.
+    if _e.get('kind') == 'category' and _e.get('field') == 'added' and _e.get('by'):
+        _gk, _, _opt = _e.get('key', '').partition(':')
+        if _gk in games and not games[_gk].get('removed'):
+            award(_e['by'], PT_CREATE_SUBCATEGORY if '/' in _opt else PT_CREATE_CATEGORY,
+                  'added a subcategory' if '/' in _opt else 'added a category', None,
+                  _e.get('date', ''), 'library',
+                  f'{games[_gk]["title"]} · {_e.get("to") or _opt}', f'games/{_gk}/')
+
+def points_of(name):
+    """A member's tAr points, 0 when they have none."""
+    return points.get(canon(name), {}).get('points', 0)
 
 # ---- medals: achievements read off the acts above (issue #59) ----
 # Nothing is stored: every medal is recomputed from the recorded acts at
@@ -628,11 +734,12 @@ def _act_kind(desc):
     return 'reproduction' if 'reproduction' in desc else 'verification'
 
 def _recent_leaders(days):
-    """Who earned the most points in the last `days` days (ties share it)."""
+    """Who earned the most tAr points, from any source, in the last `days`
+    days (ties share it)."""
     since = (TODAY - datetime.timedelta(days=days)).isoformat()
     tally = {}
     for p in points.values():
-        got = sum(pts for (d, desc, pts, r) in p['acts'] if (d or '')[:10] >= since)
+        got = sum(a['pts'] for a in p['acts'] if (a['date'] or '')[:10] >= since)
         if got > 0:
             tally[p['user'].lower()] = got
     if not tally:
@@ -651,13 +758,15 @@ def medals_of(user):
     out = []
     low = p['user'].lower()
     if low in _week_leaders:
-        out.append(('week', 'gold', 'W', f'Top contributor this week: {_week_leaders[low]} points in the last seven days'))
+        out.append(('week', 'gold', 'W', f'Top of the week: {_week_leaders[low]:,} tAr points in the last seven days'))
     if low in _month_leaders:
-        out.append(('month', 'gold', 'M', f'Top contributor this month: {_month_leaders[low]} points in the last thirty days'))
+        out.append(('month', 'gold', 'M', f'Top of the month: {_month_leaders[low]:,} tAr points in the last thirty days'))
     counts = {}
-    for (d, desc, pts, r) in p['acts']:
-        counts[_act_kind(desc)] = counts.get(_act_kind(desc), 0) + 1
-        if desc.startswith('first '):
+    for a in p['acts']:
+        if a['source'] != 'curation':
+            continue
+        counts[_act_kind(a['desc'])] = counts.get(_act_kind(a['desc']), 0) + 1
+        if a['desc'].startswith('first '):
             counts['first'] = counts.get('first', 0) + 1
     best = {}   # one medal per family: the highest earned
     for key, metal, mark, need, kind, words in MEDAL_RULES:
@@ -666,13 +775,14 @@ def medals_of(user):
     out.extend(best.values())
     return out
 
-# ---- author news: events on your runs (reproduced / verified / liked) ----
+# ---- author news: events on your runs (reproduced / verified / liked / commented) ----
 author_news = {}
 for r in runs:
     a_low = [canon(a['user']) for a in r['authors']]
     events = ([('reproduced', act) for act in r.get('reproductions', [])]
               + [('verified', act) for act in r.get('verifications', [])]
-              + [('liked', l) for l in r.get('likes', [])])
+              + [('liked', l) for l in r.get('likes', [])]
+              + [('commented', c) for c in r.get('comments', [])])
     for kind, act in events:
         for uname in a_low:
             author_news.setdefault(uname, []).append(
@@ -724,9 +834,10 @@ for uname, a in authors.items():
     mine = [r for r in runs if any(canon(x['user']) == uname for x in r['authors'])]
     author_stats[uname] = {
         'runs': len(mine),
-        'author': sum(nlikes(r) for r in mine),
+        'likes': sum(nlikes(r) for r in mine),    # stars on their runs
         'views': sum(nvisits(r) for r in mine),   # across every run they authored
-        'contrib': points.get(uname, {}).get('points', 0),
+        'points': points.get(uname, {}).get('points', 0),   # tAr points
+        'by': points.get(uname, {}).get('by', {k: 0 for k in SOURCES}),
     }
 
 

@@ -5,17 +5,17 @@
 <header class="ghead"><div>
 <h1>{{ a.username }} {{ '🇨🇭' if a.get('country') == 'CH' else '' }}</h1>{% if role_badges(a.username) %}<div class="chips rolechips">{{ role_badges(a.username) }}</div>{% endif %}</div><div class="hbtns"><a class="btn" id="selfimport" hidden data-author="{{ a.username }}" href="../../import/">Import runs</a><a class="srclink" href="logs/">view member log →</a></div></header>
 <div class="statstrip">
+<div class="stat"><b>{{ '{:,}'.format(st.points) }}</b><span>tAr points</span></div>
 <div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
-<div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>
+<div class="stat"><b><span class="starglyph">★</span>{{ st.likes }}</b><span>stars on their runs</span></div>
 {% if visits_known %}<div class="stat"><b>{{ EYE_ICON }}{{ '{:,}'.format(st.views) }}</b><span>views</span></div>{% endif %}
-<div class="stat"><b>{{ st.contrib }}</b><span>contributor score</span></div>
 </div>
 {% if my_news %}
 <section id="news"><h2>News</h2><div class="factbox newsbox">{% for e in my_news[:10] %}{{ news_line(e) }}{% endfor %}
 {% if my_news|length > 10 %}<div class="newsrest" hidden>{% for e in my_news[10:] %}{{ news_line(e) }}{% endfor %}</div><button type="button" class="newsmore">load more news…</button>{% endif %}
 </div></section>
 {% else %}
-<section id="news"><h2>News</h2><p class="emptynote">Nothing yet. reproductions, verifications and stars on your runs will appear here.</p></section>
+<section id="news"><h2>News</h2><p class="emptynote">Nothing yet. Reproductions, verifications, stars and comments on your runs will appear here.</p></section>
 {% endif %}
 <section><details class="secfold" open><summary><h2>Runs ({{ mine|length }})</h2></summary>
 <div class="tblwrap" data-pagesize-key="author-runs" data-item-label="run"><table class="sortable"><thead><tr><th>Game</th><th>Category</th><th class="num"></th><th class="num"><span class="starglyph">★</span></th><th class="sort-desc">Date</th><th class="ctr">Repro</th><th class="ctr">Verified</th></tr></thead>
@@ -27,16 +27,17 @@
 {{ run_date_cell(r) }}
 <td class="ctr">{{ tick(st2[0]) }}</td><td class="ctr">{{ tick(st2[1]) }}</td></tr>
 {% endfor %}</tbody></table></div></details></section>
-<section><details class="secfold" open><summary><h2>Contributions · {{ cpts }} points{{ badge_chip(cpts) }}{{ medals(a.username) }}</h2></summary>
+<section id="points"><details class="secfold" open><summary><h2>tAr points · {{ '{:,}'.format(cpts) }}{{ badge_chip(cpts) }}{{ medals(a.username) }}</h2></summary>
 {% if acts %}
-<div class="tblwrap" data-pagesize-key="author-acts" data-item-label="act"><table class="sortable"><thead><tr><th class="sort-desc">Date</th><th>Act</th><th>Run</th><th class="num">Points earned</th></tr></thead>
-<tbody>{% for d, desc, pts, r_ in acts %}
-<tr onclick="if(!event.target.closest('a'))location='../../runs/{{ r_.id }}/'"><td>{{ moment(d) }}</td><td>{{ desc }}</td>
-<td><a href="../../runs/{{ r_.id }}/">{{ r_._game.title }} ({{ r_.id }})</a></td>
-<td class="num">+{{ pts }}</td></tr>
+<p class="statline muted">{% for words, n in breakdown %}{{ '{:,}'.format(n) }} from {{ words }}{{ ' · ' if not loop.last }}{% endfor %}. <a href="../../contribute/#points">How tAr points work</a>.</p>
+<div class="tblwrap" data-pagesize-key="author-acts" data-item-label="entry"><table class="sortable"><thead><tr><th class="sort-desc">Date</th><th>What</th><th>Where</th><th class="num">tAr points</th></tr></thead>
+<tbody>{% for e in acts %}
+<tr{% if e.run %} onclick="if(!event.target.closest('a'))location='../../runs/{{ e.run.id }}/'"{% endif %}><td>{{ moment(e.date) if e.date else '' }}</td><td>{{ e.desc }}</td>
+<td>{% if e.run %}<a href="../../runs/{{ e.run.id }}/">{{ e.run._game.title }} ({{ e.run.id }})</a>{% elif e.href %}<a href="../../{{ e.href }}">{{ e.where }}</a>{% else %}{{ e.where }}{% endif %}</td>
+<td class="num">+{{ '{:,}'.format(e.pts) }}</td></tr>
 {% endfor %}</tbody></table></div>
 {% else %}
-<p class="emptynote">No contributions yet. Reproduce or verify runs on the <a href="../../contribute/">Contribute board</a> to start earning.</p>
+<p class="emptynote">Nothing yet. Runs, reproductions, verifications, stars and comments all earn <a href="../../contribute/#points">tAr points</a>.</p>
 {% endif %}
 </details></section>
 {% if role_rows %}

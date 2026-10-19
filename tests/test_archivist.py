@@ -2338,6 +2338,10 @@ def main():
                c == 200 and r['system']['fps'] == 29.97002997002997, str(r)[:200])
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             sysdoc = json.loads((work / 'systems.json').read_text())
+            ck('a new system records who created it, and when',
+               sysdoc.get('fixturebox', {}).get('createdBy') == 'SiteOnly'
+               and re.fullmatch(r'\d{4}-\d{2}-\d{2}', sysdoc.get('fixturebox', {}).get('createdAt', '')),
+               str(sysdoc.get('fixturebox')))
             ck('and it lands in the archive as written',
                sysdoc.get('fixturebox', {}).get('name') == 'Fixture Box'
                and sysdoc['fixturebox'].get('hardToReproduce') is True, str(sysdoc.get('fixturebox')))
@@ -3024,6 +3028,72 @@ def main():
                                   'post_number': 1, 'cooked': '<p>announce</p>'}})
             ck('our own bot is not relayed twice',
                c == 200 and r.get('ignored') == 'our own bot', str(r))
+
+            # --- comments: a member's post in a run's topic becomes a pointer
+            # on the run (their first one there), and the forum deleting that
+            # post takes it back ---
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            topic_runs = [(rj, json.loads(rj.read_text()))
+                          for rj in sorted(work.glob('games/*/*/runs/*/run.json'))]
+            topic_runs = [(rj, rd) for rj, rd in topic_runs
+                          if (rd.get('forum') or {}).get('topicId') and not rd.get('withdrawn')]
+            ck('the fixture holds runs with forum topics', bool(topic_runs), str(len(topic_runs)))
+            tid = topic_runs[0][1]['forum']['topicId']
+            credited = {a['user'].lower() for _, rd in topic_runs for a in rd['authors']}
+            members = sorted(json.loads(f.read_text())['username'] for f in work.glob('authors/*.json'))
+            speaker = next(m for m in members if m.lower() not in credited and m != 'archivist')
+
+            def post(user, number, event='post_created', **more):
+                return hook({'post': dict({'username': user, 'topic_archetype': 'regular',
+                                           'topic_title': 'a run', 'topic_id': tid,
+                                           'post_number': number, 'post_type': 1,
+                                           'created_at': '2026-05-04T03:02:01.000Z',
+                                           'cooked': '<p>nice run</p>'}, **more)}, event=event)
+            c, r = post(speaker, 2)
+            ck("a member's post in a run topic is recorded",
+               c == 200 and r.get('comment') == 'recorded', str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            spoken = [(rj, json.loads(rj.read_text())) for rj, _ in topic_runs]
+            spoken = [(rj, rd) for rj, rd in spoken if rd.get('comments')]
+            ck('on exactly one run, the one carrying that topic',
+               len(spoken) == 1 and spoken[0][1]['forum']['topicId'] == tid, str(len(spoken)))
+            rj, rd = spoken[0]
+            ck('as a pointer: who, the day, the moment, the post; never the text',
+               len(rd['comments']) == 1 and rd['comments'][0]['user'].lower() == speaker.lower()
+               and rd['comments'][0]['date'] == '2026-05-04'
+               and rd['comments'][0]['at'] == '2026-05-04T03:02:01Z'
+               and rd['comments'][0]['post'] == 2 and 'nice' not in rj.read_text(), str(rd['comments']))
+            last_subject = subprocess.run(['git', 'log', '-1', '--format=%s'], cwd=work,
+                                          capture_output=True, text=True).stdout
+            ck('and the commit says so', last_subject.startswith('Comment '), last_subject)
+            c, r = post(speaker, 3)
+            ck('their second post adds nothing', r.get('comment') == 'already recorded', str(r))
+            c, r = post(rd['authors'][0]['user'], 4)
+            ck("an author's own post is not a comment", r.get('comment') == 'an author of the run', str(r))
+            c, r = post('NobodyHere', 5)
+            ck('a forum account with no record here earns nothing',
+               r.get('comment') == 'not a member here', str(r))
+            c, r = post(speaker, 6, post_type=4)
+            ck('a whisper is not a comment', r.get('comment') == 'not a regular post', str(r))
+            c, r = post(speaker, 7, topic_id=424242)
+            ck('a topic that is no run is relayed and not recorded',
+               c == 200 and r.get('comment') == 'not a run topic', str(r))
+            before = len(DISCORD_MSGS)
+            c, r = post(speaker, 3, event='post_destroyed')
+            ck('deleting a post that is not the recorded one changes nothing',
+               r.get('comment') == 'not the recorded post', str(r))
+            c, r = post(speaker, 2, event='post_destroyed')
+            ck('deleting the recorded post takes the pointer back', r.get('comment') == 'removed', str(r))
+            ck('and deletions never reach Discord', len(DISCORD_MSGS) == before, str(DISCORD_MSGS[before:]))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rd = json.loads(rj.read_text())
+            ck('the run carries no comments again', 'comments' not in rd, str(rd.get('comments')))
+            c, r = post(speaker, 8, event='post_recovered')
+            ck('a post the forum restores is recorded like a new one',
+               r.get('comment') == 'recorded', str(r))
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            rd = json.loads(rj.read_text())
+            ck('under its own post number', rd.get('comments', [{}])[0].get('post') == 8, str(rd.get('comments')))
 
             # --- claiming an identity: an expert attests it ---
             # The token route is gone: it needed permission to edit a TASVideos

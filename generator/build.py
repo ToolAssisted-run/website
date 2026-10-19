@@ -3,7 +3,7 @@
 
 Reads the archive (a checkout of ToolAssisted-run/archive) and emits the
 site. Facts in, pages out: rankings, records, verification states and
-contributor points are derived from the stored facts (rosters), never stored.
+tAr points are derived from the stored facts (rosters), never stored.
 
 Architecture (see ARCHITECTURE.md):
   config.py    deployment constants (Model and View both read it)

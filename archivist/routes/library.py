@@ -699,7 +699,8 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
                       if v.get('name', '').lower() == name.lower()), None)
         if clash:
             return fail(f'{name} is already here under the key {clash!r}', 409)
-        entry = {'name': name, 'fps': fps}
+        entry = {'name': name, 'fps': fps, 'createdBy': actor,
+                 'createdAt': time.strftime('%Y-%m-%d', time.gmtime())}
         if system_form.get('hard') in ('1', 'true', 'yes', 'on'):
             entry['hardToReproduce'] = True
         if dry_run:

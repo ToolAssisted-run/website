@@ -166,7 +166,7 @@ def main():
                                 for s in ('pending', 'verified'))
            and '"state": "provisional"' not in browse and '"state": "imported"' not in browse)
         r1 = rd('runs/M900001/index.html')
-        ck('pending run bounty CTA', 'contributor points' in r1)
+        ck('pending run bounty CTA', 'tAr points' in r1)
         ck('home cards use thumbnails the site serves itself', 'src="/thumbs/' in home)
         r2 = rd('runs/M900002/index.html')
         ck('roster + screenshot', '/shots/M900002-reproductions-1-helper.png' in r2)

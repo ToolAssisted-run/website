@@ -56,10 +56,10 @@
 </div>
 </header>
 <div class="statstrip">
+<div class="stat"><b>{{ '{:,}'.format(st.points) }}</b><span>tAr points</span></div>
 <div class="stat"><b>{{ st.runs }}</b><span>runs published</span></div>
-<div class="stat"><b><span class="starglyph">★</span>{{ st.author }}</b><span>author score</span></div>
+<div class="stat"><b><span class="starglyph">★</span>{{ st.likes }}</b><span>stars on their runs</span></div>
 {% if visits_known %}<div class="stat"><b>{{ EYE_ICON }}{{ '{:,}'.format(st.views) }}</b><span>views</span></div>{% endif %}
-<div class="stat"><b>{{ st.contrib }}</b><span>contributor score</span></div>
 </div>
 
 {# ==================== PART 1: ACTIONS ON ACCOUNT ==================== #}

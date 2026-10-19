@@ -51,6 +51,13 @@ def _superseded(username):
     return current_name(username).lower() != username.lower()
 
 
+def member_exists(username):
+    """True when this person has a member record: they logged in here at
+    least once, under this name or one they have since claimed."""
+    name = current_name(username)
+    return (ARCHIVE / 'authors' / f'{selfimport.slugify(name)}.json').exists()
+
+
 def record_member_once(username):
     """Write the member record if this person has none yet.
 
