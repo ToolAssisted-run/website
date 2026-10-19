@@ -255,9 +255,7 @@ if (committeePanelEl) {
       return (
         roleSelect.value === 'committee'
           ? committeeData.committeeNames
-          : roleSelect.value === 'editor'
-            ? committeeData.editors || []
-            : committeeData.moderators
+          : committeeData.moderators
       ).map(function (x) {
         return x.toLowerCase();
       });
@@ -375,38 +373,6 @@ if (committeePanelEl) {
             res.j.serial
           );
           siteExpertForm.reset();
-        } else note(committeeMsg, res.j.error || 'something went wrong', false);
-      });
-    });
-    // the editor seat: everyone who does not already hold it
-    var editorNames = (committeeData.editors || []).map(function (x) {
-      return x.toLowerCase();
-    });
-    armPicker(document.getElementById('editorrole-user'), {
-      source: function (q) {
-        return searchArchive('members', q);
-      },
-      filter: function (it) {
-        return editorNames.indexOf(it.value.toLowerCase()) < 0;
-      },
-      placeholder: 'type to find a member',
-      empty: 'no such member, or already an editor',
-    });
-    var editorForm = document.getElementById('f-editorrole');
-    editorForm.addEventListener('submit', function (ev) {
-      ev.preventDefault();
-      post(
-        '/api/editor/appoint',
-        new FormData(editorForm),
-        actionBtn(editorForm)
-      ).then(function (res) {
-        if (res.ok && res.j.ok) {
-          noteBuilt(
-            committeeMsg,
-            res.j.user + ' is now an editor.',
-            res.j.serial
-          );
-          editorForm.reset();
         } else note(committeeMsg, res.j.error || 'something went wrong', false);
       });
     });

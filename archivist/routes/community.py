@@ -10,7 +10,7 @@ from webutil import fail
 from identity import roles_suspended
 from gitstore import checkout_branch, commit_push, find_run, lock, refresh_archive
 from notify import member_md, notify_discord
-from records import already_covers, append_role_event, case_derived_status, ensure_member, expert_covers, held_roles, is_committee, is_editor, is_founder, is_site_expert, load_claims, load_experts, log_deletion, may_decide_claims, next_report_id, save_claims, scope_covers, scope_exists, sync_status
+from records import already_covers, append_role_event, case_derived_status, ensure_member, expert_covers, held_roles, is_committee, is_founder, is_site_expert, load_claims, load_experts, log_deletion, may_decide_claims, next_report_id, save_claims, scope_covers, scope_exists, sync_status
 from forumapi import close_announce_topic, committee_size, count_votes, votes_cast, forum_account_exists, member_email_masked, publish_group, publish_roles, read_committee_poll, send_pm, sync_expert_group, topics_for_imported, unlock_forum_username
 
 
@@ -531,59 +531,6 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
                                 'with your name and your reason.'})
 
 
-    @app.post('/api/editor/appoint')
-    def editor_appoint():
-        """A single Committee seat grants the editor role, in the open.
-
-        The library's shape, nothing else (see is_editor). Unscoped, so there is
-        no downward door: only the Committee gives it. Taking it away is a role
-        removal like any other: a Committee poll through /api/role/decide.
-
-        Who: a Committee member (`key` plus `expert`)
-        Reads: form fields user, reason, dry_run
-        Answers: {ok, user, by, note}
-        """
-        appointment_form = request.form
-        appointer, error = request_identity(appointment_form, 'expert')
-        if error:
-            return error
-        user = (appointment_form.get('user') or '').strip()
-        reason = (appointment_form.get('reason') or '').strip()
-        if not re.fullmatch(r'[A-Za-z0-9. _-]{2,40}', user):
-            return fail('user must be the forum account being appointed')
-        if len(reason) < 8:
-            return fail('say why, publicly: the appointment is published with your name')
-        if len(reason) > 500:
-            return fail('reason must be under 500 characters')
-        dry_run = appointment_form.get('dry_run') in ('1', 'true', 'yes')
-
-        refresh_archive()
-        with lock:
-            if not dry_run:
-                checkout_branch()
-            if not is_committee(appointer):
-                return fail(f'{appointer} holds no Committee seat; the editor role '
-                            f'is the Committee\'s to give', 403)
-            if is_editor(user):
-                return fail(f'{user} is already an editor', 409)
-            if forum_account_exists(user) is False:
-                return fail(f'no forum account named {user}; they need one before a '
-                            f'role means anything', 404)
-            entry = {'user': user, 'role': 'editor', 'action': 'granted',
-                     'by': appointer, 'date': time.strftime('%Y-%m-%d', time.gmtime()),
-                     'at': now_iso(), 'reason': reason}
-            if dry_run:
-                return jsonify({'ok': True, 'dry_run': True, 'would_append': entry})
-            append_role_event(entry)
-            ensure_member(user)
-            commit_push(f'Appoint {user} as editor\n\n'
-                        f'By: {appointer}\nReason: {reason}\nVia: archivist')
-        return jsonify({'ok': True, 'user': user, 'by': appointer,
-                        'note': 'The appointment is public: an Editor badge on the '
-                                'members list and a line in the role log on their '
-                                'page, with your name and your reason.'})
-
-
     @app.post('/api/roles/publish')
     @app.post('/api/expert/sync')                    # the name it shipped under
     def roles_publish():
@@ -734,8 +681,8 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
 
     def _role_request_gate(role, action, target, post_id, reason):
         """Validate the role decision target, action and proof post."""
-        if role not in ('committee', 'moderator', 'editor'):
-            return fail('role must be committee, moderator or editor; an expert scope '
+        if role not in ('committee', 'moderator'):
+            return fail('role must be committee or moderator; an expert scope '
                         'is appointed downward instead, and annulled by /api/expert/annul')
         if action not in ('granted', 'revoked'):
             return fail('action must be granted or revoked')
@@ -803,8 +750,7 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
             return majority_error
         dry_run = decision_form.get('dry_run') in ('1', 'true', 'yes')
         proof = f'{DISCOURSE_URL}/p/{post_id}'
-        label = {'committee': 'the Steering Committee', 'moderator': 'moderator',
-                 'editor': 'editor'}[role]
+        label = {'committee': 'the Steering Committee', 'moderator': 'moderator'}[role]
 
         refresh_archive()
         with lock:

@@ -287,6 +287,20 @@ def m_comment_by_nobody(root):
 def m_comment_without_post(root):
     edit(root, 'M900202', lambda d: d['comments'].append({'user': 'Ver', 'date': '2026-03-09'}))
 
+def m_editor_granted_after_retirement(root):
+    rp = root / 'roles.json'
+    doc = json.loads(rp.read_text())
+    doc['events'].append({'user': 'Ada', 'role': 'editor', 'action': 'granted', 'by': 'Root',
+                          'date': '2026-11-01', 'reason': 'the role is gone; this must fail'})
+    rp.write_text(json.dumps(doc, indent=1) + '\n')
+
+def m_editor_still_held(root):
+    rp = root / 'roles.json'
+    doc = json.loads(rp.read_text())
+    doc['events'].append({'user': 'Ada', 'role': 'editor', 'action': 'granted', 'by': 'Root',
+                          'date': '2026-09-01', 'reason': 'granted while the role existed, never ended'})
+    rp.write_text(json.dumps(doc, indent=1) + '\n')
+
 def m_system_creator_half_recorded(root):
     sp = root / 'systems.json'
     doc = json.loads(sp.read_text())
@@ -493,6 +507,8 @@ CASES = [
     ('a commenter is a member', m_comment_by_nobody, 'no member record'),
     ('a comment pointer names its post', m_comment_without_post, 'post'),
     ('a system creator comes with the date', m_system_creator_half_recorded, 'createdBy and createdAt out of step'),
+    ('the Editor role is not granted any more', m_editor_granted_after_retirement, 'not granted any more'),
+    ('nobody holds the retired Editor role', m_editor_still_held, 'a revocation event ends it'),
     ('report ids are globally unique', m_report_id_collision, 'collides'),
     ('resolved report needs a resolver', m_resolved_without_resolver, 'resolvedBy'),
     ('no duplicate case id', m_duplicate_case_id, 'duplicate case id'),

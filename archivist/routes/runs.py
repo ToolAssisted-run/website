@@ -13,7 +13,7 @@ from webutil import fail
 from identity import current_name, run_authors_now, session_user
 from gitstore import checkout_branch, commit_push, duplicate_of, find_run, load_game, lock, next_id, refresh_archive
 from notify import movie_md, member_md, notify_discord
-from records import covers_group, ensure_member, expert_covers, is_editor, is_uncl_run, load_groups, log_edit, save_groups, sync_status
+from records import covers_group, ensure_member, expert_covers, is_uncl_run, load_groups, log_edit, save_groups, sync_status
 from forumapi import ensure_game_topic, ensure_topic
 
 
@@ -822,12 +822,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             return fail(f'unknown run {target}', 404)
         game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
         if not expert_covers(actor, game_key):
-            # an editor shapes the library, not the runs: the one run
-            # field that is library shape is which category it sits in
-            if not (is_editor(actor) and field == 'goal'):
-                return fail(f'{actor!r} is not an expert covering {game_key}'
-                            f' (an editor may only move a run between '
-                            f'categories)', 403)
+            return fail(f'{actor!r} is not an expert covering {game_key}', 403)
         run = json.loads((run_dir / 'run.json').read_text())
         handler = (_expert_run_metric if field.startswith('metric:') else {
             'duration': _expert_run_duration, 'goal': _expert_run_goal,
@@ -916,9 +911,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         game_file = ARCHIVE / 'games' / target / 'game.json'
         if not game_file.exists():
             return fail(f'unknown game {target}', 404)
-        if not expert_covers(actor, target) and not is_editor(actor):
-            return fail(f'{actor!r} is not an expert covering {target}, '
-                        f'nor an editor', 403)
+        if not expert_covers(actor, target):
+            return fail(f'{actor!r} is not an expert covering {target}', 403)
         game = json.loads(game_file.read_text())
         handler = (_expert_game_title if field == 'title' else
                    _expert_game_property if field in GAME_PROPERTY_FIELDS else
@@ -939,8 +933,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
         if not categories_file.exists():
             return fail(f'unknown game {game_key}', 404)
-        if not expert_covers(actor, game_key) and not is_editor(actor):
-            return fail(f'{actor!r} is not an expert covering {game_key}, nor an editor', 403)
+        if not expert_covers(actor, game_key):
+            return fail(f'{actor!r} is not an expert covering {game_key}', 403)
         if value not in ('buttons', 'dropdown'):
             return fail('selector is buttons or dropdown')
         categories = json.loads(categories_file.read_text())
@@ -1132,9 +1126,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
         if not categories_file.exists():
             return fail(f'unknown game {game_key}', 404)
-        if not expert_covers(actor, game_key) and not is_editor(actor):
-            return fail(f'{actor!r} is not an expert covering {game_key}, '
-                        f'nor an editor', 403)
+        if not expert_covers(actor, game_key):
+            return fail(f'{actor!r} is not an expert covering {game_key}', 403)
         categories = json.loads(categories_file.read_text())
         option = next((o for d in categories['dimensions'] for o in d['options']
                     if o['key'] == option_key), None)
@@ -1163,7 +1156,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         group = next((g for g in groups_doc['groups'] if g['key'] == target.lower()), None)
         if not group:
             return fail(f'no group with the key {target!r}', 404)
-        if not covers_group(actor, group) and not is_editor(actor):
+        if not covers_group(actor, group):
             return fail(f'{actor} holds no scope covering the {group["title"]} group',
                         403)
         if not (1 <= len(value) <= 80):
@@ -1240,7 +1233,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
     def expert_edit():
         """Correct one field within expert jurisdiction, with a public audit trail.
 
-        Editors may correct library shape only, never member authorship.
+        Never member authorship: who made a thing is moderation's question.
         Reads kind, target, field, value, reason (8–500 chars), dry_run and
         optional movie or thumbnail upload. Answers old/new values or preview;
         category metrics may also report seeded runs.
@@ -2044,12 +2037,12 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
     def run_record():
         """The run's record as the archivist holds it right now, for the edit
         form: run.json, the notes text, the game's categories, and what the
-        caller may do with it (author, covering expert, editor).
+        caller may do with it (author, covering expert).
 
         Who: anybody may read; the permissions reflect the session
         Reads: query run (M-id)
         Answers: {ok, run, notes, game: {key, title, system}, categories,
-            may: {author, expert, editor}}, Cache-Control: no-store; 404 unknown
+            may: {author, expert}}, Cache-Control: no-store; 404 unknown
         """
         run_id = (request.args.get('run') or '').strip()
         if not re.fullmatch(r'M[0-9]+', run_id):
@@ -2073,8 +2066,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         seconds, seconds_source = _record_duration(run, game_key)
         who = session_user()
         may = {'author': bool(who) and current_name(who).lower() in run_authors_now(run),
-               'expert': bool(who) and expert_covers(who, game_key),
-               'editor': bool(who) and is_editor(who)}
+               'expert': bool(who) and expert_covers(who, game_key)}
         resp = jsonify({'ok': True, 'run': {k: v for k, v in run.items() if not k.startswith('_')},
                         'notes': notes, 'seconds': seconds, 'secondsSource': seconds_source,
                         'game': {'key': game_key, 'title': game.get('title'), 'system': game_key.split('/')[0]},

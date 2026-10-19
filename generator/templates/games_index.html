@@ -217,9 +217,9 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
   apply();
 })();
 </script>
-<script type="application/json" id="gamesactdata">{{ json_blob({'siteExperts': site_experts_now, 'editorZone': True}) }}</script>
+<script type="application/json" id="gamesactdata">{{ json_blob({'siteExperts': site_experts_now}) }}</script>
 <div id="gamesacts" class="actzone" hidden>
-<details class="actform"><summary>Start a group (site experts and editors)</summary>
+<details class="actform"><summary>Start a group (site experts)</summary>
 <form id="f-newgroup">
 <p class="rules">One family of games, across every system it appeared on. It exists the moment you make it.</p>
 <label>Key <input name="group" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="lowercase-with-hyphens"></label>

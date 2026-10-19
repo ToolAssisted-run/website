@@ -132,6 +132,8 @@ ROLES_NOW = held_roles(role_events)
 experts_reg = [{'user': ev['user'], 'scope': ev.get('scope', '')}
                for (u, role, scope), ev in ROLES_NOW.items() if role == 'expert']
 
+# 'editor' names a retired role (2026-10-19): the label stays so the role
+# log can still read the events that granted and ended it
 ROLE_LABEL = {'committee': 'Steering Committee', 'moderator': 'Moderator',
               'expert': 'Expert', 'editor': 'Editor', 'founder': 'Founder'}
 
@@ -170,7 +172,7 @@ def scope_words(scope):
     return systems.get(scope, {}).get('name', scope)
 
 # widest first: the Committee chip leads, then what somebody does with runs
-BADGED_ROLES = ('committee', 'expert', 'editor')
+BADGED_ROLES = ('committee', 'expert')
 
 def roles_of(name):
     """Every role this member holds today, widest first."""
@@ -179,7 +181,7 @@ def roles_of(name):
     for (u, role, scope), ev in ROLES_NOW.items():
         if u == low:
             out.append((role, scope))
-    order = {'committee': 0, 'moderator': 1, 'expert': 2, 'editor': 3}
+    order = {'committee': 0, 'moderator': 1, 'expert': 2}
     return sorted(out, key=lambda rs: (order.get(rs[0], 9), rs[1]))
 
 def role_events_of(name):

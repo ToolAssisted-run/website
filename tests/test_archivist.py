@@ -193,12 +193,16 @@ def main():
         ex['events'].append({'user': 'SiteOnly', 'role': 'expert', 'scope': 'site',
                              'action': 'granted', 'by': 'eien86', 'date': '2026-08-17',
                              'reason': 'fixture: site scope without a committee seat'})
-        # an editor: full control over the library's shape, none over people
-        # or the runs themselves
+        # a former editor: the role is retired (2026-10-19), so the grant and
+        # its end stay on the record and confer nothing
         ex['events'].append({'user': 'Shelver', 'role': 'editor',
                              'action': 'granted', 'by': 'committee',
                              'date': '2026-08-17',
                              'reason': 'fixture: the library editor'})
+        ex['events'].append({'user': 'Shelver', 'role': 'editor',
+                             'action': 'revoked', 'by': 'committee',
+                             'date': '2026-10-19',
+                             'reason': 'fixture: the Editor role was retired'})
         (seed / 'authors' / 'shelver.json').write_text(json.dumps(
             {'username': 'Shelver', 'claimed': True}, indent=1) + '\n')
         for who in ('CommitteeB', 'CommitteeC', 'CommitteeD'):
@@ -877,8 +881,8 @@ def main():
             c, r, _ = call(U + '/api/run/move',
                           {'key': KEY, 'expert': 'Shelver', 'run': 'M900010',
                            'game': 'nes/solomons-key', 'goal': 'fastest-completion',
-                           'reason': 'an editor cannot move member work between games'})
-            ck('an editor cannot move a run between games', c == 403, str(r))
+                           'reason': 'a former editor holds nothing now'})
+            ck('a former editor cannot move a run between games', c == 403, str(r))
             c, r, _ = call(U + '/api/run/move',
                           {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
                            'game': 'nes/solomons-key', 'goal': 'fastest-completion',
@@ -2552,56 +2556,37 @@ def main():
                and any(e['kind'] == 'category' and e['field'] == 'removed'
                        for e in elog2), str(elog2[-3:]))
 
-            # --- the editor: the library's shape, nothing else ---
-            c, r, _ = call(U + '/api/editor/appoint',
-                           {'key': KEY, 'expert': 'SiteOnly', 'user': 'TestAuthor',
-                            'reason': 'a site expert trying to seat an editor'})
-            ck('only a Committee seat grants the editor role', c == 403, str(r))
-            c, r, _ = call(U + '/api/editor/appoint',
-                           {'key': KEY, 'expert': 'CommitteeB', 'user': 'Shelver',
-                            'reason': 'they already hold it'})
-            ck('an editor is not seated twice', c == 409, str(r))
+            # --- the Editor role is retired: nothing grants it, and a former
+            # holder has no more reach than any member ---
             c, r, _ = call(U + '/api/editor/appoint',
                            {'key': KEY, 'expert': 'CommitteeB', 'user': 'NewFriend',
                             'reason': 'tireless and careful with the shelves'})
-            ck('a single Committee member seats an editor', c == 200
-               and r['user'] == 'NewFriend', str(r))
-            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            rdoc = json.loads((work / 'roles.json').read_text())['events']
-            ck('the grant is a public role event with the reason',
-               any(e['role'] == 'editor' and e['user'] == 'NewFriend'
-                   and e['by'] == 'CommitteeB' and 'shelves' in e['reason']
-                   for e in rdoc), str(rdoc[-2:]))
+            ck('the editor appointment route is gone', c == 404, str(r)[:120])
+            c, r, _ = call(U + '/api/role/decide',
+                           {'key': KEY, 'expert': 'CommitteeB', 'target': 'NewFriend',
+                            'role': 'editor', 'action': 'granted', 'post': '1',
+                            'reason': 'a poll for a role that no longer exists'})
+            ck('a Committee decision cannot name the retired role',
+               c == 400 and 'committee or moderator' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/category/add',
                            {'key': KEY, 'user': 'Shelver', 'game': 'nes/pinball',
                             'label': 'Editor Made', 'rule': 'A category the editor made.'})
-            ck('an editor adds a category', c == 200 and r['key'] == 'editor-made',
-               str(r))
-            c, r, _ = call(U + '/api/expert/edit',
-                           {'key': KEY, 'expert': 'Shelver', 'kind': 'category',
-                            'target': 'nes/pinball:editor-made', 'field': 'rule',
-                            'value': 'A sharper rule.',
-                            'reason': 'Tightening the wording.'})
-            ck('an editor rewrites a category rule', c == 200, str(r))
-            c, r, _ = call(U + '/api/category/delete',
-                           {'key': KEY, 'expert': 'Shelver', 'game': 'nes/pinball',
-                            'option': 'editor-made'})
-            ck('an editor deletes an unused category',
-               c == 200 and r['removed'] == 'editor-made', str(r))
+            ck('a former editor adds no category', c == 403, str(r))
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
                             'title': 'Shelf', 'games': 'nes/solomons-key'})
-            ck('an editor creates a group over games they hold no scope on',
-               c == 200, str(r))
-            c, r, _ = call(U + '/api/group/edit',
-                           {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
-                            'remove': 'nes/solomons-key', 'title': 'Shelf Renamed'})
-            ck('an editor reshapes a group', c == 200
-               and r['title'] == 'Shelf Renamed', str(r))
-            c, r, _ = call(U + '/api/group/delete',
-                           {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
-                            'reason': 'The shelf was a fixture experiment.'})
-            ck('an editor deletes a group', c == 200, str(r))
+            ck('nor creates a group over games they hold no scope on', c == 403, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
+                            'target': 'M900010', 'field': 'goal',
+                            'value': '100k-glitched',
+                            'reason': 'It already sits there; probing the gate.'})
+            ck('nor moves a run between categories', c == 403, str(r))
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'kind': 'game',
+                            'target': 'nes/pinball', 'field': 'title',
+                            'value': 'Pinball!', 'reason': 'Probing the library wall.'})
+            ck('nor retitles a game', c == 403, str(r))
 
             # --- moving a game between groups: one act, one home ---
             c, r, _ = call(U + '/api/group/create',
@@ -2641,30 +2626,22 @@ def main():
             ck('the move-test scaffold goes', c == 200, str(r))
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
-                            'target': 'M900010', 'field': 'goal',
-                            'value': '100k-glitched',
-                            'reason': 'It already sits there; probing the gate.'})
-            ck('an editor may move a run between categories (the gate opens)',
-               c == 400 and 'already' in r.get('error', ''), str(r))
-            c, r, _ = call(U + '/api/expert/edit',
-                           {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
                             'target': 'M900010', 'field': 'notes',
                             'value': 'not mine to touch',
                             'reason': 'Probing the run wall.'})
-            ck('an editor may not touch the run itself',
-               c == 403 and 'editor' in r.get('error', ''), str(r))
+            ck('a former editor may not touch a run', c == 403, str(r))
             c, r, _ = call(U + '/api/edit',
                            {'key': KEY, 'user': 'Shelver', 'run': 'M900010',
                             'emulator': 'nope', 'reason': 'Probing the panel.'})
-            ck('the Edit run panel stays closed to an editor', c == 403, str(r))
+            ck('the Edit run panel stays closed to a former editor', c == 403, str(r))
             c, r, _ = call(U + '/api/run/delete',
                            {'key': KEY, 'expert': 'Shelver', 'run': 'M900010',
                             'reason': 'Probing the deletion wall.', 'dry_run': '1'})
-            ck('an editor deletes no runs', c == 403, str(r))
+            ck('a former editor deletes no runs', c == 403, str(r))
             c, r, _ = call(U + '/api/game/delete',
                            {'key': KEY, 'expert': 'Shelver', 'game': 'nes/pinball',
                             'reason': 'Probing the deletion wall.', 'dry_run': '1'})
-            ck('an editor deletes no games', c == 403, str(r))
+            ck('a former editor deletes no games', c == 403, str(r))
 
             # --- the removal-request flow is retired: deletion is the act ---
             c, r, _ = call(U + '/api/game/request-removal',

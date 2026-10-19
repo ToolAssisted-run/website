@@ -104,10 +104,7 @@ if (actDataEl) {
       return;
     }
     if (isAuthor) arm('f-withdraw', '/api/withdraw');
-    var isEditor =
-      myName !== null &&
-      ((window.TAR || {}).editors || []).indexOf(myName) >= 0;
-    if (isExpert || isEditor) {
+    if (isExpert) {
       // move the run to another category or subcategory: the selects feed
       // the hidden value ("option" or "option/sub") the archivist reads
       arm('f-move', '/api/expert/edit', function (form) {
@@ -151,7 +148,7 @@ if (actDataEl) {
         paintMove();
       });
     }
-    if (isAuthor || isExpert || isEditor) {
+    if (isAuthor || isExpert) {
       // editing lives on the submit page, in edit mode: reveal the link
       var editWrap = document.getElementById('f-edit-wrap');
       if (editWrap) editWrap.hidden = false; // sits under the notes, not in the zone

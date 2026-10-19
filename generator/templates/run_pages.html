@@ -12,7 +12,7 @@
   <div class="hbtns">
     <div class="likerow"><button id="likebtn" class="likestar" title="Like this run">
       <span class="starglyph">★</span> <span class="likeword">Like</span><span class="likecount" id="likecount">{{ nlikes(r) }}</span></button>
-    {# revealed by app.js to authors, covering experts and editors; editing
+    {# revealed by app.js to authors and covering experts; editing
        happens on the submit page, in edit mode #}
     <span id="f-edit-wrap" hidden><a class="btn" id="edit-link" href="../../submit/?edit={{ r['id'] }}" target="_blank" rel="noopener">Edit run ↗</a></span></div>
     {% if r.get('videoOnly') %}<span class="chip provchip" title="No input movie exists; the encode is the run">Video-only</span>{% endif %}
@@ -110,7 +110,7 @@ The run keeps its status until the case resolves; nothing is ever automatic.</di
 <div id="actzone" class="actzone" hidden>
 <h2>Contribute to this run</h2>
 <details class="actform actforms" open><summary style="display:none"></summary>
-{# an expert or editor moves the run to another category, or subcategory
+{# an expert moves the run to another category, or subcategory
    (#43); its own logged edit, shown to them alone (app.js) #}
 <div id="f-move-wrap" hidden><details class="actform"><summary>Move to another category</summary>
 <form id="f-move">

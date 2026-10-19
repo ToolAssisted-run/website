@@ -161,8 +161,7 @@ for key, g in games.items():
     # has no default to offer
     default_combo = (next((c['ckey'] for c in combos if c['allrs']), None)
                      or (combos[0]['ckey'] if combos else ''))
-    gameact_data = {'game': g['key'], 'experts': covering_experts(g['key']),
-                    'editorZone': True}
+    gameact_data = {'game': g['key'], 'experts': covering_experts(g['key'])}
     face = SHIPPED_GAME_THUMBS.get(g['key'])
     total_likes = sum(nlikes(r) for r in g['runs'])
     body = tpl('game_pages.html', g=g, rel=rel, dims=dims, multi=multi, combos=combos,

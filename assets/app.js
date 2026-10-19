@@ -52,7 +52,7 @@ export var mePromise = fetch(api + '/api/me', { credentials: 'include' })
 // Presentation only, per tab, gone when the tab closes: the page reveals
 // itself as if you held the chosen role and nothing more, while the
 // archivist keeps treating every request as you. Modes: '' (yourself),
-// expert (site-wide), editor, member, out (signed out).
+// expert (site-wide), member, out (signed out).
 function viewAsMode() {
   try {
     return sessionStorage.getItem('tar-viewas') || '';
@@ -97,13 +97,12 @@ mePromise = mePromise.then(function (d) {
   }
   viewAsHonored = true;
   if (m === 'out') return { loggedIn: false, viewingAs: m };
-  ['experts', 'editors', 'committee', 'founders'].forEach(function (k) {
+  ['experts', 'committee', 'founders'].forEach(function (k) {
     T[k] = (T[k] || []).filter(function (n) {
       return n.toLowerCase() !== who;
     });
   });
   if (m === 'expert') T.experts = T.experts.concat([who]);
-  if (m === 'editor') T.editors = T.editors.concat([who]);
   d.viewingAs = m;
   return d;
 });
@@ -113,7 +112,6 @@ mePromise.then(function () {
   if (!m) return;
   var labels = {
     expert: 'a site-wide expert',
-    editor: 'an editor',
     member: 'a plain member',
     out: 'signed out',
   };
@@ -579,7 +577,6 @@ mePromise.then(function (d) {
     [
       ['', 'yourself'],
       ['expert', 'site-wide expert'],
-      ['editor', 'editor'],
       ['member', 'plain member'],
       ['out', 'signed out'],
     ].forEach(function (p) {

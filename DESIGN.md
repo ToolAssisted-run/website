@@ -106,7 +106,7 @@ system, and a run cannot move between systems. **Removing one is the Steering
 Committee's alone** (`/api/system/delete`), refused while any game is filed
 under it or any expert holds scope over it, and it asks for a public reason.
 On the system's own page (`/systems/<system>/`), the Expert menu allows covering
-system experts, site-wide experts, and editors to curate that system's mapped
+system experts and site-wide experts to curate that system's mapped
 TAS tools, version presets, system-specific cores, and quick chips via
 `/api/emulators/edit`.
 
@@ -186,7 +186,6 @@ what is the fold of it, never stored twice):
 | **Steering Committee** | The Founder (directly), or the Committee's own poll | Decides name claims and identity (it ALONE assesses identity — §2.5.8, §4.8); appoints experts at any scope (§2.5.3); records role decisions from Committee polls; deletes member records (never a seated member: the Committee does not eat itself); decides appeals |
 | **Expert** (scoped) | Any Committee seat at any scope, or a strictly wider expert scope (downward, never sideways: equal scope cannot clone itself); annulled by Committee poll (simple majority, §2.5.4); resignation needs nobody | See "what experts do" below |
 | **Moderator** | Committee poll | Forum moderation; enforce on everyone; may admonish but never remove Founder/Committee |
-| **Editor** (§2.6) | A single Committee seat (`/api/editor/appoint`, from the Committee panel's "Appoint an editor"); removed by Committee poll (`/api/role/decide`, simple majority, §2.6.3) | The library's shape, nothing else: create/edit/delete categories and groups, curate emulator presets and quick chips across systems (`/api/emulators/edit`), edit game identity (title, thumbnail), move runs between categories (`/api/expert/edit` kind=run, field `goal` only), place games into groups at creation. Unscoped. No power over people (appoints nobody), none over runs themselves (no notes/encode/movie/metric edits, no deletions, no invalidations, no Edit-run panel); their verifications stay community-weight. Badge: an "Editor" chip styled like the Contributor badge. |
 
 A Committee seat is a forum administrator by virtue of the seat: the
 archivist's role publishing (`forumapi.publish_group`) requests forum admin
@@ -199,7 +198,7 @@ apply them, so members never meet a tag picker.
 
 **A role is in force only with a second factor.** From the day
 `ROLE_2FA_FROM` names (fourteen days after the rule shipped; `never` turns it
-off), a member's roles (expert, editor, Committee, Founder) are in force for
+off), a member's roles (expert, Committee, Founder) are in force for
 a session only when the forum account behind it has two-factor
 authentication on. The forum is the one that knows, and it is asked at
 login, of everybody, since a member may be given a role tomorrow; the answer
@@ -246,11 +245,15 @@ work · withdraw any run in scope. Experts never
 judge merit: reproduction and verification stay open to all; experts police
 the trust layer's quality and curate taxonomy.
 
-**Badges**: the site shows four chips beside a name: **Steering Committee**
-(red), **Expert** (unqualified; which scopes is on the member's page),
-**Editor** (blue), and **Contributor** (green, earned by the first tAr
-point; the medals carry the honors, §7). Founder and Moderator are recorded
-and shown in each member's role log, never as chips.
+**Badges**: the site shows three chips beside a name: **Steering Committee**
+(red), **Expert** (unqualified; which scopes is on the member's page), and
+**Contributor** (green, earned by the first tAr point; the medals carry
+the honors, §7). Founder and Moderator are recorded and shown in each
+member's role log, never as chips. The **Editor role is retired**
+(2026-10-19, §14): the library's shape is the experts' work, whole-site
+experts' above all, and the two members who held it continue as whole-site
+experts; the events that granted and ended it stay in `roles.json`, the
+validator refuses any new grant, and the role log still reads them.
 
 **Standing interpretation, the Founder panel**: the constitution names no
 seat/unseat mechanism, and the panel IS that mechanism: the Founder seats and
@@ -391,7 +394,7 @@ Curation is maintained directly on each platform's system page
 (`/systems/<system>/#sys-emu-curate`) and on the tools page
 (`/tools/#toolexpertmenu`) via `/api/emulators/edit`:
 system experts curate their assigned system's quick chips, mapped catalog tools,
-version presets, and system-specific cores; site-wide experts and editors
+version presets, and system-specific cores; site-wide experts
 have site-wide authority over all systems and the global catalog itself,
 editing and removing tools directly in the tool tables or adding new ones across all
 three categories, with pending changes tracked dynamically above the save bar
@@ -646,8 +649,8 @@ This is what keeps replacing a video link from touching the scoring.
   move mode (`/submit/?move=M1234`, reached from the run's Expert menu). It
   keeps only two panels: destination game/category/subcategory, then the public
   reason and Move. Newly created games or categories require refreshing this
-  already-open form. Editors cannot use this path; an expert must cover both
-  the source and destination game.
+  already-open form. An expert must cover both the source and destination
+  game.
 - Every edit, both kinds, is an event in `edits.json` (who/from/to/why;
   author revisions auto-reason "The author's own revision.") and reversible
   through git. Run pages carry a small "change history · N revisions" link to
@@ -683,7 +686,7 @@ This is what keeps replacing a video link from touching the scoring.
   not from group pages).
 - **A game leaves through deletion** (public reason; its runs survive in the
   system's Uncategorized game). **A group is deleted outright the same way**
-  (covering expert or editor, public reason): its games become ungrouped and
+  (covering expert, public reason): its games become ungrouped and
   the derived Uncategorized group gathers them; that group is computed from
   whatever no real group claims, so it can never be deleted. The old
   ask-then-decide removal-request flow is fully retired (2026-08-21):
@@ -748,7 +751,7 @@ path and every link into it.
 
 ### The game editor
 
-`/games/<key>/edit/` (covering experts and editors) edits one local draft
+`/games/<key>/edit/` (covering experts) edits one local draft
 of the whole record (title, thumbnail, properties, categories with their
 rules, metrics, subcategories, and the order of both levels) and writes
 nothing until the single **Save all changes** at the bottom. Save turns the
@@ -1309,7 +1312,7 @@ archivist, module responsibilities). What matters designwise:
   `page()`); everything else keeps the 1160 px wrap. Nothing may scroll
   sideways at 360 px.
 - **View as** (Steering Committee only): the account menu offers Yourself /
-  Site-wide expert / Editor / Plain member / Signed out. Presentation only
+  Site-wide expert / Plain member / Signed out. Presentation only
   and per tab (sessionStorage, an amber fixed pill while active, one click
   back): the page reveals itself as the chosen role by filtering the baked
   role lists and page blobs client-side, while the archivist keeps treating
@@ -1322,10 +1325,10 @@ archivist, module responsibilities). What matters designwise:
   second copy to drift. The record comes from the archivist's checkout
   (`/api/run/record`, with who may do what); every panel is open and
   prefilled; the game is fixed; category and subcategory are changeable by
-  a covering expert or an editor only (their logged move edit); authors
+  a covering expert only (their logged move edit); authors
   alone change the author list and manage supplementary files (add, replace, delete); the movie file
   stays, a covering expert may replace it; experts state their public
-  reason; an editor touches nothing but category and subcategory. "Save
+  reason. "Save
   changes" asks the archivist first (dry run) and warns before an edit that
   voids the run's acts. No draft is kept in edit mode; "Discard changes"
   reloads.
@@ -1649,7 +1652,13 @@ to 2; registration stays open by principle (§1.5).
 
 ## 14. Retired, so nobody trips on it
 
-The hand-written landing page, `/stage/` indirection, the 21-view design
+The **Editor role** (2026-08-20 to 2026-10-19: unscoped keepers of the
+library's shape, appointed by a single Committee seat; retired because a
+whole-site expert covers everything it could do and more, so one role
+fewer to explain; `/api/editor/appoint` gone, the chip gone, the
+Committee panel's form gone, Governance 2.6 to be struck by amendment;
+the events stay on the record and the validator refuses new grants), the
+hand-written landing page, `/stage/` indirection, the 21-view design
 mock, the `/experts/` page (roles live on member pages), the `experts.json`
 snapshot (now the `roles.json` log), the TASVideos-token claim flow (now
 Committee judgement), the two-verification "full" tier (now the expert

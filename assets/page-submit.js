@@ -2067,11 +2067,6 @@ if (submitForm) {
           var who = (d.user || '').toLowerCase();
           var T = window.TAR || {};
           var isCurator =
-            (T.editors || [])
-              .map(function (x) {
-                return x.toLowerCase();
-              })
-              .indexOf(who) >= 0 ||
             (T.experts || [])
               .map(function (x) {
                 return x.toLowerCase();
@@ -2622,14 +2617,14 @@ if (submitForm) {
           editRecord = j;
           editMay = j.may;
           var run = j.run;
-          var mayEdit = editMay.author || editMay.expert || editMay.editor;
+          var mayEdit = editMay.author || editMay.expert;
           if (!mayEdit) {
             byIdS('s-subtitle').textContent =
               'Only the authors of ' +
               editRunId +
               ', the experts covering ' +
               j.game.title +
-              ' and editors may edit it.';
+              ' may edit it.';
             submitForm.hidden = true;
             return;
           }
@@ -2644,8 +2639,8 @@ if (submitForm) {
               })
               .join(', ') +
             (editMay.author ? '' : ' · expert mode');
-          // panel 1: the game is fixed; category and subcategory only for experts and editors
-          var expertish = editMay.expert || editMay.editor;
+          // panel 1: the game is fixed; category and subcategory only for experts
+          var expertish = editMay.expert;
           gameTitles[j.game.key] = gameTitles[j.game.key] || j.game.title;
           pendingDraft = {
             game: j.game.key,
@@ -2662,9 +2657,7 @@ if (submitForm) {
           document.querySelectorAll('#p-game .createq').forEach(function (e) {
             e.hidden = true;
           });
-          // moving a run between games is an EXPERT's: an editor shapes the
-          // library and may move it between categories, but member work
-          // moves under an expert's name
+          // moving a run between games is a covering expert's act alone
           if (!editMay.expert) {
             gamePick.hidden = true;
             gameLocked.hidden = false;
@@ -2805,22 +2798,6 @@ if (submitForm) {
           if (!editMay.author) {
             byIdS('s-why').hidden = false;
             submitForm.querySelector('[name=reason]').required = true;
-          }
-          if (!editMay.author && !editMay.expert) {
-            // an editor's reach is the library's shape: the category and
-            // subcategory, nothing of the run itself
-            submitForm
-              .querySelectorAll('input, textarea, select')
-              .forEach(function (e) {
-                if (
-                  ['goal', 'sub', 'reason'].indexOf(e.name) < 0 &&
-                  e.id !== 's-goal' &&
-                  e.id !== 's-sub'
-                )
-                  e.disabled = true;
-              });
-            byIdS('s-subtitle').textContent +=
-              ' · editor: category and subcategory only';
           }
           submitForm
             .querySelector('[name=consent]')
@@ -3589,7 +3566,7 @@ if (submitForm) {
     function saveEdit() {
       var submitBtn = document.getElementById('s-submit');
       var run = editRecord.run,
-        expertish = editMay.expert || editMay.editor;
+        expertish = editMay.expert;
       function revision(dry) {
         var fd = new FormData();
         fd.append('run', editRunId);
@@ -3663,7 +3640,7 @@ if (submitForm) {
       }
       var pickedMovie = movieInput.files && movieInput.files[0];
       // Authors and covering experts submit movie additions or replacements through
-      // the ordinary revision; editors remain limited to category moves.
+      // the ordinary revision.
       var newGoal = expertish
         ? goalSelect.value + (subWrap.hidden ? '' : '/' + subSelect.value)
         : null;
@@ -3681,8 +3658,6 @@ if (submitForm) {
       var liveVerifications = (run.verifications || []).filter(function (v) {
         return !v.invalidated;
       }).length;
-      // an editor may only move the run: /api/edit is not theirs, so the
-      // revision step is skipped and the move goes straight to expert/edit
       var mayRevise = editMay.author || editMay.expert;
       var dry = mayRevise
         ? post('/api/edit', revision(true), submitBtn)

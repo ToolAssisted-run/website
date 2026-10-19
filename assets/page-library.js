@@ -1,5 +1,5 @@
 // toolAssisted.run — the game page, the group page, the games index:
-// the small act zone experts and editors use to shape the library
+// the small act zone experts use to shape the library
 // (rename, thumbnail, category, delete a game; move or delete a group;
 // found a new group). Moved out of app.js: these ids exist only here.
 import {
@@ -28,20 +28,10 @@ function armZone(dataId, zoneId, msgId, forms) {
       viewAsCoverage(zoneData.experts || zoneData.siteExperts, who).indexOf(
         who
       ) >= 0;
-    // an editor shapes the library: zones that are library shape open for
-    // them too, minus the forms marked as the experts' alone
-    var isEditorHere =
-      zoneData.editorZone &&
-      ((window.TAR || {}).editors || []).indexOf(who) >= 0;
-    if (!isExpertHere && !isEditorHere) return;
+    if (!isExpertHere) return;
     var zone = document.getElementById(zoneId);
     var msg = document.getElementById(msgId);
     zone.hidden = false;
-    if (!isExpertHere && isEditorHere) {
-      var zoneHeading = zone.querySelector('h2');
-      if (zoneHeading && /Expert menu/.test(zoneHeading.textContent))
-        zoneHeading.textContent = 'Editor menu';
-    }
     var zoneBtn = document.getElementById(dataId + '-btn');
     if (zoneBtn) zoneBtn.hidden = false;
     var groupMoveForm = document.getElementById('f-groupmove');

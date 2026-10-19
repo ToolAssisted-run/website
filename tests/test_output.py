@@ -428,12 +428,14 @@ def main():
                 {'user': 'CommUser2', 'role': 'committee', 'action': 'granted',
                  'by': 'founder', 'date': '2026-02-01',
                  'reason': 'fixture: a sitting committee member'},
+                # the Editor role is retired: a grant and its end stay on the
+                # record, so the role log can still read them
                 {'user': 'EditorUser', 'role': 'editor', 'action': 'granted',
                  'by': 'committee', 'date': '2026-02-02',
-                 'reason': 'fixture: an editor'},
-                {'user': 'Bob', 'role': 'editor', 'action': 'granted',
-                 'by': 'committee', 'date': '2026-02-02',
-                 'reason': 'fixture: an editor'},
+                 'reason': 'fixture: an editor, back when the role existed'},
+                {'user': 'EditorUser', 'role': 'editor', 'action': 'revoked',
+                 'by': 'committee', 'date': '2026-02-03',
+                 'reason': 'fixture: the Editor role was retired'},
             ],
             authors_extra=['EditorUser', 'Bob', 'CommUser1', 'CommUser2'],
             empty_games=['nes/runless-one'],
@@ -736,11 +738,15 @@ def main():
         ck('the expert badge does not try to name a scope',
            'the whole site' not in rows_html and 'Expert ·' not in rows_html,
            rows_html[:200])
-        # the Committee and Editor wear their chips; Founder and Moderator stay in the role log
+        # the Committee wears its chip; Founder and Moderator stay in the role log
         ck('the Steering Committee is a badge',
            'rolechip role-committee">Steering Committee' in rows_html, rows_html[:200])
-        ck('the Editor is a badge',
-           'rolechip role-editor">Editor' in rows_html, rows_html[:200])
+        ck('the retired Editor role is no badge, and its former holder is not called one',
+           'role-editor' not in rows_html and '>Editor</span>' not in rows_html, rows_html[:200])
+        former = all_html[out / 'authors' / 'editoruser' / 'index.html']
+        ck('the role log still reads the grant and the end of a retired role',
+           'Editor' in former[former.find('<h2>Roles'):] and 'Removed' in former[former.find('<h2>Roles'):],
+           former[former.find('<h2>Roles'):][:400])
         ck('founder and moderator are not badges',
            'role-founder' not in rows_html and 'role-moderator' not in rows_html,
            rows_html[:200])

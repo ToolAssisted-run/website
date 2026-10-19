@@ -348,15 +348,6 @@ def is_committee(user):
     return any(u == user.lower() and role == 'committee'
                for (u, role, scope) in held_roles())
 
-def is_editor(user):
-    """The editor role: full control over the library's shape (groups,
-    categories, game identity, which category a run sits in), no power over
-    people and none over the runs themselves."""
-    if roles_suspended(user):
-        return False
-    return any(u == user.lower() and role == 'editor'
-               for (u, role, scope) in held_roles())
-
 def load_claims():
     """Read identity claims from the archive."""
     p_ = ARCHIVE / 'claims.json'
@@ -386,7 +377,7 @@ def expert_covers_system(user, system_key):
     """May this expert curate emulators/quick chips for this system?"""
     if not user:
         return False
-    if is_editor(user) or is_site_expert(user):
+    if is_site_expert(user):
         return True
     if system_key == 'default' or roles_suspended(user):
         return False

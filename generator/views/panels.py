@@ -83,7 +83,6 @@ write_panel('founder', 'Founder', tpl('panels_founder.html', committee_members=c
 cpanel_data = {
     'committee': committee_now,
     'moderators': users_with('moderator'),
-    'editors': users_with('editor'),
     'committeeNames': users_with('committee'),
     'siteExperts': sorted({e['user'].lower() for e in experts_reg if e['scope'] == 'site'}),
     'founders': founder_now,

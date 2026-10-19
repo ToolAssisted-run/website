@@ -2526,12 +2526,6 @@ img.blurhash-loaded {
   background: rgba(230, 126, 34, 0.12);
 }
 
-.role-editor {
-  border-color: #3498db;
-  color: #3498db;
-  background: rgba(52, 152, 219, 0.12);
-}
-
 .role-contrib {
   border-color: #1abc9c;
   color: #1abc9c;

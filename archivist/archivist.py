@@ -129,7 +129,6 @@ from records import (
     held_roles,
     holds_any_role,
     is_committee,
-    is_editor,
     is_founder,
     is_site_expert,
     is_uncl_run,
@@ -801,10 +800,9 @@ def _category_gate(form, need_expert=True):
     categories_file = ARCHIVE / 'games' / game_key / 'categories.json'
     if not categories_file.exists():
         return None, None, None, None, fail(f'unknown game {game_key}', 404)
-    if need_expert and not expert_covers(actor, game_key) \
-            and not is_editor(actor):
+    if need_expert and not expert_covers(actor, game_key):
         return None, None, None, None, fail(
-            f'{actor!r} is not an expert covering {game_key}, nor an editor', 403)
+            f'{actor!r} is not an expert covering {game_key}', 403)
     return actor, game_key, categories_file, json.loads(categories_file.read_text()), None
 
 

@@ -50,12 +50,11 @@ if (gameEditEl) {
     if (
       viewAsCoverage(gameEditData.experts, d.user.toLowerCase()).indexOf(
         d.user.toLowerCase()
-      ) < 0 &&
-      ((window.TAR || {}).editors || []).indexOf(d.user.toLowerCase()) < 0
+      ) < 0
     ) {
       gate.textContent =
-        'This page is for the experts covering this game ' +
-        'and for editors, and you are neither.';
+        'This page is for the experts covering this game, ' +
+        'and you are not one of them.';
       return;
     }
     gate.hidden = true;

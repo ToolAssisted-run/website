@@ -8,7 +8,7 @@ from settings import now_iso, ARCHIVE, SITE_URL, slugify
 from webutil import fail
 from gitstore import checkout_branch, commit_push, lock, refresh_archive
 from notify import member_md, notify_discord
-from records import append_role_event, covers_group, ensure_member, expert_covers, expert_covers_system, held_roles, is_committee, is_editor, is_site_expert, load_emulators, load_experts, load_groups, log_deletion, log_edit, save_emulators, save_groups
+from records import append_role_event, covers_group, ensure_member, expert_covers, expert_covers_system, held_roles, is_committee, is_site_expert, load_emulators, load_experts, load_groups, log_deletion, log_edit, save_emulators, save_groups
 from forumapi import close_announce_topic, ensure_game_topic
 
 
@@ -230,7 +230,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         given: the popular ones first, at the left of every selector. Pure
         order; nothing else about them changes.
 
-        Who: an expert covering the game, or an editor (`key` plus `expert`)
+        Who: an expert covering the game (`key` plus `expert`)
         Reads: form fields game, order (comma-separated keys, the whole set),
             option (optional: reorder that category's subcategories instead),
             reason (optional), dry_run
@@ -329,7 +329,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         """Remove an option no run has ever used. Anything referenced stays: a
         category with runs in it is the runs' home, not clutter.
 
-        Who: an expert covering the game, or an editor (`key` plus `expert`)
+        Who: an expert covering the game (`key` plus `expert`)
         Reads: form fields game, option, sub (optional: remove that subcategory
             alone; the last one may hold runs, which then stay in the category
             naming none), reason, dry_run
@@ -473,7 +473,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         group = next((g for g in groups_doc['groups'] if g['key'] == group_key), None)
         if not group:
             return fail(f'no group with the key {group_key!r}', 404)
-        if not covers_group(actor, group) and not is_editor(actor):
+        if not covers_group(actor, group):
             return fail(f'{actor} holds no scope covering the {group["title"]} group', 403)
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'would_delete': group_key,
@@ -505,7 +505,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         """An expert deletes a group outright; its games become ungrouped and the
         derived Unclassified group picks them up at the next build.
 
-        Who: an expert whose scope covers the group, or an editor
+        Who: an expert whose scope covers the group
         Reads: form fields group (key), reason, dry_run
         Answers: {ok, deleted, released}
         """
@@ -586,7 +586,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         # group is what has to be checked rather than the game.
         # creation is everybody's (good faith; experts moderate). Placing
         # the game into a group is curation and still needs scope over it.
-        if group and not covers_group(expert, group) and not is_editor(expert):
+        if group and not covers_group(expert, group):
             return None, fail(f'{expert} holds no scope covering the '
                         f'{group["title"]} group', 403)
         return (system, title, slug, game_key, group_key), None
@@ -637,8 +637,8 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
     def game_create():
         """Create a game and initial category, real on arrival.
 
-        Any member may create a game; group placement requires covering scope
-        or the editor role. Reads system, title, optional group and properties,
+        Any member may create a game; group placement requires covering scope.
+        Reads system, title, optional group and properties,
         cat_label, cat_rule, cat_key, metrics, dry_run.
         Answers {ok, game, category, group, note}; 409 for an existing game.
         """
@@ -945,7 +945,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         return jsonify({'ok': True, 'key': key, 'name': name})
 
 
-    def _emulator_quick_chips(edit_form, doc, system, changed, am_site, am_editor):
+    def _emulator_quick_chips(edit_form, doc, system, changed, am_site):
         """Validate and apply the requested emulator quick chips change."""
         if 'quick_chips' in edit_form:
             try:
@@ -976,7 +976,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
             entry['cores'] = [str(c).strip() for c in tool['cores'] if str(c).strip()]
         return entry, None
 
-    def _emulator_tools(edit_form, doc, system, changed, am_site, am_editor):
+    def _emulator_tools(edit_form, doc, system, changed, am_site):
         """Validate and apply the requested emulator tools change."""
         if 'tools' in edit_form:
             try:
@@ -999,9 +999,9 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
                 changed.append('tools')
         return None
 
-    def _emulator_catalog(edit_form, doc, system, changed, am_site, am_editor):
+    def _emulator_catalog(edit_form, doc, system, changed, am_site):
         """Validate and apply the requested emulator catalog change."""
-        if 'catalog' in edit_form and (am_site or am_editor):
+        if 'catalog' in edit_form and am_site:
             try:
                 cat_data = json.loads(edit_form['catalog'])
             except Exception as ex:
@@ -1028,7 +1028,6 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
             return fail('say why: public reason required between 8 and 500 characters')
 
         am_site = is_site_expert(actor)
-        am_editor = is_editor(actor)
 
         doc = load_emulators()
         all_systems = load_systems()
@@ -1040,7 +1039,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
             return fail(f'unknown system: {system!r}', 404)
 
         if not expert_covers_system(actor, system):
-            return fail(f'{actor!r} does not have authority over {system!r} (system expert, site-wide expert, or editor required)', 403)
+            return fail(f'{actor!r} does not have authority over {system!r} (system expert or site-wide expert required)', 403)
 
         changed = []
 
@@ -1050,17 +1049,17 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
             doc['systems'][system] = {}
 
         # Update quick chips for this system if provided
-        error = _emulator_quick_chips(edit_form, doc, system, changed, am_site, am_editor)
+        error = _emulator_quick_chips(edit_form, doc, system, changed, am_site)
         if error is not None:
             return error
 
         # Update mapped tools for this system if provided
-        error = _emulator_tools(edit_form, doc, system, changed, am_site, am_editor)
+        error = _emulator_tools(edit_form, doc, system, changed, am_site)
         if error is not None:
             return error
 
-        # Update catalog if provided (site expert or editor only)
-        error = _emulator_catalog(edit_form, doc, system, changed, am_site, am_editor)
+        # Update catalog if provided (site expert only)
+        error = _emulator_catalog(edit_form, doc, system, changed, am_site)
         if error is not None:
             return error
 
@@ -1083,7 +1082,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
     def emulators_edit():
         """Curate emulator presets, recommended versions, cores, and quick chips.
 
-        Who: an editor or site-wide expert for all systems and global defaults;
+        Who: a site-wide expert for all systems and global defaults;
              a system expert for their assigned system only.
         Reads: form fields system, quick_chips (JSON array), presets (JSON array),
                reason, dry_run
@@ -1153,7 +1152,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         if games_error is not None:
             return games_error
         prospective_group = {'key': key, 'games': games}
-        if not covers_group(expert, prospective_group) and not is_editor(expert):
+        if not covers_group(expert, prospective_group):
             return fail(f'{expert} holds no scope covering '
                         f'{"every game listed" if games else "an empty group"}; '
                         f'a group gathers games you already speak for', 403)
@@ -1190,7 +1189,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         nothing yet to derive authority from.
 
         Who: an expert whose scope covers every listed game (site scope for an
-            empty group), or an editor
+            empty group)
         Reads: form fields group (key), title, games (space or comma separated
             system/slug keys), dry_run
         Answers: {ok, group, games, note}; 409 when the key or a game is taken
@@ -1213,7 +1212,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         """Require an existing game, authority over it and no duplicate membership."""
         if not (ARCHIVE / 'games' / game_key / 'game.json').is_file():
             return fail(f'no such game: {game_key!r}', 404)
-        if not expert_covers(expert, game_key) and not is_editor(expert):
+        if not expert_covers(expert, game_key):
             return fail(f'{expert} holds no scope covering {game_key}; a group cannot '
                         f'reach a game its curator may not speak for', 403)
         if game_key in group['games']:
@@ -1293,7 +1292,7 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         group = next((g for g in groups_doc['groups'] if g['key'] == key), None)
         if not group:
             return None, None, fail(f'no group with the key {key!r}', 404)
-        if not covers_group(expert, group) and not is_editor(expert):
+        if not covers_group(expert, group):
             return None, None, fail(f'{expert} holds no scope covering the {group["title"]} group', 403)
         return groups_doc, group, None
 
@@ -1335,8 +1334,8 @@ def register(app, *, GAME_PROPERTY_FIELDS, SYSTEM_FPS_DEFAULT, SYSTEM_FPS_MAX, S
         not cover. `move` differs from `add` in one way: it pulls the game out of
         whatever group holds it, because a game belongs to one group.
 
-        Who: an expert whose scope covers the group, or an editor; adding or
-            moving a game in needs scope over that game too
+        Who: an expert whose scope covers the group; adding or moving a game
+            in needs scope over that game too
         Reads: form fields group, add, move, remove (game key lists), title, dry_run
         Answers: {ok, group, games, title}; dry_run: {ok, dry_run, would_hold, title}
         """

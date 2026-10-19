@@ -1,5 +1,5 @@
 // toolAssisted.run — tools page client module:
-// site-wide expert and editor curation of the authoritative TAS tools catalog
+// site-wide expert curation of the authoritative TAS tools catalog
 import {
   mePromise,
   el,
@@ -43,7 +43,7 @@ if (expertMenu && emuDataEl) {
     var who = (d.user || '').toLowerCase();
     var T = window.TAR || {};
 
-    // Gated strictly to site-wide experts and editors (respecting View As role switcher)
+    // Gated strictly to site-wide experts (respecting View As role switcher)
     var siteExpertsLower = (siteExperts || []).map(function (x) {
       return (x || '').toLowerCase();
     });
@@ -54,15 +54,7 @@ if (expertMenu && emuDataEl) {
           return (x || '').toLowerCase();
         })
         .indexOf(who) >= 0;
-    var isEditor =
-      (!viewAsActive() || viewAsActive() === 'editor') &&
-      (T.editors || [])
-        .map(function (x) {
-          return (x || '').toLowerCase();
-        })
-        .indexOf(who) >= 0;
-
-    if (!isSiteExpert && !isEditor) {
+    if (!isSiteExpert) {
       if (expertMenu) expertMenu.hidden = true;
       document
         .querySelectorAll('.tool-act-col, .cat-add-btn')
@@ -72,14 +64,7 @@ if (expertMenu && emuDataEl) {
       return;
     }
 
-    if (expertMenu) {
-      expertMenu.hidden = false;
-      if (!isSiteExpert && isEditor) {
-        var h2 = expertMenu.querySelector('h2');
-        if (h2 && /Expert menu/.test(h2.textContent))
-          h2.textContent = 'Editor menu';
-      }
-    }
+    if (expertMenu) expertMenu.hidden = false;
 
     // Unhide actions column and Add buttons for authorized users
     document

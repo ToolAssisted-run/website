@@ -395,8 +395,7 @@ def main():
                                         'category': {'goal': 'fastest'}},
                                 'game': {'key': 'nes/testgame',
                                          'title': 'Testgame', 'system': 'nes'},
-                                'may': {'author': True, 'expert': True,
-                                        'editor': False}})
+                                'may': {'author': True, 'expert': True}})
         moving, err = run_real_page(node, assets_dir, td, 'move', sub_html,
                                     move_session, module='page-submit.js')
         ck('the script runs in submit move mode', moving is not None, err)

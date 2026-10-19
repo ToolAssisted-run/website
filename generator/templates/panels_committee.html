@@ -1,4 +1,4 @@
-{# The Steering Committee panel (/committee/): open name claims, whole-site experts, editors, recorded decisions #}
+{# The Steering Committee panel (/committee/): open name claims, whole-site experts, recorded decisions #}
 <header class="ghead"><div><h1>Steering Committee</h1>
 <p class="authline">Claims to held names, waiting to be answered. Approving hands the name
 over, renames the forum account and lets that person import their own runs; denying asks
@@ -33,18 +33,6 @@ much.</p>
   <label>Member <input name="user" id="siteexpert-user" required placeholder="type to find a member"></label>
   <label>Why them <input name="reason" required minlength="8" maxlength="500"
     placeholder="what makes them the right person for the whole site"></label>
-  <button class="btn">Appoint</button>
-</form></details></section>
-<section><details class="secfold menufold"><summary><h2>Appoint an editor</h2></summary>
-<form id="f-editorrole" class="actform">
-  <p class="rules">The library's shape, nothing else: categories, groups, game identity,
-  and which category a run sits in. No power over people and none over the runs
-  themselves. A single Committee seat grants it, and your name and reason are
-  published; taking it away is a Committee poll like any role removal. Members who
-  already hold it are not listed.</p>
-  <label>Member <input name="user" id="editorrole-user" required placeholder="type to find a member"></label>
-  <label>Why them <input name="reason" required minlength="8" maxlength="500"
-    placeholder="what makes them the right curator for the library"></label>
   <button class="btn">Appoint</button>
 </form></details></section>
 <section><details class="secfold menufold"><summary><h2>Delete a member</h2></summary>
@@ -120,8 +108,7 @@ member (2.3.5). Adding somebody to a forum group grants nothing.</p>
   <label>Member <input name="target" required placeholder="type to find a member"></label>
   <label>Role <select name="role">
     <option value="committee">Steering Committee</option>
-    <option value="moderator">Moderator</option>
-    <option value="editor">Editor</option></select></label>
+    <option value="moderator">Moderator</option></select></label>
   <label>Decision <select name="action">
     <option value="granted">Grant</option>
     <option value="revoked">Remove</option></select></label>

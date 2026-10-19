@@ -52,7 +52,7 @@ if ((expertMenu || curateFold) && emuDataEl && sysKeyEl) {
     var who = (d.user || '').toLowerCase();
     var T = window.TAR || {};
 
-    // Check authority: strictly system experts covering this system, site-wide experts, or editors.
+    // Check authority: strictly system experts covering this system, or site-wide experts.
     // Respect View As role switcher (plain members or masked roles cannot view).
     var allExperts = (sysExperts || [])
       .concat(siteExperts || [])
@@ -66,29 +66,14 @@ if ((expertMenu || curateFold) && emuDataEl && sysKeyEl) {
           return (x || '').toLowerCase();
         })
         .indexOf(who) >= 0;
-    var isEditor =
-      (!viewAsActive() || viewAsActive() === 'editor') &&
-      (T.editors || [])
-        .map(function (x) {
-          return (x || '').toLowerCase();
-        })
-        .indexOf(who) >= 0;
-
-    if (!isCoveringExpert && !isEditor) {
+    if (!isCoveringExpert) {
       if (expertMenu) expertMenu.hidden = true;
       if (curateFold) curateFold.hidden = true;
       return;
     }
 
     // Authorized curator: reveal Expert menu box
-    if (expertMenu) {
-      expertMenu.hidden = false;
-      if (!isCoveringExpert && isEditor) {
-        var h2 = expertMenu.querySelector('h2');
-        if (h2 && /Expert menu/.test(h2.textContent))
-          h2.textContent = 'Editor menu';
-      }
-    }
+    if (expertMenu) expertMenu.hidden = false;
     if (curateFold) curateFold.hidden = false;
 
     if (

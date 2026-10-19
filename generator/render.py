@@ -61,7 +61,7 @@ from model import (
 def role_badges(name):
     """What a member is, as chips, in as few words as the truth allows.
 
-    Steering Committee, Expert, Editor, and the earned Contributor badge.
+    Steering Committee, Expert, and the earned Contributor badge.
     Expert says 'Expert' and stops: it used to name the scope, which reads
     well for one game and falls apart for the real case, since scopes need
     not be related, so the chip either lies by naming one of them or turns
@@ -620,10 +620,6 @@ def badge_chip(pts):
 
 EXPERT_NAMES_JS = json.dumps(sorted({e['user'].lower() for e in experts_reg}))
 
-EDITOR_NAMES_JS = json.dumps(sorted({ev['user'].lower()
-                                     for (u, role, sc), ev in ROLES_NOW.items()
-                                     if role == 'editor'}))
-
 COMMITTEE_NAMES_JS = json.dumps(sorted({ev['user'].lower()
                                         for (u, role, sc), ev in ROLES_NOW.items()
                                         if role == 'committee'}))
@@ -738,7 +734,7 @@ _TEXT_HELPERS = (
     'thumb_alt shot_url breadcrumb_ld thumb_blurhash game_blurhash shot_blurhash '
     'thumb_data_url game_data_url shot_data_url').split()
 _HTML_CONSTANTS = 'METRICS_ED FULL_TICK NONE_TICK EYE_ICON'.split()
-_TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS EDITOR_NAMES_JS '
+_TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS '
                    'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS MONTH_ABBR ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
                    'FORUM SITE_COMMIT').split()
 

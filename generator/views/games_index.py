@@ -305,8 +305,7 @@ if live_groups:
             | {e.lower() for e in site_experts})
         # The permission list must include direct group and site scopes even
         # when this group has no games from which to derive coverage.
-        gact_data = {'group': gr['key'], 'experts': group_permissions,
-                     'editorZone': True}
+        gact_data = {'group': gr['key'], 'experts': group_permissions}
         gbody = tpl('games_group.html', gr=gr, ggames=ggames, grunts=grunts,
                     gexperts=group_experts, site_experts=site_experts,
                     synthetic=bool(gr.get('synthetic')),

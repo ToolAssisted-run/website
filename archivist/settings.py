@@ -103,7 +103,7 @@ SITE_ORIGINS = tuple(dict.fromkeys(
 
 SESSION_TTL = 14 * 24 * 3600
 
-# From this day on, a role (expert, editor, Committee, Founder) is only in
+# From this day on, a role (expert, Committee, Founder) is only in
 # force for a session whose forum account has two-factor authentication on.
 # Until then nothing is enforced and a role holder without it is told the
 # date. The day is fourteen days after the rule shipped; 'never' turns the
