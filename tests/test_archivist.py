@@ -2563,15 +2563,19 @@ def main():
                             'reason': 'tireless and careful with the shelves'})
             ck('the editor appointment route is gone', c == 404, str(r)[:120])
             c, r, _ = call(U + '/api/role/decide',
-                           {'key': KEY, 'expert': 'CommitteeB', 'target': 'NewFriend',
+                           {'key': KEY, 'user': 'CommitteeB', 'target': 'NewFriend',
                             'role': 'editor', 'action': 'granted', 'post': '1',
                             'reason': 'a poll for a role that no longer exists'})
             ck('a Committee decision cannot name the retired role',
                c == 400 and 'committee or moderator' in r.get('error', ''), str(r))
-            c, r, _ = call(U + '/api/category/add',
-                           {'key': KEY, 'user': 'Shelver', 'game': 'nes/pinball',
-                            'label': 'Editor Made', 'rule': 'A category the editor made.'})
-            ck('a former editor adds no category', c == 403, str(r))
+            # creating a category is every member's (§5); correcting one is
+            # a covering expert's, which a former editor is not
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'Shelver', 'kind': 'category',
+                            'target': 'nes/pinball:100k-glitched', 'field': 'rule',
+                            'value': 'A sharper rule.',
+                            'reason': 'Tightening the wording.'})
+            ck('a former editor corrects no category', c == 403, str(r))
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
                             'title': 'Shelf', 'games': 'nes/solomons-key'})
@@ -3030,16 +3034,19 @@ def main():
             ck("a member's post in a run topic is recorded",
                c == 200 and r.get('comment') == 'recorded', str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            # the fixture copies the live archive, whose runs may already carry
+            # pointers from the forum backfill: only the speaker's counts here
+            def mine(rd):
+                return [c for c in rd.get('comments', []) if c['user'].lower() == speaker.lower()]
             spoken = [(rj, json.loads(rj.read_text())) for rj, _ in topic_runs]
-            spoken = [(rj, rd) for rj, rd in spoken if rd.get('comments')]
+            spoken = [(rj, rd) for rj, rd in spoken if mine(rd)]
             ck('on exactly one run, the one carrying that topic',
                len(spoken) == 1 and spoken[0][1]['forum']['topicId'] == tid, str(len(spoken)))
             rj, rd = spoken[0]
             ck('as a pointer: who, the day, the moment, the post; never the text',
-               len(rd['comments']) == 1 and rd['comments'][0]['user'].lower() == speaker.lower()
-               and rd['comments'][0]['date'] == '2026-05-04'
-               and rd['comments'][0]['at'] == '2026-05-04T03:02:01Z'
-               and rd['comments'][0]['post'] == 2 and 'nice' not in rj.read_text(), str(rd['comments']))
+               len(mine(rd)) == 1 and mine(rd)[0]['date'] == '2026-05-04'
+               and mine(rd)[0]['at'] == '2026-05-04T03:02:01Z'
+               and mine(rd)[0]['post'] == 2 and 'nice' not in rj.read_text(), str(mine(rd)))
             last_subject = subprocess.run(['git', 'log', '-1', '--format=%s'], cwd=work,
                                           capture_output=True, text=True).stdout
             ck('and the commit says so', last_subject.startswith('Comment '), last_subject)
@@ -3070,13 +3077,13 @@ def main():
             ck('and deletions never reach Discord', len(DISCORD_MSGS) == before, str(DISCORD_MSGS[before:]))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             rd = json.loads(rj.read_text())
-            ck('the run carries no comments again', 'comments' not in rd, str(rd.get('comments')))
+            ck('the run carries no pointer of theirs again', not mine(rd), str(rd.get('comments')))
             c, r = post(speaker, 8, event='post_recovered')
             ck('a post the forum restores is recorded like a new one',
                r.get('comment') == 'recorded', str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             rd = json.loads(rj.read_text())
-            ck('under its own post number', rd.get('comments', [{}])[0].get('post') == 8, str(rd.get('comments')))
+            ck('under its own post number', mine(rd) and mine(rd)[0]['post'] == 8, str(rd.get('comments')))
 
             # --- claiming an identity: an expert attests it ---
             # The token route is gone: it needed permission to edit a TASVideos
