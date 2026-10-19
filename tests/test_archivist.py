@@ -3078,12 +3078,18 @@ def main():
             c, r = post(speaker, 7, topic_id=424242)
             ck('a topic that is no run is relayed and not recorded',
                c == 200 and r.get('comment') == 'not a run topic', str(r))
+            # every post above was relayed; the relay is held until the link
+            # answers, so wait for the last of them before counting
+            ck('every public post was relayed, whether or not it was recorded',
+               all(discord_saw(f'/t/{tid}/{n}>') for n in (2, 3, 4, 5, 6))
+               and discord_saw('/t/424242/7>'), str(DISCORD_MSGS[-6:]))
             before = len(DISCORD_MSGS)
             c, r = post(speaker, 3, event='post_destroyed')
             ck('deleting a post that is not the recorded one changes nothing',
                r.get('comment') == 'not the recorded post', str(r))
             c, r = post(speaker, 2, event='post_destroyed')
             ck('deleting the recorded post takes the pointer back', r.get('comment') == 'removed', str(r))
+            time.sleep(1.5)   # a relay that is not sent cannot be waited for; give one the time it would take
             ck('and deletions never reach Discord', len(DISCORD_MSGS) == before, str(DISCORD_MSGS[before:]))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             rd = json.loads(rj.read_text())
