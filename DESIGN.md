@@ -1642,9 +1642,6 @@ to 2; registration stays open by principle (§1.5).
 
 - tAr point weights are provisional; the community settles them (§7).
 - Full-launch checklist: re-review policy drafts and point weights.
-- Privacy 6.7 lists what the archive holds without naming comment
-  pointers; they are read as "what you contributed" (the same class as
-  stars), and an amendment naming them is worth filing.
 - **v2, deferred by explicit decision**: automated client-side reproduction
   (browser/desktop Chimera replays locally, ROMs never leave the machine,
   signed receipts with state-hash samples corroborate independently). Revive
@@ -1656,7 +1653,7 @@ The **Editor role** (2026-08-20 to 2026-10-19: unscoped keepers of the
 library's shape, appointed by a single Committee seat; retired because a
 whole-site expert covers everything it could do and more, so one role
 fewer to explain; `/api/editor/appoint` gone, the chip gone, the
-Committee panel's form gone, Governance 2.6 to be struck by amendment;
+Committee panel's form gone, Governance 2.6 struck by amendment, adopted 2026-10-19;
 the events stay on the record and the validator refuses new grants), the
 hand-written landing page, `/stage/` indirection, the 21-view design
 mock, the `/experts/` page (roles live on member pages), the `experts.json`
