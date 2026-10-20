@@ -301,11 +301,12 @@ Its rate is read the way Chimera reads it: the cycle count over the clock
 rate first (measured), then the recorded vsync, then the archive's figure
 for the system, with a round 50 or 60 treated as nominal and deferred. The
 exception is a core with no one machine under it whose rate could be kept
-(`CONTENT_RATE_CORES`: Ruffle, MAME): what it plays states its own rate, a
-Flash movie's is a number in its header and as readily 50 as 24, and an
-arcade board's refresh is that board's alone, as readily an exact 60 as
-57.5, so the project's rate is the run's and the system's is only a
-default. Two
+(`CONTENT_RATE_CORES`: Ruffle, MAME, the Godot cores): what it plays states
+its own rate, a Flash movie's is a number in its header and as readily 50
+as 24, an arcade board's refresh is that board's alone, as readily an exact
+60 as 57.5, and a Godot game runs at the core's Frame Rate setting, part of
+the machine a movie needs, so the project's rate is the run's and the
+system's is only a default. Two
 of Chimera's cores (PCSX2, Flycast) end a frame when the machine presents a
 picture rather than at a vblank, so a game that drops frames makes a
 frames-over-rate time a lower bound; the form says so, and the author states

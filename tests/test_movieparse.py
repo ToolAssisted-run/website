@@ -780,6 +780,29 @@ def main():
     ck('chimeraProject: MAME X68000 is another core, and keeps the rule',
        res.get('fps') is None and res.get('system') == 'x68k'
        and any('nominal' in w for w in res['warnings']), str(res))
+    # Godot runs a game at its Frame Rate setting, part of the machine a
+    # movie needs, and reports it as the rate: a game made for 50 keeps its
+    # 50, under the newest core (named Godot) or an older version's
+    engine = json.loads(f_chimeraproject().decode())
+    engine['headers'].update({'Platform': 'Godot', 'VsyncNumerator': '50',
+                              'VsyncDenominator': '1'})
+    engine['core'] = {'name': 'Godot', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(engine).encode())
+    ck('chimeraProject: a Godot game runs at the Frame Rate its project states',
+       res.get('fps') == 50.0 and res.get('system') == 'godot'
+       and not any('nominal' in w for w in res['warnings']), str(res))
+    engine['headers'].update({'VsyncNumerator': '60'})
+    engine['core'] = {'name': 'Godot 4.4', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(engine).encode())
+    ck('chimeraProject: and so does an older Godot version\'s core, at 60',
+       res.get('fps') == 60.0 and not any('nominal' in w for w in res['warnings']),
+       str(res))
+    engine['headers'].update({'Platform': 'OpenBOR'})
+    engine['core'] = {'name': 'OpenBOR', 'version': 'x'}
+    res = movieparse.parse('run.chimeraProject', json.dumps(engine).encode())
+    ck('chimeraProject: OpenBOR runs at one rate, so its 60 is the system\'s own',
+       res.get('fps') is None and res.get('system') == 'openbor'
+       and any('nominal' in w for w in res['warnings']), str(res))
     # ---- what a project says it was made with (#102) ----
     made_doc = json.loads(f_chimeraproject().decode())
     made_doc['headers']['emuVersion'] = 'Commit e9dc5ecf1'

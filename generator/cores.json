@@ -1,5 +1,5 @@
 {
- "_comment": "Chimera's official cores, as the site lists them. One entry per core, in the order the Tools page shows them: `shown` is the Tools table's wording, `systems` are Chimera's own machine ids and names for the core (official-cores.json in the chimera repository), which the Systems page reads to say which cores run what. `game` marks a game core. To list a new core, add its entry here; both pages follow.",
+ "_comment": "Chimera's official cores, as the site lists them. One entry per core, in the order the Tools page shows them: `shown` is the Tools table's wording, `systems` are Chimera's own machine ids and names for the core (official-cores.json in the chimera repository, or the package's own waterbox.config for a core that file does not list), which the Systems page reads to say which cores run what. `game` marks a game core. To list a new core, add its entry here; both pages follow.",
  "cores": [
   {"name": "quickerNES", "url": "https://github.com/ToolAssisted-run/chimera-core-quickernes", "shown": "NES, Famicom", "systems": [{"id": "NES", "name": "Nintendo Entertainment System"}]},
   {"name": "QuickerNesHawk", "url": "https://github.com/ToolAssisted-run/chimera-core-neshawk", "shown": "NES, Famicom, Famicom Disk System", "systems": [{"id": "NES", "name": "Nintendo Entertainment System"}, {"id": "FDS", "name": "Famicom Disk System"}]},
@@ -41,6 +41,9 @@
   {"name": "touchHLE", "url": "https://github.com/ToolAssisted-run/chimera-core-touchhle", "shown": "iPhone OS 2.x-4.0", "systems": [{"id": "iOS", "name": "iPhone OS"}]},
   {"name": "FreeJ2ME-Plus", "url": "https://github.com/ToolAssisted-run/chimera-core-freej2me", "shown": "J2ME (Java games of 2000s phones)", "systems": [{"id": "J2ME", "name": "J2ME (Java phones)"}]},
   {"name": "Godot", "url": "https://github.com/ToolAssisted-run/chimera-core-godot", "shown": "Godot 4.7 (games made with the Godot Engine)", "systems": [{"id": "Godot", "name": "Godot 4"}]},
+  {"name": "Godot 4.6", "url": "https://github.com/ToolAssisted-run/chimera-core-godot46", "shown": "Godot 4.6 (games made with the Godot Engine)", "systems": [{"id": "Godot", "name": "Godot 4"}]},
+  {"name": "Godot 4.5", "url": "https://github.com/ToolAssisted-run/chimera-core-godot45", "shown": "Godot 4.5 (games made with the Godot Engine)", "systems": [{"id": "Godot", "name": "Godot 4"}]},
+  {"name": "Godot 4.4", "url": "https://github.com/ToolAssisted-run/chimera-core-godot44", "shown": "Godot 4.0 to 4.4 (games made with the Godot Engine)", "systems": [{"id": "Godot", "name": "Godot 4"}]},
   {"name": "OpenBOR", "url": "https://github.com/ToolAssisted-run/chimera-core-openbor", "shown": "OpenBOR (2D beat 'em up games)", "systems": [{"id": "OpenBOR", "name": "OpenBOR"}]},
   {"name": "SDLPoP", "url": "https://github.com/ToolAssisted-run/chimera-core-sdlpop", "shown": "Prince of Persia (DOS)", "game": true, "systems": [{"id": "PrinceOfPersia", "name": "Prince of Persia"}]},
   {"name": "SDLPoP2", "url": "https://github.com/ToolAssisted-run/chimera-core-sdlpop2", "shown": "Prince of Persia 2: The Shadow and the Flame (DOS)", "game": true, "systems": [{"id": "PrinceOfPersia2", "name": "Prince of Persia 2"}]},

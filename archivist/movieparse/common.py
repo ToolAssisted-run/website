@@ -192,7 +192,11 @@ VARIABLE_STEP_CORES = {'sdlpop', 'sdlpop2'}
 # the core reports the running board's: one at exactly 60 Hz says 60 and
 # means it, where the archive's figure for Arcade is one board's 59.637.
 # (MAME X68000 is another core, by its full name, and is not one of these.)
-CONTENT_RATE_CORES = {'ruffle', 'mame'}
+# Godot runs a game at its Frame Rate setting, 60 by default and part of
+# the machine (a movie needs the same value), and reports that setting as
+# the project's rate: a game made for 50 keeps its 50. Each Godot 4 version
+# is its own core, named with its version except the newest.
+CONTENT_RATE_CORES = {'ruffle', 'mame', 'godot', 'godot 4.6', 'godot 4.5', 'godot 4.4'}
 
 # A game core may let the player choose what its own timer counts from, which
 # changes what the time MEANS and so what it may be ranked against. SDLPoP2's
