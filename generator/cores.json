@@ -40,6 +40,8 @@
   {"name": "EKA2L1", "url": "https://github.com/ToolAssisted-run/chimera-core-eka2l1", "shown": "Symbian, Nokia N-Gage", "systems": [{"id": "SYMBIAN", "name": "Symbian (Nokia N-Gage)"}]},
   {"name": "touchHLE", "url": "https://github.com/ToolAssisted-run/chimera-core-touchhle", "shown": "iPhone OS 2.x-4.0", "systems": [{"id": "iOS", "name": "iPhone OS"}]},
   {"name": "FreeJ2ME-Plus", "url": "https://github.com/ToolAssisted-run/chimera-core-freej2me", "shown": "J2ME (Java games of 2000s phones)", "systems": [{"id": "J2ME", "name": "J2ME (Java phones)"}]},
+  {"name": "Godot", "url": "https://github.com/ToolAssisted-run/chimera-core-godot", "shown": "Godot 4.7 (games made with the Godot Engine)", "systems": [{"id": "Godot", "name": "Godot 4"}]},
+  {"name": "OpenBOR", "url": "https://github.com/ToolAssisted-run/chimera-core-openbor", "shown": "OpenBOR (2D beat 'em up games)", "systems": [{"id": "OpenBOR", "name": "OpenBOR"}]},
   {"name": "SDLPoP", "url": "https://github.com/ToolAssisted-run/chimera-core-sdlpop", "shown": "Prince of Persia (DOS)", "game": true, "systems": [{"id": "PrinceOfPersia", "name": "Prince of Persia"}]},
   {"name": "SDLPoP2", "url": "https://github.com/ToolAssisted-run/chimera-core-sdlpop2", "shown": "Prince of Persia 2: The Shadow and the Flame (DOS)", "game": true, "systems": [{"id": "PrinceOfPersia2", "name": "Prince of Persia 2"}]},
   {"name": "OpenSamurai", "url": "https://github.com/ToolAssisted-run/chimera-core-opensamurai", "shown": "Sword of the Samurai (DOS)", "game": true, "systems": [{"id": "SwordOfTheSamurai", "name": "Sword of the Samurai"}]},

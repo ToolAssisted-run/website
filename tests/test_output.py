@@ -544,6 +544,7 @@ def main():
            and 'maxlength="60"' in submit_page_)
         # ---------- the systems index, and the one list of cores (#110) ----------
         import html as html_
+        import markupsafe
         cores_ = json.loads((REPO / 'generator' / 'cores.json').read_text())['cores']
         ck('the cores list is well formed: a name, a home, wording, machines',
            len(cores_) > 20 and len({c['name'] for c in cores_}) == len(cores_)
@@ -552,8 +553,8 @@ def main():
                    for c in cores_), str([c['name'] for c in cores_][:5]))
         tools_page_ = all_html[out / 'tools' / 'index.html']
         ck('the Tools page shows every listed core, by its home and its wording',
-           all(f'<a href="{c["url"]}">{html_.escape(c["name"])}</a></td>'
-               f'<td>{html_.escape(c["shown"])}</td>' in tools_page_ for c in cores_),
+           all(f'<a href="{c["url"]}">{markupsafe.escape(c["name"])}</a></td>'
+               f'<td>{markupsafe.escape(c["shown"])}</td>' in tools_page_ for c in cores_),
            str([c['name'] for c in cores_
                 if f'<a href="{c["url"]}">' not in tools_page_][:5]))
         ck('and carries no link to the systems index under the cores table',
