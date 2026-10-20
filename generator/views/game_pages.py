@@ -9,6 +9,7 @@ from model import (
     is_ranked,
     is_unclassified,
     metric_value,
+    moved_game_keys,
     nlikes,
     rank_key,
     systems,
@@ -216,3 +217,21 @@ for key, g in games.items():
 
     render_game_log(g, face, total_likes)
 
+
+# A game that moved keeps its old addresses (formerKeys): links to them are in
+# forum posts, Discord and people's bookmarks, and Pages has no rewrites, so
+# each old page and its log forward to where the game is now. An old address
+# that is a game again (the validator refuses it) stays that game's.
+for old, key in sorted(moved_game_keys.items()):
+    if old in games or key not in games:
+        continue
+    for sub_path, rel in (('', '../../../'), ('logs/', '../../../../')):
+        target = f'games/{key}/{sub_path}'
+        od = OUT / 'games' / old / sub_path
+        od.mkdir(parents=True, exist_ok=True)
+        (od / 'index.html').write_text(page(
+            f'Moved: {games[key]["title"]}',
+            tpl('game_pages_moved.html', rel=rel, target=target, title=games[key]['title']),
+            rel, '', 'Games',
+            head_extra=tpl('game_pages_moved_head.html', rel=rel, target=target),
+            seo={'path': target, 'noindex': True}), encoding='utf-8')

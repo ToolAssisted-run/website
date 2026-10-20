@@ -24,6 +24,7 @@ import pathlib
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 
@@ -69,9 +70,21 @@ def topic_posts(forum, topic_id, pause):
     return posts
 
 
+# Accents come off as the archivist's settings.fold_accents takes them off
+# (website issue 114): Pokémon is pokemon, not pok-mon.
+_PLAIN_LETTERS = str.maketrans({'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l',
+                                'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i'})
+
+
+def fold_accents(s):
+    """Lower-case text with its accents taken off: 'pokémon' -> 'pokemon'."""
+    s = unicodedata.normalize('NFKD', s).translate(_PLAIN_LETTERS)
+    return ''.join(c for c in s if not unicodedata.combining(c))
+
+
 def slugify(name):
     """The member record's file name, as the archivist writes it."""
-    return re.sub(r'[^a-z0-9._-]+', '-', name.lower()).strip('-.') or 'author'
+    return re.sub(r'[^a-z0-9._-]+', '-', fold_accents(name.lower())).strip('-.') or 'author'
 
 
 def load_members(archive):

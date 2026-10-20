@@ -17,6 +17,7 @@ import pathlib
 import re
 import sys
 import time
+import unicodedata
 import urllib.request
 
 UA = 'toolassisted.run group seeding (one-off, eien86@toolassisted.run)'
@@ -29,8 +30,20 @@ def get(url):
         return r.read().decode('utf-8', 'replace')
 
 
+# Accents come off as the archivist's settings.fold_accents takes them off
+# (website issue 114): Pokémon is pokemon, not pok-mon.
+_PLAIN_LETTERS = str.maketrans({'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l',
+                                'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i'})
+
+
+def fold_accents(s):
+    """Lower-case text with its accents taken off: 'pokémon' -> 'pokemon'."""
+    s = unicodedata.normalize('NFKD', s).translate(_PLAIN_LETTERS)
+    return ''.join(c for c in s if not unicodedata.combining(c))
+
+
 def slug(title):
-    s = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    s = re.sub(r'[^a-z0-9]+', '-', fold_accents(title.lower())).strip('-')
     return s or 'group'
 
 

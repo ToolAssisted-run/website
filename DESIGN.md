@@ -748,7 +748,14 @@ and the links as buttons in the header, opened apart and referrer-free.
 Group and system pages sort their cards by stars, views, title or release
 date (oldest first, undated last) and can hide unofficial games. The slug
 stays derived from the title and is not customisable: it is the archive
-path and every link into it.
+path and every link into it. An accented letter keeps its letter (Pokémon
+is `pokemon`, issue 114), in game, category and member addresses alike. A
+game that moved names the addresses it had in `game.json` (`formerKeys`;
+the validator refuses one that is a game's address today, or one two games
+claim): each keeps a page that forwards to the game and its log, what the
+edit log recorded under it is read as the game's history, and the
+archivist renames its forum tag to the new address, or merges the old tag
+into the new one when that exists already.
 
 ### The game editor
 
@@ -1203,7 +1210,8 @@ archivist, module responsibilities). What matters designwise:
   so the pointer is never lost); every game gets an **anchor topic** in
   **Games** (id 12) under its tag, and the tag page across categories
   (`/tag/<system>-<slug>`) IS the game's forum home, run topics included
-  (`max_tag_length` raised to 60). Run pages proxy their thread through the
+  (`max_tag_length` raised to 60); a game that moves takes its tag along
+  (`move_game_tags`, at start and on every reconcile pass). Run pages proxy their thread through the
   archivist (`/api/discussion`, 60 s cache) and accept replies session-only,
   posting under the member's own Discourse name. Theme components on the
   default theme: our own "toolAssisted tweaks" and the official **DiscoTOC**

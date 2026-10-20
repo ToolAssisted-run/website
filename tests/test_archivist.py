@@ -237,6 +237,11 @@ def main():
         gj = json.loads(gfile.read_text())
         for live in ('released', 'unofficial', 'discord', 'website', 'rta'):
             gj.pop(live, None)
+        # a game that moved here from three other addresses (website issue
+        # 114), whose forum tags the archivist moves along when it starts:
+        # the mock forum renames one, has never made one, and already has the
+        # new tag when the third is renamed
+        gj['formerKeys'] = ['nes/old-pinball', 'nes/gone-pinball', 'nes/taken-pinball']
         gfile.write_text(json.dumps(gj, indent=1) + '\n')
         (rd / 'M900010.bk2').write_bytes(b'test')
         (rd / 'thumb.png').write_bytes(PNG)
@@ -340,6 +345,8 @@ def main():
         FORUM_POSTS = []           # replies posted into topics
         TOPIC_STATUS = []          # (topic id, status) changes
         RESERVED_WRITES = []       # every value written to reserved_usernames
+        TAG_MOVES = []             # (old tag, new name) renames asked of the forum
+        TAG_SYNONYMS = []          # (tag, [synonyms]) merges asked of the forum
         SECOND_FACTOR = {}         # forum user id -> True, False, 'down' or 'silent' (default True)
 
         class MockHandler(http.server.SimpleHTTPRequestHandler):
@@ -492,6 +499,13 @@ def main():
                         FORUM_POSTS.append(json.loads(body))
                     except ValueError:
                         pass
+                m_syn = re.fullmatch(r'/tag/([^/]+)/synonyms\.json', self.path)
+                if m_syn:
+                    try:
+                        TAG_SYNONYMS.append((urllib.parse.unquote(m_syn.group(1)),
+                                             json.loads(body).get('synonyms')))
+                    except ValueError:
+                        pass
                 if self.path == '/discord-hook':
                     try:
                         d = json.loads(body)
@@ -531,6 +545,23 @@ def main():
                         want = ''
                     if len(want) < 3:
                         self.send_response(422)
+                        self.send_header('Content-Length', '0')
+                        self.end_headers()
+                        return None
+                    return self._ok_json()
+                m_tag = re.fullmatch(r'/tag/([^/]+)\.json', self.path)
+                if m_tag:
+                    n = int(self.headers.get('Content-Length') or 0)
+                    try:
+                        new = json.loads(self.rfile.read(n).decode()).get('tag', {}).get('id', '')
+                    except ValueError:
+                        new = ''
+                    old = urllib.parse.unquote(m_tag.group(1))
+                    TAG_MOVES.append((old, new))
+                    # a tag nobody ever made, and a rename onto a name taken
+                    code = {'nes-gone-pinball': 404, 'nes-taken-pinball': 422}.get(old)
+                    if code:
+                        self.send_response(code)
                         self.send_header('Content-Length', '0')
                         self.end_headers()
                         return None
@@ -697,6 +728,20 @@ def main():
                 print((td / 'log').read_text()[-2000:])
                 sys.exit('archivist did not start')
 
+            # --- a moved game's forum tags follow it (website issue 114) ---
+            for _ in range(40):
+                if TAG_SYNONYMS:
+                    break
+                time.sleep(0.25)
+            ck("a moved game's old forum tag is renamed to its address now",
+               ('nes-old-pinball', 'nes-pinball') in TAG_MOVES, str(TAG_MOVES))
+            ck('and merged into it when the forum has that tag already',
+               ('nes-pinball', ['nes-taken-pinball']) in TAG_SYNONYMS, str(TAG_SYNONYMS))
+            ck('a tag the forum never made is asked about once and left alone',
+               TAG_MOVES.count(('nes-gone-pinball', 'nes-pinball')) == 1
+               and not any('nes-gone-pinball' in s for _, s in TAG_SYNONYMS),
+               str(TAG_MOVES))
+
             # --- hardening headers on every answer (ZAP pass) ---
             req = urllib.request.Request(U + '/api/me')
             with urllib.request.urlopen(req) as resp:
@@ -843,6 +888,15 @@ def main():
             ck('any member creates a game, first category born with it',
                c == 200 and r['game'] == 'nes/solomons-key'
                and r['category'] == 'fastest-completion', str(r))
+            # an accent keeps its letter in the address (website issue 114):
+            # Pokémon is pokemon, where it once became pok-mon
+            c, r, _ = call(U + '/api/game/create',
+                           {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
+                            'title': 'Pokémon Fold Test',
+                            'cat_label': 'fastest completion',
+                            'cat_rule': 'Complete the game as fast as possible.'})
+            ck('an accented title keeps its letters in the address',
+               c == 200 and r['game'] == 'nes/pokemon-fold-test', str(r))
             # A wrong-game correction is one logged commit: the whole run folder
             # relocates and only run.json's structural home changes.
             c, r, _ = call(U + '/api/category/add',

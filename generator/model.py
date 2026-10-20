@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 import urllib.parse
 import providers
 from config import (
@@ -23,12 +24,25 @@ from config import (
     TODAY,
 )
 
+# An accented letter keeps its letter in an address: Zoë is zoe, not zo
+# (website issue 114). NFKD splits ë into e and its accent, and the accent
+# goes; the few letters that do not split are spelled out. No member's name
+# had an accent when this came in, so no profile moved. The archivist's
+# settings.fold_accents is the same function.
+_PLAIN_LETTERS = str.maketrans({'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l',
+                                'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i'})
+
+def fold_accents(s):
+    """Lower-case text with its accents taken off: 'pokémon' -> 'pokemon'."""
+    s = unicodedata.normalize('NFKD', s).translate(_PLAIN_LETTERS)
+    return ''.join(c for c in s if not unicodedata.combining(c))
+
 def profile_slug(name):
-    """Directory and URL segment for an author profile. Every name in the
-    corpus is already [a-z0-9._-], so today's URLs are untouched; anything
-    else (spaces, accents, markup, path separators) collapses to dashes so a
-    username can never shape a path or break a link."""
-    return re.sub(r'[^a-z0-9._-]+', '-', name.lower()).strip('-.') or 'author'
+    """Directory and URL segment for an author profile. Accents come off
+    (fold_accents); anything else outside [a-z0-9._-] (spaces, markup, path
+    separators) collapses to dashes so a username can never shape a path or
+    break a link."""
+    return re.sub(r'[^a-z0-9._-]+', '-', fold_accents(name.lower())).strip('-.') or 'author'
 
 # tAr points: the one currency, every weight in one place (DESIGN.md §7).
 # Everything below is recomputed at each build from facts in the archive and
@@ -141,6 +155,25 @@ edit_events = []
 
 if (ARCHIVE / 'edits.json').exists():
     edit_events = json.loads((ARCHIVE / 'edits.json').read_text()).get('events', [])
+
+# A game that moved to another address names the ones it had in game.json
+# (formerKeys). What the log recorded under an old address is that game's
+# history, so its game and category events are read under the address it
+# has today; edits.json itself keeps what was true then.
+moved_game_keys = {}
+for _gjson in ARCHIVE.glob('games/*/*/game.json'):
+    for _old in json.loads(_gjson.read_text()).get('formerKeys') or []:
+        moved_game_keys[_old] = f'{_gjson.parent.parent.name}/{_gjson.parent.name}'
+
+def current_game_key(key):
+    """The address a logged game key ('sys/slug', or 'sys/slug:option' for a
+    category) names today."""
+    gk, sep, rest = key.partition(':')
+    return moved_game_keys.get(gk, gk) + sep + rest
+
+for _e in edit_events:
+    if _e.get('kind') in ('game', 'category') and moved_game_keys:
+        _e['key'] = current_game_key(_e.get('key', ''))
 
 edits_of = {}
 category_edits_by_game = {}

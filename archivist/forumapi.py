@@ -149,6 +149,58 @@ def discourse_api(path, method='GET', payload=None):
     with urllib.request.urlopen(req, timeout=20) as resp:
         return json.loads(resp.read() or b'{}')
 
+_moved_tags_done = set()   # old tags moved, or found never made, in this process
+
+def move_game_tags():
+    """A game that moved to another address takes its forum home with it.
+
+    A game's tag is its address (system-slug, the tag page is its forum
+    home), so after a move (formerKeys in game.json, website issue 114) its
+    topics sit under a tag nothing new will carry. The old tag is renamed to
+    the new one; when the new one exists already, because a run came in
+    after the move, the old one becomes its synonym, and Discourse moves its
+    topics over. Only tags change: no post and no title is touched.
+    Best-effort and idempotent; returns [(old tag, new tag, how)]."""
+    if not DISCOURSE_KEY:
+        return []
+    moved = []
+    for gfile in sorted(ARCHIVE.glob('games/*/*/game.json')):
+        try:
+            former = json.loads(gfile.read_text()).get('formerKeys') or []
+        except (OSError, ValueError):
+            continue
+        new_tag = f'{gfile.parent.parent.name}-{gfile.parent.name}'[:60]
+        for old in former:
+            old_tag = old.replace('/', '-', 1)[:60]
+            if old_tag == new_tag or old_tag in _moved_tags_done:
+                continue
+            how = 'renamed'
+            try:
+                discourse_api(f'/tag/{urllib.parse.quote(old_tag)}.json', 'PUT',
+                              {'tag': {'id': new_tag}})
+            except urllib.error.HTTPError as exc:
+                if exc.code == 404:
+                    how = None      # never made, or moved already
+                elif exc.code in (400, 422):
+                    how = 'merged'  # the new tag is taken: by this game, since it is its address
+                    try:
+                        discourse_api(f'/tag/{urllib.parse.quote(new_tag)}/synonyms.json', 'POST',
+                                      {'synonyms': [old_tag]})
+                    except Exception as exc2:                     # noqa: BLE001
+                        LOG.warning('forum tag %s into %s: %s', old_tag, new_tag, exc2)
+                        continue
+                else:
+                    LOG.warning('forum tag %s to %s: %s', old_tag, new_tag, exc)
+                    continue
+            except Exception as exc:                              # noqa: BLE001
+                LOG.warning('forum tag %s to %s: %s', old_tag, new_tag, exc)
+                continue
+            _moved_tags_done.add(old_tag)
+            if how:
+                LOG.info('forum tag %s %s to %s', old_tag, how, new_tag)
+                moved.append((old_tag, new_tag, how))
+    return moved
+
 def _put_reserved_usernames(value):
     """Write the forum's reserved-name list, pipe separated."""
     req = urllib.request.Request(

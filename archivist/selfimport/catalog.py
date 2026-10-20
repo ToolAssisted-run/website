@@ -14,6 +14,7 @@ import datetime
 import json
 import pathlib
 import re
+import unicodedata
 import urllib.request
 import zipfile
 
@@ -78,9 +79,22 @@ HARD_SYSTEMS = {'dos', 'amiga', 'pc', 'linux', 'windows', 'arcade', 'psx',
 _pub_cache = {'mtime': None, 'pubs': None, 'subs': None}
 
 
+# An accented letter keeps its letter in an address: Pokémon is pokemon,
+# not pok-mon (website issue 114). NFKD splits é into e and its accent, and
+# the accent goes; the few letters that do not split are spelled out.
+_PLAIN_LETTERS = str.maketrans({'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l',
+                                'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i'})
+
+def fold_accents(s):
+    """Lower-case text with its accents taken off: 'pokémon' -> 'pokemon'."""
+    s = unicodedata.normalize('NFKD', s).translate(_PLAIN_LETTERS)
+    return ''.join(c for c in s if not unicodedata.combining(c))
+
 def slugify(s):
-    """Turn a source name into a safe lowercase slug."""
-    s = re.sub(r"['’]", '', s.lower())
+    """Turn a source name into a safe lowercase slug. Mirror of the
+    archivist's settings.slugify, so an import files a game where the site
+    would."""
+    s = re.sub(r"['’]", '', fold_accents(s.lower()))
     s = re.sub(r'[^a-z0-9]+', '-', s).strip('-')
     return s or 'unknown'
 

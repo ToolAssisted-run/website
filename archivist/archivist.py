@@ -160,6 +160,7 @@ from forumapi import (
     ensure_topic,
     forum_account_exists,
     member_email_masked,
+    move_game_tags,
     publish_group,
     publish_roles,
     reserved_usernames,
@@ -1541,6 +1542,8 @@ def reconcile_loop():
                 moved = entry.get('add', []) + entry.get('remove', [])
                 if moved or entry.get('error'):
                     LOG.warning('reconcile %s: %s', role, entry)
+            # a game that moved since the last pass takes its forum tag along
+            move_game_tags()
         except Exception as exc:                                 # noqa: BLE001
             LOG.warning('reconcile failed: %s', exc)
 
@@ -1617,6 +1620,9 @@ reading_routes.register(app,
 if __name__ == '__main__':
     if RECONCILE_SECONDS > 0:
         threading.Thread(target=reconcile_loop, daemon=True).start()
+    # and once now, so a game moved while the service was down is not left
+    # waiting for the first reconcile pass
+    threading.Thread(target=move_game_tags, daemon=True).start()
     replay_spool()   # notifications a restart interrupted mid-wait
     import sitebuild
     sitebuild.start()   # publish the site from here, fresh on every commit

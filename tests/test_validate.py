@@ -405,6 +405,26 @@ def m_ratified_without_date(root):
     d['ratifiedBy'] = 'SomeExpert'          # and no ratifiedAt: not an act
     g.write_text(json.dumps(d, indent=1))
 
+def _former_keys(root, keys):
+    g = root / 'games' / 'nes' / 'testgame' / 'game.json'
+    d = json.loads(g.read_text())
+    d['formerKeys'] = keys
+    g.write_text(json.dumps(d, indent=1))
+
+def m_former_key_is_a_game(root):
+    _former_keys(root, ['nes/testgame'])      # a game's address today
+
+def m_former_key_claimed_twice(root):
+    other = root / 'games' / 'nes' / 'othergame'
+    other.mkdir(parents=True)
+    shutil.copy(root / 'games' / 'nes' / 'testgame' / 'categories.json', other)
+    (other / 'game.json').write_text(json.dumps(
+        {'title': 'Other Game', 'system': 'nes', 'formerKeys': ['nes/old-game']}, indent=1))
+    _former_keys(root, ['nes/old-game'])
+
+def m_former_key_bad_shape(root):
+    _former_keys(root, ['Not An Address'])
+
 def m_attested_without_expert(root):
     (root / 'authors' / 'ada.json').write_text(json.dumps(
         {'username': 'Ada', 'claimed': True, 'claimMethod': 'attested',
@@ -548,6 +568,9 @@ CASES = [
     ('a content-removed withdrawal that kept its movie',
      m_content_removed_but_movie_present, 'still here'),
     ('a revoked founder role', m_founder_revoked, 'permanent'),
+    ('a former address that is a game today', m_former_key_is_a_game, 'address today'),
+    ('a former address two games claim', m_former_key_claimed_twice, 'also claimed by'),
+    ('a former address of the wrong shape', m_former_key_bad_shape, 'schema violation'),
     ('a ratification with no date on it', m_ratified_without_date,
      'ratifiedBy and ratifiedAt go together'),
     ('an attestation with no expert behind it', m_attested_without_expert,

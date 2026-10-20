@@ -23,6 +23,7 @@ from settings import (
     DISCORD_WEBHOOK,
     LOG,
     NOTIFY_LINK_WAIT,
+    fold_accents,
 )
 
 def wait_until_live(url, deadline, poll=15):
@@ -44,7 +45,7 @@ def wait_until_live(url, deadline, poll=15):
 def profile_slug(name):
     """URL segment of a member profile: mirror of the generator's
     model.profile_slug, so the links land on the pages it builds."""
-    return re.sub(r'[^a-z0-9._-]+', '-', name.lower()).strip('-.') or 'author'
+    return re.sub(r'[^a-z0-9._-]+', '-', fold_accents(name.lower())).strip('-.') or 'author'
 
 
 def member_md(name):

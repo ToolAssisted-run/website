@@ -114,6 +114,29 @@ def main():
                                   'reaffirmations': [], 'status': 'open'}]})
         (rd / 'reproductions').mkdir()
         (rd / 'reproductions/1-helper.png').write_bytes(PNG)
+        # a game that moved to another address (website issue 114): game.json
+        # names the old one, and the log has an edit made under it
+        mdir = tmp / 'games/nes/moved-here'
+        mdir.mkdir(parents=True)
+        (mdir / 'game.json').write_text(json.dumps(
+            {'title': 'Moved Here', 'system': 'nes', 'formerKeys': ['nes/moved-from']}, indent=1) + '\n')
+        (mdir / 'categories.json').write_text(json.dumps({'dimensions': [{
+            'key': 'goal', 'name': 'Goal', 'options': [
+                {'key': 'baseline', 'label': 'fastest completion', 'rule': 'Finish.'}]}]}, indent=1) + '\n')
+        edits_file = tmp / 'edits.json'
+        edits_doc = (json.loads(edits_file.read_text()) if edits_file.exists()
+                     else {'events': []})
+        edits_doc['events'].append({
+            'kind': 'game', 'key': 'nes/moved-from', 'field': 'website',
+            'from': '', 'to': 'https://example.org/moved', 'by': 'TestAuthor',
+            'date': '2026-08-02', 'at': '2026-08-02T00:00:00Z',
+            'reason': 'fixture: an edit logged under the old address'})
+        edits_file.write_text(json.dumps(edits_doc, indent=1) + '\n')
+        # a member whose name carries an accent: the address keeps the letter
+        (tmp / 'authors' / 'zoefold.json').write_text(
+            json.dumps({'username': 'Zoëfold', 'claimed': True}, indent=1) + '\n')
+        make_run(tmp, 'M900007', 7000, {'reproduced': 'none', 'verified': 'none'},
+                 {'authors': [{'user': 'Zoëfold'}]})
 
         r = subprocess.run([sys.executable, str(REPO / 'generator/build.py'), str(tmp), str(out)],
                            capture_output=True, text=True)
@@ -208,6 +231,22 @@ def main():
         ck('claim page no longer hands out a token',
            'one-time code' not in claimp and 'claim-start' not in claimp)
         ck('app.js emitted', (out / 'assets/app.js').exists())
+
+        # website issue 114: addresses keep an accented letter's letter, and
+        # the address a game had before keeps forwarding
+        rd0 = lambda p: rd(p) if (out / p).is_file() else ''
+        moved = rd0('games/nes/moved-from/index.html')
+        ck("a moved game's old address forwards to its page now",
+           'http-equiv="refresh" content="1; url=../../../games/nes/moved-here/"' in moved
+           and 'noindex' in moved)
+        ck('and so does its old log page',
+           'url=../../../../games/nes/moved-here/logs/"' in rd0('games/nes/moved-from/logs/index.html'))
+        ck("an edit logged under the old address shows in the game's log",
+           'https://example.org/moved' in rd0('games/nes/moved-here/logs/index.html'))
+        ck('an accent keeps its letter in a profile address',
+           (out / 'authors/zoefold/index.html').exists()
+           and 'M900007' in rd0('authors/zoefold/index.html')
+           and 'authors/zoefold/"' in rd0('runs/M900007/index.html'))
 
     print('---', len(failures), 'failures')
     sys.exit(1 if failures else 0)
