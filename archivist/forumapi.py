@@ -160,7 +160,10 @@ def move_game_tags():
     the new one; when the new one exists already, because a run came in
     after the move, the old one becomes its synonym, and Discourse moves its
     topics over. Only tags change: no post and no title is touched.
-    Best-effort and idempotent; returns [(old tag, new tag, how)]."""
+    Best-effort and idempotent; returns [(old tag, new tag, how)].
+
+    The forum (Discourse 2026.8) takes a new name as tag.name and refuses
+    tag.id with a 422, and takes synonyms as tags: [{name}]."""
     if not DISCOURSE_KEY:
         return []
     moved = []
@@ -177,7 +180,7 @@ def move_game_tags():
             how = 'renamed'
             try:
                 discourse_api(f'/tag/{urllib.parse.quote(old_tag)}.json', 'PUT',
-                              {'tag': {'id': new_tag}})
+                              {'tag': {'name': new_tag}})
             except urllib.error.HTTPError as exc:
                 if exc.code == 404:
                     how = None      # never made, or moved already
@@ -185,7 +188,7 @@ def move_game_tags():
                     how = 'merged'  # the new tag is taken: by this game, since it is its address
                     try:
                         discourse_api(f'/tag/{urllib.parse.quote(new_tag)}/synonyms.json', 'POST',
-                                      {'synonyms': [old_tag]})
+                                      {'tags': [{'name': old_tag}]})
                     except Exception as exc2:                     # noqa: BLE001
                         LOG.warning('forum tag %s into %s: %s', old_tag, new_tag, exc2)
                         continue

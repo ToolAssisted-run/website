@@ -501,10 +501,12 @@ def main():
                         pass
                 m_syn = re.fullmatch(r'/tag/([^/]+)/synonyms\.json', self.path)
                 if m_syn:
+                    # the forum takes synonyms as tags: [{name}] (its older
+                    # synonyms: [...] is deprecated), so only that is recorded
                     try:
                         TAG_SYNONYMS.append((urllib.parse.unquote(m_syn.group(1)),
-                                             json.loads(body).get('synonyms')))
-                    except ValueError:
+                                             [t.get('name') for t in json.loads(body).get('tags') or []]))
+                    except (ValueError, AttributeError):
                         pass
                 if self.path == '/discord-hook':
                     try:
@@ -553,13 +555,16 @@ def main():
                 if m_tag:
                     n = int(self.headers.get('Content-Length') or 0)
                     try:
-                        new = json.loads(self.rfile.read(n).decode()).get('tag', {}).get('id', '')
+                        tag = json.loads(self.rfile.read(n).decode()).get('tag', {})
                     except ValueError:
-                        new = ''
+                        tag = {}
                     old = urllib.parse.unquote(m_tag.group(1))
-                    TAG_MOVES.append((old, new))
-                    # a tag nobody ever made, and a rename onto a name taken
-                    code = {'nes-gone-pinball': 404, 'nes-taken-pinball': 422}.get(old)
+                    TAG_MOVES.append((old, tag.get('name', '')))
+                    # a tag nobody ever made, and a rename onto a name taken;
+                    # and, like the real forum (Discourse 2026.8), a 422 for a
+                    # new name sent as tag.id instead of tag.name
+                    code = (422 if 'id' in tag else
+                            {'nes-gone-pinball': 404, 'nes-taken-pinball': 422}.get(old))
                     if code:
                         self.send_response(code)
                         self.send_header('Content-Length', '0')
