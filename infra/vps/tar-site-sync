@@ -117,7 +117,7 @@ cp -R archivist/templates/. "$staged_templates/"
 chmod -R u=rwX,go=rX "$staged_templates"      # same 0700 trap as the packages
 rm -rf /opt/archivist/templates
 mv "$staged_templates" /opt/archivist/templates
-pip3 install --quiet --break-system-packages pillow numpy 2>/dev/null || pip3 install --quiet pillow numpy 2>/dev/null || true
+pip3 install --quiet --break-system-packages pillow numpy markdown-it-py mdit-py-plugins linkify-it-py 2>/dev/null || pip3 install --quiet pillow numpy markdown-it-py mdit-py-plugins linkify-it-py 2>/dev/null || true
 
 # 3. Install the nginx configuration. infra/nginx/ IS the live config now
 # (see the note at the top of each vhost), so an nginx change rides in with

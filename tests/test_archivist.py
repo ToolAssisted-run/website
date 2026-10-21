@@ -1204,13 +1204,17 @@ def main():
             ck('verify on unclassified rejected', c == 400 and 'Unclassified' in r.get('error', ''))
 
             # --- the preview is the published renderer (issue #30) ---
-            c, r, _ = call(U + '/api/preview', {'key': KEY, 'notes': '!!Head\r\n*one\r\n**two\r\nsee [M900010]'})
-            ck('the preview renders the dialect exactly as the site does',
+            c, r, _ = call(U + '/api/preview', {'key': KEY, 'notes': '## Head\r\n- one\r\n  - two\r\n\r\nsee [M900010]'})
+            ck('the preview renders the notes exactly as the site does',
+               c == 200 and '<h2 id="head">Head</h2>' in r['html'] and '<li>two</li>' in r['html']
+               and 'href="/runs/M900010/"' in r['html'], str(r)[:200])
+            c, r, _ = call(U + '/api/preview', {'key': KEY, 'notes': '!!Head\r\n*one\r\n**two\r\nsee [M900010]', 'format': 'legacy'})
+            ck('a caller that still holds legacy text can have it rendered as before',
                c == 200 and '<h3>Head</h3>' in r['html'] and '<li>two\n</li></ul>' in r['html']
                and 'href="/runs/M900010/"' in r['html'], str(r)[:200])
             c, r, _ = call(U + '/api/preview', {'key': KEY, 'notes': '# Rules\n* **Rule 1**: [link](https://example.com)', 'kind': 'rules'})
-            ck('the rules preview renders markdown with md_html',
-               c == 200 and '<h1>Rules</h1>' in r['html'] and '<b>Rule 1</b>' in r['html'] and '<a href="https://example.com">link</a>' in r['html'], str(r)[:200])
+            ck('the rules preview is the same language',
+               c == 200 and '<h2 id="rules">Rules</h2>' in r['html'] and '<strong>Rule 1</strong>' in r['html'] and '<a href="https://example.com">link</a>' in r['html'], str(r)[:200])
 
             # --- likes: one per member, never own runs, imported allowed ---
             # --- the categories feed: fresh from the checkout, no CDN lag ---

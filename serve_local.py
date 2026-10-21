@@ -23,12 +23,13 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent
 # Ensure Python runs in UTF-8 mode on Windows
 os.environ['PYTHONUTF8'] = '1'
 
-# Put archivist on path for wikitext markdown preview rendering and providers
+# Put archivist on path for the notes renderer and providers
 sys.path.insert(0, str(REPO_ROOT / 'archivist'))
 try:
-    import wikitext
+    import markup
+    import notes_upgrade
 except Exception:
-    wikitext = None
+    markup = notes_upgrade = None
 
 try:
     import providers
@@ -197,6 +198,11 @@ class DevHandler(http.server.SimpleHTTPRequestHandler):
             notes = '\n'.join(lines[n:]).strip()
             if notes:
                 notes += '\n'
+            # as the archivist does: an older run's notes are shown upgraded
+            notes_warnings = []
+            if notes_upgrade and notes_upgrade.is_legacy(run) and notes.strip():
+                notes, notes_warnings = notes_upgrade.upgrade(
+                    notes, os.environ.get('LEGACY_SITE_URL', ''))
 
             game_dir = run_dir.parent.parent
             game = json.loads((game_dir / 'game.json').read_text(encoding='utf-8'))
@@ -231,6 +237,9 @@ class DevHandler(http.server.SimpleHTTPRequestHandler):
                 'ok': True,
                 'run': run,
                 'notes': notes,
+                'notesFormat': 'markdown',
+                'notesUpgraded': bool(notes_upgrade and notes_upgrade.is_legacy(run)),
+                'notesWarnings': notes_warnings,
                 'game': {'key': game_key, 'title': game.get('title', ''), 'system': game.get('system', '')},
                 'categories': categories,
                 'may': may,
@@ -354,7 +363,7 @@ class DevHandler(http.server.SimpleHTTPRequestHandler):
                 qs = urllib.parse.parse_qs(raw_body.decode('utf-8', errors='ignore'))
                 text = (qs.get('notes') or qs.get('rules') or [''])[0]
 
-            rendered = wikitext.md_html(text) if wikitext else f"<p>{text}</p>"
+            rendered = markup.render(text, refs=markup.PlainRefs()) if markup else f"<p>{text}</p>"
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()

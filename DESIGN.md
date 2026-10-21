@@ -119,9 +119,9 @@ TAS tools, version presets, system-specific cores, and quick chips via
   cannot name a real group. Every group has a page and a card,
   however empty: a group somebody just made IS the state worth seeing.
 - **Categories** are per-game dimensions; each option carries a rule
-  (markdown, up to 2000 characters; a subcategory adds its own fragment),
-  and a game may carry game-wide rules of its own (#64, same markdown and
-  cap, a game property edited in the game editor); game rules, then the
+  (the notes language of §4, up to 2000 characters; a subcategory adds its
+  own fragment), and a game may carry game-wide rules of its own (#64, same
+  language and cap, a game property edited in the game editor); game rules, then the
   category's, then the subcategory's compose per combination and open in a
   "View rules" dialog on the game page rather than cluttering the board (#60). New options exist the moment they are
   created; experts refine the wording, and delete unused mistakes. A
@@ -663,6 +663,53 @@ This is what keeps replacing a video link from touching the scoring.
   member content are forbidden absolutely; problems with member content go
   through reports/cases/invalidation.
 
+### The notes language (run notes, rules, act notes)
+
+**One language, one renderer.** Run notes, game and category rules, and the
+free-text notes on acts are written in **CommonMark with the GitHub
+extensions** (tables, strikethrough, autolinks, footnotes), plus this site's
+additions, all built from three mechanisms: **attribute lists**
+(`{#id .class key=value}` after a heading, image, fence or span), **bracketed
+spans** (`[text]{.small}`; small, quote, sup, sub, frames) and **fenced
+directives** (`:::name{attrs}` … `:::`, one more colon per level of nesting;
+quote, div, tabs/tab, toc, embed). Site references are `[M100001]` (a run:
+game, category, time and authors, with a hover thumbnail) and `[user:Name]`
+(a member), or the same as links, `[label](run:M100001)`. Raw HTML is never
+rendered (it shows as text; a comment shows nothing), links are limited to
+http(s), mailto and in-page/relative paths, attribute lists keep only what
+each element is known to take, and `#` is the second heading level on a
+page (the run's title owns the first). `archivist/markup.py` is the only
+renderer (built on a CommonMark library, not regexes): the generator renders
+published pages with it and the archivist renders every live preview with it
+(`/api/preview`), so a preview cannot drift from the page. The formatting
+guide at `/formatting/` documents it from the same list the tests use.
+
+**A run says which language its notes are in.** `run.json` carries
+`notesFormat: "markdown"`; absent means the notes are in the older dialect
+(every run written before the flag, and every import). Every new submission
+writes the flag. The generator picks the renderer by the flag; the older one
+is kept only to display such runs and is never offered for new writing.
+
+**Upgrade happens on edit, by the person, never behind anyone's back.** The
+edit form asks the archivist for the run's record; for a run on the older
+dialect the archivist upgrades the notes text (`archivist/notes_upgrade.py`,
+a one-way converter through the old parser's own rules, escaping whatever
+literal text would otherwise turn into markup) and the form shows the
+result as if it were what was stored. Saving the edit, whatever else it
+changes, stores the notes in the new language and sets the flag; the form
+declares it with `notesFormat`, so a script that posts old-dialect text is
+never misread. Opening the form and leaving changes nothing. Upgrade
+loses nothing visible: a table without a header row gets an empty one, a
+ragged table is padded, header cells below the top row become bold, viewer
+conditionals are flattened, a footnote line nobody refers to stays text; each
+of these is said to the editor in a notice above the notes. References to
+other sites (movie and submission numbers, wiki paths) become ordinary links
+to the site named by `LEGACY_SITE_URL` in `/etc/archivist.env` (unset, they
+upgrade to their plain labels and the notice says so); a movie reference
+that is a run here becomes a run reference. This is the person's edit, shown
+before it is saved, logged like any other notes edit and reversible through
+git; nothing converts runs in bulk.
+
 ---
 
 ## 5. Games and groups: lifecycle
@@ -728,7 +775,7 @@ unofficial release; absent means official), **discord** (a permanent invite
 to the game's community server; only `discord.gg/…` and
 `discord.com/invite/…` are accepted) and **website** (the community hub,
 wiki or leaderboard), **rta** (where the real-time records live, e.g.
-speedrun.com) and **rules** (game-wide rules, markdown up to 2000
+speedrun.com) and **rules** (game-wide rules, the notes language up to 2000
 characters, composed above every category's own rule in View rules; #64). They are set at creation by whoever creates the game,
 and afterwards by a covering expert or an editor through the game editor,
 one logged edit per field; an empty value clears the field.
@@ -1552,7 +1599,9 @@ archivist, module responsibilities). What matters designwise:
   20 s fold together.
 - **Secrets** (never committed): `/etc/archivist.env` on the VPS
   (`SUBMIT_KEY`, `DISCOURSE_*`, `SESSION_SECRET`, `SSO`, `DISCORD_WEBHOOK_URL`,
-  `GITHUB_HOOK_SECRET`, `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`); deploy keys under
+  `GITHUB_HOOK_SECRET`, `GIT_SSH_COMMAND`, `ARCHIVIST_BRANCH=main`,
+  `LEGACY_SITE_URL`: not a secret, but host configuration that keeps a name
+  out of the code); deploy keys under
   `/opt/archivist/`; `ARCHIVE_ACTION_WRITE_SECRET` on the archive repo — a
   non-expiring fine-grained token (resource owner ToolAssisted-run, website
   repo only, Actions read-write; the org's 366-day maximum-lifetime policy
@@ -1631,7 +1680,8 @@ to 2; registration stays open by principle (§1.5).
   (scratch local bare remotes), never call external services (local mock
   servers; notification waits set to 0). The CI test job holds no
   credentials by construction.
-- `tests/` holds ~14 suites (generator rendering, output invariants,
+- `tests/` holds ~16 suites (the notes language and its upgrade among them:
+  `test_markup.py`, `test_notes_upgrade.py`; generator rendering, output invariants,
   validator negatives, movie parsers, derivations, archivist end-to-end,
   security, robustness, preview parity, client runtime against real page
   DOM, layout in real Chrome, providers, news feed). `tests/mkarchive.py`

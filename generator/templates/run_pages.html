@@ -90,7 +90,7 @@ Its verifiers have been asked to reaffirm ({{ open_case.get('reaffirmations', []
 The run keeps its status until the case resolves; nothing is ever automatic.</div>
   {% endif %}
   <h2>Author's notes</h2>
-  <div class="notes">{{ wiki_html(notes_src) }}</div>
+  <div class="notes">{{ notes_html(r) }}</div>
   {% if not is_leg %}
   {# community rosters #}
   {% if not r.get('videoOnly') or reps %}

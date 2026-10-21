@@ -56,8 +56,8 @@ never derived state** (who verified what, when; never "this run is ranked").
   below are registered as safe globals, so `{{ tick(state) }}` is markup and
   nothing else is; `|safe` on a string is a test failure.
 - `generator/render.py`: `tpl(name, **ctx)` and the HTML helpers templates
-  call (escaping, chips, ticks, thumbnails, datalists, wiki/markdown
-  rendering, the page chrome via `page()`).
+  call (escaping, chips, ticks, thumbnails, datalists, notes rendering by
+  the run's format flag, the page chrome via `page()`).
 - `generator/views/*.py`: one page family per module, and **no markup**:
   a view sorts, filters and groups model facts, then calls `tpl()` and
   writes the file. A view renders its pages on import; `build.py` imports
@@ -72,6 +72,11 @@ never derived state** (who verified what, when; never "this run is ranked").
   shared by route families stay separate from the records they write. The
   layers import only upward (settings → webutil → identity → gitstore →
   notify → records → forumapi), never the controller.
+- `archivist/markup.py` is the one renderer of the notes language (run
+  notes, rules, act notes) for the generator and the archivist's previews;
+  `archivist/notes_upgrade.py` upgrades older-dialect notes on edit and
+  carries the per-run format flag; `archivist/wikitext/` renders only the
+  older dialect, for runs not yet upgraded.
 - `archivist/movieparse/`, `archivist/wikitext/` and
   `archivist/selfimport/` keep their existing public import names while
   grouping format parsers, notes rendering, and import steps respectively.

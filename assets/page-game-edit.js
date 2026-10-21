@@ -568,6 +568,17 @@ if (gameEditEl) {
         return el_;
       }
 
+      // "…formatting guide)" for a label that ends in a link to the guide
+      function guideLinkTail() {
+        var tail = el('span', '');
+        var a = el('a', '', 'formatting guide');
+        a.href = '/formatting/';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        tail.appendChild(a);
+        tail.appendChild(document.createTextNode(')'));
+        return tail;
+      }
       function field(labelText, tag) {
         var lab = el('label', '', labelText);
         var inp = el(tag === 'textarea' ? 'textarea' : 'input');
@@ -597,7 +608,8 @@ if (gameEditEl) {
           refresh();
         });
       }
-      var ruleIn = field('Rule (markdown)', 'textarea');
+      var ruleIn = field('Rule (see the ', 'textarea');
+      ruleIn.parentNode.insertBefore(guideLinkTail(), ruleIn);
       ruleIn.value = c.rule;
       ruleIn.rows = 4;
       ruleIn.maxLength = 2000;
@@ -886,12 +898,13 @@ if (gameEditEl) {
             refresh();
           });
 
-          var rLab = el('label', '', 'Rule fragment (markdown, optional)');
+          var rLab = el('label', '', 'Rule fragment (optional; see the ');
+          rLab.appendChild(guideLinkTail());
           var r = el('textarea');
           r.value = sc.rule;
           r.maxLength = 2000;
           r.rows = 2;
-          r.placeholder = 'rule fragment, markdown (optional)';
+          r.placeholder = 'rule fragment (optional)';
           rLab.appendChild(r);
           r.addEventListener('input', function () {
             sc.rule = r.value;

@@ -22,6 +22,11 @@ import movieparse
 
 ARCHIVE = pathlib.Path(os.environ.get('ARCHIVE_DIR', '/opt/archivist/archive'))
 
+# Where references written in the legacy notes dialect (movie and submission
+# numbers, wiki paths) point when a run's notes are upgraded; set on the host,
+# never in code. Unset, those references upgrade to their plain labels.
+LEGACY_SITE_URL = os.environ.get('LEGACY_SITE_URL', '')
+
 SUBMIT_KEY = os.environ['SUBMIT_KEY']
 
 BRANCH = os.environ.get('ARCHIVIST_BRANCH', 'main')

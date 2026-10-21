@@ -7,8 +7,9 @@ import shutil
 import time
 from flask import jsonify, request
 import movieparse
+import notes_upgrade as notefmt
 import providers
-from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, BRANCH, ENCODE_ALT_MAX, ENCODE_DESC_MAX, ENCODE_TITLE_MAX, IMAGE_MAGIC, NOTES_MAX, SHOT_MAX_EACH, SHOT_MAX_TOTAL, SITE_URL, THUMB_MAX, movie_refusal, slugify
+from settings import now_iso, ACT_NOTES_MAX, ARCHIVE, BRANCH, ENCODE_ALT_MAX, ENCODE_DESC_MAX, ENCODE_TITLE_MAX, IMAGE_MAGIC, LEGACY_SITE_URL, NOTES_MAX, SHOT_MAX_EACH, SHOT_MAX_TOTAL, SITE_URL, THUMB_MAX, movie_refusal, slugify
 from webutil import fail
 from identity import current_name, run_authors_now, session_user
 from gitstore import checkout_branch, commit_push, duplicate_of, find_run, load_game, lock, next_id, refresh_archive
@@ -311,6 +312,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                          authors, system, slug, alternate_thumbs=()):
         """Persist one run, create discussion pointers, commit, then notify."""
         ensure_member(submitter)
+        run[notefmt.FORMAT_KEY] = notefmt.CURRENT_FORMAT
         run_dir.mkdir(parents=True)
         if not video_only:
             (run_dir / f'{run_id}.{ext}').write_bytes(movie_bytes)
@@ -768,6 +770,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         if dry_run:
             return jsonify({'ok': True, 'dry_run': True, 'field': field,
                             'from': old_value, 'to': value[:300]})
+        if notefmt.is_legacy(run) and request.form.get(notefmt.FORMAT_KEY) == notefmt.CURRENT_FORMAT:
+            run[notefmt.FORMAT_KEY] = notefmt.CURRENT_FORMAT
         if value:
             notes_file.write_text(value + ('\n' if not value.endswith('\n') else ''))
         elif notes_file.exists():
@@ -1475,7 +1479,13 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             if notes_header and sent.startswith(notes_header):
                 sent = sent[len(notes_header):]
             notes = notes_header + sent
-            if old_body != sent:
+            # the edit form shows a legacy run's notes already upgraded: what
+            # comes back, declared as such, is the notes in the current language
+            upgraded = (notefmt.is_legacy(run)
+                        and edit_form.get(notefmt.FORMAT_KEY) == notefmt.CURRENT_FORMAT)
+            if upgraded:
+                run[notefmt.FORMAT_KEY] = notefmt.CURRENT_FORMAT
+            if old_body != sent or upgraded:
                 changed.append('notes')
         return (notes if 'notes' in edit_form else None), None
 
@@ -2057,6 +2067,14 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         # the archive's own header (the import disclaimer, a leading quote block)
         # is not the author's notes; their own quotes further down are
         notes = split_notes_header(notes)[1]
+        # a run still on the legacy dialect is shown to its editor already
+        # upgraded: saving the edit stores it that way, and nobody is asked
+        # to know there was another language
+        notes_warnings = []
+        if notefmt.is_legacy(run) and notes.strip():
+            notes, notes_warnings = notefmt.upgrade(
+                notes, LEGACY_SITE_URL,
+                lambda n: f'M{n}' if find_run(f'M{n}') else None)
         game_key = f'{run_dir.parent.parent.parent.name}/{run_dir.parent.parent.name}'
         game = json.loads((run_dir.parent.parent / 'game.json').read_text())
         categories = json.loads((run_dir.parent.parent / 'categories.json').read_text())
@@ -2068,7 +2086,9 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         may = {'author': bool(who) and current_name(who).lower() in run_authors_now(run),
                'expert': bool(who) and expert_covers(who, game_key)}
         resp = jsonify({'ok': True, 'run': {k: v for k, v in run.items() if not k.startswith('_')},
-                        'notes': notes, 'seconds': seconds, 'secondsSource': seconds_source,
+                        'notes': notes, 'notesFormat': notefmt.CURRENT_FORMAT,
+                        'notesUpgraded': notefmt.is_legacy(run), 'notesWarnings': notes_warnings,
+                        'seconds': seconds, 'secondsSource': seconds_source,
                         'game': {'key': game_key, 'title': game.get('title'), 'system': game_key.split('/')[0]},
                         'categories': categories, 'may': may, 'user': who})
         resp.headers['Cache-Control'] = 'no-store'

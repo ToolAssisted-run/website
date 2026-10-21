@@ -932,7 +932,7 @@ def main():
            all(f'id="ge-{f}"' in gedit_ for f in ('title', 'thumb', 'released', 'unofficial', 'discord', 'website', 'rta', 'rules')))
         gpage_ = all_html[out / 'games' / 'nes' / 'testgame' / 'index.html']
         ck('game-wide rules render above the category rule in the dialog (#64)',
-           '<b>game-breaking</b> glitches, game-wide' in gpage_
+           '<strong>game-breaking</strong> glitches, game-wide' in gpage_
            and gpage_.find('game-breaking') < gpage_.find('Test rule.'), gpage_[:200])
         ck('the unofficial flag is a checkbox, ticked from the record',
            'id="ge-unofficial" checked' in gedit_)

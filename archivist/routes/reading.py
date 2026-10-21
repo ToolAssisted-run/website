@@ -149,10 +149,11 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
         """The submit preview, rendered by the very code that renders the
         published page (issue #30). Cross-references get a plain link here;
         the published page dresses them with the run's title and thumbnail.
-        When kind=rules or kind=markdown, renders rules using md_html.
+        Rules and notes are one language (markup.py); a caller that still
+        holds legacy-dialect text says so with format=legacy.
 
         Who: anybody
-        Reads: form field notes (or rules), kind
+        Reads: form field notes (or rules), optional format
         Answers: {ok, html}, Cache-Control: no-store
         """
         gate = _helper_gate()
@@ -161,10 +162,10 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
         text = (request.form.get('notes') or request.form.get('rules') or '').replace('\r\n', '\n')
         if len(text.encode()) > 1024 * 1024:
             return fail('notes exceed 1 MB')
-        kind = (request.form.get('kind') or request.form.get('dialect') or '').strip()
-        if kind in ('rules', 'markdown', 'md'):
-            from wikitext import md_html
-            resp = jsonify({'ok': True, 'html': md_html(text)})
+        legacy = (request.form.get('format') or request.form.get('dialect') or '').strip() == 'legacy'
+        if not legacy:
+            import markup
+            resp = jsonify({'ok': True, 'html': markup.render(text, refs=markup.PlainRefs())})
         else:
             import wikitext
             def refs(markup):

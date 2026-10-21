@@ -186,8 +186,6 @@ for r in runs:
     # the secondary metrics of the run's category, with the stated value of each
     metric_rows = [(m, metric_value(r, m)) for m in run_metric_defs(r) if m['key'] != 'time']
     nrev = len(edits_of[('run', r['id'])]) if ('run', r['id']) in edits_of else 0
-    # quoted lines are the archive's own headers, not the author's notes
-    notes_src = re.sub(r'^>.*$', '', r['_notes'], flags=re.M)
 
     # session-aware act forms (revealed by app.js based on identity/eligibility)
     act_data = {
@@ -243,7 +241,7 @@ for r in runs:
                reps=reps, vers=vers, cases=cases,
                topic=forum.get('topicId'), forum_url=forum.get('url'),
                nrep=nrep, nver=nver,
-               open_case=open_case, metric_rows=metric_rows, nrev=nrev, notes_src=notes_src,
+               open_case=open_case, metric_rows=metric_rows, nrev=nrev,
                atts=r.get('attachments', []), today=datetime.date.today().isoformat(),
                n_open_reports=len(act_data['openReports']),
                act_data=act_data, like_data=like_data, needs_help=needs_help)

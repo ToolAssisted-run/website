@@ -127,7 +127,9 @@ python tests/test_movieparse.py
 # Derivation and ranking parity tests
 python tests/test_derivation.py
 
-# Markup preview and wikitext tests
+# Notes language: renderer, upgrade of older notes, preview parity, older dialect
+python tests/test_markup.py
+python tests/test_notes_upgrade.py
 python tests/test_preview_parity.py
 python tests/test_wikitext.py
 

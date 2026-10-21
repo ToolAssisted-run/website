@@ -274,7 +274,6 @@ def chip_views(n):
             '<circle cx="12" cy="12" r="2.6"/></svg> '
             + f'{n:,}</span>')
 
-from wikitext import md_html
 
 def run_date_cell(r):
     """The run's primary date on a board: the completion date the authors
@@ -295,35 +294,88 @@ def frames_html(r):
         return '<span class="u" title="the movie format could not be read; time as stated">—</span>'
     return f'<b>{r["movie"]["frames"]:,}</b><span class="u">f</span>'
 
-import providers  # noqa: E402  (config put archivist/ on the path)
-import wikitext  # noqa: E402  (config put archivist/ on the path)
+import markup  # noqa: E402  (config put archivist/ on the path)
+import notes_upgrade  # noqa: E402
+import providers  # noqa: E402
+import wikitext  # noqa: E402
 
 def wiki_html(text, rel='../../'):
     """The published rendering: the shared dialect with this site's
     cross-references resolved against the archive."""
     return wikitext.wiki_html(text, refs=lambda s: resolve_refs(s, rel))
 
+def run_ref_html(number, rel):
+    """A run written about in text: game · category in time by authors, with a
+    hover thumbnail; None when the archive has no such run."""
+    rid = 'M' + str(number)
+    r = RUN_BY_ID.get(rid)
+    if not r:
+        return None
+    pm = primary_metric_text(r)
+    label = (f"{r['_game']['title']} · {cat_label(r)}"
+             + (f' in {pm}' if pm != '—' else '')
+             + f" by {', '.join(a['user'] for a in r['authors'])}")
+    tu = thumb_url(r)
+    bh = thumb_blurhash(r)
+    bh_attr = f' data-blurhash="{esc(bh)}"' if bh else ''
+    durl = thumb_data_url(r) if bh else ''
+    style_attr = f' style="background-image:url(&#39;{durl}&#39;);background-size:cover;"' if durl else ''
+    card = (f'<span class="refcard"{style_attr}><img{bh_attr} src="{esc(tu)}" loading="lazy" alt="" onload="this.classList.add(&#39;blurhash-loaded&#39;)"></span>'
+            if tu else '')
+    return f'<a class="runref" href="{rel}runs/{rid}/">{html.escape(label)}{card}</a>'
+
+def user_ref_html(name, rel, label=None):
+    """A member written about in text: their profile when they have one."""
+    name = name.strip()
+    shown = html.escape(label or name)
+    if is_member(name):
+        return f'<a class="au" href="{rel}authors/{profile_slug(name)}/">{shown}</a>'
+    return f'<span class="au">{shown}</span>'
+
+class SiteRefs:
+    """The references of the current language, resolved against the archive."""
+
+    def __init__(self, rel):
+        self.rel = rel
+
+    def run(self, number, label):
+        found = run_ref_html(number, self.rel)
+        if found is not None and not label:
+            return found
+        if found is not None or RUN_BY_ID.get('M' + str(number)):
+            return f'<a class="runref" href="{self.rel}runs/M{number}/">{html.escape(label or "M" + str(number))}</a>'
+        return None
+
+    def user(self, name, label):
+        return user_ref_html(name, self.rel, label)
+
+def notes_html(r, rel='../../'):
+    """A run's notes as published: in the language the run's flag names. The
+    archive's own header (an import's disclaimer, the leading quote block) is
+    not the author's text and is left out of both."""
+    text = r.get('_notes', '')
+    if notes_upgrade.is_legacy(r):
+        return wiki_html(re.sub(r'^>.*$', '', text, flags=re.M), rel)
+    lines = text.split('\n')
+    n = 0
+    while n < len(lines) and lines[n].startswith('>'):
+        n += 1
+    return markup.render('\n'.join(lines[n:]), refs=SiteRefs(rel))
+
+def md_html(text):
+    """Rules and act notes: the current language, references resolved from
+    the site root (these render at several depths)."""
+    return markup.render(text, refs=SiteRefs('/'))
+
 def resolve_refs(s, rel):
-    """Cross-references in written text: [M100001] or tasvideos-style [6012M]
-    resolve to a rich run link (game · category in time by authors) with a
-    hover thumbnail; unknown tasvideos ids and [1234S] submissions link out;
-    [user:Name] links the profile."""
+    """Cross-references in the legacy dialect: [M100001] or [6012M] resolve
+    to a rich run link (game · category in time by authors) with a hover
+    thumbnail; unknown ones and [1234S] submissions link out; [user:Name]
+    links the profile."""
     def run_link(m, tasv_fallback):
-        rid = 'M' + m.group(1)
-        r = RUN_BY_ID.get(rid)
-        if r:
-            pm = primary_metric_text(r)
-            label = (f"{r['_game']['title']} · {cat_label(r)}"
-                     + (f' in {pm}' if pm != '—' else '')
-                     + f" by {', '.join(a['user'] for a in r['authors'])}")
-            tu = thumb_url(r)
-            bh = thumb_blurhash(r)
-            bh_attr = f' data-blurhash="{esc(bh)}"' if bh else ''
-            durl = thumb_data_url(r) if bh else ''
-            style_attr = f' style="background-image:url(&#39;{durl}&#39;);background-size:cover;"' if durl else ''
-            card = (f'<span class="refcard"{style_attr}><img{bh_attr} src="{esc(tu)}" loading="lazy" alt="" onload="this.classList.add(&#39;blurhash-loaded&#39;)"></span>'
-                    if tu else '')
-            return f'<a class="runref" href="{rel}runs/{rid}/">{html.escape(label)}{card}</a>'
+        found = run_ref_html(m.group(1), rel)
+        if found is not None:
+            return found
         if tasv_fallback:
             return (f'<a class="runref ext" href="https://tasvideos.org/{m.group(1)}M">'
                     f'{m.group(1)}M (TASVideos)</a>')
@@ -335,12 +387,7 @@ def resolve_refs(s, rel):
     # the same refs written with their own label: [10255S|GTA2 movies]
     s = re.sub(r'\[([0-9]+[SM])\|([^\]]+)\]',
                r'<a class="runref ext" href="https://tasvideos.org/\1">\2</a>', s)
-    def user_link(m):
-        name = m.group(1).strip()
-        if is_member(name):
-            return f'<a class="au" href="{rel}authors/{profile_slug(name)}/">{html.escape(name)}</a>'
-        return f'<span class="au">{html.escape(name)}</span>'
-    s = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', user_link, s)
+    s = re.sub(r'\[user:([A-Za-z0-9. _-]{2,40})\]', lambda m: user_ref_html(m.group(1), rel), s)
     return s
 
 def inline(s, rel='../../'):
@@ -726,7 +773,7 @@ TEMPLATES = pathlib.Path(__file__).resolve().parent / 'templates'
 
 _HTML_HELPERS = (
     'role_badges group_chip expert_line scope_badge card_views chip_views md_html run_date_cell '
-    'frames_html wiki_html inline author_chip member_chip thumb_html '
+    'frames_html wiki_html notes_html inline author_chip member_chip thumb_html '
     'tick state_chip badge_chip medals dl_members dl_games '
     'primary_metric_html seo_head fmt_metric').split()
 _TEXT_HELPERS = (

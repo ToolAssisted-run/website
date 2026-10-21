@@ -2791,6 +2791,18 @@ if (submitForm) {
           if (notesArea) {
             notesArea.value = j.notes || '';
             notesArea.dispatchEvent(new Event('input', { bubbles: true }));
+            // notes carried over from an older run are already upgraded; say
+            // so only when something could not be carried over exactly
+            var upgradeNotes = j.notesWarnings || [];
+            if (upgradeNotes.length) {
+              var upgradeBox = document.createElement('div');
+              upgradeBox.className = 'warnbox';
+              upgradeBox.textContent =
+                'These notes were carried over to the current formatting. ' +
+                'Please check them before saving: ' +
+                upgradeNotes.join(' ');
+              notesArea.parentNode.insertBefore(upgradeBox, notesArea);
+            }
           }
           if (run.goalDescription)
             submitForm.querySelector('[name=goal_description]').value =
@@ -3585,6 +3597,9 @@ if (submitForm) {
               e.value
             );
         });
+        // the notes were shown in the current formatting, and come back so
+        if (editRecord.notesFormat)
+          fd.append('notesFormat', editRecord.notesFormat);
         if (editMay.author)
           fd.append(
             'authors',

@@ -4003,6 +4003,67 @@ th .eyeic {
   font-size: 1.25rem;
 }
 
+/* the notes language's own pieces: heading levels past four, the table of
+   contents, footnotes, a table whose header row was left empty */
+.notes h5,
+.notes h6 {
+  margin: 10px 0 4px;
+  font-size: 0.9rem;
+}
+
+.notes .toc {
+  margin: 10px 0;
+  padding: 8px 14px;
+  border: 2.5px solid var(--hair);
+  border-radius: 9px;
+  background: var(--panel);
+}
+
+.notes .toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notes .toc .toc2 {
+  margin-left: 14px;
+}
+
+.notes .toc .toc3 {
+  margin-left: 28px;
+}
+
+.notes .footnotes {
+  margin-top: 14px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.notes .footnotes-sep {
+  border: 0;
+  border-top: 2.5px solid var(--hair);
+}
+
+.notes .footnote-ref {
+  font-size: 0.8em;
+}
+
+.notes .ndiv.small {
+  font-size: 0.82em;
+}
+
+.notes .ndiv.center {
+  text-align: center;
+}
+
+.notes .frames {
+  font-variant-numeric: tabular-nums;
+}
+
+.notes thead:not(:has(th:not(:empty))) {
+  display: none;
+}
+
 .btn.leave {
   --edge: var(--hairs);
   --shine: transparent;
