@@ -848,7 +848,7 @@ def main():
     for name, want in (('PrinceOfPersia', 'native'), ('PrinceOfPersia2', 'native'),
                        ('SwordOfTheSamurai', 'native'), ('Syndicate', 'native'),
                        ('AnotherWorld', 'native'), ('Doom', 'native'),
-                       ('4DSportsBoxing', 'native'), ('SRB2', 'native')):
+                       ('4DSportsBoxing', 'native'), ('IkemenGO', 'native'), ('SRB2', 'native')):
         res = platformed(name)
         ck(f'chimeraProject: a {name} project is a Native run',
            res.get('system') == want, f'got {res.get("system")} want {want}')

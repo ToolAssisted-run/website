@@ -77,7 +77,7 @@ reason to turn somebody away. The panels send the key, rate and flags outright.
 from the game's own data files) rather than a machine that plays many games,
 so there is nothing to call its platform: Prince of Persia, Prince of Persia
 2, Sword of the Samurai, Syndicate, Another World, the Doom-engine games, 4D
-Sports Boxing and Sonic Robo Blast 2 are all filed under `native/<slug>`, and their project's Platform header (the
+Sports Boxing, the Ikemen GO games and Sonic Robo Blast 2 are all filed under `native/<slug>`, and their project's Platform header (the
 core's `systemId`) maps there in `BIZ_TO_TASV`. The system's stored rate is a
 placeholder and nothing is timed by it: every game core states its own in the
 movie (12.5 fps for rawgl, 16 for SyndicatFX, 35 for DSDA-Doom, 70.09 for
