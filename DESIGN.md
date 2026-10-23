@@ -471,6 +471,21 @@ the space to the right of the video player in a vertical scrollable column
 (YouTube style) with compact horizontal cards; on mobile/tablet viewports, it
 wraps down below the player as a horizontal scrolling reel.
 
+**Random picks** (home page) is the shelf for the runs the others never
+reach: Most liked and Most viewed only show what already has attention, so a
+run nobody has starred or opened has nowhere else to appear once it leaves
+Freshly archived. Its pool is every run on none of the other shelves with no
+stars and no visits (the rest join, quiet ones first, only while fewer than
+24 quiet runs remain). The build stays byte-identical for the same archive,
+so the dice are the reader's: the pool is written as shard files of
+ready-made cards (`assets/picks/<n>.json`, at most 48 cards each, dealt round
+the pool so each mixes all of it, fetched under a stamp of their content
+because the pool moves with the archive and not with the site's commit), and
+the browser fetches one shard at random and shows 12 of its cards at random.
+The page itself ships 12 cards of the pool, shuffled at once and shown as
+they are without scripting or when the shard does not arrive
+(`views/home.py`, `assets/page-home.js`).
+
 Run encodes use a sticky floating player while reading long run pages. Playback
 activates the behavior when the provider confirms that it started; providers
 without a reliable playback event fall back to the first click or tap on the

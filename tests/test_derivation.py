@@ -414,8 +414,9 @@ def main():
         # ---------------- Random picks: the overlooked shelf ----------------
         # Twenty runs, one of them starred: twelve fill Freshly archived, the
         # starred one fills Most liked, and what is left is exactly the pool
-        # the reader's browser shuffles. A run that already has attention is
-        # never in it while a quiet one is still waiting.
+        # the reader's browser draws from: the shard files hold all of it,
+        # each run once, and the page ships a few of them for a reader
+        # without scripting.
         pick_runs = [mkarchive.run_spec(f'M9004{40 + i}', frames=5000 + i,
                                         authors=['Ada'], submitted=d(30 - i))
                      for i in range(20)]
@@ -427,21 +428,60 @@ def main():
         def shelf_ids(page, title):
             return list(dict.fromkeys(re.findall(
                 r'runs/(M\d+)/', page.split(title)[1].split('<section')[0])))
+        def shard_ids(out):
+            ids = []
+            for f in sorted((out / 'assets' / 'picks').glob('*.json')):
+                for card in json.loads(f.read_text()):
+                    ids += re.findall(r'runs/(M\d+)/', card)[:1]
+            return ids
         fresh10 = shelf_ids(home10, 'Freshly archived')
         liked10 = shelf_ids(home10, 'Most liked')
         picks10 = shelf_ids(home10, 'Random picks')
+        pool10 = shard_ids(out10)
+        left10 = {r['id'] for r in pick_runs} - set(fresh10) - set(liked10)
         ck('the picks shelf holds what the other shelves left behind',
            picks10 and not (set(picks10) & (set(fresh10) | set(liked10))),
            f'picks {picks10} fresh {fresh10} liked {liked10}')
-        ck('every run the shelves missed gets its chance',
-           set(picks10) == {r['id'] for r in pick_runs} - set(fresh10) - set(liked10),
-           str(sorted(picks10)))
-        ck('the shelf tells the browser how many of the pool survive',
-           'data-shuffle="12"' in home10, home10.split('Random picks')[1][:120])
+        ck('every run the shelves missed is in the shards, once',
+           set(pool10) == left10 and len(pool10) == len(set(pool10)),
+           f'shards {sorted(pool10)} left {sorted(left10)}')
+        ck('the shipped cards are drawn from that pool',
+           set(picks10) <= set(pool10) and 0 < len(picks10) <= 12, str(picks10))
+        shard_attr10 = re.search(r'data-shuffle="12" data-shards="(\d+)" '
+                                 r'data-shard-stamp="([0-9a-f]{12})"', home10)
+        ck('the shelf tells the browser how many survive, how many shards, and their stamp',
+           shard_attr10 is not None
+           and int(shard_attr10.group(1)) == len(list((out10 / 'assets' / 'picks').glob('*.json'))),
+           home10.split('Random picks')[1][:200])
         out10b = td / 'o10b'
         build(arch10, out10b)
         ck('the pool is ordered by the archive, not by chance: builds match',
-           (out10b / 'index.html').read_text() == home10, 'the home page moved between builds')
+           (out10b / 'index.html').read_text() == home10
+           and shard_ids(out10b) == pool10, 'the home page or its shards moved between builds')
+
+        # A large pool is split: no shard holds more than its share, every
+        # quiet run is in exactly one, and a run with attention waits while
+        # enough quiet ones remain.
+        many_runs = [mkarchive.run_spec(f'M9010{i:02d}', frames=6000 + i,
+                                        authors=['Ada'], submitted=d(90 - i))
+                     for i in range(80)]
+        for i in range(12, 27):   # fifteen starred: Most liked holds twelve
+            many_runs[i]['likes'] = [{'user': 'Fan', 'date': d(1)}]
+        arch11 = mkarchive.make_archive(td / 'a11', many_runs)
+        out11 = td / 'o11'
+        build(arch11, out11)
+        home11 = (out11 / 'index.html').read_text()
+        shards11 = sorted((out11 / 'assets' / 'picks').glob('*.json'))
+        pool11 = shard_ids(out11)
+        shown11 = set(shelf_ids(home11, 'Freshly archived')) | set(shelf_ids(home11, 'Most liked'))
+        quiet11 = {r['id'] for r in many_runs if not r.get('likes')} - shown11
+        waiting11 = {r['id'] for r in many_runs if r.get('likes')} - shown11
+        ck('a large pool is split into shards of at most 48 cards',
+           len(shards11) >= 2 and all(len(json.loads(f.read_text())) <= 48 for f in shards11),
+           str([len(json.loads(f.read_text())) for f in shards11]))
+        ck('and the shards hold every quiet run once, and nothing with attention',
+           waiting11 and set(pool11) == quiet11 and len(pool11) == len(set(pool11)),
+           f'{len(pool11)} carded, {len(quiet11)} quiet, {len(waiting11)} starred off the shelves')
 
         # ---------------- author news + json shapes ----------------
         news_runs = [

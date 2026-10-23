@@ -1,26 +1,61 @@
 // toolAssisted.run — the landing page: the drag-to-scroll shelves and
 // the Bluesky feed in the News & Events column. Moved out of app.js:
 // these ids (.hwrap, #bskyfeed) exist only on the home page.
-import { escapeHtml } from './app.js';
+import { escapeHtml, rel } from './app.js';
 
 // ---- Random picks: the reader rolls the dice ----
 // A static build cannot deal a different hand to each visitor, so the page
-// ships a pool of overlooked runs in a fixed order and the browser
-// shuffles it here, keeping data-shuffle of them. Runs at this before the
-// shelves are wired, so the arrows measure the row that is actually shown.
-document.querySelectorAll('.hrow[data-shuffle]').forEach(function (row) {
-  var cards = Array.prototype.slice.call(row.children);
-  for (var i = cards.length - 1; i > 0; i--) {
+// ships a few cards of the pool in a fixed order and the pool itself as
+// shard files of ready-made cards (views/home.py). The shipped cards are
+// shuffled at once, so the arrows measure the row that is shown; then one
+// shard, chosen at random, replaces them with a random data-shuffle of its
+// cards. Without the shard the shuffled cards simply stay.
+function shuffled(items) {
+  var list = items.slice();
+  for (var i = list.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
-    var swap = cards[i];
-    cards[i] = cards[j];
-    cards[j] = swap;
+    var swap = list[i];
+    list[i] = list[j];
+    list[j] = swap;
   }
+  return list;
+}
+
+function dealPicks(row, cards) {
   var keep = parseInt(row.dataset.shuffle, 10) || cards.length;
-  cards.forEach(function (card, idx) {
+  shuffled(cards).forEach(function (card, idx) {
     if (idx < keep) row.appendChild(card);
-    else card.remove();
+    else if (card.parentNode) card.remove();
   });
+}
+
+document.querySelectorAll('.hrow[data-shuffle]').forEach(function (row) {
+  dealPicks(row, Array.prototype.slice.call(row.children));
+  var shards = parseInt(row.dataset.shards, 10) || 0;
+  if (!shards) return;
+  var shard = Math.floor(Math.random() * shards);
+  fetch(
+    rel +
+      'assets/picks/' +
+      shard +
+      '.json?v=' +
+      encodeURIComponent(row.dataset.shardStamp || '')
+  )
+    .then(function (resp) {
+      return resp.ok ? resp.json() : null;
+    })
+    .then(function (list) {
+      if (!Array.isArray(list) || !list.length) return;
+      var box = document.createElement('template');
+      box.innerHTML = list.join('');
+      var cards = Array.prototype.slice.call(box.content.children);
+      if (!cards.length) return;
+      while (row.firstChild) row.removeChild(row.firstChild);
+      dealPicks(row, cards);
+      row.scrollLeft = 0;
+      row.dispatchEvent(new Event('scroll'));
+    })
+    .catch(function () {});
 });
 
 // ---- shelves: one row, dragged sideways (home page) ----
