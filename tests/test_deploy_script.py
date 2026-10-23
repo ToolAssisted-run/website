@@ -93,6 +93,20 @@ def main():
     ck('a checkout the service cannot write fails the deploy, as a bad vhost does',
        last.startswith('exit ') and 'archive_failed' in last and 'nginx_failed' in last, last)
 
+    # ---------- the generator's packages: installed, and checked ----------
+    # The host once had no pip, and the install line ended in
+    # `2>/dev/null || true`: every site build then failed on an import for two
+    # days while the deploy stayed green.
+    pip_lines = [l for l in code if re.search(r'\bpip3 install\b', l)]
+    ck('the generator\'s packages are installed by the deploy', bool(pip_lines), str(pip_lines))
+    ck('and a failed install is never silenced',
+       not [l for l in pip_lines if '2>/dev/null' in l or '|| true' in l], str(pip_lines))
+    ck('pip itself is installed when the host has none',
+       any('python3-pip' in l and 'apt-get install' in l for l in code))
+    ck('and the generator\'s imports are checked as the service user, failing the deploy',
+       any(l.strip().startswith('if ! as_archive_owner /usr/bin/python3 -c') and 'mdit_py_plugins' in l
+           for l in code) and 'deps_failed' in last, last)
+
     as_owner = shell_function(text, 'as_archive_owner')
     strays = shell_function(text, 'archive_strays')
     ck('the two functions that decide who touches the archive are there to test',

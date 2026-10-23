@@ -117,7 +117,19 @@ cp -R archivist/templates/. "$staged_templates/"
 chmod -R u=rwX,go=rX "$staged_templates"      # same 0700 trap as the packages
 rm -rf /opt/archivist/templates
 mv "$staged_templates" /opt/archivist/templates
-pip3 install --quiet --break-system-packages pillow numpy markdown-it-py mdit-py-plugins linkify-it-py 2>/dev/null || pip3 install --quiet pillow numpy markdown-it-py mdit-py-plugins linkify-it-py 2>/dev/null || true
+# The generator's Python packages. Ubuntu's own are too old for the notes
+# renderer (its mdit-py-plugins has no `allowed` for attrs), so they come
+# from PyPI as in CI. This host once had no pip at all and the line that
+# installed them was silenced, so every site build failed on an import for
+# two days while the deploy stayed green: pip is installed when missing, a
+# failed install says so, and the import check after the restart fails the
+# deploy.
+if ! command -v pip3 >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-pip >/dev/null \
+        || echo "deps: python3-pip could not be installed" >&2
+fi
+pip3 install --quiet --break-system-packages pillow numpy markdown-it-py mdit-py-plugins linkify-it-py \
+    || echo "deps: pip could not install the generator's packages" >&2
 
 # 3. Install the nginx configuration. infra/nginx/ IS the live config now
 # (see the note at the top of each vhost), so an nginx change rides in with
@@ -198,4 +210,15 @@ fi
 # is still a failed deploy, and a green job over a rolled-back vhost is the
 # kind of silence this service has been bitten by before. The same goes for
 # a checkout the service cannot write.
-exit $(( nginx_failed || archive_failed ))
+
+# The site builds in the service's own Python, as the service's user: if the
+# generator cannot import what it needs there, every build fails and the
+# previous one keeps serving, which no reader can tell from a quiet day.
+deps_failed=0
+if ! as_archive_owner /usr/bin/python3 -c 'import markdown_it, mdit_py_plugins.attrs, linkify_it' 2>/dev/null; then
+    echo "deps: the generator cannot import its packages as $archive_owner, so the site cannot rebuild" >&2
+    as_archive_owner /usr/bin/python3 -c 'import markdown_it, mdit_py_plugins.attrs, linkify_it' 2>&1 | tail -1 >&2 || true
+    deps_failed=1
+fi
+
+exit $(( nginx_failed || archive_failed || deps_failed ))
