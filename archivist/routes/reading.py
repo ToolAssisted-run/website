@@ -8,7 +8,7 @@ import urllib.request
 from flask import jsonify, request
 import movieparse
 import providers
-from settings import ARCHIVE, allowed_movie_exts, DISCOURSE_KEY, DISCOURSE_URL, SITE_ORIGIN, THUMB_MAX, USERNAME_RE, movie_refusal
+from settings import ARCHIVE, allowed_movie_exts, DISCOURSE_KEY, DISCOURSE_URL, LOG, SITE_ORIGIN, THUMB_MAX, USERNAME_RE, movie_refusal
 from webutil import fail
 from identity import origin_ok, session_user
 from forumapi import _forum_get, forum_account_exists, reserved_usernames
@@ -225,7 +225,7 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
             time.sleep(min(3.0, float(exc.headers.get('Retry-After') or 1)))
             return _forum_get(f'/t/{topic_id}.json'), None
         except Exception as again:                          # noqa: BLE001
-            return None, fail(f'could not reach the forum: {again}', 502)
+            return None, fail(f'could not reach the forum: {again}', 503)
 
     def _discussion_topic(topic_id, cached):
         """Fetch a forum topic, using the existing cache on rate limits or outages."""
@@ -238,11 +238,11 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
                 # wait out the short window once, then give up for this call
                 return _discussion_rate_retry(topic_id, cached, exc)
             else:
-                return None, fail(f'could not reach the forum: {exc}', 502)
+                return None, fail(f'could not reach the forum: {exc}', 503)
         except Exception as exc:                                    # noqa: BLE001
             if cached:
                 return None, jsonify(cached[1])
-            return None, fail(f'could not reach the forum: {exc}', 502)
+            return None, fail(f'could not reach the forum: {exc}', 503)
         return topic_json, None
 
     @app.get('/api/discussion')
@@ -326,10 +326,21 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
             with urllib.request.urlopen(forum_request, timeout=20) as forum_response:
                 posted = json.loads(forum_response.read())
         except urllib.error.HTTPError as exc:
-            detail = exc.read()[:300].decode(errors='replace')
-            return fail(f'the forum refused the reply: {detail}', 502)
+            # the forum's own words ("Body is too short (minimum is 20
+            # characters)"), under a status of ours: a refusal is the member's
+            # to fix, and is said as one
+            raw = exc.read()[:2000].decode(errors='replace')
+            try:
+                said = '; '.join(json.loads(raw).get('errors') or []) or raw[:300]
+            except (ValueError, AttributeError, TypeError):
+                said = raw[:300]
+            LOG.warning('forum refused a reply by %s to topic %s: HTTP %s %s',
+                        user, topic_id, exc.code, said[:300])
+            return fail(f'the forum refused the reply: {said}',
+                        exc.code if 400 <= exc.code < 500 else 503)
         except Exception as exc:                                    # noqa: BLE001
-            return fail(f'could not reach the forum: {exc}', 502)
+            LOG.warning('could not reach the forum for a reply: %s', exc)
+            return fail(f'could not reach the forum: {exc}', 503)
         DISCUSSION_CACHE.pop(topic_id, None)
         return jsonify({'ok': True, 'topic': topic_id, 'post': posted.get('post_number'),
                         'user': user})

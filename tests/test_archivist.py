@@ -499,6 +499,18 @@ def main():
                         FORUM_POSTS.append(json.loads(body))
                     except ValueError:
                         pass
+                    # a member's reply arrives as a form, and the forum has a
+                    # minimum length of its own, longer than ours
+                    reply = urllib.parse.parse_qs(body).get('raw', [None])[0]
+                    if reply is not None and len(reply) < 20:
+                        out = json.dumps({'action': 'create_post', 'errors': [
+                            'Body is too short (minimum is 20 characters)']}).encode()
+                        self.send_response(422)
+                        self.send_header('Content-Type', 'application/json')
+                        self.send_header('Content-Length', str(len(out)))
+                        self.end_headers()
+                        self.wfile.write(out)
+                        return
                 m_syn = re.fullmatch(r'/tag/([^/]+)/synonyms\.json', self.path)
                 if m_syn:
                     # the forum takes synonyms as tags: [{name}] (its older
@@ -3305,6 +3317,19 @@ def main():
 
             c, r, _ = call(U + '/api/me', cookie=cookie)
             ck('session identity', r.get('user') == 'ssouser')
+
+            # a reply the forum refuses says why, under a status the proxy in
+            # front passes through: a 502 there is swapped for its own page,
+            # which the browser cannot read, and the member was told "network
+            # error" about a reply that was only too short
+            c, r, _ = call(U + '/api/discussion/reply',
+                           {'topic': '1988', 'body': '"Are you a ninja?"'}, cookie=cookie)
+            ck('a reply the forum refuses is answered with the forum\'s reason',
+               c == 422 and 'too short (minimum is 20 characters)' in str(r.get('error')),
+               f'{c} {r}'[:200])
+            c, r, _ = call(U + '/api/discussion/reply',
+                           {'topic': '1988', 'body': 'a reply long enough for the forum'}, cookie=cookie)
+            ck('and one it takes is posted', c == 200 and r.get('ok'), f'{c} {r}'[:200])
             ck('a member with no role is told nothing about the second factor',
                'roles2fa' not in r, str(r))
 
