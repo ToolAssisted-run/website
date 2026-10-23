@@ -1424,6 +1424,12 @@ tr.lead td:first-child {
   flex: 0 0 240px;
 }
 
+/* Random picks ships its fallback cards inside noscript (home.html); without
+   scripting they must still sit in the row as its own flex items */
+.hrow > noscript {
+  display: contents;
+}
+
 .hrow.dragging {
   cursor: grabbing;
   user-select: none;

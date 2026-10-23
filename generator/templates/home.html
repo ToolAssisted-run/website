@@ -25,10 +25,12 @@ Classic and modern systems. Community-driven. Innovation first.</p>
 <div class="hwrap"><div class="hrow">{% for r in fresh %}{{ run_card(r) }}{% endfor %}</div></div></section>
 {% if liked %}<section><h2>Most liked</h2><div class="hwrap"><div class="hrow">{% for r in liked %}{{ run_card(r) }}{% endfor %}</div></div></section>{% endif %}
 {% if viewed %}<section><h2>Most viewed</h2><div class="hwrap"><div class="hrow">{% for r in viewed %}{{ run_card(r) }}{% endfor %}</div></div></section>{% endif %}
-{# the build ships a few cards of the pool for a reader without scripting;
-   the browser swaps in picks_shown cards drawn at random from one of the
-   pool's shard files, so every overlooked run gets its chance #}
-{% if picks %}<section><h2>Random picks</h2><div class="hwrap"><div class="hrow" data-shuffle="{{ picks_shown }}" data-shards="{{ picks_shards }}" data-shard-stamp="{{ picks_stamp }}">{% for r in picks %}{{ run_card(r) }}{% endfor %}</div></div></section>{% endif %}
+{# the build ships a few cards of the pool inside noscript, so a reader with
+   scripting never downloads their thumbnails: the browser lays them out with
+   their images held back, swaps in picks_shown cards drawn at random from
+   one of the pool's shard files, and lets the held images load only if the
+   shard does not arrive (assets/page-home.js) #}
+{% if picks %}<section><h2>Random picks</h2><div class="hwrap"><div class="hrow" data-shuffle="{{ picks_shown }}" data-shards="{{ picks_shards }}" data-shard-stamp="{{ picks_stamp }}"><noscript>{% for r in picks %}{{ run_card(r) }}{% endfor %}</noscript></div></div></section>{% endif %}
 <section class="homefoot"><div class="cols3">
 <div class="factbox"><h4>Archive first</h4><p class="statline">Runs are archived instantly into
 <a href="https://github.com/ToolAssisted-run/archive">the public archive</a> and appear

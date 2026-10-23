@@ -5,11 +5,13 @@ import { escapeHtml, rel } from './app.js';
 
 // ---- Random picks: the reader rolls the dice ----
 // A static build cannot deal a different hand to each visitor, so the page
-// ships a few cards of the pool in a fixed order and the pool itself as
-// shard files of ready-made cards (views/home.py). The shipped cards are
-// shuffled at once, so the arrows measure the row that is shown; then one
-// shard, chosen at random, replaces them with a random data-shuffle of its
-// cards. Without the shard the shuffled cards simply stay.
+// ships a few cards of the pool and the pool itself as shard files of
+// ready-made cards (views/home.py). The shipped cards come inside noscript,
+// so with scripting on they are text and nothing of theirs downloads: they
+// are laid out here at once with their thumbnails held back (the blurred
+// placeholder shows), so the arrows measure the row that is shown. One shard,
+// chosen at random, then replaces them with a random data-shuffle of its
+// cards. Only if the shard does not arrive do the held thumbnails load.
 function shuffled(items) {
   var list = items.slice();
   for (var i = list.length - 1; i > 0; i--) {
@@ -21,18 +23,48 @@ function shuffled(items) {
   return list;
 }
 
+function cardsOf(html) {
+  var box = document.createElement('template');
+  box.innerHTML = html;
+  return Array.prototype.slice.call(box.content.children);
+}
+
 function dealPicks(row, cards) {
   var keep = parseInt(row.dataset.shuffle, 10) || cards.length;
+  while (row.firstChild) row.removeChild(row.firstChild);
   shuffled(cards).forEach(function (card, idx) {
     if (idx < keep) row.appendChild(card);
-    else if (card.parentNode) card.remove();
+  });
+}
+
+function holdThumbs(cards) {
+  cards.forEach(function (card) {
+    card.querySelectorAll('img[src]').forEach(function (img) {
+      img.setAttribute('data-held-src', img.getAttribute('src'));
+      img.removeAttribute('src');
+      img.style.visibility = 'hidden';
+    });
+  });
+}
+
+function releaseThumbs(row) {
+  row.querySelectorAll('img[data-held-src]').forEach(function (img) {
+    img.style.visibility = '';
+    img.setAttribute('src', img.getAttribute('data-held-src'));
+    img.removeAttribute('data-held-src');
   });
 }
 
 document.querySelectorAll('.hrow[data-shuffle]').forEach(function (row) {
-  dealPicks(row, Array.prototype.slice.call(row.children));
+  var fallback = row.querySelector('noscript');
+  var shipped = fallback ? cardsOf(fallback.textContent) : [];
+  holdThumbs(shipped);
+  dealPicks(row, shipped);
   var shards = parseInt(row.dataset.shards, 10) || 0;
-  if (!shards) return;
+  if (!shards) {
+    releaseThumbs(row);
+    return;
+  }
   var shard = Math.floor(Math.random() * shards);
   fetch(
     rel +
@@ -45,17 +77,18 @@ document.querySelectorAll('.hrow[data-shuffle]').forEach(function (row) {
       return resp.ok ? resp.json() : null;
     })
     .then(function (list) {
-      if (!Array.isArray(list) || !list.length) return;
-      var box = document.createElement('template');
-      box.innerHTML = list.join('');
-      var cards = Array.prototype.slice.call(box.content.children);
-      if (!cards.length) return;
-      while (row.firstChild) row.removeChild(row.firstChild);
+      var cards = Array.isArray(list) ? cardsOf(list.join('')) : [];
+      if (!cards.length) {
+        releaseThumbs(row);
+        return;
+      }
       dealPicks(row, cards);
       row.scrollLeft = 0;
       row.dispatchEvent(new Event('scroll'));
     })
-    .catch(function () {});
+    .catch(function () {
+      releaseThumbs(row);
+    });
 });
 
 // ---- shelves: one row, dragged sideways (home page) ----

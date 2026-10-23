@@ -447,6 +447,11 @@ def main():
            f'shards {sorted(pool10)} left {sorted(left10)}')
         ck('the shipped cards are drawn from that pool',
            set(picks10) <= set(pool10) and 0 < len(picks10) <= 12, str(picks10))
+        picks_sec10 = home10.split('Random picks')[1].split('<section')[0]
+        outside10 = re.sub(r'<noscript>.*?</noscript>', '', picks_sec10, flags=re.S)
+        ck('and they come inside noscript, so a reader with scripting never fetches their thumbnails',
+           '<noscript>' in picks_sec10 and '<img' not in outside10 and 'runs/' not in outside10,
+           outside10[:200])
         shard_attr10 = re.search(r'data-shuffle="12" data-shards="(\d+)" '
                                  r'data-shard-stamp="([0-9a-f]{12})"', home10)
         ck('the shelf tells the browser how many survive, how many shards, and their stamp',
