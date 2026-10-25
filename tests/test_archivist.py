@@ -214,6 +214,10 @@ def main():
             (seed / 'authors' / f'{who.lower()}.json').write_text(json.dumps(
                 {'username': who, 'claimed': True}, indent=1))
         (seed / 'roles.json').write_text(json.dumps(ex, indent=1))
+        # a member whose name has a dash: the same name with an underscore
+        # files under the same record
+        (seed / 'authors' / 'dash-name.json').write_text(json.dumps(
+            {'username': 'Dash-Name', 'claimed': True}, indent=1) + '\n')
         (seed / 'authors' / 'ssouser.json').write_text(json.dumps({
             'username': 'ssouser', 'claimed': True,
             'tasvideosProfile': 'https://tasvideos.org/Users/Profile/ssouser'}, indent=1))
@@ -2921,6 +2925,12 @@ def main():
 
             # --- a claim is asked for, the Committee answers, nobody's
             # address is ever written down ---
+            c, r, _ = call(U + '/api/claim/request',
+                           {'key': KEY, 'member': 'Dash-Name', 'identity': 'Dash_Name',
+                            'evidence': 'the same name, with an underscore'})
+            ck('a claim on your own name with other punctuation says it is yours',
+               c == 409 and 'your own name' in r.get('error', '')
+               and 'somebody' not in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/claim/request',
                            {'key': KEY, 'member': 'newuser', 'identity': 'HeldName',
                             'evidence': 'I posted this request from that account.'})

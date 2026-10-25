@@ -882,6 +882,13 @@ def register(app, *, ANNUL_WORDS, GRANT_WORDS, REPORT_KINDS, _deletion_gate, _im
         author_file = ARCHIVE / 'authors' / f'{selfimport.slugify(identity)}.json'
         if author_file.exists():
             author_record = json.loads(author_file.read_text())
+            # names that differ only in punctuation share one record, so a
+            # member asking for their own name with an underscore for a dash
+            # finds their own record; "claimed by somebody" sent one looking
+            # for a stranger who was them
+            if (author_record.get('username') or '').lower() == member.lower():
+                return fail(f'{identity} is your own name here with its punctuation changed, '
+                            f'which is a rename, not a claim: ask the forum\'s staff for it', 409)
             if author_record.get('claimed'):
                 return fail(f'{identity} is already claimed by '
                             f'{author_record.get("claimedBy") or "somebody"}', 409)
