@@ -121,6 +121,7 @@ def strip_judge_text(text):
     (tools/import_tasvideos_author.py) calls this one, so a licensing rule is
     written once. Returns (clean, flags)."""
     flags = []
+    text = str(text or '').replace('\r\n', '\n').replace('\r', '\n')
     text = re.sub(r'\A(?:\[#\d+:[^\n]*\]\n|\[status:[^\n]*\]\n|\n)+', '', text)
     m = re.search(r'^-{4,}\s*\n\s*\[user:', text, re.M)
     if m:

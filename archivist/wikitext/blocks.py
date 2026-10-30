@@ -1,11 +1,61 @@
+import os
 import re
 from .markdown import esc
 from .inline import inline, _youtube_id, _youtube_embed
 
 _DIRECTIVE = re.compile(r'^%%([A-Z_]+)\s*(.*?)(?:%%)?\s*$', re.I)
 
+LINESEP = os.linesep
+
+
+def line_separator():
+    """Cross-platform line-breaker provider"""
+    return os.linesep
+
+
+def normalize_newlines(text):
+    """Normalize CRLF (\r\n) and CR (\r) line breaks to standard LF (\n)."""
+    return str(text or '').replace('\r\n', '\n').replace('\r', '\n')
+
+
+def _parse_table_cells(s):
+    """Split a wiki table row into (cell_content, is_header) tuples.
+
+    A row starts with '|' (or '||'). Cells inside the row begin with '||'
+    (header cell) or '|' (data cell). A trailing '||' or '|' is an optional
+    closing delimiter."""
+    row = s.strip().replace('[|]', '\x01')
+    if row.startswith('||') and row.endswith('||') and len(row) > 2:
+        body = row[:-2]
+    elif row.endswith('|') and len(row) > 1:
+        body = row[:-1]
+    else:
+        body = row
+
+    cells = []
+    pos = 0
+    while pos < len(body):
+        if body[pos:pos + 2] == '||':
+            is_th = True
+            pos += 2
+        elif body[pos] == '|':
+            is_th = False
+            pos += 1
+        else:
+            break
+        next_pos = body.find('|', pos)
+        if next_pos == -1:
+            cell_raw = body[pos:]
+            pos = len(body)
+        else:
+            cell_raw = body[pos:next_pos]
+            pos = next_pos
+        cells.append((cell_raw.strip().replace('\x01', '|'), is_th))
+    return cells
+
 def wiki_html(text, refs=lambda s: s):
     """The whole notes text as HTML."""
+    text = normalize_newlines(text)
     out = []
     para = []          # lines of the paragraph being gathered
     pre = []           # lines of a preformatted block
@@ -133,13 +183,12 @@ def wiki_html(text, refs=lambda s: s):
             flush()
             out.append('<div class="tblwrap"><table><tbody>')
             table = True
-        row = s.replace('[|]', '\x01')
-        if row.startswith('||'):
-            cells = row.strip('|').split('||')
-            out.append('<tr>' + ''.join(f'<th>{inl(c.strip().replace(chr(1), "|"))}</th>' for c in cells) + '</tr>')
-        else:
-            cells = row[1:-1].split('|')
-            out.append('<tr>' + ''.join(f'<td>{inl(c.strip().replace(chr(1), "|"))}</td>' for c in cells) + '</tr>')
+        cells = _parse_table_cells(s)
+        row_html = ''.join(
+            f'<th>{inl(c)}</th>' if is_th else f'<td>{inl(c)}</td>'
+            for c, is_th in cells
+        )
+        out.append(f'<tr>{row_html}</tr>')
 
     def content(s):
         """Render a regular wiki line into its heading, table, list or paragraph."""
@@ -162,7 +211,7 @@ def wiki_html(text, refs=lambda s: s):
             flush(keep_lists=False) if not quote else None
             quote.append(s[1:].strip())
             return
-        if s.startswith('||') or (s.startswith('|') and s.endswith('|') and len(s) > 1):
+        if s.startswith('|'):
             table_row(s)
             return
         m = re.match(r'^([*#]+)\s*(.*)', s)

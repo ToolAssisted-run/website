@@ -66,6 +66,27 @@ def main():
     ck('a source box keeps its language', U('%%SRC_EMBED lua\nx = __1__\n%%END_EMBED') == '```lua\nx = __1__\n```')
     ck('preformatted text becomes a fence', U(' one\n two') == '```\none\ntwo\n```')
     ck('a table with a header row', U('|| h1 || h2 ||\n| a | b |') == '| h1 | h2 |\n| --- | --- |\n| a | b |')
+    user_tbl = ('||Character||Max speed||Acceleration||Deceleration\n'
+                '|Junior|2:0|0:40|0:40\n'
+                '|Pig|3:0|1:0|0:64\n'
+                '|Ostrich|4:0|0:128|0:32\n'
+                '|Goat|3:0|0:128|0:32')
+    want_user_tbl = ('| Character | Max speed | Acceleration | Deceleration |\n'
+                     '| --- | --- | --- | --- |\n'
+                     '| Junior | 2:0 | 0:40 | 0:40 |\n'
+                     '| Pig | 3:0 | 1:0 | 0:64 |\n'
+                     '| Ostrich | 4:0 | 0:128 | 0:32 |\n'
+                     '| Goat | 3:0 | 0:128 | 0:32 |')
+    ck('a table without trailing pipes', U(user_tbl) == want_user_tbl)
+    user_tbl_linesep = (
+        f'||Character||Max speed||Acceleration||Deceleration{notes_upgrade.LINESEP}'
+        f'|Junior|2:0|0:40|0:40{notes_upgrade.LINESEP}'
+        f'|Pig|3:0|1:0|0:64{notes_upgrade.LINESEP}'
+        f'|Ostrich|4:0|0:128|0:32{notes_upgrade.LINESEP}'
+        f'|Goat|3:0|0:128|0:32'
+    )
+    ck('a table with platform line-breaker', U(user_tbl_linesep) == want_user_tbl)
+    ck('a table with CRLF explicitly', U(user_tbl.replace('\n', '\r\n')) == want_user_tbl)
     md, warn = up('| a | b |\n| c | d |')
     ck('a table without one gets an empty header, and says so', md.startswith('|  |  |\n| --- | --- |') and warn, (md, warn))
     md, warn = up('| a | b |\n| c |')

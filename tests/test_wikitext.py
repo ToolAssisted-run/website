@@ -145,6 +145,19 @@ def main():
     ck('tables with header', '<th>h1</th>' in h and '<td>a</td>' in h, h)
     ck('[|] is a literal bar in a cell', '<td>c with | bar</td>' in h, h)
     ck('empty cell stays a cell', h.count('<td>') == 4, h)
+    h = H('||Character||Max speed||Acceleration||Deceleration\n|Junior|2:0|0:40|0:40\n|Pig|3:0|1:0|0:64')
+    ck('table rows without trailing pipes', '<th>Character</th>' in h and '<td>Junior</td>' in h and '<td>0:64</td>' in h, h)
+    h = H('||Stage||Previous||New||Saved\n||Introduction|691|690|1')
+    ck('mixed header and data cells in row', '<th>Introduction</th>' in h and '<td>691</td>' in h, h)
+
+    # ---- cross-platform line-breakers ----
+    import os
+    ck('line_separator matches platform', wikitext.line_separator() == os.linesep)
+    ck('normalize_newlines handles CRLF and CR', wikitext.normalize_newlines('a\r\nb\rc\n') == 'a\nb\nc\n')
+    h_crlf = H(f'||Character||Max speed{os.linesep}|Junior|2:0{os.linesep}|Pig|3:0')
+    ck('table with platform line-breaker', '<th>Character</th>' in h_crlf and '<td>Junior</td>' in h_crlf, h_crlf)
+    ck('parse_table_cells strips trailing line-breaker',
+       wikitext.blocks._parse_table_cells(f'|Junior|2:0|0:40|0:40|{os.linesep}') == [('Junior', False), ('2:0', False), ('0:40', False), ('0:40', False)])
 
     # ---- safety ----
     h = H('<script>x</script> & <b>')

@@ -8,4 +8,5 @@ from .inline import (_IMG, _URL, _TV_ROOTS, _SAFE_HREF, _youtube_id,
                      _RE_SUP, _RE_SUB, _RE_SMALL, _RE_IF_ZERO, _RE_BRACKET,
                      _RE_SUPPRESSED_URL, _RE_BARE_URL, _RE_PLACEHOLDER,
                      _emphasis)
-from .blocks import _DIRECTIVE
+from .blocks import (_DIRECTIVE, _parse_table_cells, line_separator,
+                    normalize_newlines, LINESEP)

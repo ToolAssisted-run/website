@@ -16,9 +16,14 @@ closely as possible and named in `warnings`, so the editor can say so.
 `external_base` is where legacy references to other sites (movie and
 submission numbers, wiki paths) point; `local_run(number)` answers the id of
 the run on this site that stands for such a number, or None."""
+import os
 import re
 
 import wikitext
+
+LINESEP = os.linesep
+line_separator = wikitext.line_separator
+normalize_newlines = wikitext.normalize_newlines
 
 # private-use markers carried through the escaping pass
 BOLD, BOLD_, EMPH, EMPH_, STRIKE, STRIKE_ = '', '', '', '', '', ''
@@ -333,7 +338,7 @@ def _fence(lines, lang=''):
 def upgrade(text, external_base='', local_run=None):
     """(markdown, warnings) for legacy notes text."""
     up = Upgrader(external_base, local_run)
-    text = str(text or '').replace('\r\n', '\n').replace('\r', '\n')
+    text = normalize_newlines(text)
     lines = text.split('\n')
     # footnote definitions are only definitions when something refers to them
     referenced = set(re.findall(r'\[#(\d+)\]', text))
@@ -535,16 +540,11 @@ def upgrade(text, external_base='', local_run=None):
             if s[1:].strip():
                 quote.append(s[1:].strip())
             continue
-        if s.startswith('||') or (s.startswith('|') and s.endswith('|') and len(s) > 1):
+        if s.startswith('|'):
             if not table:
                 flush()
-            row = s.replace('[|]', '\x01')
-            if row.startswith('||'):
-                cells = [(up.inline(c.strip().replace('\x01', '|'), cell=True), True)
-                         for c in row.strip('|').split('||')]
-            else:
-                cells = [(up.inline(c.strip().replace('\x01', '|'), cell=True), False)
-                         for c in row[1:-1].split('|')]
+            cells = [(up.inline(c, cell=True), is_th)
+                     for c, is_th in wikitext._parse_table_cells(s)]
             table.append((None, cells))
             continue
         m = re.match(r'^([*#]+)\s*(.*)', s)
