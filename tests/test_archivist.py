@@ -81,14 +81,15 @@ def free_port():
 
 
 # A Chimera project, the shape its own repository writes: one JSON object,
-# never a zip, with the Bk2-style input lump inside a string. Twelve frames of
-# Down, twelve of Right, then idle: the run ends on frame 23.
+# never a zip, its input log as columns and one entry a frame. Twelve frames
+# of Down, twelve of Right, then idle: the run ends on frame 23.
+CHIMERA_INPUTS = {
+    'columns': [['P1 Up', 'P1 Down', 'P1 Left', 'P1 Right', 'P1 A', 'P1 B', 'P1 Select', 'P1 Start']],
+    'entries': ['|........|'] + ['|.D......|'] * 12 + ['|...R....|'] * 11 + ['|........|'] * 30}
 CHIMERA_PROJECT = json.dumps({
     'title': 'gridWalker', 'core': {'name': 'Synth', 'version': '1', 'sha1': 'a' * 40},
     'headers': {'Platform': 'NES'}, 'rerecords': 12,
-    'input': '[Input]\nLogKey:#P1 Up|P1 Down|P1 Left|P1 Right|P1 A|P1 B|P1 Select|P1 Start|\n'
-             + '|........|\n' + '|.D......|\n' * 12 + '|...R....|\n' * 11
-             + '|........|\n' * 30 + '[/Input]'}).encode()
+    'inputs': CHIMERA_INPUTS}).encode()
 
 # The same project as a game core's, which carries the game's own timer:
 # Chimera writes GameTimeMs/GameTime/GameTimeFrame at the end of a project
@@ -98,9 +99,7 @@ CHIMERA_GAME_PROJECT = json.dumps({
     'headers': {'Platform': 'PrinceOfPersia', 'GameTimeMs': '75250',
                 'GameTime': '01:15.250', 'GameTimeFrame': '54'},
     'rerecords': 12,
-    'input': '[Input]\nLogKey:#P1 Up|P1 Down|P1 Left|P1 Right|P1 A|P1 B|P1 Select|P1 Start|\n'
-             + '|........|\n' + '|.D......|\n' * 12 + '|...R....|\n' * 11
-             + '|........|\n' * 30 + '[/Input]'}).encode()
+    'inputs': CHIMERA_INPUTS}).encode()
 
 
 def call(url, data=None, files=None, cookie=None, method=None, headers=None):

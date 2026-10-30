@@ -249,6 +249,27 @@ def _chimera_game_time(lower, log_frames, settings, warnings):
     return ms / 1000.0
 
 
+def _chimera_entries(doc):
+    """The input log's frames, one string each, or None for a project with none.
+
+    A project saved since 2026-10-28 holds them as `inputs`: `columns`, the
+    log key's groups, and `entries`, one `|..|....|` string a frame. One saved
+    before holds `input`, the movie's whole text block as one string. Chimera
+    no longer opens the older form, but runs already archived were made with
+    it, so both are read.
+    """
+    inputs = doc.get('inputs')
+    if isinstance(inputs, dict):
+        entries = inputs.get('entries')
+        if not isinstance(entries, list):
+            return None
+        return [e for e in entries if isinstance(e, str) and e.startswith('|')]
+    if 'input' in doc:
+        return [l for l in re.split(r'\r\n|\r|\n', str(doc.get('input') or ''))
+                if l.startswith('|')]
+    return None
+
+
 def parse_chimeraproject(data):
     """Parse Chimera project metadata and its input log's active frames."""
     fmt = 'chimeraProject'
@@ -256,7 +277,10 @@ def parse_chimeraproject(data):
         doc = json.loads(data.decode('utf-8', 'replace'))
     except ValueError:
         return _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
-    if not isinstance(doc, dict) or 'input' not in doc:
+    if not isinstance(doc, dict):
+        return _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
+    lines = _chimera_entries(doc)
+    if lines is None:
         return _err(fmt, 'Missing the input log, can not parse')
     warnings = []
 
@@ -272,8 +296,6 @@ def parse_chimeraproject(data):
         rerecords = None
         warnings.append('missing rerecord count')
 
-    lines = [l for l in re.split(r'\r\n|\r|\n', str(doc.get('input') or ''))
-             if l.startswith('|')]
     if not lines:
         return _err(fmt, 'The input log holds no frames, can not parse')
 

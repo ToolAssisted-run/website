@@ -293,8 +293,11 @@ a supported format is parsed mechanically (`archivist/movieparse/`:
 Chimera's own `.chimeraProject`, the TASVideos emulator formats, classic
 ones included (smv, zmv, fcm, fmv, vmv,
 nmv, mmv, mcm, pjm, pxm, mc2, ymv, bkm, dof, rec), plus the game-specific
-tools the Tools page marks with a check. A Chimera project IS the movie, so
-what it reports is the run's own length: the frame count stops at the last
+tools the Tools page marks with a check. A Chimera project IS the movie: its
+input log is `inputs` (`columns`, and `entries`, one string a frame), and a
+project saved before Chimera wrote that holds `input`, the log's text block
+as one string; Chimera no longer opens the older form, but archived runs
+carry it, so the parser reads both. What it reports is the run's own length: the frame count stops at the last
 frame anything is pressed on, Chimera's own rule for its "Last input"
 marker, and idle frames left after it are warned about rather than counted.
 Its rate is read the way Chimera reads it: the cycle count over the clock

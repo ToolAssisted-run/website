@@ -11,5 +11,13 @@ They pin the frame count from both sides:
 - `input-to-the-end.chimeraProject` — 70 frames, every one carrying input,
   so the run is **70** frames and there is nothing to warn about.
 
+Both were saved before Chimera wrote a project's input as `inputs`
+(columns, and one entry a frame), so they hold the older `input` text block,
+which archived runs carry and the parser still reads. The two
+`*.inputs.chimeraProject` files are the same projects in the form Chimera
+writes now, converted the way its own writer splits the log key (`inputsOf`
+in `source/engine/source/project.cpp`) rather than saved by Chimera: replace
+them with projects Chimera saved when there are some.
+
 A synthetic fixture cannot catch a change in what Chimera actually writes;
 these can.

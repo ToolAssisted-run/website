@@ -368,8 +368,10 @@ def f_rec():
             + b'QWQUICK1'.ljust(16, b'\x00') + b'\x00' * (900 * 27)
             + struct.pack('<i', 0) + struct.pack('<i', 0x00492F75))
 
-def f_chimeraproject(idle=30, axes=False, last_input=None, rerecords=91):
-    """A Chimera project: the JSON wrapper and a BizHawk-shaped input lump.
+def f_chimeraproject(idle=30, axes=False, last_input=None, rerecords=91, legacy=False):
+    """A Chimera project: the JSON wrapper and its input log, as `inputs`
+    (columns and one entry a frame), or with `legacy` as the `input` text
+    block a project saved before 2026-10-28 holds.
 
     Twelve frames of Down, twelve of Right, then `idle` frames of nothing:
     the run ends on frame 23, whatever the log's length.
@@ -384,8 +386,11 @@ def f_chimeraproject(idle=30, axes=False, last_input=None, rerecords=91):
     doc = {'title': 'gridWalker', 'core': {'name': 'Synth', 'version': '1',
                                            'sha1': 'a' * 40},
            'headers': {'MovieVersion': 'Chimera v1', 'Platform': 'NES'},
-           'rerecords': rerecords,
-           'input': '[Input]\nLogKey:' + key + '\n' + '\n'.join(lines) + '\n[/Input]'}
+           'rerecords': rerecords}
+    if legacy:
+        doc['input'] = '[Input]\nLogKey:' + key + '\n' + '\n'.join(lines) + '\n[/Input]'
+    else:
+        doc['inputs'] = {'columns': [key[1:-1].split('|')], 'entries': lines}
     if last_input is not None:
         doc['headers']['LastInputFrame'] = str(last_input)
     return json.dumps(doc).encode()
@@ -583,10 +588,31 @@ def main():
     res = movieparse.parse('run.chimeraProject', json.dumps(stale).encode())
     ck('chimeraProject: a stale "Last input" marker is not believed',
        res.get('frames') == 24, str(res))
-    # the real thing: two projects Chimera wrote and replayed itself
+    # Chimera has written `inputs` since 2026-10-28; runs archived before
+    # carry the `input` text block, and both are one movie
+    res = movieparse.parse('run.chimeraProject', f_chimeraproject(idle=300, legacy=True))
+    ck('chimeraProject: a project saved before `inputs` still reads',
+       res.get('ok') and res.get('frames') == 24, str(res)[:200])
+    branched = json.loads(f_chimeraproject().decode())
+    branched['branches'] = [{'name': 'longer', 'frame': 0, 'inputs': {
+        'columns': branched['inputs']['columns'],
+        'entries': ['|...R....|'] * 500}}]
+    res = movieparse.parse('run.chimeraProject', json.dumps(branched).encode())
+    ck("chimeraProject: a branch's own input is not the movie's",
+       res.get('ok') and res.get('frames') == 24, str(res)[:200])
+    empty = json.loads(f_chimeraproject().decode())
+    del empty['inputs']
+    res = movieparse.parse('run.chimeraProject', json.dumps(empty).encode())
+    ck('chimeraProject: a project with no input yet is refused',
+       not res.get('ok') and 'input log' in str(res.get('error')), str(res)[:200])
+
+    # the real thing: two projects Chimera wrote and replayed itself, before
+    # `inputs`, and the same two as Chimera writes them now
     chimera_dir = pathlib.Path(__file__).resolve().parent / 'fixtures' / 'chimera'
     for fixture_name, want in (('last-input-early.chimeraProject', 25),
-                               ('input-to-the-end.chimeraProject', 70)):
+                               ('input-to-the-end.chimeraProject', 70),
+                               ('last-input-early.inputs.chimeraProject', 25),
+                               ('input-to-the-end.inputs.chimeraProject', 70)):
         real = chimera_dir / fixture_name
         res = movieparse.parse(real.name, real.read_bytes())
         ck(f'chimeraProject: {fixture_name} reads as {want} frames',
@@ -723,13 +749,13 @@ def main():
     ck('chimeraProject: a stated vsync is the rate',
        res.get('fps') and abs(res['fps'] - 59.94005994) < 1e-6, str(res.get('fps')))
     empty = json.loads(f_chimeraproject().decode())
-    empty['input'] = '[Input]\nLogKey:#P1 A|\n' + '|.|\n' * 40 + '[/Input]'
+    empty['inputs'] = {'columns': [['P1 A']], 'entries': ['|.|'] * 40}
     res = movieparse.parse('run.chimeraProject', json.dumps(empty).encode())
     ck('chimeraProject: a project with no input at all is its log, not one frame',
        res.get('frames') == 40
        and any('nothing is pressed' in w for w in res['warnings']), str(res))
     only_first = json.loads(f_chimeraproject().decode())
-    only_first['input'] = '[Input]\nLogKey:#P1 A|\n|A|\n' + '|.|\n' * 39 + '[/Input]'
+    only_first['inputs'] = {'columns': [['P1 A']], 'entries': ['|A|'] + ['|.|'] * 39}
     res = movieparse.parse('run.chimeraProject', json.dumps(only_first).encode())
     ck('chimeraProject: a run whose only press is frame zero is one frame',
        res.get('frames') == 1, str(res))
