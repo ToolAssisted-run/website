@@ -87,6 +87,9 @@ def main():
     )
     ck('a table with platform line-breaker', U(user_tbl_linesep) == want_user_tbl)
     ck('a table with CRLF explicitly', U(user_tbl.replace('\n', '\r\n')) == want_user_tbl)
+    ck('a link in a cell stays one cell when upgraded',
+       U('||Segment||[https://e.com|old TAS]\n|1|2').splitlines()[0]
+       == '| Segment | [old TAS](https://e.com) |', U('||Segment||[https://e.com|old TAS]\n|1|2'))
     md, warn = up('| a | b |\n| c | d |')
     ck('a table without one gets an empty header, and says so', md.startswith('|  |  |\n| --- | --- |') and warn, (md, warn))
     md, warn = up('| a | b |\n| c |')

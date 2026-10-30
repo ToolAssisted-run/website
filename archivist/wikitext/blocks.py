@@ -19,39 +19,47 @@ def normalize_newlines(text):
 
 
 def _parse_table_cells(s):
-    """Split a wiki table row into (cell_content, is_header) tuples.
+    """Split a wiki table row into (cell_content, is_header) tuples, the way
+    TASVideos' own parser reads one (NewParser.cs, EatPipes).
 
-    A row starts with '|' (or '||'). Cells inside the row begin with '||'
-    (header cell) or '|' (data cell). A trailing '||' or '|' is an optional
-    closing delimiter."""
-    row = s.strip().replace('[|]', '\x01')
-    if row.startswith('||') and row.endswith('||') and len(row) > 2:
-        body = row[:-2]
-    elif row.endswith('|') and len(row) > 1:
-        body = row[:-1]
-    else:
-        body = row
-
-    cells = []
-    pos = 0
-    while pos < len(body):
-        if body[pos:pos + 2] == '||':
-            is_th = True
-            pos += 2
-        elif body[pos] == '|':
-            is_th = False
-            pos += 1
-        else:
+    A row starts with '|'. Each run of bars opens a cell: one bar a data cell,
+    two or more a header cell, mixed freely within a row, so `|||` is one
+    header cell and not an empty one beside it. Bars with nothing but spaces
+    after them close the row without opening another cell, which is why the
+    closing bar is optional. A bar inside brackets belongs to the bracket: a
+    `[link|label]` or a `[|]` is one cell's text, never two cells."""
+    s = s.rstrip('\r\n')
+    cells, cur, pos, n = [], None, 0, len(s)
+    while pos < n:
+        if s[pos] == '|':
+            end = pos
+            while end < n and s[end] == '|':
+                end += 1
+            if cur is not None:
+                cells.append(cur)
+            if not s[end:].strip():
+                cur = None
+                break
+            cur = ['', end - pos > 1]
+            pos = end
+            continue
+        if cur is None:                      # text before the first bar
             break
-        next_pos = body.find('|', pos)
-        if next_pos == -1:
-            cell_raw = body[pos:]
-            pos = len(body)
-        else:
-            cell_raw = body[pos:next_pos]
-            pos = next_pos
-        cells.append((cell_raw.strip().replace('\x01', '|'), is_th))
-    return cells
+        if s.startswith('[[', pos):         # a literal bracket, opening nothing
+            cur[0] += '[['
+            pos += 2
+            continue
+        if s[pos] == '[':
+            close = s.find(']', pos)
+            close = n - 1 if close < 0 else close
+            cur[0] += s[pos:close + 1]
+            pos = close + 1
+            continue
+        cur[0] += s[pos]
+        pos += 1
+    if cur is not None:
+        cells.append(cur)
+    return [(text.replace('[|]', '|').strip(), th) for text, th in cells]
 
 def wiki_html(text, refs=lambda s: s):
     """The whole notes text as HTML."""

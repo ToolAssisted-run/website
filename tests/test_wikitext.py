@@ -149,6 +149,19 @@ def main():
     ck('table rows without trailing pipes', '<th>Character</th>' in h and '<td>Junior</td>' in h and '<td>0:64</td>' in h, h)
     h = H('||Stage||Previous||New||Saved\n||Introduction|691|690|1')
     ck('mixed header and data cells in row', '<th>Introduction</th>' in h and '<td>691</td>' in h, h)
+    # as TASVideos' parser reads a row: a bar inside brackets is the link's,
+    # and a run of bars is one separator, however long
+    h = H('|[https://e.com|a link]|x\n||H|d||H2')
+    ck("a bar inside a link is the link's, not a cell's",
+       '<tr><td><a href="https://e.com">a link</a></td><td>x</td></tr>' in h, h)
+    ck('one bar opens a data cell and two a header cell, in any order',
+       '<tr><th>H</th><td>d</td><th>H2</th></tr>' in h, h)
+    ck('three bars are one header cell, not an empty one beside it',
+       wikitext.blocks._parse_table_cells('||Levels|||Frames saved|||Total||')
+       == [('Levels', True), ('Frames saved', True), ('Total', True)])
+    ck('bars and spaces closing a row open no empty cell',
+       wikitext.blocks._parse_table_cells('|Intro Stage|In this stage||      ')
+       == [('Intro Stage', False), ('In this stage', False)])
 
     # ---- cross-platform line-breakers ----
     import os

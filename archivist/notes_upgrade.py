@@ -545,7 +545,8 @@ def upgrade(text, external_base='', local_run=None):
                 flush()
             cells = [(up.inline(c, cell=True), is_th)
                      for c, is_th in wikitext._parse_table_cells(s)]
-            table.append((None, cells))
+            if cells:                       # a line of bars alone is an empty row
+                table.append((None, cells))
             continue
         m = re.match(r'^([*#]+)\s*(.*)', s)
         if m:
