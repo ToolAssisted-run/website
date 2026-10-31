@@ -158,20 +158,25 @@ const spec = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const session = JSON.parse(process.argv[3]);
 const calls = { errors: [], html: {}, fetched: [] };
 const els = [];
+let focusedElement = null;
+const nativeUndo = [];
+const nativeRedo = [];
 
 function makeEl(s) {
   const e = {
     id: s.id || '', tag: s.tag, className: s.className || '', name: s.name || '',
     disabled: false, hidden: true, value: '', checked: false, files: [],
     textContent: s.text || (s.tag === 'script' ? '{}' : ''), style: {}, dataset: {}, options: [],
-    selectedIndex: -1, handlers: {},
+    selectedIndex: -1, selectionStart: 0, selectionEnd: 0, handlers: {},
     classList: { add(){}, remove(){}, toggle(){ return true; }, contains(){ return false; } },
     addEventListener(type, fn){ (this.handlers[type] = this.handlers[type] || []).push(fn); },
     removeEventListener(){}, setAttribute(k, v){ this.dataset[k] = v; },
     getAttribute(k){ return this.dataset[k]; }, removeAttribute(){},
     appendChild(c){ return c; }, prepend(){}, remove(){}, insertAdjacentHTML(){},
+    dispatchEvent(){},
     parentNode: { replaceChild(){}, insertBefore(){} },
-    closest(){ return null; }, focus(){}, submit(){}, scrollIntoView(){},
+    closest(){ return null; }, focus(){ focusedElement = this; }, select(){}, submit(){}, scrollIntoView(){},
+    setSelectionRange(start, end){ this.selectionStart = start; this.selectionEnd = end; },
     getBoundingClientRect(){ return { height: 400, width: 800, top: 0 }; },
     querySelector(sel){ return find(sel); }, querySelectorAll(sel){ return findAll(sel); },
     get innerHTML(){ return calls.html[this.id || this.name] || ''; },
@@ -191,9 +196,28 @@ function matches(e, sel) {
 }
 const find = (sel) => els.find((e) => matches(e, sel)) || null;
 const findAll = (sel) => els.filter((e) => matches(e, sel));
+const snapshot = (e) => ({
+  value: e.value, selectionStart: e.selectionStart, selectionEnd: e.selectionEnd,
+});
+function restore(e, state) {
+  e.value = state.value;
+  e.setSelectionRange(state.selectionStart, state.selectionEnd);
+}
+function saveNativeEdit(e, before) {
+  nativeUndo.push({ element: e, before });
+  nativeRedo.length = 0;
+}
 for (const s of spec) els.push(makeEl(s));
 const byId = {};
 for (const e of els) if (e.id) byId[e.id] = e;
+if (byId['s-notes']) {
+  byId['s-notes'].value = (session && session.__notes) || '';
+  byId['s-notes'].selectionStart = (session && session.__selectionStart) || 0;
+  byId['s-notes'].selectionEnd = (session && session.__selectionEnd) || 0;
+}
+Object.entries((session && session.__values) || {}).forEach(([id, value]) => {
+  if (byId[id]) byId[id].value = String(value);
+});
 
 global.document = {
   documentElement: { dataset: {}, classList: { add(){}, remove(){} } },
@@ -204,6 +228,17 @@ global.document = {
   querySelectorAll: (sel) => findAll(sel),
   createElement: (tag) => makeEl({ tag }),
   createTextNode: (text) => makeEl({ tag: '#text', text: String(text) }),
+  execCommand(command, _ui, text) {
+    if (command !== 'insertText' || !focusedElement) return false;
+    const e = focusedElement;
+    const before = snapshot(e);
+    e.value = e.value.slice(0, e.selectionStart) + text + e.value.slice(e.selectionEnd);
+    const caret = before.selectionStart + String(text).length;
+    e.setSelectionRange(caret, caret);
+    saveNativeEdit(e, before);
+    e.dispatchEvent({ type: 'input', bubbles: true });
+    return true;
+  },
   addEventListener(){}, cookie: '',
 };
 global.window = {
@@ -248,16 +283,57 @@ try {
   calls.errors.push('threw: ' + (e && e.stack ? e.stack.split('\n')[0] : e));
 }
 realTimeout(() => {                     // the page wires itself after the session probe
-  const fire = (id, type) => {
+  const fire = (id, type, props = {}) => {
     const el = byId[id];
-    if (!el || !el.handlers[type]) { calls.errors.push('no ' + type + ' handler on ' + id); return; }
-    try { el.handlers[type].forEach((fn) => fn({ preventDefault(){}, target: el })); }
+    if (!el) { calls.errors.push('no element ' + id); return; }
+    if (props.nativeEdit) saveNativeEdit(el, snapshot(el));
+    if (Object.hasOwn(props, 'value')) el.value = props.value;
+    if (Object.hasOwn(props, 'selectionStart')) el.selectionStart = props.selectionStart;
+    if (Object.hasOwn(props, 'selectionEnd')) el.selectionEnd = props.selectionEnd;
+    if (!el.handlers[type]) {
+      if (type !== 'input' && type !== 'change') calls.errors.push('no ' + type + ' handler on ' + id);
+      return;
+    }
+    const event = Object.assign({ key: '', ctrlKey: false, metaKey: false,
+      shiftKey: false, altKey: false, target: el,
+      preventDefault(){ this.defaultPrevented = true; } }, props);
+    if (Object.hasOwn(props, 'clipboardText')) {
+      event.clipboardData = { getData: () => props.clipboardText };
+      delete event.clipboardText;
+    }
+    event.target = el;
+    try { el.handlers[type].forEach((fn) => fn(event)); }
     catch (e) { calls.errors.push('handler ' + id + ': ' + e.message); }
+    if (event.defaultPrevented) calls.prevented = (calls.prevented || []).concat(id + ':' + type);
+    if (type === 'keydown' && !event.defaultPrevented &&
+        (event.metaKey || event.ctrlKey) && el === byId['s-notes']) {
+      const key = event.key.toLowerCase();
+      if (key === 'z' && event.shiftKey) {
+        const action = nativeRedo.pop();
+        if (action) {
+          nativeUndo.push({ element: action.element, before: snapshot(action.element) });
+          restore(action.element, action.state);
+        }
+      } else if (key === 'z') {
+        const action = nativeUndo.pop();
+        if (action) {
+          nativeRedo.push({ element: action.element, state: snapshot(action.element) });
+          restore(action.element, action.before);
+        }
+      } else if (key === 'y') {
+        const action = nativeRedo.pop();
+        if (action) {
+          nativeUndo.push({ element: action.element, before: snapshot(action.element) });
+          restore(action.element, action.state);
+        }
+      }
+    }
   };
-  JSON.parse(process.argv[4] || '[]').forEach(([id, type]) => fire(id, type));
+  JSON.parse(process.argv[4] || '[]').forEach(([id, type, props]) => fire(id, type, props || {}));
   calls.state = {};
   for (const e of els) if (e.id) calls.state[e.id] = {
-    disabled: e.disabled, hidden: e.hidden, textContent: e.textContent
+    disabled: e.disabled, hidden: e.hidden, textContent: e.textContent,
+    value: e.value, selectionStart: e.selectionStart, selectionEnd: e.selectionEnd
   };
   console.log(JSON.stringify(calls));
 }, 200);
@@ -371,6 +447,19 @@ def main():
         # the module submit.py wires). Preview must be usable and Submit must
         # be the button the encode check gates.
         sub_html = (out / 'submit' / 'index.html').read_text()
+        formatting_html = (out / 'formatting' / 'index.html').read_text()
+        ck('submit page offers the common Markdown toolbar',
+           all(f'id="nf-{action}"' in sub_html for action in
+               ('bold', 'italic', 'strike', 'code', 'heading', 'bullets',
+                'numbers', 'quote', 'link', 'table')))
+        ck('heading control offers levels 1 through 6',
+           'id="nf-heading-level"' in sub_html and
+           all(f'<option value="{level}"' in sub_html for level in range(1, 7)))
+        ck('link and table dialogs are available below notes',
+           'id="nf-link-dialog"' in sub_html and 'id="nf-table-dialog"' in sub_html)
+        ck('formatting guide includes common hotkeys',
+           '<th>Hotkeys</th>' in formatting_html and 'Ctrl/Cmd+B' in formatting_html
+           and 'Ctrl/Cmd+I' in formatting_html and 'Ctrl/Cmd+K' in formatting_html)
         session = {'ok': True, 'loggedIn': True, 'user': 'Ada', 'claimed': True,
                    'notifications': 0}
         sub, err = run_real_page(node, assets_dir, td, 'submit', sub_html, session,
@@ -386,6 +475,213 @@ def main():
                st.get('s-submit', {}).get('disabled') is True, str(st.get('s-submit')))
             ck('the form is shown to a logged-in member',
                st.get('submitform', {}).get('hidden') is False, str(st.get('submitform')))
+        bold, err = run_real_page(
+            node, assets_dir, td, 'notes-bold', sub_html,
+            dict(session, __notes='fast run', __selectionStart=0, __selectionEnd=9),
+            events=[('nf-bold', 'click')], module='page-submit.js')
+        ck('toolbar bold wraps the selected notes text',
+           bold is not None and bold['state'].get('s-notes', {}).get('value') == '**fast run**',
+           err or str((bold or {}).get('state', {}).get('s-notes')))
+        undo_click, err = run_real_page(
+            node, assets_dir, td, 'notes-undo-click', sub_html,
+            dict(session, __notes='fast run', __selectionStart=0, __selectionEnd=9),
+            events=[('nf-bold', 'click'),
+                    ('s-notes', 'keydown', {'key': 'z', 'metaKey': True})],
+            module='page-submit.js')
+        ck('Cmd/Ctrl+Z undoes formatting applied by a toolbar click',
+           undo_click is not None and
+           undo_click['state'].get('s-notes', {}).get('value') == 'fast run'
+           and 's-notes:keydown' not in undo_click.get('prevented', []),
+           err or str((undo_click or {}).get('state', {}).get('s-notes')))
+        undo_typed_between, err = run_real_page(
+            node, assets_dir, td, 'notes-undo-interleaved-typing', sub_html,
+            dict(session, __notes='fast run', __selectionStart=0, __selectionEnd=9),
+            events=[('nf-bold', 'click'),
+                    ('s-notes', 'input', {'nativeEdit': True, 'value': '**fast run** more',
+                                          'selectionStart': 17, 'selectionEnd': 17}),
+                    ('s-notes', 'keydown', {'key': 'z', 'ctrlKey': True}),
+                    ('s-notes', 'keydown', {'key': 'z', 'ctrlKey': True})],
+            module='page-submit.js')
+        ck('Ctrl+Z undoes interleaved typing before undoing toolbar formatting',
+           undo_typed_between is not None and
+           undo_typed_between['state'].get('s-notes', {}).get('value') == 'fast run',
+           err or str((undo_typed_between or {}).get('state', {}).get('s-notes')))
+        undo_after_move, err = run_real_page(
+            node, assets_dir, td, 'notes-undo-after-caret-move', sub_html,
+            dict(session, __notes='fast run', __selectionStart=0, __selectionEnd=9),
+            events=[('nf-bold', 'click'),
+                    ('s-notes', 'input', {'selectionStart': 11, 'selectionEnd': 11}),
+                    ('s-notes', 'keydown', {'key': 'z', 'ctrlKey': True})],
+            module='page-submit.js')
+        ck('undo still works after moving the notes caret',
+           undo_after_move is not None and
+           undo_after_move['state'].get('s-notes', {}).get('value') == 'fast run',
+           err or str((undo_after_move or {}).get('state', {}).get('s-notes')))
+        redo_click, err = run_real_page(
+            node, assets_dir, td, 'notes-redo-click', sub_html,
+            dict(session, __notes='fast run', __selectionStart=0, __selectionEnd=9),
+            events=[('nf-bold', 'click'),
+                    ('s-notes', 'keydown', {'key': 'z', 'ctrlKey': True}),
+                    ('s-notes', 'keydown',
+                     {'key': 'z', 'ctrlKey': True, 'shiftKey': True})],
+            module='page-submit.js')
+        ck('Ctrl+Shift+Z redoes the toolbar formatting action',
+           redo_click is not None and
+           redo_click['state'].get('s-notes', {}).get('value') == '**fast run**'
+           and 's-notes:keydown' not in redo_click.get('prevented', []),
+           err or str((redo_click or {}).get('state', {}).get('s-notes')))
+        edit_page, err = run_real_page(
+            node, assets_dir, td, 'notes-edit-mode', sub_html,
+            dict(session, __search='?edit=M900801',
+                 __runRecord={'ok': False, 'error': 'test edit record unavailable'},
+                 __notes='edit notes', __selectionStart=0, __selectionEnd=10),
+            events=[('nf-bold', 'click')],
+            module='page-submit.js')
+        ck('the same toolbar action works in the submit edit route',
+           edit_page is not None and
+           edit_page['state'].get('s-notes', {}).get('value') == '**edit notes**',
+           err or str((edit_page or {}).get('state', {}).get('s-notes')))
+        shortcut, err = run_real_page(
+            node, assets_dir, td, 'notes-shortcut', sub_html,
+            dict(session, __notes='fast run', __selectionStart=0, __selectionEnd=8),
+            events=[('s-notes', 'keydown', {'key': 'i', 'metaKey': True})],
+            module='page-submit.js')
+        ck('the macOS Command shortcut applies italic',
+           shortcut is not None and shortcut['state'].get('s-notes', {}).get('value') == '*fast run*',
+           err or str((shortcut or {}).get('state', {}).get('s-notes')))
+        windows_shortcut, err = run_real_page(
+            node, assets_dir, td, 'notes-windows-shortcut', sub_html,
+            dict(session, __notes='fast', __selectionStart=0, __selectionEnd=4),
+            events=[('s-notes', 'keydown', {'key': 'b', 'ctrlKey': True})],
+            module='page-submit.js')
+        ck('the Windows/Linux Control shortcut applies bold',
+           windows_shortcut is not None and
+           windows_shortcut['state'].get('s-notes', {}).get('value') == '**fast**',
+           err or str((windows_shortcut or {}).get('state', {}).get('s-notes')))
+        undo_shortcut, err = run_real_page(
+            node, assets_dir, td, 'notes-undo-shortcut', sub_html,
+            dict(session, __notes='fast', __selectionStart=0, __selectionEnd=4),
+            events=[('s-notes', 'keydown', {'key': 'b', 'metaKey': True}),
+                    ('s-notes', 'keydown', {'key': 'z', 'metaKey': True})],
+            module='page-submit.js')
+        ck('Cmd/Ctrl+Z undoes formatting applied by a keyboard shortcut',
+           undo_shortcut is not None and
+           undo_shortcut['state'].get('s-notes', {}).get('value') == 'fast',
+           err or str((undo_shortcut or {}).get('state', {}).get('s-notes')))
+        numbered, err = run_real_page(
+            node, assets_dir, td, 'notes-numbered-list', sub_html,
+            dict(session, __notes='first\nsecond', __selectionStart=0, __selectionEnd=12),
+            events=[('nf-numbers', 'click')],
+            module='page-submit.js')
+        ck('numbered-list action prefixes each selected line',
+           numbered is not None and
+           numbered['state'].get('s-notes', {}).get('value') == '1. first\n2. second',
+           err or str((numbered or {}).get('state', {}).get('s-notes')))
+        heading_level, err = run_real_page(
+            node, assets_dir, td, 'notes-heading-level', sub_html,
+            dict(session, __notes='## Existing heading', __selectionStart=0,
+                 __selectionEnd=20),
+            events=[('nf-heading-level', 'change', {'value': '4'}),
+                    ('nf-heading', 'click')],
+            module='page-submit.js')
+        ck('selected heading level replaces the existing heading level',
+           heading_level is not None and
+           heading_level['state'].get('s-notes', {}).get('value') == '#### Existing heading',
+           err or str((heading_level or {}).get('state', {}).get('s-notes')))
+        heading_undo, err = run_real_page(
+            node, assets_dir, td, 'notes-heading-undo', sub_html,
+            dict(session, __notes='## Existing heading', __selectionStart=0,
+                 __selectionEnd=20),
+            events=[('nf-heading-level', 'change', {'value': '4'}),
+                    ('nf-heading', 'click'),
+                    ('s-notes', 'keydown', {'key': 'z', 'ctrlKey': True})],
+            module='page-submit.js')
+        ck('heading level selection adds no separate undo step',
+           heading_undo is not None and
+           heading_undo['state'].get('s-notes', {}).get('value') == '## Existing heading'
+           and 's-notes:keydown' not in heading_undo.get('prevented', []),
+           err or str((heading_undo or {}).get('state', {}).get('s-notes')))
+        table, err = run_real_page(
+            node, assets_dir, td, 'notes-table', sub_html,
+            dict(session, __notes=''),
+            events=[('nf-table', 'click'),
+                    ('nf-table-columns', 'input', {'value': '2'}),
+                    ('nf-table-ok', 'click')],
+            module='page-submit.js')
+        ck('table dialog inserts the chosen Markdown dimensions',
+           table is not None and table['state'].get('nf-table-dialog', {}).get('hidden') is True
+           and table['state'].get('s-notes', {}).get('value') ==
+           '| Header 1 | Header 2 |\n| --- | --- |\n| Cell | Cell |\n| Cell | Cell |',
+           err or str((table or {}).get('state', {}).get('s-notes')))
+        table_in_text, err = run_real_page(
+            node, assets_dir, td, 'notes-table-in-text', sub_html,
+            dict(session, __notes='BeforeAfter', __selectionStart=6, __selectionEnd=6),
+            events=[('nf-table', 'click'), ('nf-table-ok', 'click')],
+            module='page-submit.js')
+        ck('table insertion keeps the block separated from surrounding prose',
+           table_in_text is not None and
+           table_in_text['state'].get('s-notes', {}).get('value') ==
+           'Before\n\n| Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n'
+           '| Cell | Cell | Cell |\n| Cell | Cell | Cell |\n\nAfter',
+           err or str((table_in_text or {}).get('state', {}).get('s-notes')))
+        larger_table, err = run_real_page(
+            node, assets_dir, td, 'notes-large-table', sub_html,
+            dict(session, __notes=''),
+            events=[('nf-table', 'click'),
+                    ('nf-table-rows', 'input', {'value': '12'}),
+                    ('nf-table-columns', 'input', {'value': '9'}),
+                    ('nf-table-ok', 'click')],
+            module='page-submit.js')
+        larger_value = (larger_table or {}).get('state', {}).get('s-notes', {}).get('value', '')
+        ck('table dimensions allow more than nine rows and up to nine columns',
+           larger_table is not None and len(larger_value.split('\n')) == 13
+           and '| Header 9 |' in larger_value,
+           err or str(larger_value[:100]))
+        plain_paste, err = run_real_page(
+            node, assets_dir, td, 'notes-plain-paste', sub_html,
+            dict(session, __notes='selected', __selectionStart=0, __selectionEnd=8),
+            events=[('s-notes', 'paste', {'clipboardText': 'ordinary text'})],
+            module='page-submit.js')
+        ck('non-URL paste is left to the browser',
+           plain_paste is not None and 's-notes:paste' not in plain_paste.get('prevented', [])
+           and plain_paste['state'].get('nf-link-dialog', {}).get('hidden') is True,
+           err or str((plain_paste or {}).get('state', {}).get('nf-link-dialog')))
+        pasted, err = run_real_page(
+            node, assets_dir, td, 'notes-paste-link', sub_html,
+            dict(session, __notes='watch this', __selectionStart=0, __selectionEnd=10),
+            events=[('s-notes', 'paste', {'clipboardText': 'https://example.com/path'}),
+                    ('nf-link-url', 'keydown', {'key': 'Enter'})],
+            module='page-submit.js')
+        ck('pasting an HTTP(S) URL over selected text opens and confirms a link',
+           pasted is not None and pasted['state'].get('s-notes', {}).get('value') ==
+           '[watch this](https://example.com/path)'
+           and 's-notes:paste' in pasted.get('prevented', []),
+           err or str((pasted or {}).get('state', {}).get('s-notes')))
+        edited_link, err = run_real_page(
+            node, assets_dir, td, 'notes-edit-link', sub_html,
+            dict(session, __notes='https://old.example', __selectionStart=8, __selectionEnd=8),
+            events=[('nf-link', 'click'),
+                    ('nf-link-url', 'keydown', {'key': 'Enter', 'value': 'https://new.example'})],
+            module='page-submit.js')
+        ck('Link edits the bare URL at the cursor and Enter confirms',
+           edited_link is not None and
+           edited_link['state'].get('s-notes', {}).get('value') ==
+           '[https://old.example](https://new.example)',
+           err or str((edited_link or {}).get('state', {}).get('s-notes')))
+        edited_markdown, err = run_real_page(
+            node, assets_dir, td, 'notes-edit-markdown-link', sub_html,
+            dict(session, __notes='[old](https://old.example)',
+                 __selectionStart=3, __selectionEnd=3),
+            events=[('nf-link', 'click'),
+                    ('nf-link-text', 'input', {'value': 'new'}),
+                    ('nf-link-url', 'keydown',
+                     {'key': 'Enter', 'value': 'https://new.example'})],
+            module='page-submit.js')
+        ck('Link edits an existing Markdown link at the cursor',
+           edited_markdown is not None and
+           edited_markdown['state'].get('s-notes', {}).get('value') ==
+           '[new](https://new.example)',
+           err or str((edited_markdown or {}).get('state', {}).get('s-notes')))
 
         move_session = dict(session, __search='?move=M900801',
                             __runRecord={

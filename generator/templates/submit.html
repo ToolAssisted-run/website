@@ -227,7 +227,56 @@ Honest attribution of every author is the one hard rule. Never upload ROMs.</spa
     <label class="check cwlab"><input type="checkbox" name="content_warnings" value="photosensitivity"> Photosensitivity (flashing lights)</label>
     <label class="check cwlab"><input type="checkbox" name="content_warnings" value="strong-language"> Strong language</label>
   </div>
-  <label>Notes (your write-up; see the <a href="../formatting/" target="_blank">formatting guide</a>)</label><textarea name="notes" rows="10"></textarea>
+  <label for="s-notes">Notes (your write-up; see the <a href="../formatting/" target="_blank">formatting guide</a>)</label><textarea id="s-notes" name="notes" rows="10"></textarea>
+  <div class="notes-formatting" id="notes-formatting" role="toolbar" aria-label="Submission notes formatting">
+    <div class="notes-formatting-actions">
+      <button type="button" class="btn quiet nf-action" id="nf-bold" title="Bold (Ctrl/Cmd+B)" aria-label="Bold">B</button>
+      <button type="button" class="btn quiet nf-action" id="nf-italic" title="Italic (Ctrl/Cmd+I)" aria-label="Italic"><i>I</i></button>
+      <button type="button" class="btn quiet nf-action" id="nf-strike" title="Strikethrough" aria-label="Strikethrough"><s>S</s></button>
+      <button type="button" class="btn quiet nf-action" id="nf-code" title="Inline code" aria-label="Inline code">&lt;/&gt;</button>
+      <div class="notes-formatting-heading">
+        <button type="button" class="btn quiet nf-action" id="nf-heading" title="Apply heading level" aria-label="Apply heading">H</button>
+        <select class="btn quiet" id="nf-heading-level" aria-label="Heading level">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </div>
+      <button type="button" class="btn quiet nf-action" id="nf-bullets" title="Bulleted list" aria-label="Bulleted list">• List</button>
+      <button type="button" class="btn quiet nf-action" id="nf-numbers" title="Numbered list" aria-label="Numbered list">1. List</button>
+      <button type="button" class="btn quiet nf-action" id="nf-quote" title="Quote" aria-label="Quote">Quote</button>
+      <button type="button" class="btn quiet nf-action" id="nf-link" title="Link (Ctrl/Cmd+K)" aria-label="Link">Link</button>
+      <button type="button" class="btn quiet nf-action" id="nf-table" title="Insert table" aria-label="Insert table">Table</button>
+    </div>
+    <p class="notes-formatting-hint">Select text to format it. Ctrl/Cmd+B, Ctrl/Cmd+I, and Ctrl/Cmd+K work on Windows/Linux and macOS.</p>
+    <div class="nf-dialog" id="nf-link-dialog" role="dialog" aria-modal="false" aria-labelledby="nf-link-title" hidden>
+      <h3 id="nf-link-title">Edit link</h3>
+      <label for="nf-link-text">Text</label>
+      <input id="nf-link-text" type="text" autocomplete="off">
+      <label for="nf-link-url">URL</label>
+      <input id="nf-link-url" type="url" autocomplete="url">
+      <p class="nf-dialog-error" id="nf-link-error" role="alert" hidden>Enter both the link text and URL.</p>
+      <div class="nf-dialog-actions">
+        <button type="button" class="btn quiet" id="nf-link-cancel">Cancel</button>
+        <button type="button" class="btn" id="nf-link-ok">OK</button>
+      </div>
+    </div>
+    <div class="nf-dialog" id="nf-table-dialog" role="dialog" aria-modal="false" aria-labelledby="nf-table-title" hidden>
+      <h3 id="nf-table-title">Insert table</h3>
+      <label for="nf-table-rows">Rows (including header)</label>
+      <input id="nf-table-rows" type="number" min="1" step="1" value="3">
+      <label for="nf-table-columns">Columns (1–9)</label>
+      <input id="nf-table-columns" type="number" min="1" max="9" step="1" value="3">
+      <p class="nf-dialog-error" id="nf-table-error" role="alert" hidden>Choose a whole number of rows and 1–9 columns.</p>
+      <div class="nf-dialog-actions">
+        <button type="button" class="btn quiet" id="nf-table-cancel">Cancel</button>
+        <button type="button" class="btn" id="nf-table-ok">Insert table</button>
+      </div>
+    </div>
+  </div>
   <button type="button" class="btn quiet" id="s-preview-btn">Preview</button>
   <div id="s-preview" hidden><h2>Preview</h2>
   <p class="rules fullw">Approximate; the live page is rendered by the site generator.</p>

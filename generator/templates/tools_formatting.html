@@ -1,15 +1,16 @@
-{# The formatting guide: the markup accepted in run notes, as a you-write / you-get table. #}
+{# The formatting guide: the markup accepted in run notes, with toolbar hotkeys. #}
 <header class="ghead"><div><h1>Formatting guide</h1>
 <p class="authline">The formatting accepted in run notes and in game and category rules.
 Plain paragraphs need no markup at all; blank lines separate them.</p></div></header>
-<div class="tblwrap"><table><thead><tr><th>You write</th><th>You get</th></tr></thead>
+<div class="tblwrap"><table><thead><tr><th>You write</th><th>You get</th><th>Hotkeys</th></tr></thead>
 <tbody>
 {% for ex in examples %}
-<tr><td><code>{{ ex.src }}</code></td><td>{{ ex.what }}</td></tr>
+<tr><td><code>{{ ex.src }}</code></td><td>{{ ex.what }}</td><td>{{ ex.hotkey }}</td></tr>
 {% endfor %}
 </tbody></table></div>
 <section><h2>Notes</h2><div class="policy"><ul>
 <li>The notes are Markdown as GitHub writes it, with the additions listed above. Anything not listed renders as plain text; nothing breaks, it just is not special.</li>
+<li>On the submission form, Ctrl/Cmd+V over selected text opens a link confirmation when the clipboard contains an HTTP(S) URL; ordinary paste is unchanged otherwise. Press Enter to confirm.</li>
 <li>HTML is never rendered: tags show as the text you typed.</li>
 <li>Where this comes from: headings, emphasis, lists, quotes, code, links, images, tables, strikethrough, bare-URL links and footnotes are standard Markdown (CommonMark and GitHub's additions), so they read the same on GitHub and most other sites. Definition lists, {% raw %}<code>{#id .class}</code>{% endraw %} attribute lists, <code>[text]{.small}</code> spans and <code>:::name</code> blocks are widely used extensions (from Pandoc, MyST and Docusaurus) that GitHub does not render. The names and options used here (quote, tabs, toc, embed, the span classes) and the <code>[M100001]</code> and <code>[user:Name]</code> references belong to this site. Outside this site, only the standard parts will render; the rest shows as text.</li>
 <li>Rules for games and categories use the same formatting.</li>

@@ -1,0 +1,78 @@
+.notes-formatting {
+  position: relative;
+  margin: 8px 0 14px;
+}
+
+.notes-formatting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notes-formatting-actions .nf-action {
+  min-width: 40px;
+  padding: 5px 9px;
+}
+
+.notes-formatting-heading {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+#nf-heading-level {
+  min-width: 48px;
+  padding: 4px 6px;
+}
+
+.notes-formatting-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 6px 0;
+}
+
+.nf-dialog {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(420px, 100%);
+  padding: 12px;
+  border: 2px solid var(--hairs);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.nf-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.nf-dialog label {
+  display: block;
+  margin: 7px 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.nf-dialog input {
+  width: 100%;
+  margin-top: 3px;
+}
+
+.nf-dialog input[type="number"] {
+  max-width: 10rem;
+}
+
+.nf-dialog-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.nf-dialog-error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  margin: 6px 0;
+}

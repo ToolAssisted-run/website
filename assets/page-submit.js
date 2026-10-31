@@ -20,6 +20,7 @@ import {
   armMultiPick,
   searchArchive,
 } from './app.js';
+import { initNotesFormatting } from './notes-formatting.js';
 
 var authorNamesPromise = null;
 // the registered member names, fetched once and shared
@@ -410,6 +411,7 @@ if (submitForm) {
       return;
     }
     submitForm.hidden = false;
+    initNotesFormatting();
     // half-written submissions are easy to lose to a stray click: once
     // anything in the form changes, leaving asks the standard are-you-sure
     var submitFormDirty = false;

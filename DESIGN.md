@@ -703,7 +703,12 @@ page (the run's title owns the first). `archivist/markup.py` is the only
 renderer (built on a CommonMark library, not regexes): the generator renders
 published pages with it and the archivist renders every live preview with it
 (`/api/preview`), so a preview cannot drift from the page. The formatting
-guide at `/formatting/` documents it from the same list the tests use.
+guide at `/formatting/` documents it from the same list the tests use. The
+submission notes field keeps Markdown as plain text and offers a toolbar for
+common inline and block constructs, links, and tables; its Ctrl/Cmd shortcuts
+work on both desktop platforms. Pasting an HTTP(S) URL over selected notes
+opens an editable link confirmation, and the Link action edits a link or bare
+URL at the caret. The formatting guide documents the common shortcuts.
 
 **A run says which language its notes are in.** `run.json` carries
 `notesFormat: "markdown"`; absent means the notes are in the older dialect

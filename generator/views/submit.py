@@ -26,4 +26,4 @@ body = tpl('submit.html', ARCHIVE_RAW=ARCHIVE_RAW, ARCHIVIST=ARCHIVIST, gamedata
 (OUT / 'submit' / 'index.html').write_text(page('Submit', body, '../', '', 'Submit',
     seo={'path': 'submit/', 'noindex': True},
     scripts=['page-submit.js'],
-    styles=['page-submit.css']), encoding='utf-8')
+    styles=['page-submit.css', 'notes-formatting.css']), encoding='utf-8')
