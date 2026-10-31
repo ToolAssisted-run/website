@@ -551,12 +551,26 @@ def main():
            and all(c['url'].startswith('https://github.com/') and c['shown']
                    and c['systems'] and all(m['id'] and m['name'] for m in c['systems'])
                    for c in cores_), str([c['name'] for c in cores_][:5]))
+        third_ = [c for c in cores_ if c.get('thirdParty')]
+        ck('a third-party core names its author and the author\'s home',
+           bool(third_) and all(c.get('author') and str(c.get('authorUrl', '')).startswith('https://github.com/')
+                                for c in third_), str([c['name'] for c in third_]))
         tools_page_ = all_html[out / 'tools' / 'index.html']
-        ck('the Tools page shows every listed core, by its home and its wording',
-           all(f'<a href="{c["url"]}">{markupsafe.escape(c["name"])}</a></td>'
-               f'<td>{markupsafe.escape(c["shown"])}</td>' in tools_page_ for c in cores_),
-           str([c['name'] for c in cores_
-                if f'<a href="{c["url"]}">' not in tools_page_][:5]))
+        def core_row_(c):
+            by_ = (f'<td><a href="{c["authorUrl"]}">{markupsafe.escape(c["author"])}</a></td>'
+                   if c.get('thirdParty') else '')
+            return (f'<a href="{c["url"]}">{markupsafe.escape(c["name"])}</a></td>' + by_
+                    + f'<td>{markupsafe.escape(c["shown"])}</td>')
+        ck('the Tools page shows every listed core, by its home and its wording, a third-party one with its author',
+           all(core_row_(c) in tools_page_ for c in cores_),
+           str([c['name'] for c in cores_ if core_row_(c) not in tools_page_][:5]))
+        official_part_, _, third_part_ = tools_page_.partition('id="third-party-cores"')
+        ck('official and third-party cores are listed apart: each third-party core only under its own heading',
+           'id="official-cores"' in official_part_ and bool(third_part_)
+           and all(f'<a href="{c["url"]}">' not in official_part_ and f'<a href="{c["url"]}">' in third_part_
+                   for c in third_)
+           and all(f'<a href="{c["url"]}">' in official_part_ for c in cores_ if not c.get('thirdParty')),
+           str([c['name'] for c in third_ if f'<a href="{c["url"]}">' in official_part_]))
         ck('and carries no link to the systems index under the cores table',
            'Every system, and the cores that run it' not in tools_page_)
         sysidx_ = all_html.get(out / 'systems' / 'index.html', '')
@@ -578,6 +592,11 @@ def main():
            bool(absent_) and 'not yet archived' in sys_rows_.get('Xbox 360', '')
            and '<a href="' + absent_[0]['url'] + '">' in sys_rows_.get('Xbox 360', ''),
            sys_rows_.get('Xbox 360', '')[:300])
+        ck('the systems index marks a third-party core as such, wherever it runs',
+           all('(third-party)' in row_ for c in third_ for row_ in sys_rows_.values()
+               if f'<a href="{c["url"]}">' in row_)
+           and any(f'<a href="{c["url"]}">' in row_ for c in third_ for row_ in sys_rows_.values()),
+           str([n for n, row_ in sys_rows_.items() if '(third-party)' in row_][:5]))
         ck('the games index points at the systems index',
            'href="../systems/"' in all_html[out / 'games' / 'index.html'])
         # ---------- browse by tool (#104) ----------

@@ -16,7 +16,7 @@ listed too, so you can see what a core would open.</p></div></header>
 {% for row in rows %}<tr data-hay="{{ (row.name ~ ' ' ~ row.key ~ ' ' ~ row.cores|map(attribute='name')|join(' ') ~ ' ' ~ row.tools|map(attribute=0)|join(' '))|lower }}">
 <td>{% if row.page %}<a href="{{ row.key }}/"><b>{{ row.name }}</b></a>{% else %}<b>{{ row.name }}</b>{% endif %}</td>
 <td class="syskey">{% if row.key %}{{ row.key }}{% else %}<span class="actmeta" title="No game on this system has been archived yet">not yet archived</span>{% endif %}</td>
-<td>{% for c in row.cores %}<a href="{{ c.url }}">{{ c.name }}</a>{{ ', ' if not loop.last }}{% else %}<span class="actmeta">—</span>{% endfor %}</td>
+<td>{% for c in row.cores %}<a href="{{ c.url }}">{{ c.name }}</a>{% if c.get('thirdParty') %} <span class="actmeta" title="Made and published by {{ c.author }}, not by the Chimera project">(third-party)</span>{% endif %}{{ ', ' if not loop.last }}{% else %}<span class="actmeta">—</span>{% endfor %}</td>
 <td>{% for name, n in row.tools %}{{ name }} <span class="actmeta">({{ n }})</span>{{ ', ' if not loop.last }}{% else %}<span class="actmeta">—</span>{% endfor %}</td>
 <td class="num">{{ row.games }}</td><td class="num">{{ row.runs }}</td></tr>
 {% endfor %}</tbody></table></div>

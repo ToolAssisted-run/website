@@ -314,10 +314,15 @@ of Chimera's cores (PCSX2, Flycast) end a frame when the machine presents a
 picture rather than at a vblank, so a game that drops frames makes a
 frames-over-rate time a lower bound; the form says so, and the author states
 the time regardless; every parser validated against
-real movies from the TASVideos corpus. Chimera's official cores are listed
-in one file, `generator/cores.json`: each core's home, the Tools table's
-wording for it, and the machines it runs under Chimera's own ids. The Tools
-page renders its two core tables from it, and **the systems index**
+real movies from the TASVideos corpus. Chimera's cores are listed in one
+file, `generator/cores.json`: each core's home, the Tools table's wording for
+it, and the machines it runs under Chimera's own ids. The Tools page renders
+its core tables from it in two groups, official cores (made, published and
+supported by the Chimera project) and third-party cores (made and published
+by somebody else from their own repository, listed for information only with
+their author, problems reported in their own repository), each split into
+emulation and games. **The systems index** marks a third-party core as such;
+it
 (`/systems/`) reads it to say which cores run what: one row per system the
 archive keeps (its key, its cores, the other tool families its runs were
 made with, counted, its games and runs) plus a row for every machine a core

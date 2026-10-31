@@ -40,10 +40,15 @@
   width: auto;
 }
 
-/* the two core tables, each under its own heading */
+/* the core tables: official and third-party, each split into emulation and games */
 .corehead {
   font-size: 1rem;
   margin: 22px 0 10px;
+}
+
+.coresub {
+  font-size: 0.9rem;
+  margin: 14px 0 8px;
 }
 
 .cat-changes-list {

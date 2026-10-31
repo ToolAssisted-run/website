@@ -1,4 +1,4 @@
-{# The Tools page: Chimera, botting tools, then the emulator and game-tool tables. #}
+{# The Tools page: Chimera and its cores (official, then third-party, each emulation then games), botting tools, then the emulator and game-tool tables. #}
 <header class="ghead"><div><h1>Tools</h1>
 <p class="authline">You can create your run with any emulator and any tools you like; you only
 need to submit the encoded video. Below are the TAS tools commonly used.</p>
@@ -17,17 +17,34 @@ is our recommended tool for TASing.</p>
 <p class="chimeradl"><a class="btn" href="https://github.com/ToolAssisted-run/chimera/releases">Download Chimera</a></p>
 <div class="policy fullw">
 <p class="rules fullw">Cores are downloaded separately and placed in Chimera's <b>cores</b> folder.</p>
-<h3 class="corehead">Emulation cores</h3>
+<h3 class="corehead" id="official-cores">Official cores</h3>
+<p class="rules fullw">Made, published and supported by the Chimera project. Report a problem
+with one in <a href="https://github.com/ToolAssisted-run/chimera/issues">Chimera's issues</a>.</p>
+<h4 class="coresub">Emulation</h4>
 <div class="tblwrap"><table><thead><tr><th>Core</th><th>Systems</th></tr></thead>
 <tbody>
 {# one row per core, from generator/cores.json: a new core is added there #}
-{% for c in cores if not c.get('game') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td>{{ c.shown }}</td></tr>
+{% for c in cores if not c.get('game') and not c.get('thirdParty') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td>{{ c.shown }}</td></tr>
 {% endfor %}</tbody></table></div>
-<h3 class="corehead">Game cores</h3>
+<h4 class="coresub">Games</h4>
 <p class="rules fullw">One game each, run from the game's own files.</p>
 <div class="tblwrap"><table><thead><tr><th>Core</th><th>Games</th></tr></thead>
 <tbody>
-{% for c in cores if c.get('game') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td>{{ c.shown }}</td></tr>
+{% for c in cores if c.get('game') and not c.get('thirdParty') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td>{{ c.shown }}</td></tr>
+{% endfor %}</tbody></table></div>
+<h3 class="corehead" id="third-party-cores">Third-party cores</h3>
+<p class="rules fullw">Made and published by other people from their own repositories, and
+listed here for information only. The Chimera project does not maintain or support them:
+report a problem with one in its own repository.</p>
+<h4 class="coresub">Emulation</h4>
+<div class="tblwrap"><table><thead><tr><th>Core</th><th>Author</th><th>Systems</th></tr></thead>
+<tbody>
+{% for c in cores if not c.get('game') and c.get('thirdParty') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td><a href="{{ c.authorUrl }}">{{ c.author }}</a></td><td>{{ c.shown }}</td></tr>
+{% endfor %}</tbody></table></div>
+<h4 class="coresub">Games</h4>
+<div class="tblwrap"><table><thead><tr><th>Core</th><th>Author</th><th>Games</th></tr></thead>
+<tbody>
+{% for c in cores if c.get('game') and c.get('thirdParty') %}<tr><td><a href="{{ c.url }}">{{ c.name }}</a></td><td><a href="{{ c.authorUrl }}">{{ c.author }}</a></td><td>{{ c.shown }}</td></tr>
 {% endfor %}</tbody></table></div>
 </div></section>
 <section><h2>Botting and brute-forcing tools</h2>
