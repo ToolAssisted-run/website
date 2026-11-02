@@ -209,12 +209,7 @@ def _bk2_input_frames(archive):
                        if n.lower().startswith('input log')), None)
     if input_name is None:
         return None
-    frames = 0
-    with archive.open(input_name) as log:
-        for line in io.TextIOWrapper(log, encoding='utf-8', errors='replace'):
-            if line.startswith('|'):
-                frames += 1
-    return frames
+    return zip_count_lines(archive, input_name, b'|')
 
 
 def _chimera_game_time(lower, log_frames, settings, warnings):
@@ -345,7 +340,7 @@ def parse_bk2(data, fmt='bk2'):
                         and not any(c.isdigit() for c in n)), None)
     if header_name is None:
         return _err(fmt, 'Missing header, can not parse')
-    header = _lines(z.read(header_name).decode('utf-8', 'replace'))
+    header = _lines(zip_read(z, header_name).decode('utf-8', 'replace'))
 
     warnings = []
     platform = _value_for(header, 'platform')

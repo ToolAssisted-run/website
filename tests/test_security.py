@@ -538,6 +538,16 @@ def main():
             code, r, _ = call(U + '/api/submit', dict(sub, game='nes/testgame', goal='fastest'),
                               files={'movie': ('m.bk2', os.urandom(33 * 1024 * 1024))})
             ck('an oversized movie is refused', code in (400, 413), f'{code} {str(r)[:80]}')
+            # ...and a small movie holding a file that unpacks past 50 MB is
+            # refused for that, by name, before it is read whole
+            bomb = io.BytesIO()
+            with zipfile.ZipFile(bomb, 'w', zipfile.ZIP_DEFLATED) as z:
+                z.writestr('Header.txt', b'\0' * (60 * 1024 * 1024))
+                z.writestr('Input Log.txt', '|.|\n')
+            code, r, _ = call(U + '/api/submit', dict(sub, game='nes/testgame', goal='fastest'),
+                              files={'movie': ('m.bk2', bomb.getvalue())})
+            ck('a movie that unpacks past 50 MB is refused, saying so',
+               code == 400 and 'unpacks to more than 50 MB' in str(r), f'{code} {str(r)[:160]}')
 
             # ---------------- the archive is still sane ----------------
             check = td / 'check'

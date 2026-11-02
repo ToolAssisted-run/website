@@ -123,6 +123,8 @@ def register(app, *, DISCUSSION_CACHE, ENCODE_CACHE, _helper_gate, _name_seen, _
             return fail(oversize)
         known = ext in allowed_movie_exts()
         parsed = movieparse.parse(movie_upload.filename, movie_bytes) if known else {'ok': False, 'error': f'.{ext} is not a format the archive can read'}
+        if parsed.get('tooLarge'):          # a file inside unpacks past the cap
+            return fail(parsed['error'])
         fps = parsed.get('fps') if parsed.get('ok') else None
         frames = parsed.get('frames') if parsed.get('ok') else None
         # a movie that names no frame rate runs at its system's (form field game)

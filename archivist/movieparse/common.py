@@ -58,6 +58,134 @@ def _err(fmt, msg):
     return {'ok': False, 'format': fmt, 'error': msg}
 
 
+# How much the site unpacks from one movie. A small upload can hold a file that
+# unpacks to gigabytes, so nothing is unpacked without a bound. A file read
+# whole stops at 50 MB. An input log is counted line by line, so neither it
+# nor any line of it is ever held whole, and stops at 1 GB: the largest one
+# archived (a 2.6 million frame PlayStation run) is 240 MB and counts in under
+# half a second. A tar is read header by header, and stops at 10,000 entries.
+UNPACK_WHOLE_MAX = 50 * 1024 * 1024
+UNPACK_COUNTED_MAX = 1024 * 1024 * 1024
+TAR_ENTRIES_MAX = 10_000
+
+
+class UnpackTooLarge(ValueError):
+    """A file inside a movie unpacks past what the site reads. The message
+    names the file and the limit, and is shown to the uploader as it is."""
+
+
+def _mb(n):
+    return f'{n // (1 << 30)} GB' if n >= 1 << 30 else f'{n // (1 << 20)} MB'
+
+
+def _too_large(name, limit, what='file'):
+    """The refusal for one file (`name`), or for the whole movie (None)."""
+    it = f'the {what} "{name}" inside this movie' if name else 'this movie'
+    return UnpackTooLarge(
+        f'{it} unpacks to more than {_mb(limit)}, and the site reads at most '
+        f'{_mb(limit)} of it; if the movie is right, ask on the forum to have it '
+        f'archived')
+
+
+def zip_read(archive, name):
+    """A zip entry's bytes, read whole: at most UNPACK_WHOLE_MAX of them."""
+    if archive.getinfo(name).file_size > UNPACK_WHOLE_MAX:
+        raise _too_large(name, UNPACK_WHOLE_MAX)
+    with archive.open(name) as entry:
+        data = entry.read(UNPACK_WHOLE_MAX + 1)
+    if len(data) > UNPACK_WHOLE_MAX:
+        raise _too_large(name, UNPACK_WHOLE_MAX)
+    return data
+
+
+def count_lines_starting(stream, prefix, name):
+    """How many lines of a byte stream start with `prefix` (ASCII), with lines
+    split as _lines splits them. Read in pieces: only the start of the line
+    being read is kept, and the stream stops at UNPACK_COUNTED_MAX bytes."""
+    width = len(prefix)
+    count = 0
+    total = 0
+    head = b''
+    while True:
+        piece = stream.read(1 << 16)
+        if not piece:
+            break
+        total += len(piece)
+        if total > UNPACK_COUNTED_MAX:
+            raise _too_large(name, UNPACK_COUNTED_MAX, 'input log')
+        parts = re.split(rb'[\r\n]', piece)
+        for part in parts[:-1]:
+            if len(head) < width:
+                head += part[:width - len(head)]
+            if head.startswith(prefix):
+                count += 1
+            head = b''
+        if len(head) < width:
+            head += parts[-1][:width - len(head)]
+    if head.startswith(prefix):
+        count += 1
+    return count
+
+
+def zip_count_lines(archive, name, prefix):
+    """count_lines_starting over a zip entry."""
+    if archive.getinfo(name).file_size > UNPACK_COUNTED_MAX:
+        raise _too_large(name, UNPACK_COUNTED_MAX, 'input log')
+    with archive.open(name) as entry:
+        return count_lines_starting(entry, prefix, name)
+
+
+def tar_files(archive):
+    """A tar's regular files, read header by header. Stops past
+    TAR_ENTRIES_MAX entries, or when an entry would reach past
+    UNPACK_COUNTED_MAX bytes of the unpacked tar, before unpacking it."""
+    files = []
+    entries = 0
+    while True:
+        member = archive.next()
+        if member is None:
+            return files
+        entries += 1
+        if entries > TAR_ENTRIES_MAX:
+            raise UnpackTooLarge(
+                f'this movie holds more than {TAR_ENTRIES_MAX:,} files, and the site '
+                f'reads at most {TAR_ENTRIES_MAX:,}; if the movie is right, ask on '
+                f'the forum to have it archived')
+        if member.offset_data + member.size > UNPACK_COUNTED_MAX:
+            raise _too_large(member.name, UNPACK_COUNTED_MAX)
+        if member.isfile():
+            files.append(member)
+
+
+def tar_read(archive, member):
+    """A tar entry's bytes, read whole: at most UNPACK_WHOLE_MAX of them."""
+    if member.size > UNPACK_WHOLE_MAX:
+        raise _too_large(member.name, UNPACK_WHOLE_MAX)
+    return archive.extractfile(member).read()
+
+
+def inflate(data, name, wbits):
+    """zlib (wbits 15) or gzip (wbits 31, every member) data, unpacked whole:
+    at most UNPACK_WHOLE_MAX bytes. zlib.error when it is not such data,
+    EOFError when it ends early."""
+    out = []
+    size = 0
+    while True:
+        unpacker = zlib.decompressobj(wbits)
+        piece = unpacker.decompress(data, UNPACK_WHOLE_MAX + 1 - size)
+        size += len(piece)
+        if size > UNPACK_WHOLE_MAX or unpacker.unconsumed_tail:
+            raise _too_large(name, UNPACK_WHOLE_MAX)
+        out.append(piece)
+        if not unpacker.eof:
+            raise EOFError('the compressed data ends early')
+        data = unpacker.unused_data
+        if wbits == 31:
+            data = data.lstrip(b'\0')     # gzip's padding between members
+        if wbits != 31 or not data:
+            return b''.join(out)
+
+
 def _lines(text):
     """Return nonempty lines from text in any newline convention."""
     return [l for l in re.split(r'\r\n|\r|\n', text) if l]
@@ -244,4 +372,4 @@ def _chimera_split(line):
 
 
 
-__all__ = ['NTSC_NES', 'NTSC_SNES', 'PAL_SNES', 'NTSC_SAT', 'NTSC_PSX', 'PAL_PSX', 'DOOM_FPS', '_ok', '_err', '_lines', '_value_for', '_has_value', '_bool_for', '_int_for', '_pipe_header_and_frames', 'BIZ_TO_TASV', 'CYCLE_BASED_CORES', 'VALID_CLOCK_RATES', 'BK2_INVALID', 'TASPROJ_INVALID', 'CHIMERA_LAST_INPUT_KEYS', 'VARIABLE_STEP_CORES', 'CONTENT_RATE_CORES', 'IGT_BASIS_SETTINGS', '_chimera_neutral_axes', '_chimera_split', 'gzip', 'io', 'json', 'math', 're', 'struct', 'tarfile', 'zipfile', 'zlib', 'ET']
+__all__ = ['_too_large', 'UNPACK_WHOLE_MAX', 'UNPACK_COUNTED_MAX', 'TAR_ENTRIES_MAX', 'UnpackTooLarge', 'zip_read', 'count_lines_starting', 'zip_count_lines', 'tar_files', 'tar_read', 'inflate', 'NTSC_NES', 'NTSC_SNES', 'PAL_SNES', 'NTSC_SAT', 'NTSC_PSX', 'PAL_PSX', 'DOOM_FPS', '_ok', '_err', '_lines', '_value_for', '_has_value', '_bool_for', '_int_for', '_pipe_header_and_frames', 'BIZ_TO_TASV', 'CYCLE_BASED_CORES', 'VALID_CLOCK_RATES', 'BK2_INVALID', 'TASPROJ_INVALID', 'CHIMERA_LAST_INPUT_KEYS', 'VARIABLE_STEP_CORES', 'CONTENT_RATE_CORES', 'IGT_BASIS_SETTINGS', '_chimera_neutral_axes', '_chimera_split', 'gzip', 'io', 'json', 'math', 're', 'struct', 'tarfile', 'zipfile', 'zlib', 'ET']

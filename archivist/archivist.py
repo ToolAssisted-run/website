@@ -1138,6 +1138,8 @@ def attach_movie(run, run_dir, upload):
     if oversize:
         return None, fail(oversize)
     parsed = movieparse.parse(upload.filename, movie_bytes)
+    if parsed.get('tooLarge'):           # a file inside unpacks past the cap
+        return None, fail(parsed['error'])
     if not parsed['ok']:                 # any extension is archived as it is
         parsed = {'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
     (run_dir / f"{run['id']}.{ext}").write_bytes(movie_bytes)

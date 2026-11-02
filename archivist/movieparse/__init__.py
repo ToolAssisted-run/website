@@ -98,5 +98,8 @@ def parse(filename, data):
         return _err(ext, f'no parser for .{ext}')
     try:
         return fn(data)
+    except UnpackTooLarge as e:
+        # not a parse failure: the movie is refused, and the uploader told why
+        return {**_err(ext, str(e)), 'tooLarge': True}
     except Exception as e:   # noqa: BLE001 — a parser bug must never take down intake
         return _err(ext, f'parse failure: {e.__class__.__name__}: {e}')

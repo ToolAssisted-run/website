@@ -21,9 +21,9 @@ guards, and the few things deliberately left open.
 | `tests/test_generator.py` | 23 | page rendering per run state, act zones, imported panels |
 | `tests/test_output.py` | 71 | output invariants (below) |
 | `tests/test_validate.py` | 56 | one negative case per validator rule |
-| `tests/test_movieparse.py` | 124 | parser fixtures, fuzz, confusion, bombs |
+| `tests/test_movieparse.py` | 341 | parser fixtures, fuzz, confusion, bombs, the unpack cap |
 | `tests/test_derivation.py` | 32 | status/ranking, points, stars, history, news, case parity |
-| `tests/test_security.py` | 35 | CSRF, sessions, SSO, traversal, magic bytes, scopes |
+| `tests/test_security.py` | 57 | CSRF, sessions, SSO, traversal, magic bytes, scopes, size caps |
 | `tests/test_robustness.py` | 12 | git recovery, concurrency, rollback, failures nobody foresaw answering in JSON |
 | `tests/test_preview_parity.py` | 30 | server vs client markup renderer |
 | `tests/test_archivist.py` | 89 | the whole community loop end to end |
@@ -71,7 +71,10 @@ by gutting rules and confirming the suite goes red.
 heuristic cascade the fuzz layer covers instead) asserting frames, rerecords,
 system and start type · fuzz over empty, tiny, random, truncated and
 trailing-garbage input, asserting `parse()` never raises and never reports
-negative frames · wrong-extension confusion · a compression bomb.
+negative frames · wrong-extension confusion · a compression bomb · the
+unpack cap: each kind of read refused past its limit (50 MB whole, 1 GB
+counted, 10,000 tar entries) with the file named, a header of exactly 50 MB
+still read, and input logs counted in pieces equal to counting whole lines.
 
 **Video platforms**: every URL shape each platform hands out, parsed to the
 same id · refusals, above all a hostile URL that merely CONTAINS a platform

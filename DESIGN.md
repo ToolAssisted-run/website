@@ -377,7 +377,15 @@ default 60 s would turn a write that succeeded into a 504. So a movie-only
 submission can be just under 100 MiB and screenshots eat into that, while
 the self-service import has no such ceiling because it never crosses HTTP:
 it reads the backup already on the host. The per-IP `limit_req` in front of
-`/archivist/` is what keeps a large body from being a flood. Movie frame counts are ≥0 by schema; a movie
+`/archivist/` is what keeps a large body from being a flood. What a movie
+**unpacks to** is capped too, since a small zip can hold a file that unpacks
+to gigabytes: a file read whole (a header, an lsnes entry, a libTAS config, a
+gzipped replay) stops at 50 MB, an input log is counted line by line without
+ever being held whole and stops at 1 GB (the largest archived, a 2.6 million
+frame PlayStation run, is 240 MB and counts in under half a second), and a tar
+is read header by header up to 10,000 entries. A movie past any of these is
+refused with a message naming the file and the limit, and pointing to the
+forum; nothing past the cap is unpacked first. Movie frame counts are ≥0 by schema; a movie
 whose own frame rate differs from the system default carries `movie.fps`
 (the fallback rate for older runs whose time still derives from frames).
 

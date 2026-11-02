@@ -558,6 +558,95 @@ def main():
        f'{time.time() - t0:.1f}s')
     ck('compressed bomb yields a result', isinstance(res, dict) and 'ok' in res)
 
+    # ---------------- the unpack cap (owner, 2026-11-02) ----------------
+    # A file read whole stops at 50 MB, an input log counted line by line at
+    # 1 GB, a tar at 10,000 entries; past any of them the movie is refused
+    # with a message naming the file, and no more than the cap is unpacked.
+    common = movieparse.common
+    big = b'\0' * (common.UNPACK_WHOLE_MAX + 1)
+
+    def zipped(entries):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+            for name, body in entries.items():
+                z.writestr(name, body)
+        return buf.getvalue()
+
+    def refused(res, *words):
+        return (not res.get('ok') and res.get('tooLarge')
+                and all(w in res.get('error', '') for w in words))
+
+    res = movieparse.parse('m.bk2', zipped({'Header.txt': big, 'Input Log.txt': '|.|\n'}))
+    ck('cap: a bk2 header past 50 MB is refused, named',
+       refused(res, '"Header.txt"', '50 MB', 'forum'), str(res)[:200])
+    edge = zipped({'Header.txt': b'Platform NES\n' + b' ' * (common.UNPACK_WHOLE_MAX - 13),
+                   'Input Log.txt': '|.|\n' * 7})
+    res = movieparse.parse('m.bk2', edge)
+    ck('cap: a header of exactly 50 MB is read', res.get('ok') and res['frames'] == 7,
+       str(res)[:200])
+    res = movieparse.parse('m.lsmv', zipped({'gametype': big, 'input': 'F\n'}))
+    ck('cap: an lsmv entry read whole past 50 MB is refused', refused(res, '"gametype"'),
+       str(res)[:200])
+    res = movieparse.parse('m.omr', __import__('gzip').compress(big))
+    ck('cap: a gzipped replay past 50 MB is refused', refused(res, 'this movie', '50 MB'),
+       str(res)[:200])
+    res = movieparse.parse('m.tas', struct.pack('<I', len(big)) + zlib.compress(big))
+    ck('cap: a Ballance record past 50 MB is refused', refused(res, 'this movie'),
+       str(res)[:200])
+    res = movieparse.parse('m.gmtas', struct.pack('<IQ', 1, common.UNPACK_WHOLE_MAX + 1) + b'\0' * 64)
+    ck('cap: a .gmtas that says it unpacks past 50 MB is refused', refused(res, 'this movie'),
+       str(res)[:200])
+    # an LZ4 match whose length runs past the size the replay states (a
+    # chain of 255 bytes) is damage, stopped before it is copied
+    lz4 = bytes([0x1F]) + b'A' + b'\x01\x00' + b'\xff' * 40000 + b'\x00'
+    t0 = time.time()
+    res = movieparse.parse('m.gmtas', struct.pack('<IQ', 1, 1024) + lz4)
+    ck('cap: an LZ4 length past the stated size is damage, at once',
+       not res.get('ok') and 'damaged' in res.get('error', '') and time.time() - t0 < 1,
+       f'{res} {time.time() - t0:.2f}s')
+
+    def tarred(entries):
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode='w:gz') as t:
+            for name, body in entries:
+                info = tarfile.TarInfo(name)
+                info.size = len(body)
+                t.addfile(info, io.BytesIO(body))
+        return buf.getvalue()
+
+    res = movieparse.parse('m.ltm', tarred([('config.ini', big)]))
+    ck('cap: an ltm config past 50 MB is refused', refused(res, '"config.ini"'), str(res)[:200])
+    res = movieparse.parse('m.ltm', tarred([(f'f{i}', b'') for i in range(common.TAR_ENTRIES_MAX + 1)]
+                                           + [('config.ini', b'frame_count=5\n')]))
+    ck('cap: a tar of more than 10,000 entries is refused', refused(res, '10,000'), str(res)[:200])
+    res = movieparse.parse('m.dft', tarred([('main.txt', big)]))
+    ck('cap: a dft script past 50 MB is refused', refused(res, '"main.txt"'), str(res)[:200])
+
+    # input logs are counted in pieces: the count is _lines' count whatever
+    # the line ends and wherever the 64 KB pieces fall
+    log = ''.join('|' + 'a' * 70000 + '\n' if i % 5000 == 7 else
+                  ('|..|\r\n', 'x|\n', '|.|\r', '\n\n')[i % 4]
+                  for i in range(200000)) + '|last'
+    want = sum(1 for l in common._lines(log) if l.startswith('|'))
+    got = common.count_lines_starting(io.BytesIO(log.encode()), b'|', 'log')
+    ck('cap: counting in pieces equals counting whole lines', got == want, f'{got} != {want}')
+    saved = common.UNPACK_COUNTED_MAX
+    common.UNPACK_COUNTED_MAX = 1 << 20     # the 1 GB cap, scaled down to test
+    try:
+        res = movieparse.parse('m.bk2', zipped({'Header.txt': 'Platform NES\n',
+                                                'Input Log.txt': '|.|\n' * 300000}))
+        ck('cap: an input log past the counting cap is refused, named',
+           refused(res, 'input log "Input Log.txt"', '1 MB'), str(res)[:200])
+        res = movieparse.parse('m.lsmv', zipped({'gametype': 'snes_ntsc\n',
+                                                 'input': 'F\n' * 600000}))
+        ck('cap: an lsmv input past the counting cap is refused', refused(res, '"input"'),
+           str(res)[:200])
+    finally:
+        common.UNPACK_COUNTED_MAX = saved
+    res = movieparse.parse('m.omr', __import__('gzip').compress(FIXTURES['omr'][0][:0]) +
+                           FIXTURES['omr'][0])
+    ck('cap: a gzip of more than one member still reads', res.get('ok'), str(res)[:200])
+
     # --- Chimera projects: the run ends where the input does ---
     res = movieparse.parse('run.chimeraProject', f_chimeraproject(idle=300))
     ck('chimeraProject: idle frames after the last press are not run time',

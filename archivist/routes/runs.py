@@ -36,6 +36,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         # a refusal; the record's time is the one the author states either
         # way (the form's own Import from movie fills it when it can).
         parsed = movieparse.parse(movie_upload.filename, movie_bytes)
+        if parsed.get('tooLarge'):          # a file inside unpacks past the cap
+            return None, fail(parsed['error'])
         if not parsed['ok']:
             parsed = {'ok': False, 'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
         if wants_time and goal != 'unclassified':
@@ -793,6 +795,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         # the same door as submission: any extension, and a parse
         # failure keeps the file with frames unknown
         parsed_movie = movieparse.parse(new_movie_upload.filename, movie_bytes)
+        if parsed_movie.get('tooLarge'):    # a file inside unpacks past the cap
+            return fail(parsed_movie['error'])
         if not parsed_movie['ok']:
             parsed_movie = {'ok': False, 'frames': 0, 'rerecords': None, 'start': 'power-on', 'fps': None}
         old_value = (f"{run['movie']['file']} (sha1 {run['movie'].get('sha1', '?')[:12]})"

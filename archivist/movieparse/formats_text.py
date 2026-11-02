@@ -219,7 +219,7 @@ def _lsmv_rerecords(archive, warnings):
                     if n.lower().startswith('rerecords')), None)
     rerecords = None
     if rr_name is not None:
-        rr = _lines(archive.read(rr_name).decode('utf-8', 'replace'))
+        rr = _lines(zip_read(archive, rr_name).decode('utf-8', 'replace'))
         try:
             rerecords = int(rr[0]) if rr else None
         except ValueError:
@@ -247,7 +247,7 @@ def parse_lsmv(data):
     gt_name = next((n for n in z.namelist() if n.lower().startswith('gametype')), None)
     if gt_name is None:
         return _err('lsmv', 'Could not determine the System Code')
-    gt = _lines(z.read(gt_name).decode('utf-8', 'replace'))
+    gt = _lines(zip_read(z, gt_name).decode('utf-8', 'replace'))
     line = gt[0].lower() if gt else None
     system = _lsmv_system(line, warnings)
     rerecords = _lsmv_rerecords(z, warnings)
@@ -256,8 +256,7 @@ def parse_lsmv(data):
                        and not any(c.isdigit() for c in n)), None)
     if input_name is None:
         return _err('lsmv', 'Missing input, can not parse')
-    frames = sum(1 for l in _lines(z.read(input_name).decode('utf-8', 'replace'))
-                 if l.startswith('F'))
+    frames = zip_count_lines(z, input_name, b'F')
     return _ok('lsmv', frames, rerecords, start, system, None, warnings)
 
 
@@ -296,16 +295,14 @@ def _ltm_members(archive):
     """Read libTAS config and optional platform annotation from archive members."""
     values = {}
     system = 'pc'
-    for member in archive.getmembers():
-        if not member.isfile():
-            continue
+    for member in tar_files(archive):
         base = member.name.split('/')[-1]
         if base == 'config.ini':
-            text = archive.extractfile(member).read().decode('utf-8', 'replace')
+            text = tar_read(archive, member).decode('utf-8', 'replace')
             _ltm_config(text, values)
             system = values.get('system', system)
         elif base == 'annotations.txt':
-            text = archive.extractfile(member).read().decode('utf-8', 'replace')
+            text = tar_read(archive, member).decode('utf-8', 'replace')
             for line in text.splitlines():
                 if line.lower().startswith('platform:'):
                     system = line.split(':', 1)[1].strip().lower() or system
@@ -355,8 +352,8 @@ def _omr_last_timestamp(replay):
 def parse_omr(data):
     """Parse OMR movie metadata and input length."""
     try:
-        xml_text = gzip.decompress(data).decode('utf-8', 'replace')
-    except OSError:
+        xml_text = inflate(data, None, 31).decode('utf-8', 'replace')
+    except (OSError, EOFError, zlib.error):
         return _err('omr', 'Invalid file format, does not seem to be a omr')
     root = ET.fromstring(xml_text)
     replay = root.iter('replay').__next__()
@@ -622,7 +619,7 @@ def parse_dft(data):
         tf = tarfile.open(fileobj=io.BytesIO(data), mode='r:*')
     except tarfile.TarError:
         return _err('dft', 'Invalid file format, does not seem to be a dft')
-    all_members = [m for m in tf.getmembers() if m.isfile()]
+    all_members = tar_files(tf)
 
     def find_member(path):
         # includes reference relative paths; match by suffix like TASVideos does
@@ -638,7 +635,7 @@ def parse_dft(data):
         """Count frames and include references in a script."""
         frames = 0
         includes = {}
-        text = tf.extractfile(find_member(name)).read().decode('utf-8', 'replace')
+        text = tar_read(tf, find_member(name)).decode('utf-8', 'replace')
         for line in text.splitlines():
             if line.startswith('#') or line.startswith('MOUSE'):
                 continue
@@ -676,7 +673,9 @@ def _tas_ballance(data, fmt):
     if len(data) >= 6 and data[4] == 0x78:
         try:
             size = struct.unpack_from('<I', data, 0)[0]
-            raw = zlib.decompress(data[4:])
+            raw = inflate(data[4:], None, 15)
+        except UnpackTooLarge:
+            raise
         except Exception:   # noqa: BLE001 — not a Ballance record, fall through
             raw = None
         if raw is not None and size == len(raw) and size and size % 8 == 0:
@@ -1104,6 +1103,8 @@ def _lz4_block(src, out_size):
     while i < n and len(out) < out_size:
         token = src[i]; i += 1
         lit, i = _lz4_length(src, i, token >> 4)
+        if len(out) + lit > out_size:
+            raise ValueError('bad length')
         out += src[i:i + lit]; i += lit
         if i >= n:
             break
@@ -1112,6 +1113,8 @@ def _lz4_block(src, out_size):
             raise ValueError('bad offset')
         mlen, i = _lz4_length(src, i, token & 15)
         mlen += 4
+        if len(out) + mlen > out_size:
+            raise ValueError('bad length')
         start = len(out) - offset
         for k in range(mlen):
             out.append(out[start + k])
@@ -1126,8 +1129,8 @@ def parse_gmtas(data):
     if len(data) < 13 or struct.unpack_from('<I', data, 0)[0] != 1:
         return _err('gmtas', 'Not a .gmtas replay (version != 1)')
     out_size = struct.unpack_from('<Q', data, 4)[0]
-    if out_size > 64 * 1024 * 1024:
-        return _err('gmtas', 'Replay too large to read')
+    if out_size > UNPACK_WHOLE_MAX:
+        raise _too_large(None, UNPACK_WHOLE_MAX)
     try:
         raw = _lz4_block(data[12:], out_size)
     except (ValueError, IndexError):
