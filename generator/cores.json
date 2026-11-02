@@ -63,6 +63,7 @@
   {"name": "Ikemen GO", "url": "https://github.com/ToolAssisted-run/chimera-core-ikemen", "shown": "Fighting games made with Ikemen GO, and M.U.G.E.N characters and stages", "game": true, "systems": [{"id": "IkemenGO", "name": "Ikemen GO"}]},
   {"name": "UnrealSpeccyP", "url": "https://github.com/CloakTheLurker/chimera-core-unrealspeccyp", "shown": "ZX Spectrum 128K (Pentagon), ZX Spectrum 48K", "thirdParty": true, "author": "CloakTheLurker", "authorUrl": "https://github.com/CloakTheLurker", "systems": [{"id": "ZXS", "name": "ZX Spectrum 128K"}, {"id": "ZXS48", "name": "ZX Spectrum 48K"}]},
   {"name": "Eden", "url": "https://github.com/mayonnaisegoodfellas/chimera-core-eden", "shown": "Nintendo Switch", "thirdParty": true, "author": "mayonnaisegoodfellas", "authorUrl": "https://github.com/mayonnaisegoodfellas", "systems": [{"id": "NSW", "name": "Nintendo Switch"}]},
+  {"name": "Gens-Rerecording", "url": "https://github.com/DmytroM1998/chimera-core-gens", "shown": "Mega Drive/Genesis", "thirdParty": true, "author": "DmytroM1998", "authorUrl": "https://github.com/DmytroM1998", "systems": [{"id": "GEN", "name": "Mega Drive / Genesis"}]},
   {"name": "SRB2", "url": "https://github.com/P-AS/chimera-core-srb2", "shown": "Sonic Robo Blast 2", "game": true, "thirdParty": true, "author": "P-AS", "authorUrl": "https://github.com/P-AS", "systems": [{"id": "SRB2", "name": "Sonic Robo Blast 2"}]}
  ]
 }
