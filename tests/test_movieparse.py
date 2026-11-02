@@ -395,8 +395,25 @@ def f_chimeraproject(idle=30, axes=False, last_input=None, rerecords=91, legacy=
         doc['headers']['LastInputFrame'] = str(last_input)
     return json.dumps(doc).encode()
 
+def zip_project(json_bytes):
+    """A project in the JSON forms as Chimera saves it since 2026-11-02: a zip
+    of project.json (its `inputs` holding the columns only) and input.input
+    (the entries, a line each), with each branch's entries in
+    branches/<n>.input."""
+    doc = json.loads(json_bytes.decode())
+    entries = doc.get('inputs', {}).pop('entries', [])
+    parts = {'input.input': ''.join(e + '\n' for e in entries)}
+    for n, branch in enumerate(doc.get('branches', []), 1):
+        parts['branches/%d.input' % n] = ''.join(e + '\n' for e in branch.get('inputs', {}).pop('entries', []))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr('project.json', json.dumps(doc, indent='\t'))
+        for name, text in parts.items():
+            z.writestr(name, text)
+    return buf.getvalue()
+
 FIXTURES = {
-    'chimeraproject': (f_chimeraproject(), 24, 'nes'),
+    'chimeraproject': (zip_project(f_chimeraproject()), 24, 'nes'),
     'bk2': (f_bk2(), 250, 'nes'),
     'tasproj': (f_bk2('tasproj'), 250, 'nes'),
     'gbmv': (f_bk2('gbmv'), 250, 'nes'),
@@ -695,13 +712,42 @@ def main():
     ck('chimeraProject: a project with no input yet is refused',
        not res.get('ok') and 'input log' in str(res.get('error')), str(res)[:200])
 
+    # Chimera saves a project as a zip since 2026-11-02: project.json, and the
+    # frames a line each in input.input; the same run in every form
+    res = movieparse.parse('run.chimeraProject', zip_project(f_chimeraproject(idle=300)))
+    ck('chimeraProject (zip): idle frames after the last press are not run time',
+       res.get('ok') and res.get('frames') == 24
+       and any('not counted as run time' in w for w in res.get('warnings', [])), str(res)[:200])
+    res = movieparse.parse('run.chimeraProject', zip_project(f_chimeraproject(last_input=40, rerecords=7)))
+    ck('chimeraProject (zip): the last input and the rerecords come from project.json',
+       res.get('ok') and res.get('frames') == 41 and res.get('rerecords') == 7, str(res)[:200])
+    res = movieparse.parse('run.chimeraProject', zip_project(json.dumps(branched).encode()))
+    ck("chimeraProject (zip): a branch's own input file is not the movie's",
+       res.get('ok') and res.get('frames') == 24, str(res)[:200])
+    def without(part):
+        src = zipfile.ZipFile(io.BytesIO(zip_project(f_chimeraproject())))
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as z:
+            for name in src.namelist():
+                if name != part:
+                    z.writestr(name, src.read(name))
+        return buf.getvalue()
+    res = movieparse.parse('run.chimeraProject', without('input.input'))
+    ck('chimeraProject (zip): one with no input.input is refused',
+       not res.get('ok') and 'input log' in str(res.get('error')), str(res)[:200])
+    res = movieparse.parse('run.chimeraProject', without('project.json'))
+    ck('chimeraProject (zip): one with no project.json is refused, saying so',
+       not res.get('ok') and 'project.json' in str(res.get('error')), str(res)[:200])
+
     # the real thing: two projects Chimera wrote and replayed itself, before
     # `inputs`, and the same two as Chimera writes them now
     chimera_dir = pathlib.Path(__file__).resolve().parent / 'fixtures' / 'chimera'
     for fixture_name, want in (('last-input-early.chimeraProject', 25),
                                ('input-to-the-end.chimeraProject', 70),
                                ('last-input-early.inputs.chimeraProject', 25),
-                               ('input-to-the-end.inputs.chimeraProject', 70)):
+                               ('input-to-the-end.inputs.chimeraProject', 70),
+                               ('last-input-early.zip.chimeraProject', 25),
+                               ('input-to-the-end.zip.chimeraProject', 70)):
         real = chimera_dir / fixture_name
         res = movieparse.parse(real.name, real.read_bytes())
         ck(f'chimeraProject: {fixture_name} reads as {want} frames',

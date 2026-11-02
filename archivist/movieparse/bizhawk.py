@@ -247,11 +247,13 @@ def _chimera_game_time(lower, log_frames, settings, warnings):
 def _chimera_entries(doc):
     """The input log's frames, one string each, or None for a project with none.
 
-    A project saved since 2026-10-28 holds them as `inputs`: `columns`, the
-    log key's groups, and `entries`, one `|..|....|` string a frame. One saved
-    before holds `input`, the movie's whole text block as one string. Chimera
-    no longer opens the older form, but runs already archived were made with
-    it, so both are read.
+    A project saved since 2026-11-02 is a zip: project.json, and the frames,
+    one `|..|....|` line each, in input.input (read into `inputs.entries` by
+    parse_chimeraproject). One saved from 2026-10-28 is a JSON file holding
+    them as `inputs`: `columns`, the log key's groups, and `entries`, one
+    string a frame. One saved before holds `input`, the movie's whole text
+    block as one string. Chimera opens only the zip, but runs already archived
+    were made with the older forms, so all three are read.
     """
     inputs = doc.get('inputs')
     if isinstance(inputs, dict):
@@ -265,13 +267,42 @@ def _chimera_entries(doc):
     return None
 
 
+def _chimera_zip(data, fmt):
+    """A project saved since 2026-11-02: its project.json, with the lines of
+    input.input as `inputs.entries`; or the error to answer with."""
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile:
+        return None, _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
+    names = set(z.namelist())
+    if 'project.json' not in names:
+        return None, _err(fmt, 'Invalid chimeraProject, it holds no project.json')
+    try:
+        doc = json.loads(zip_read(z, 'project.json').decode('utf-8', 'replace'))
+    except ValueError:
+        return None, _err(fmt, 'Invalid chimeraProject, its project.json is not JSON')
+    if not isinstance(doc, dict):
+        return None, _err(fmt, 'Invalid chimeraProject, its project.json is not JSON')
+    if 'input.input' not in names:
+        return None, _err(fmt, 'Missing the input log, can not parse')
+    lines = _lines(zip_read(z, 'input.input').decode('utf-8', 'replace'))
+    inputs = doc.get('inputs') if isinstance(doc.get('inputs'), dict) else {}
+    doc['inputs'] = dict(inputs, entries=lines)
+    return doc, None
+
+
 def parse_chimeraproject(data):
     """Parse Chimera project metadata and its input log's active frames."""
     fmt = 'chimeraProject'
-    try:
-        doc = json.loads(data.decode('utf-8', 'replace'))
-    except ValueError:
-        return _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
+    if data[:4] == b'PK\x03\x04':
+        doc, error = _chimera_zip(data, fmt)
+        if error is not None:
+            return error
+    else:
+        try:
+            doc = json.loads(data.decode('utf-8', 'replace'))
+        except ValueError:
+            return _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
     if not isinstance(doc, dict):
         return _err(fmt, 'Invalid file format, does not seem to be a chimeraProject')
     lines = _chimera_entries(doc)

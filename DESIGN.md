@@ -293,11 +293,13 @@ a supported format is parsed mechanically (`archivist/movieparse/`:
 Chimera's own `.chimeraProject`, the TASVideos emulator formats, classic
 ones included (smv, zmv, fcm, fmv, vmv,
 nmv, mmv, mcm, pjm, pxm, mc2, ymv, bkm, dof, rec), plus the game-specific
-tools the Tools page marks with a check. A Chimera project IS the movie: its
-input log is `inputs` (`columns`, and `entries`, one string a frame), and a
-project saved before Chimera wrote that holds `input`, the log's text block
-as one string; Chimera no longer opens the older form, but archived runs
-carry it, so the parser reads both. What it reports is the run's own length: the frame count stops at the last
+tools the Tools page marks with a check. A Chimera project IS the movie: it
+is a zip of `project.json` and its input log, one frame a line, in
+`input.input`. A project saved before that form is one JSON file holding the
+log as `inputs` (`columns`, and `entries`, one string a frame), and one
+older still holds `input`, the log's text block as one string; Chimera opens
+only the zip, but archived runs carry the older forms, so the parser reads
+all three. What it reports is the run's own length: the frame count stops at the last
 frame anything is pressed on, Chimera's own rule for its "Last input"
 marker, and idle frames left after it are warned about rather than counted.
 Its rate is read the way Chimera reads it: the cycle count over the clock
@@ -359,8 +361,8 @@ refused at intake: same movie bytes (`movie.sha1`), the same work saved again
 Caps are on what a movie costs a clone, not on what it weighs: up to 32 MB
 is accepted outright, past that up to the validator's 100 MB if it compresses
 to 4 MB or less, and a human decides anything beyond. The two numbers diverge
-by format. A Dolphin `.dtm` or a Chimera `.chimeraproject` is a fixed-width
-uncompressed input log that deflates 300:1, so a 46-minute GameCube run is
+by format. A Dolphin `.dtm` or a Chimera `.chimeraproject` of the older JSON
+forms is a fixed-width uncompressed input log that deflates 300:1, so a 46-minute GameCube run is
 97 MB on disk and 345 KB in the packfile, lighter than half the movies in the
 archive; a `.bk2` is a zip already and packs to itself. Raw size alone would
 turn away the free ones and admit the expensive ones. What grows in the band
