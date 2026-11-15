@@ -40,7 +40,8 @@ def random_selection(all_runs, shown):
     falls off Freshly archived. This shelf is where it gets its chance: the
     pool is every run with no stars and no visits, and only while fewer than
     two shelves' worth of those remain does it take in the rest as well,
-    quiet ones first.
+    quiet ones first. Imported runs are never in it: the shelf shows what
+    members brought here, not the seeded corpus.
 
     The order written here is a hash of the run id, not chance. A build has
     to give the same bytes for the same archive (every suite leans on that,
@@ -49,7 +50,8 @@ def random_selection(all_runs, shown):
     the pool at random and keeps a random few of it (assets/page-home.js).
     """
     seen = {r['id'] for r in shown}
-    left = [r for r in all_runs if r['id'] not in seen]
+    left = [r for r in all_runs if r['id'] not in seen
+            and r.get('status', {}).get('reproduced') != 'imported']
     quiet = [r for r in left if not nlikes(r) and not nvisits(r)]
     loud = [r for r in left if nlikes(r) or nvisits(r)]
     def scramble(rs):

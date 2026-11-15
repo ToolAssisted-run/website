@@ -421,6 +421,11 @@ def main():
                                         authors=['Ada'], submitted=d(30 - i))
                      for i in range(20)]
         pick_runs[19]['likes'] = [{'user': 'Fan', 'date': d(1)}]
+        imported10 = {f'M9004{40 + i}' for i in (0, 1)}
+        for i in (0, 1):
+            pick_runs[i]['status'] = {'reproduced': 'imported', 'verified': 'imported'}
+            pick_runs[i]['imported'] = {'source': f'https://tasvideos.org/{i + 1}M',
+                                        'importedBy': 'Importer', 'importedAt': d(9)}
         arch10 = mkarchive.make_archive(td / 'a10', pick_runs)
         out10 = td / 'o10'
         build(arch10, out10)
@@ -438,7 +443,10 @@ def main():
         liked10 = shelf_ids(home10, 'Most liked')
         picks10 = shelf_ids(home10, 'Random picks')
         pool10 = shard_ids(out10)
-        left10 = {r['id'] for r in pick_runs} - set(fresh10) - set(liked10)
+        left10 = {r['id'] for r in pick_runs} - set(fresh10) - set(liked10) - imported10
+        ck('an imported run is never a pick',
+           not (set(pool10) & imported10) and not (set(picks10) & imported10),
+           f'shards {sorted(pool10)} picks {picks10}')
         ck('the picks shelf holds what the other shelves left behind',
            picks10 and not (set(picks10) & (set(fresh10) | set(liked10))),
            f'picks {picks10} fresh {fresh10} liked {liked10}')
