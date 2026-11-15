@@ -6,10 +6,10 @@
 <p><b>toolAssisted.run</b> is a public archive of tool-assisted superplays.
 Classic and modern systems. Community-driven. Innovation first.</p>
 <div class="statstrip">
-<div class="stat"><b>{{ runs|length }}</b><span>runs</span></div>
-<div class="stat"><b>{{ games|length }}</b><span>games</span></div>
-<div class="stat"><b>{{ systems|length }}</b><span>systems</span></div>
-<div class="stat"><b>{{ authors|length }}</b><span>authors</span></div>
+<div class="stat"><b>{{ RUNS_ICON }}{{ runs|length }}</b><span>runs</span></div>
+<div class="stat"><b>{{ GAMES_ICON }}{{ games|length }}</b><span>games</span></div>
+<div class="stat"><b>{{ SYSTEMS_ICON }}{{ systems|length }}</b><span>systems</span></div>
+<div class="stat"><b>{{ AUTHORS_ICON }}{{ authors|length }}</b><span>authors</span></div>
 <div class="stat"><b><span class="starglyph">★</span>{{ '{:,}'.format(total_likes) }}</b><span>likes</span></div>
 {% if visits_known %}<div class="stat"><b>{{ EYE_ICON }}{{ '{:,}'.format(total_views) }}</b><span>views</span></div>{% endif %}
 </div>

@@ -3904,7 +3904,8 @@ label.check .checkhint,
   margin: 4px 0;
 }
 
-.stat b .eyeic {
+.stat b .eyeic,
+.stat b .static {
   width: 18px;
   height: 18px;
   vertical-align: -2px;

@@ -263,6 +263,11 @@ def main():
         m = re.search(r'<div class="stat"><b><span class="starglyph">★</span>([\d,]+)</b><span>likes</span>', home)
         ck('home likes stat is rendered', bool(m), home[:200])
         ck('no pending stat on the front page', '<span>pending</span>' not in home)
+        ck('the runs, games, systems and authors counters each carry an icon',
+           all(re.search(r'<div class="stat"><b><svg class="static"[^>]*>.*?</svg>[\d,]+</b>'
+                         rf'<span>{w}</span>', home)
+               for w in ('runs', 'games', 'systems', 'authors')),
+           home[home.find('statstrip'):home.find('statstrip') + 400])
         if m:
             want = sum(len(r.get('likes', [])) for r in pend_runs)
             ck('the likes stat sums every run', int(m.group(1).replace(',', '')) == want,

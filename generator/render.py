@@ -253,6 +253,18 @@ EYE_ICON = ('<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true">'
             '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>'
             '<circle cx="12" cy="12" r="2.6"/></svg>')
 
+# the home page's other counters, drawn like the eye: a frame-advance mark
+# for runs, a pad for games, a chip for systems, a head for authors
+def _stat_icon(paths):
+    return f'<svg class="static" viewBox="0 0 24 24" aria-hidden="true">{paths}</svg>'
+RUNS_ICON = _stat_icon('<path d="M5 5l10 7-10 7z"/><path d="M19 5v14"/>')
+GAMES_ICON = _stat_icon('<rect x="2" y="7" width="20" height="11" rx="5"/>'
+                        '<path d="M7 10.5v4M5 12.5h4"/>'
+                        '<circle cx="16" cy="11" r="0.8"/><circle cx="18" cy="14" r="0.8"/>')
+SYSTEMS_ICON = _stat_icon('<rect x="6" y="6" width="12" height="12" rx="2"/>'
+                          '<path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>')
+AUTHORS_ICON = _stat_icon('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>')
+
 def card_views(n):
     """The little eye a card carries, zero included. Visit counts are host
     state, absent on CI and the standby; only there does the eye vanish,
@@ -780,7 +792,8 @@ _TEXT_HELPERS = (
     'format_date moment clock sec_clock run_clock release_text primary_metric_text thumb_url '
     'thumb_alt shot_url breadcrumb_ld thumb_blurhash game_blurhash shot_blurhash '
     'thumb_data_url game_data_url shot_data_url').split()
-_HTML_CONSTANTS = 'METRICS_ED FULL_TICK NONE_TICK EYE_ICON'.split()
+_HTML_CONSTANTS = ('METRICS_ED FULL_TICK NONE_TICK EYE_ICON RUNS_ICON GAMES_ICON '
+                   'SYSTEMS_ICON AUTHORS_ICON').split()
 _TEXT_CONSTANTS = ('CW_LABELS NAV_LINKS SITE_URL DEFAULT_IMAGE EXPERT_NAMES_JS '
                    'COMMITTEE_NAMES_JS FOUNDER_NAMES_JS MONTH_ABBR ARCHIVE_RAW ARCHIVE_REF ARCHIVIST '
                    'FORUM SITE_COMMIT').split()
