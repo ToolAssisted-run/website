@@ -221,11 +221,15 @@ section > h2::after {
     repeat-x,
     linear-gradient(90deg, var(--hairs) 0 1px, transparent 1px) 0 4px / 10px 5px
     repeat-x;
+  pointer-events: none;
 }
 
 /* the dial: where the shelf below is scrolled to, and how much of it shows */
+/* above the ruler, which is the title's ::after and so paints after it:
+   under it, only the dial's edges took the pointer */
 .rulerdial {
   position: absolute;
+  z-index: 1;
   bottom: -2px;
   height: 13px;
   border: 2px solid var(--accent);
