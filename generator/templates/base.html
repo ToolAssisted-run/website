@@ -37,7 +37,7 @@ window.TAR.formatDate = function(s) {
   return str;
 };</script>
 {% for script in page_scripts %}<script type="module" src="{{ rel }}assets/{{ script }}?v={{ SITE_COMMIT or 'dev' }}"></script>{% endfor %}
-<div class="wrap{{ ' wrapfull' if wide else '' }}">{% if crumb %}<div class="crumb">{{ crumb|safe }}</div>{% endif %}
+<div class="wrap{{ ' wrapfull' if wide else '' }}">{% if page_wall %}<div class="pagewall{{ ' tiltback' if page_wall_n % 2 else '' }}" aria-hidden="true"><div class="walltiles" style="background-image:url('{{ rel }}{{ page_wall }}')"></div></div>{% endif %}{% if crumb %}<div class="crumb">{{ crumb|safe }}</div>{% endif %}
 {{ body|safe }}</div>
 <footer><div class="fmain">toolAssisted.run · generated from
 <a href="https://github.com/ToolAssisted-run/archive">the archive</a>{% if SITE_COMMIT %} · build <a href="https://github.com/ToolAssisted-run/website/commit/{{ SITE_COMMIT }}">{{ SITE_COMMIT }}</a>{% endif %}</div>

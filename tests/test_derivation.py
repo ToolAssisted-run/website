@@ -286,6 +286,12 @@ def main():
            and hashlib.sha1((out / 'assets' / 'herowall.jpg').read_bytes()).hexdigest()[:12]
                == wall.group(1),
            home[home.find('herowall'):home.find('herowall') + 200])
+        browse_page = (out / 'browse' / 'index.html').read_text(encoding='utf-8')
+        pwall = re.search(r'class="pagewall[^"]*"[^>]*><div class="walltiles" '
+                          r'style="background-image:url\(\'\.\./(assets/walls/\d\.jpg)\?v=', browse_page)
+        ck('every other page stands on a wall of its own, and home on none but its hero\'s',
+           pwall is not None and (out / pwall.group(1)).is_file() and 'pagewall' not in home,
+           browse_page[browse_page.find('class="wrap'):browse_page.find('class="wrap') + 300])
 
         # ---------------- stars ----------------
         star_runs = [

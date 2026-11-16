@@ -22,6 +22,11 @@
   --diff-del-bg: rgba(220, 38, 38, 0.1);
   --diff-del-border: rgba(220, 38, 38, 0.35);
   --diff-del-text: #b91c1c;
+  /* the walls of run frames behind the pages (render.compose_wall) */
+  --wall-filter: saturate(1.15) brightness(1.05);
+  --wall-veil-in: 80%;
+  --wall-veil-out: 95%;
+  --wall-scan: rgba(15, 23, 42, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +48,10 @@
     --diff-del-bg: rgba(239, 68, 68, 0.16);
     --diff-del-border: rgba(239, 68, 68, 0.4);
     --diff-del-text: #f87171;
+    --wall-filter: saturate(1.3) brightness(0.55);
+    --wall-veil-in: 55%;
+    --wall-veil-out: 92%;
+    --wall-scan: rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -64,6 +73,10 @@
   --diff-del-bg: rgba(239, 68, 68, 0.16);
   --diff-del-border: rgba(239, 68, 68, 0.4);
   --diff-del-text: #f87171;
+  --wall-filter: saturate(1.3) brightness(0.55);
+  --wall-veil-in: 55%;
+  --wall-veil-out: 92%;
+  --wall-scan: rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -406,6 +419,66 @@ a {
   max-width: 1160px;
   margin: 0 auto;
   padding: 0 24px 60px;
+}
+
+/* the wall of run frames behind the top of every page but home (base.html):
+   past the column on purpose, never past the window (a box beyond it
+   scrolls the page sideways whatever clips its contents; 16px leaves room
+   for the scrollbar 100vw counts), fading out downward and to the sides */
+.wrap {
+  position: relative;
+  isolation: isolate;
+}
+
+.pagewall {
+  position: absolute;
+  top: 0;
+  left: max(-200px, calc(50% - 50vw + 16px));
+  right: max(-200px, calc(50% - 50vw + 16px));
+  height: 360px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    ellipse 70% 100% at 50% 0,
+    #000 25%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 70% 100% at 50% 0,
+    #000 25%,
+    transparent 100%
+  );
+}
+
+.walltiles {
+  position: absolute;
+  inset: -100px;
+  background-position: center;
+  background-size: cover;
+  transform: rotate(-6deg) scale(1.05);
+  filter: var(--wall-filter);
+}
+
+.tiltback .walltiles {
+  transform: rotate(6deg) scale(1.05);
+}
+
+.pagewall::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      var(--wall-scan) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(
+      ellipse at 50% 0,
+      color-mix(in srgb, var(--ground) var(--wall-veil-in), transparent),
+      color-mix(in srgb, var(--ground) var(--wall-veil-out), transparent) 70%
+    );
 }
 
 .crumb {

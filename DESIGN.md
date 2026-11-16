@@ -509,22 +509,30 @@ the shard replaces them, so a visit downloads only the 18 thumbnails it
 shows. The held thumbnails load only when the shard does not arrive
 (`views/home.py`, `assets/page-home.js`).
 
-**The front page looks like what it archives**, not like a generic product
-page (`assets/page-home.css`). Behind the welcome is a tilted wall of the
-archive's own frames: one thumbnail per game, in an order fixed by run id,
-composed at build time into a single JPEG (`assets/herowall.jpg`, stamped by
-its bytes; no Pillow, no wall), darkened, scanlined and veiled in the ground
-colour so the text stays readable in both themes. Over the headline sits an
-emulator's on-screen readout: the archive's real totals of movie frames and
-rerecords (summed from what each movie states), a pad display whose lit
-buttons are decoration, and a REC dot. The headline ends in a blinking
-frame-advance cursor (`steps()`, still under reduced motion). The counters
-sit on a screen in the brand's plate colour in both themes, green digits on
-scanlines; every shelf title carries a ▶| mark and a frame ruler; card
-frames get scanlines on the shelves; Join in is an insert-coin plate; the
-ground is a faint pixel lattice and the bar's underline is the green
-playhead. Glows are dark-theme only. All of it is styling and decoration
-around the page's unchanged elements.
+**The site looks like what it archives**, not like a generic product page.
+Behind every page stands a wall of the archive's own frames, tilted,
+darkened, scanlined and veiled in the ground colour so text stays readable
+in both themes (`render.compose_wall`): each wall is one JPEG composed at
+build time from one thumbnail per game, stamped by its bytes (no Pillow, no
+walls). Games are dealt in an order fixed by run id: the front page's hero
+wall takes the first 88, then eight shorter page walls take the next 55
+each (`assets/walls/<n>.jpg`), so no two walls repeat a game while the
+archive has games enough. Every other page wears the wall its title hashes
+to, behind the top of the column, fading downward, tilted one way or the
+other by its number; it reaches past the column but never past the window.
+The front page goes further (`assets/page-home.css`): over the headline an
+emulator's on-screen readout gives the archive's real totals of movie frames
+and rerecords (summed from what each movie states), beside a pad display
+whose lit buttons are decoration and a REC dot; the headline ends in a
+blinking frame-advance cursor (`steps()`, still under reduced motion); the
+counters sit on a screen in the brand's plate colour in both themes; every
+shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
+marks the part of the shelf in view, moving as it scrolls; the shelf cards
+are three parts picture to one part words (the system and the state on the
+picture; under it the title with its stars, then category · author with the
+frame count); Join in is one line; the ground is a faint pixel lattice and
+the bar's underline is the green playhead. Glows are dark-theme only. All of
+it is styling and decoration around the pages' unchanged elements.
 
 Run encodes use a sticky floating player while reading long run pages. Playback
 activates the behavior when the provider confirms that it started; providers

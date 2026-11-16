@@ -165,6 +165,30 @@ document.querySelectorAll('.hwrap > .hrow').forEach(function (row) {
   );
 });
 
+// ---- the frame ruler under each shelf title: a dial rides it ----
+// it spans the part of the shelf in view and moves as the shelf scrolls, the
+// way a TAStudio playhead marks the frames on screen; no easing, it simply
+// is where the shelf is
+document.querySelectorAll('.hwrap > .hrow').forEach(function (row) {
+  var title = row.parentElement.previousElementSibling;
+  if (!title || title.tagName !== 'H2') return;
+  var dial = document.createElement('span');
+  dial.className = 'rulerdial';
+  dial.setAttribute('aria-hidden', 'true');
+  title.appendChild(dial);
+  function place() {
+    var span = row.scrollWidth,
+      seen = row.clientWidth;
+    dial.hidden = span <= seen + 1;
+    if (dial.hidden) return;
+    dial.style.left = (row.scrollLeft / span) * 100 + '%';
+    dial.style.width = (seen / span) * 100 + '%';
+  }
+  row.addEventListener('scroll', place, { passive: true });
+  window.addEventListener('resize', place);
+  place();
+});
+
 // one Bluesky post, rendered in our own markup
 function bskyPostHtml(item, profileUrl, linkify, since) {
   var postView = item.post || {},

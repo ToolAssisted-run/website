@@ -5,10 +5,6 @@
 
 :root {
   --home-lattice: rgba(15, 23, 42, 0.035);
-  --home-wall-filter: saturate(1.15) brightness(1.05);
-  --home-veil-in: 80%;
-  --home-veil-out: 95%;
-  --home-scan: rgba(15, 23, 42, 0.06);
   --home-glow: none;
   --home-glow-text: none;
   --home-card-glow: var(--shadow);
@@ -17,10 +13,6 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --home-lattice: rgba(255, 255, 255, 0.018);
-    --home-wall-filter: saturate(1.3) brightness(0.55);
-    --home-veil-in: 55%;
-    --home-veil-out: 92%;
-    --home-scan: rgba(0, 0, 0, 0.3);
     --home-glow: 0 0 10px rgba(34, 197, 94, 0.55);
     --home-glow-text: 0 0 24px rgba(34, 197, 94, 0.35), 0 2px 0 #000;
     --home-card-glow: 0 0 22px rgba(34, 197, 94, 0.3);
@@ -29,10 +21,6 @@
 
 :root[data-theme="dark"] {
   --home-lattice: rgba(255, 255, 255, 0.018);
-  --home-wall-filter: saturate(1.3) brightness(0.55);
-  --home-veil-in: 55%;
-  --home-veil-out: 92%;
-  --home-scan: rgba(0, 0, 0, 0.3);
   --home-glow: 0 0 10px rgba(34, 197, 94, 0.55);
   --home-glow-text: 0 0 24px rgba(34, 197, 94, 0.35), 0 2px 0 #000;
   --home-card-glow: 0 0 22px rgba(34, 197, 94, 0.3);
@@ -54,16 +42,17 @@ body {
 /* ---- the hero: a wall of the archive's frames behind the welcome ---- */
 .hero {
   isolation: isolate;
-  padding: 28px 0 26px;
+  padding: 12px 0 26px;
 }
 
 .hero > .herowall {
   position: absolute;
   /* past the column on purpose, never past the window: a box that reaches
-     beyond it scrolls the page sideways whatever clips its contents. 50% -
+     beyond it scrolls the page sideways whatever clips its contents, and
+     it starts at the hero: above it, it covered the bar's own edge. 50% -
      50vw is the margin beside the column; 16px leaves room for a scrollbar
      that 100vw counts, and the mask has faded the wall out by then anyway. */
-  inset: -40px max(-200px, calc(50% - 50vw + 16px)) -20px;
+  inset: 0 max(-200px, calc(50% - 50vw + 16px)) -20px;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
@@ -85,7 +74,7 @@ body {
   background-position: center;
   background-size: cover;
   transform: rotate(-7deg) scale(1.05);
-  filter: var(--home-wall-filter);
+  filter: var(--wall-filter);
 }
 
 /* scanlines, and a veil of the ground that keeps the welcome readable */
@@ -96,13 +85,13 @@ body {
   background:
     repeating-linear-gradient(
       to bottom,
-      var(--home-scan) 0 1px,
+      var(--wall-scan) 0 1px,
       transparent 1px 3px
     ),
     radial-gradient(
       ellipse at 30% 40%,
-      color-mix(in srgb, var(--ground) var(--home-veil-in), transparent),
-      color-mix(in srgb, var(--ground) var(--home-veil-out), transparent) 75%
+      color-mix(in srgb, var(--ground) var(--wall-veil-in), transparent),
+      color-mix(in srgb, var(--ground) var(--wall-veil-out), transparent) 75%
     );
 }
 
@@ -250,8 +239,18 @@ section > h2::after {
     repeat-x,
     linear-gradient(90deg, var(--hairs) 0 1px, transparent 1px) 0 4px / 10px 5px
     repeat-x;
-  -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent);
-  mask-image: linear-gradient(90deg, #000 40%, transparent);
+}
+
+/* the dial: where the shelf below is scrolled to, and how much of it shows */
+.rulerdial {
+  position: absolute;
+  bottom: -2px;
+  height: 13px;
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: var(--home-glow);
+  pointer-events: none;
 }
 
 /* ---- the news column: a second monitor, on air ---- */
@@ -266,23 +265,52 @@ section > h2::after {
   color: #ef4444;
 }
 
-/* ---- cards: each frame on a little CRT ---- */
+/* ---- cards: the picture three times the height of the words ----
+   The system and the state go onto the picture; under it, two lines: the
+   title with its stars (and views), then category · author with the frame
+   count. The footer row's spans join the body's grid (display: contents). */
+.hrow .card {
+  position: relative;
+}
+
 .hrow .card:hover {
   box-shadow: var(--home-card-glow);
 }
 
-.hrow .thumb::after {
-  content: "";
+.hrow .thumb .sys,
+.hrow .cfoot .versm,
+.hrow .cfoot .unclsm,
+.hrow .cfoot .pendsm {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.22) 0 1px,
-      transparent 1px 3px
-    ),
-    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.4));
+  top: 8px;
+  z-index: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  line-height: 1.3;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.hrow .thumb .sys {
+  left: 8px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.hrow .cfoot .versm,
+.hrow .cfoot .unclsm,
+.hrow .cfoot .pendsm {
+  right: 8px;
+}
+
+.hrow .cfoot .versm {
+  color: #4ade80;
+}
+
+.hrow .cfoot .unclsm,
+.hrow .cfoot .pendsm {
+  color: #e2e8f0;
 }
 
 .hrow .thumb .dur {
@@ -292,22 +320,101 @@ section > h2::after {
   background: rgba(0, 0, 0, 0.82);
 }
 
-/* ---- join in: the insert-coin plate ---- */
+.hrow .cbody {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: baseline;
+  padding: 6px 10px 5px;
+  line-height: 1.2;
+}
+
+.hrow .csys {
+  display: none;
+}
+
+.hrow .cbody b {
+  grid-row: 1;
+  grid-column: 1 / 3;
+  font-size: 0.88rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hrow .cfoot {
+  display: contents;
+}
+
+.hrow .cfoot > span:nth-child(2) {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.hrow .cfoot .cview {
+  grid-row: 1;
+  grid-column: 4;
+  font-size: 0.72rem;
+}
+
+.hrow .ccat,
+.hrow .cauth {
+  grid-row: 2;
+  font-size: 0.72rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hrow .ccat {
+  grid-column: 1;
+  max-width: 130px;
+}
+
+.hrow .cauth {
+  grid-column: 2;
+}
+
+.hrow .ccat + .cauth::before {
+  content: "\00b7\00a0";
+  color: var(--faint);
+}
+
+.hrow .cfoot > span:first-child {
+  grid-row: 2;
+  grid-column: 3 / 5;
+  justify-self: end;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--faint);
+}
+
+.hrow .cfoot > span:nth-child(2) {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--faint);
+}
+
+/* ---- join in: one line, the label then the invitation ---- */
 .homefoot .factbox {
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(34, 197, 94, 0.05) 0 10px,
-      transparent 10px 20px
-    ),
-    var(--bg);
-  border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
 }
 
 .homefoot .factbox h4 {
+  margin: 0;
+  white-space: nowrap;
   color: var(--accent-text);
 }
 
 .homefoot .factbox h4::before {
   content: "\25B6\00a0\00a0";
+}
+
+/* the page ends closer to the footer than a long page does */
+.wrap {
+  padding-bottom: 24px;
 }

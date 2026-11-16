@@ -5,6 +5,7 @@ rendering, thumbnails (shipped to the output and registered here), and
 the datalist builders behind the pick-never-type rule. Views compose
 these; the model never calls them."""
 import datetime
+import hashlib
 import html
 import os
 import json
@@ -762,14 +763,87 @@ def breadcrumb_ld(items):
 
 INDEXED_PAGES = set()
 
+# ---------------- the walls of run frames behind the pages ----------------
+# The front page's hero stands on a wall of the archive's own frames, and
+# every other page on a shorter one of its own: a page reads as part of a
+# TAS archive before a word of it is read. Each wall is composed at build
+# time into one JPEG from one thumbnail per game, so a page costs one image,
+# not dozens. The games are dealt in an order fixed by run id (the same
+# archive builds the same walls): the home wall takes the first, then each
+# page wall the next ones, so no two walls repeat a game while the archive
+# has games enough. A page wears the wall its title hashes to. Without
+# Pillow (CI and the host have it) there are no walls.
+WALL_COLS = 11
+WALL_TILE = (160, 90)          # one tile, 16:9 like the thumbnails
+WALL_GAP = 8
+HOME_WALL_ROWS = 8
+PAGE_WALLS, PAGE_WALL_ROWS = 8, 5
+
+def wall_order():
+    """One run per game with a thumbnail on disk, in run-id hash order."""
+    seen, order = set(), []
+    for r in sorted(runs, key=lambda r: hashlib.sha1(r['id'].encode()).hexdigest()):
+        t = r.get('thumbnail')
+        if not t or r['_game']['key'] in seen or not (r['_dir'] / t).is_file():
+            continue
+        seen.add(r['_game']['key'])
+        order.append(r)
+    return order
+
+def wall_slice(order, start, count):
+    """count runs of the order from start, round again when it runs out."""
+    return [order[(start + i) % len(order)] for i in range(count)] if order else []
+
+def compose_wall(wall_runs, rows, rel_path):
+    """Compose the runs' thumbnails into one JPEG at rel_path under the build
+    and return its stamped URL (relative to the site root), or None."""
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return None
+    if not wall_runs:
+        return None
+    tw, th = WALL_TILE
+    wall = Image.new('RGB', (WALL_COLS * (tw + WALL_GAP), rows * (th + WALL_GAP)), (5, 8, 15))
+    for i, r in enumerate(wall_runs[:WALL_COLS * rows]):
+        try:
+            with Image.open(r['_dir'] / r['thumbnail']) as im:
+                tile = ImageOps.fit(im.convert('RGB'), WALL_TILE, Image.Resampling.LANCZOS)
+        except OSError:
+            continue
+        x, y = i % WALL_COLS, i // WALL_COLS
+        wall.paste(tile, (x * (tw + WALL_GAP) + WALL_GAP // 2, y * (th + WALL_GAP) + WALL_GAP // 2))
+    out = OUT / rel_path
+    out.parent.mkdir(parents=True, exist_ok=True)
+    wall.save(out, 'JPEG', quality=60, optimize=True, progressive=True)
+    return f'{rel_path}?v=' + hashlib.sha1(out.read_bytes()).hexdigest()[:12]
+
+_PAGE_WALLS = None
+
+def page_walls():
+    """The page walls, composed on first use (after the thumbnails ship)."""
+    global _PAGE_WALLS
+    if _PAGE_WALLS is None:
+        order = wall_order()
+        home = WALL_COLS * HOME_WALL_ROWS
+        per = WALL_COLS * PAGE_WALL_ROWS
+        _PAGE_WALLS = [u for u in (compose_wall(wall_slice(order, home + k * per, per),
+                                                PAGE_WALL_ROWS, f'assets/walls/{k}.jpg')
+                                   for k in range(PAGE_WALLS)) if u]
+    return _PAGE_WALLS
+
 def page(title, body, rel='', crumb='', active='', head_extra='', wide=False,
-         seo=None, full_title=False, scripts=None, styles=None):
-    """The site chrome around a page body: head, nav, footer (templates/base.html)."""
+         seo=None, full_title=False, scripts=None, styles=None, wall=True):
+    """The site chrome around a page body: head, nav, footer (templates/base.html).
+    wall=False leaves the page without a wall of frames (the home page has its own)."""
     full = title if full_title else title + ' · toolAssisted.run'
     if seo and 'path' in seo and not seo.get('noindex'):
         INDEXED_PAGES.add(seo['path'].lstrip('/'))
+    walls = page_walls() if wall else []
+    pick = int(hashlib.sha1(full.encode()).hexdigest(), 16) % len(walls) if walls else 0
     return tpl('base.html', title=full, body=body, rel=rel, crumb=crumb, active=active,
                head_extra=head_extra, wide=wide,
+               page_wall=walls[pick] if walls else None, page_wall_n=pick,
                page_scripts=scripts or ['page-core.js'],
                page_styles=styles or [],
                seo_block=seo_head(dict(seo, title=seo.get('title') or full)) if seo else '')
