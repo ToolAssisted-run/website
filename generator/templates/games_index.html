@@ -137,6 +137,12 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
     var v = localStorage.getItem('tar-games-view');
     if (v && document.getElementById('v-' + v)) view = v;
   } catch(e){}
+  // a link may ask for a view and a sort (?view=list&sort=stars, the home
+  // page's counters): it wins over the remembered view for this visit only
+  var asked = new URLSearchParams(location.search);
+  var askedView = asked.get('view'), askedSort = asked.get('sort');
+  if (askedView && document.getElementById('v-' + askedView)) view = askedView;
+  if (askedSort && document.querySelector('.gsort[data-mode="' + askedSort + '"]')) sortMode = askedSort;
   function order(a, b){
     // Uncategorized is a holding pen, not a group: it stays last either way
     if ((a.dataset.last || 0) !== (b.dataset.last || 0))
@@ -215,6 +221,11 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
     });
   });
   apply();
+  // in the list a sort is a column: one click on it puts the biggest first
+  if (view === 'list' && askedSort) {
+    var col = document.querySelector('#v-list th[data-key="' + askedSort + '"]');
+    if (col) col.click();
+  }
 })();
 </script>
 <script type="application/json" id="gamesactdata">{{ json_blob({'siteExperts': site_experts_now}) }}</script>

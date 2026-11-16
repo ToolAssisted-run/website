@@ -261,11 +261,17 @@ def main():
         home = (out / 'index.html').read_text(encoding='utf-8')
         # the strip shows likes across the archive (and views where known);
         # the pending count stayed a derivation but left the front page
-        m = re.search(r'<div class="stat"><b><span class="starglyph">★</span>([\d,]+)</b><span>likes</span>', home)
+        m = re.search(r'<a class="stat" href="games/\?view=list&amp;sort=stars"><b><span class="starglyph">★</span>([\d,]+)</b><span>likes</span>', home)
         ck('home likes stat is rendered', bool(m), home[:200])
         ck('no pending stat on the front page', '<span>pending</span>' not in home)
+        ck('each counter links to where its number lives',
+           all(f'href="{h}"><b>' in home and f'</b><span>{w}</span></a>' in home
+               for h, w in (('browse/', 'runs'), ('games/?view=groups', 'games'),
+                            ('games/?view=systems', 'systems'), ('authors/', 'authors'),
+                            ('games/?view=list&amp;sort=stars', 'likes'))),
+           home[home.find('statstrip'):home.find('statstrip') + 600])
         ck('the runs, games, systems and authors counters each carry an icon',
-           all(re.search(r'<div class="stat"><b><svg class="static"[^>]*>.*?</svg>[\d,]+</b>'
+           all(re.search(r'<a class="stat" href="[^"]+"><b><svg class="static"[^>]*>.*?</svg>[\d,]+</b>'
                          rf'<span>{w}</span>', home)
                for w in ('runs', 'games', 'systems', 'authors')),
            home[home.find('statstrip'):home.find('statstrip') + 400])

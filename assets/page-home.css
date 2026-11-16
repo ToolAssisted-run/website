@@ -251,6 +251,18 @@ section > h2::after {
   cursor: grabbing;
 }
 
+/* each counter is one link to where its number lives, and looks as it did
+   until hovered */
+a.stat {
+  display: block;
+  text-decoration: none;
+}
+
+a.stat:hover b,
+a.stat:hover span {
+  text-decoration: underline;
+}
+
 /* ---- the news column: a second monitor, on air ---- */
 .heronews {
   background: color-mix(in srgb, var(--panel) 90%, transparent);
