@@ -148,34 +148,6 @@ body {
   text-shadow: none;
 }
 
-.osd .rec {
-  color: #ef4444;
-}
-
-/* the pad: lit where this frame presses it */
-.inputdisp {
-  display: inline-flex;
-  gap: 3px;
-}
-
-.inputdisp b {
-  min-width: 15px;
-  padding: 2px 3px;
-  border-radius: 3px;
-  text-align: center;
-  font-weight: 700;
-  color: var(--faint);
-  border: 1px solid var(--hair);
-  text-shadow: none;
-}
-
-.inputdisp b.on {
-  color: #04130a;
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: var(--home-glow);
-}
-
 /* ---- the counters, on a screen in both themes (the brand's plate) ---- */
 .hero .statstrip {
   background:

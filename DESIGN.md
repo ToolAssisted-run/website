@@ -522,8 +522,7 @@ to, behind the top of the column, fading downward, tilted one way or the
 other by its number; it reaches past the column but never past the window.
 The front page goes further (`assets/page-home.css`): over the headline an
 emulator's on-screen readout gives the archive's real totals of movie frames
-and rerecords (summed from what each movie states), beside a pad display
-whose lit buttons are decoration and a REC dot; the headline ends in a
+and rerecords (summed from what each movie states); the headline ends in a
 blinking frame-advance cursor (`steps()`, still under reduced motion); the
 counters sit on a screen in the brand's plate colour in both themes; every
 shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
