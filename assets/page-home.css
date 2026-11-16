@@ -259,9 +259,15 @@ a.stat {
   text-decoration: none;
 }
 
-a.stat:hover b,
-a.stat:hover span {
+a.stat:hover > b,
+a.stat:hover > span {
   text-decoration: underline;
+}
+
+/* an underline runs through inline children and none of them can refuse it;
+   an inline-block is out of its reach, so the star stays clean */
+a.stat .starglyph {
+  display: inline-block;
 }
 
 /* ---- the news column: a second monitor, on air ---- */

@@ -267,7 +267,7 @@ def main():
         ck('each counter links to where its number lives',
            all(f'href="{h}"><b>' in home and f'</b><span>{w}</span></a>' in home
                for h, w in (('browse/', 'runs'), ('games/?view=groups', 'games'),
-                            ('games/?view=systems', 'systems'), ('authors/', 'authors'),
+                            ('systems/', 'systems'), ('authors/', 'authors'),
                             ('games/?view=list&amp;sort=stars', 'likes'))),
            home[home.find('statstrip'):home.find('statstrip') + 600])
         ck('the runs, games, systems and authors counters each carry an icon',
