@@ -14,8 +14,6 @@
   --home-digit-glow: none;
   --home-screen-bg: rgba(255, 255, 255, 0.84);
   --home-screen-scan: rgba(15, 23, 42, 0.03);
-  --home-screen-border: rgba(21, 128, 61, 0.35);
-  --home-screen-shadow: var(--shadow);
   --home-screen-label: var(--faint);
 }
 
@@ -30,10 +28,6 @@
     --home-digit-glow: 0 0 10px rgba(34, 197, 94, 0.55);
     --home-screen-bg: rgba(11, 18, 32, 0.84);
     --home-screen-scan: rgba(255, 255, 255, 0.025);
-    --home-screen-border: #1c3a29;
-    --home-screen-shadow:
-      inset 0 0 0 1px rgba(34, 197, 94, 0.08), 0 0 30px rgba(34, 197, 94, 0.12),
-      0 10px 30px rgba(0, 0, 0, 0.35);
     --home-screen-label: #64748b;
   }
 }
@@ -48,10 +42,6 @@
   --home-digit-glow: 0 0 10px rgba(34, 197, 94, 0.55);
   --home-screen-bg: rgba(11, 18, 32, 0.84);
   --home-screen-scan: rgba(255, 255, 255, 0.025);
-  --home-screen-border: #1c3a29;
-  --home-screen-shadow:
-    inset 0 0 0 1px rgba(34, 197, 94, 0.08), 0 0 30px rgba(34, 197, 94, 0.12),
-    0 10px 30px rgba(0, 0, 0, 0.35);
   --home-screen-label: #64748b;
 }
 
@@ -198,11 +188,18 @@ body {
     ),
     var(--home-screen-bg);
   backdrop-filter: blur(2px);
-  border: 2px solid var(--home-screen-border);
-  box-shadow: var(--home-screen-shadow);
+  /* down to the news panel's bottom, the counters centred in it */
+  flex: 1;
+  align-content: center;
+  margin-bottom: 0;
 }
 
+/* icon and number as one centred row: whatever the icon's size (the star is
+   a glyph, the rest are drawings), the numbers of a row share a line */
 .hero .stat b {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-family: "JetBrains Mono", ui-monospace, monospace;
   color: var(--home-digit);
   text-shadow: var(--home-digit-glow);
@@ -211,9 +208,16 @@ body {
 
 .hero .stat b .starglyph {
   color: var(--home-digit);
+  font-size: 0.75em;
+  vertical-align: 0;
 }
 
+/* a block of its own height: inline, the label sat at the top of a line as
+   tall as the body text, and the strip looked pushed up by the gap below */
 .hero .stat span {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.3;
   color: var(--home-screen-label);
 }
 
@@ -295,6 +299,7 @@ a.stat:hover > span {
    an inline-block is out of its reach, so the star stays clean */
 a.stat .starglyph {
   display: inline-block;
+  line-height: 1;
 }
 
 /* ---- the news column: a second monitor, on air ---- */
