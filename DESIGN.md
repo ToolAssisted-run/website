@@ -494,14 +494,15 @@ reach: Most liked and Most viewed only show what already has attention, so a
 run nobody has starred or opened has nowhere else to appear once it leaves
 Freshly archived. Its pool is every run on none of the other shelves with no
 stars and no visits (the rest join, quiet ones first, only while fewer than
-24 quiet runs remain), and never an imported run: the shelf shows what
+36 quiet runs remain), and never an imported run: the shelf shows what
 members brought, not the seeded corpus. The build stays byte-identical for the same archive,
 so the dice are the reader's: the pool is written as shard files of
 ready-made cards (`assets/picks/<n>.json`, at most 48 cards each, dealt round
 the pool so each mixes all of it, fetched under a stamp of their content
 because the pool moves with the archive and not with the site's commit), and
-the browser fetches one shard at random and shows 12 of its cards at random.
-The page itself ships 12 cards of the pool inside `noscript`: a reader
+the browser fetches one shard at random and shows 18 of its cards at random,
+three rows of six that scroll sideways like the other shelves.
+The page itself ships 18 cards of the pool inside `noscript`: a reader
 without scripting sees them as they are, and with scripting they are laid out
 at once with their thumbnails held back (the blurred placeholder shows) until
 the shard replaces them, so a visit downloads only the 12 thumbnails it

@@ -29,7 +29,7 @@ def viewed_selection(all_runs, slots=12):
                                        r.get('submitted') or '', r['id']),
                   reverse=True)[:slots]
 
-PICKS_SHOWN = 12     # cards on the shelf
+PICKS_SHOWN = 18     # cards on the shelf: three rows of six
 PICKS_SHARD = 48     # cards in one shard file the browser draws them from
 
 def random_selection(all_runs, shown):

@@ -1430,6 +1430,15 @@ tr.lead td:first-child {
   display: contents;
 }
 
+/* Random picks is three rows high: the cards fill a column of three, then
+   the next, and the shelf still scrolls sideways like the others */
+.hrow.rows3 {
+  display: grid;
+  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: 240px;
+}
+
 .hrow.dragging {
   cursor: grabbing;
   user-select: none;
