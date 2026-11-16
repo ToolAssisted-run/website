@@ -1,7 +1,14 @@
 {% from '_cards.html' import run_card %}
 <section class="hero">
+{% if hero_wall %}<div class="herowall" aria-hidden="true"><div class="herotiles" style="background-image:url('{{ hero_wall }}')"></div></div>{% endif %}
 <div class="herogrid">
 <div class="herotext">
+{# the emulator's on-screen readout: the archive's real totals, then a pad
+   whose lit buttons are decoration #}
+<div class="osd"><span title="frames in every archived movie"><i>FRAMES</i> {{ '{:,}'.format(total_frames) }}</span>
+<span title="rerecords across every archived movie"><i>RERECORDS</i> {{ '{:,}'.format(total_rerecords) }}</span>
+<span class="inputdisp" aria-hidden="true"><b>&#9664;</b><b class="on">&#9650;</b><b>&#9660;</b><b class="on">&#9654;</b><b>B</b><b class="on">A</b><b>s</b><b>S</b></span>
+<span class="rec" aria-hidden="true">&#9679; REC</span></div>
 <h1>Speedruns beyond limits</h1>
 <p><b>toolAssisted.run</b> is a public archive of tool-assisted superplays.
 Classic and modern systems. Community-driven. Innovation first.</p>

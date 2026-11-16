@@ -1,0 +1,311 @@
+/* toolAssisted.run — the front page dressed as what it archives: the frames
+   of the runs behind the welcome, an emulator's readout over it, the counters
+   on a screen, a frame ruler under every shelf (views/home.py, home.html).
+   The glows are dark-theme only; everything else reads in both themes. */
+
+:root {
+  --home-lattice: rgba(15, 23, 42, 0.035);
+  --home-wall-filter: saturate(1.15) brightness(1.05);
+  --home-veil-in: 80%;
+  --home-veil-out: 95%;
+  --home-scan: rgba(15, 23, 42, 0.06);
+  --home-glow: none;
+  --home-glow-text: none;
+  --home-card-glow: var(--shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --home-lattice: rgba(255, 255, 255, 0.018);
+    --home-wall-filter: saturate(1.3) brightness(0.55);
+    --home-veil-in: 55%;
+    --home-veil-out: 92%;
+    --home-scan: rgba(0, 0, 0, 0.3);
+    --home-glow: 0 0 10px rgba(34, 197, 94, 0.55);
+    --home-glow-text: 0 0 24px rgba(34, 197, 94, 0.35), 0 2px 0 #000;
+    --home-card-glow: 0 0 22px rgba(34, 197, 94, 0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  --home-lattice: rgba(255, 255, 255, 0.018);
+  --home-wall-filter: saturate(1.3) brightness(0.55);
+  --home-veil-in: 55%;
+  --home-veil-out: 92%;
+  --home-scan: rgba(0, 0, 0, 0.3);
+  --home-glow: 0 0 10px rgba(34, 197, 94, 0.55);
+  --home-glow-text: 0 0 24px rgba(34, 197, 94, 0.35), 0 2px 0 #000;
+  --home-card-glow: 0 0 22px rgba(34, 197, 94, 0.3);
+}
+
+/* the ground: a faint pixel lattice, a framebuffer seen up close */
+body {
+  background-image:
+    linear-gradient(var(--home-lattice) 1px, transparent 1px),
+    linear-gradient(90deg, var(--home-lattice) 1px, transparent 1px);
+  background-size: 4px 4px;
+  /* the hero wall reaches past the column on purpose; never past the window */
+  overflow-x: clip;
+}
+
+/* the playhead under the bar */
+.nav {
+  border-bottom-color: var(--accent);
+}
+
+/* ---- the hero: a wall of the archive's frames behind the welcome ---- */
+.hero {
+  isolation: isolate;
+  padding: 28px 0 26px;
+}
+
+.hero > .herowall {
+  position: absolute;
+  inset: -40px -200px -20px;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    ellipse 75% 85% at 50% 45%,
+    #000 30%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 75% 85% at 50% 45%,
+    #000 30%,
+    transparent 100%
+  );
+}
+
+.herotiles {
+  position: absolute;
+  inset: -120px;
+  background-position: center;
+  background-size: cover;
+  transform: rotate(-7deg) scale(1.05);
+  filter: var(--home-wall-filter);
+}
+
+/* scanlines, and a veil of the ground that keeps the welcome readable */
+.herowall::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      var(--home-scan) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(
+      ellipse at 30% 40%,
+      color-mix(in srgb, var(--ground) var(--home-veil-in), transparent),
+      color-mix(in srgb, var(--ground) var(--home-veil-out), transparent) 75%
+    );
+}
+
+/* the headline, with the frame-advance cursor after it */
+.hero h1 {
+  max-width: none;
+  white-space: nowrap;
+  text-shadow: var(--home-glow-text);
+}
+
+.hero h1::after {
+  content: "";
+  display: inline-block;
+  width: 0.42em;
+  height: 0.8em;
+  margin-left: 0.12em;
+  vertical-align: -0.06em;
+  background: var(--accent);
+  box-shadow: var(--home-glow);
+  animation: cursorblink 1.2s steps(1) infinite;
+}
+
+@keyframes cursorblink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero h1::after {
+    animation: none;
+  }
+}
+
+/* ---- the emulator's readout over the welcome ---- */
+.osd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin-bottom: 10px;
+  font:
+    600 0.69rem / 1.2 "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+  text-shadow: var(--home-glow);
+}
+
+.osd i {
+  font-style: normal;
+  color: var(--faint);
+  text-shadow: none;
+}
+
+.osd .rec {
+  color: #ef4444;
+}
+
+/* the pad: lit where this frame presses it */
+.inputdisp {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.inputdisp b {
+  min-width: 15px;
+  padding: 2px 3px;
+  border-radius: 3px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--faint);
+  border: 1px solid var(--hair);
+  text-shadow: none;
+}
+
+.inputdisp b.on {
+  color: #04130a;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--home-glow);
+}
+
+/* ---- the counters, on a screen in both themes (the brand's plate) ---- */
+.hero .statstrip {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 3px
+    ),
+    #0b1220;
+  border: 2px solid #1c3a29;
+  box-shadow:
+    inset 0 0 0 1px rgba(34, 197, 94, 0.08),
+    0 0 30px rgba(34, 197, 94, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.hero .stat b {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: #4ade80;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero .stat b .starglyph {
+  color: #4ade80;
+}
+
+.hero .stat span {
+  color: #64748b;
+}
+
+/* ---- shelf titles: a frame-advance mark, a frame ruler under each ---- */
+section > h2 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+section > h2::before {
+  content: "\25B6\2502";
+  color: var(--accent);
+  letter-spacing: -0.12em;
+  text-shadow: var(--home-glow);
+}
+
+section > h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 9px;
+  background:
+    linear-gradient(90deg, var(--accent) 0 2px, transparent 2px) 0 0 / 80px 9px
+    repeat-x,
+    linear-gradient(90deg, var(--hairs) 0 1px, transparent 1px) 0 4px / 10px 5px
+    repeat-x;
+  -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent);
+  mask-image: linear-gradient(90deg, #000 40%, transparent);
+}
+
+/* ---- the news column: a second monitor, on air ---- */
+.heronews {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.heronews h2::before {
+  content: "\25CF";
+  margin-right: 8px;
+  color: #ef4444;
+}
+
+/* ---- cards: each frame on a little CRT ---- */
+.hrow .card:hover {
+  box-shadow: var(--home-card-glow);
+}
+
+.hrow .thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.22) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.4));
+}
+
+.hrow .thumb .dur {
+  z-index: 1;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: #4ade80;
+  background: rgba(0, 0, 0, 0.82);
+}
+
+/* ---- join in: the insert-coin plate ---- */
+.homefoot .factbox {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(34, 197, 94, 0.05) 0 10px,
+      transparent 10px 20px
+    ),
+    var(--bg);
+  border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.homefoot .factbox h4 {
+  color: var(--accent-text);
+}
+
+.homefoot .factbox h4::before {
+  content: "\25B6\00a0\00a0";
+}

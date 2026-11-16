@@ -505,9 +505,26 @@ three rows of six that scroll sideways like the other shelves.
 The page itself ships 18 cards of the pool inside `noscript`: a reader
 without scripting sees them as they are, and with scripting they are laid out
 at once with their thumbnails held back (the blurred placeholder shows) until
-the shard replaces them, so a visit downloads only the 12 thumbnails it
+the shard replaces them, so a visit downloads only the 18 thumbnails it
 shows. The held thumbnails load only when the shard does not arrive
 (`views/home.py`, `assets/page-home.js`).
+
+**The front page looks like what it archives**, not like a generic product
+page (`assets/page-home.css`). Behind the welcome is a tilted wall of the
+archive's own frames: one thumbnail per game, in an order fixed by run id,
+composed at build time into a single JPEG (`assets/herowall.jpg`, stamped by
+its bytes; no Pillow, no wall), darkened, scanlined and veiled in the ground
+colour so the text stays readable in both themes. Over the headline sits an
+emulator's on-screen readout: the archive's real totals of movie frames and
+rerecords (summed from what each movie states), a pad display whose lit
+buttons are decoration, and a REC dot. The headline ends in a blinking
+frame-advance cursor (`steps()`, still under reduced motion). The counters
+sit on a screen in the brand's plate colour in both themes, green digits on
+scanlines; every shelf title carries a ▶| mark and a frame ruler; card
+frames get scanlines on the shelves; Join in is an insert-coin plate; the
+ground is a faint pixel lattice and the bar's underline is the green
+playhead. Glows are dark-theme only. All of it is styling and decoration
+around the page's unchanged elements.
 
 Run encodes use a sticky floating player while reading long run pages. Playback
 activates the behavior when the provider confirms that it started; providers

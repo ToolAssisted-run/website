@@ -14,6 +14,7 @@ A divergence there means the archivist pushes archives its own CI rejects.
 Usage: tests/test_derivation.py
 """
 import datetime
+import hashlib
 import itertools
 import os
 import json
@@ -272,6 +273,19 @@ def main():
             want = sum(len(r.get('likes', [])) for r in pend_runs)
             ck('the likes stat sums every run', int(m.group(1).replace(',', '')) == want,
                f'got {m.group(1)}, want {want}')
+        osd = re.search(r'<i>FRAMES</i> ([\d,]+)</span>\s*<span[^>]*><i>RERECORDS</i> ([\d,]+)<', home)
+        ck('the hero readout sums every movie\'s frames and rerecords',
+           osd is not None
+           and int(osd.group(1).replace(',', '')) == sum(r['frames'] for r in pend_runs)
+           and int(osd.group(2).replace(',', '')) == 10 * len(pend_runs),
+           osd.groups() if osd else home[:300])
+        wall = re.search(r'class="herotiles" style="background-image:url\(\''
+                         r'assets/herowall\.jpg\?v=([0-9a-f]{12})\'\)"', home)
+        ck('the hero wall is one composed image under a stamp of its bytes',
+           wall is not None and (out / 'assets' / 'herowall.jpg').is_file()
+           and hashlib.sha1((out / 'assets' / 'herowall.jpg').read_bytes()).hexdigest()[:12]
+               == wall.group(1),
+           home[home.find('herowall'):home.find('herowall') + 200])
 
         # ---------------- stars ----------------
         star_runs = [
