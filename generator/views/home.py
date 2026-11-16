@@ -30,8 +30,9 @@ def viewed_selection(all_runs, slots=12):
                                        r.get('submitted') or '', r['id']),
                   reverse=True)[:slots]
 
-PICKS_SHOWN = 18     # cards on the shelf: three rows of six
-PICKS_SHARD = 48     # cards in one shard file the browser draws them from
+SHELF_SLOTS = 30     # cards on each one-row shelf: plenty to scroll through
+PICKS_SHOWN = 36     # cards on Random picks: three rows of twelve
+PICKS_SHARD = 72     # cards in one shard file the browser draws them from
 
 def random_selection(all_runs, shown):
     """The pool for the runs the other shelves never reach.
@@ -95,8 +96,8 @@ def write_pick_shards(pool):
         stamp.update(blob.encode())
     return count, stamp.hexdigest()[:12]
 
-_shown = (fresh_selection(runs, slots=12) + liked_selection(runs)
-          + viewed_selection(runs))
+_shown = (fresh_selection(runs, slots=SHELF_SLOTS) + liked_selection(runs, slots=SHELF_SLOTS)
+          + viewed_selection(runs, slots=SHELF_SLOTS))
 _pool = random_selection(runs, _shown)
 _shards, _shard_stamp = write_pick_shards(_pool)
 _wall = compose_wall(wall_slice(wall_order(), 0, WALL_COLS * HOME_WALL_ROWS),
@@ -106,9 +107,9 @@ _frames, _rerecords = movie_totals(runs)
 body = tpl('home.html',
            total_likes=sum(nlikes(r) for r in runs),
            total_views=sum(nvisits(r) for r in runs),
-           fresh=fresh_selection(runs, slots=12),
-           liked=liked_selection(runs),
-           viewed=viewed_selection(runs),
+           fresh=fresh_selection(runs, slots=SHELF_SLOTS),
+           liked=liked_selection(runs, slots=SHELF_SLOTS),
+           viewed=viewed_selection(runs, slots=SHELF_SLOTS),
            picks=_pool[:PICKS_SHOWN], picks_shown=PICKS_SHOWN,
            picks_shards=_shards, picks_stamp=_shard_stamp,
            hero_wall=_wall, total_frames=_frames, total_rerecords=_rerecords)

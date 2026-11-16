@@ -494,18 +494,19 @@ reach: Most liked and Most viewed only show what already has attention, so a
 run nobody has starred or opened has nowhere else to appear once it leaves
 Freshly archived. Its pool is every run on none of the other shelves with no
 stars and no visits (the rest join, quiet ones first, only while fewer than
-36 quiet runs remain), and never an imported run: the shelf shows what
+72 quiet runs remain), and never an imported run: the shelf shows what
 members brought, not the seeded corpus. The build stays byte-identical for the same archive,
 so the dice are the reader's: the pool is written as shard files of
-ready-made cards (`assets/picks/<n>.json`, at most 48 cards each, dealt round
+ready-made cards (`assets/picks/<n>.json`, at most 72 cards each, dealt round
 the pool so each mixes all of it, fetched under a stamp of their content
 because the pool moves with the archive and not with the site's commit), and
-the browser fetches one shard at random and shows 18 of its cards at random,
-three rows of six that scroll sideways like the other shelves.
-The page itself ships 18 cards of the pool inside `noscript`: a reader
+the browser fetches one shard at random and shows 36 of its cards at random,
+three rows of twelve that scroll sideways like the other shelves (the
+one-row shelves hold 30 each).
+The page itself ships 36 cards of the pool inside `noscript`: a reader
 without scripting sees them as they are, and with scripting they are laid out
 at once with their thumbnails held back (the blurred placeholder shows) until
-the shard replaces them, so a visit downloads only the 18 thumbnails it
+the shard replaces them, so a visit downloads only the 36 thumbnails it
 shows. The held thumbnails load only when the shard does not arrive
 (`views/home.py`, `assets/page-home.js`).
 
@@ -526,10 +527,11 @@ and rerecords (summed from what each movie states); the headline ends in a
 blinking frame-advance cursor (`steps()`, still under reduced motion); the
 counters sit on a screen in the brand's plate colour in both themes; every
 shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
-marks the part of the shelf in view, moving as it scrolls; the shelf cards
+marks the part of the shelf in view, moving as it scrolls, and dragging it
+scrolls the shelf; the shelf cards
 are three parts picture to one part words (the system and the state on the
 picture; under it the title with its stars, then category · author with the
-frame count); Join in is one line; the ground is a faint pixel lattice and
+frame count); Join in is one centred line; the ground is a faint pixel lattice and
 the bar's underline is the green playhead. Glows are dark-theme only. All of
 it is styling and decoration around the pages' unchanged elements.
 

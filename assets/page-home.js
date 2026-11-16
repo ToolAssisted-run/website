@@ -168,7 +168,8 @@ document.querySelectorAll('.hwrap > .hrow').forEach(function (row) {
 // ---- the frame ruler under each shelf title: a dial rides it ----
 // it spans the part of the shelf in view and moves as the shelf scrolls, the
 // way a TAStudio playhead marks the frames on screen; no easing, it simply
-// is where the shelf is
+// is where the shelf is. Dragging it scrolls the shelf: a pixel of dial is
+// as much of the shelf as the ruler is scaled to
 document.querySelectorAll('.hwrap > .hrow').forEach(function (row) {
   var title = row.parentElement.previousElementSibling;
   if (!title || title.tagName !== 'H2') return;
@@ -187,6 +188,27 @@ document.querySelectorAll('.hwrap > .hrow').forEach(function (row) {
   row.addEventListener('scroll', place, { passive: true });
   window.addEventListener('resize', place);
   place();
+  var grab = null;
+  dial.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    grab = { x: e.clientX, scroll: row.scrollLeft };
+    dial.classList.add('dragging');
+    try {
+      dial.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  });
+  dial.addEventListener('pointermove', function (e) {
+    if (!grab) return;
+    var scale = row.scrollWidth / title.clientWidth;
+    row.scrollLeft = grab.scroll + (e.clientX - grab.x) * scale;
+  });
+  function drop() {
+    grab = null;
+    dial.classList.remove('dragging');
+  }
+  dial.addEventListener('pointerup', drop);
+  dial.addEventListener('pointercancel', drop);
 });
 
 // one Bluesky post, rendered in our own markup

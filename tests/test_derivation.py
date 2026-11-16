@@ -437,15 +437,15 @@ def main():
            order[:2] == ['M900371', 'M900372'], str(order))
 
         # ---------------- Random picks: the overlooked shelf ----------------
-        # Twenty runs, one of them starred: twelve fill Freshly archived, the
+        # Fifty runs, one of them starred: thirty fill Freshly archived, the
         # starred one fills Most liked, and what is left is exactly the pool
         # the reader's browser draws from: the shard files hold all of it,
         # each run once, and the page ships a few of them for a reader
         # without scripting.
         pick_runs = [mkarchive.run_spec(f'M9004{40 + i}', frames=5000 + i,
-                                        authors=['Ada'], submitted=d(30 - i))
-                     for i in range(20)]
-        pick_runs[19]['likes'] = [{'user': 'Fan', 'date': d(1)}]
+                                        authors=['Ada'], submitted=d(60 - i))
+                     for i in range(50)]
+        pick_runs[49]['likes'] = [{'user': 'Fan', 'date': d(1)}]
         imported10 = {f'M9004{40 + i}' for i in (0, 1)}
         for i in (0, 1):
             pick_runs[i]['status'] = {'reproduced': 'imported', 'verified': 'imported'}
@@ -479,13 +479,13 @@ def main():
            set(pool10) == left10 and len(pool10) == len(set(pool10)),
            f'shards {sorted(pool10)} left {sorted(left10)}')
         ck('the shipped cards are drawn from that pool',
-           set(picks10) <= set(pool10) and 0 < len(picks10) <= 18, str(picks10))
+           set(picks10) <= set(pool10) and 0 < len(picks10) <= 36, str(picks10))
         picks_sec10 = home10.split('Random picks')[1].split('<section')[0]
         outside10 = re.sub(r'<noscript>.*?</noscript>', '', picks_sec10, flags=re.S)
         ck('and they come inside noscript, so a reader with scripting never fetches their thumbnails',
            '<noscript>' in picks_sec10 and '<img' not in outside10 and 'runs/' not in outside10,
            outside10[:200])
-        shard_attr10 = re.search(r'data-shuffle="18" data-shards="(\d+)" '
+        shard_attr10 = re.search(r'data-shuffle="36" data-shards="(\d+)" '
                                  r'data-shard-stamp="([0-9a-f]{12})"', home10)
         ck('the shelf tells the browser how many survive, how many shards, and their stamp',
            shard_attr10 is not None
@@ -500,10 +500,10 @@ def main():
         # A large pool is split: no shard holds more than its share, every
         # quiet run is in exactly one, and a run with attention waits while
         # enough quiet ones remain.
-        many_runs = [mkarchive.run_spec(f'M9010{i:02d}', frames=6000 + i,
-                                        authors=['Ada'], submitted=d(90 - i))
-                     for i in range(80)]
-        for i in range(12, 27):   # fifteen starred: Most liked holds twelve
+        many_runs = [mkarchive.run_spec(f'M901{i:03d}', frames=6000 + i,
+                                        authors=['Ada'], submitted=d(210 - i))
+                     for i in range(200)]
+        for i in range(12, 50):   # thirty-eight starred: Most liked holds thirty
             many_runs[i]['likes'] = [{'user': 'Fan', 'date': d(1)}]
         arch11 = mkarchive.make_archive(td / 'a11', many_runs)
         out11 = td / 'o11'
@@ -514,8 +514,8 @@ def main():
         shown11 = set(shelf_ids(home11, 'Freshly archived')) | set(shelf_ids(home11, 'Most liked'))
         quiet11 = {r['id'] for r in many_runs if not r.get('likes')} - shown11
         waiting11 = {r['id'] for r in many_runs if r.get('likes')} - shown11
-        ck('a large pool is split into shards of at most 48 cards',
-           len(shards11) >= 2 and all(len(json.loads(f.read_text())) <= 48 for f in shards11),
+        ck('a large pool is split into shards of at most 72 cards',
+           len(shards11) >= 2 and all(len(json.loads(f.read_text())) <= 72 for f in shards11),
            str([len(json.loads(f.read_text())) for f in shards11]))
         ck('and the shards hold every quiet run once, and nothing with attention',
            waiting11 and set(pool11) == quiet11 and len(pool11) == len(set(pool11)),
