@@ -44,8 +44,6 @@ body {
     linear-gradient(var(--home-lattice) 1px, transparent 1px),
     linear-gradient(90deg, var(--home-lattice) 1px, transparent 1px);
   background-size: 4px 4px;
-  /* the hero wall reaches past the column on purpose; never past the window */
-  overflow-x: clip;
 }
 
 /* the playhead under the bar */
@@ -61,7 +59,11 @@ body {
 
 .hero > .herowall {
   position: absolute;
-  inset: -40px -200px -20px;
+  /* past the column on purpose, never past the window: a box that reaches
+     beyond it scrolls the page sideways whatever clips its contents. 50% -
+     50vw is the margin beside the column; 16px leaves room for a scrollbar
+     that 100vw counts, and the mask has faded the wall out by then anyway. */
+  inset: -40px max(-200px, calc(50% - 50vw + 16px)) -20px;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
