@@ -525,14 +525,16 @@ The front page goes further (`assets/page-home.css`): over the headline an
 emulator's on-screen readout gives the archive's real totals of movie frames
 and rerecords (summed from what each movie states); the headline ends in a
 blinking frame-advance cursor (`steps()`, still under reduced motion); the
-counters sit on a screen in the brand's plate colour in both themes; every
+counters sit on a scanlined, slightly see-through screen (the brand's plate
+in the dark, a pale one in the light); every
 shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
 marks the part of the shelf in view, moving as it scrolls, and dragging it
 scrolls the shelf; the shelf cards
 are three parts picture to one part words (the system and the state on the
 picture; under it the title with its stars, then category · author with the
 frame count); Join in is one centred line; the ground is a faint pixel lattice and
-the bar's underline is the green playhead. Glows are dark-theme only. All of
+the bar's underline is the green playhead. Glows are dark-theme only, and the light theme draws its greens deeper than
+the accent for contrast on white. All of
 it is styling and decoration around the pages' unchanged elements.
 
 Run encodes use a sticky floating player while reading long run pages. Playback
