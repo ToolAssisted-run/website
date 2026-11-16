@@ -42,7 +42,17 @@ body {
 /* ---- the hero: a wall of the archive's frames behind the welcome ---- */
 .hero {
   isolation: isolate;
-  padding: 12px 0 26px;
+  padding: 12px 0 0;
+}
+
+/* the first shelf starts close under the hero; the shelves after it stand
+   further apart, so each reads as its own row */
+.hero + section {
+  margin-top: 22px;
+}
+
+.hero + section ~ section {
+  margin-top: 44px;
 }
 
 .hero > .herowall {
