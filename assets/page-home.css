@@ -395,6 +395,13 @@ section > h2::after {
 }
 
 /* ---- join in: one line, the label then the invitation ---- */
+/* as wide as what it says, centred under the shelves; narrower windows
+   wrap it as before */
+.homefoot .cols3 {
+  display: flex;
+  justify-content: center;
+}
+
 .homefoot .factbox {
   display: flex;
   flex-wrap: wrap;
