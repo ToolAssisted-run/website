@@ -1068,7 +1068,7 @@ def parse_game_property(field, raw):
 
 EXPERT_EDITABLE = {'run': ('duration', 'goal', 'encode', 'goalDescription',
                            'notes', 'movie'),
-                   'game': ('title', 'thumbnail') + GAME_PROPERTY_FIELDS,
+                   'game': ('title', 'thumbnail', 'address') + GAME_PROPERTY_FIELDS,
                    'category': ('label', 'rule', 'metrics', 'selector', 'subSelector', 'key'),
                    'group': ('title',)}
 

@@ -4,6 +4,7 @@ import json
 import pathlib
 import re
 import shutil
+import threading
 import time
 from flask import jsonify, request
 import movieparse
@@ -14,8 +15,8 @@ from webutil import fail
 from identity import current_name, run_authors_now, session_user
 from gitstore import checkout_branch, commit_push, duplicate_of, find_run, load_game, lock, next_id, refresh_archive
 from notify import movie_md, member_md, notify_discord
-from records import covers_group, ensure_member, expert_covers, is_uncl_run, load_groups, log_edit, save_groups, sync_status
-from forumapi import ensure_game_topic, ensure_topic
+from records import append_role_event, covers_group, ensure_member, expert_covers, held_roles, is_uncl_run, load_groups, log_edit, save_groups, sync_status
+from forumapi import ensure_game_topic, ensure_topic, move_game_tags
 
 
 def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EMPTY, REPRO_FIELDS, SCORING_FIELDS, act_common, attach_movie, auth_precheck, in_category, live_acts, notify_edit, option_in, pace_gate, parse_file_rows, parse_game_property, parse_metric_defs, parse_stated_time, place_subcategory, read_attachments, request_identity, split_notes_header, void_acts_for):
@@ -911,6 +912,90 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         game['thumbnail'] = value
         return old_value, value, None
 
+    def _game_address_target(target, game, value):
+        """The address the game's title makes, refused when it is not free.
+
+        A game's address is made from its title, as at creation: an expert
+        corrects the title, and the game can then move to the address the
+        title makes (#119). Nothing else is ever typed in as an address."""
+        system = target.split('/')[0]
+        new_slug = slugify(game.get('title') or '')
+        if not new_slug:
+            return None, fail('its title makes no address')
+        new_key = f'{system}/{new_slug}'
+        if value and value != new_key:
+            return None, fail(f'a game\'s address is made from its title: '
+                              f'{game.get("title")!r} makes {new_key}')
+        if new_key == target:
+            return None, fail('the game already has the address its title makes')
+        if (ARCHIVE / 'games' / new_key).exists():
+            return None, fail(f'{new_key} is another game\'s address', 409)
+        for other in ARCHIVE.glob('games/*/*/game.json'):
+            here = f'{other.parent.parent.name}/{other.parent.name}'
+            if here == target:
+                continue
+            if new_key in (json.loads(other.read_text()).get('formerKeys') or []):
+                return None, fail(f'{new_key} was the address of {here}, and still '
+                                  f'forwards there', 409)
+        return new_key, None
+
+    def _point_run_at(run_json_path, new_key):
+        """Change one run's game field and nothing else in the file."""
+        text = run_json_path.read_text()
+        new_text, n = re.subn(r'("game"\s*:\s*)"[^"]*"', lambda m: m.group(1) + json.dumps(new_key),
+                              text, count=1)
+        if n != 1 or json.loads(new_text).get('game') != new_key:
+            run_doc = json.loads(text)
+            run_doc['game'] = new_key
+            new_text = json.dumps(run_doc, indent=1) + ('\n' if text.endswith('\n') else '')
+        run_json_path.write_text(new_text)
+
+    def _expert_game_address(actor, target, game, value, reason, dry_run):
+        """Move the game to the address its title makes, with all that names it.
+
+        One commit: the folder moves whole, each of its runs' game field
+        follows, game.json names the old address (formerKeys, so the site
+        forwards it and reads its logs as this game's), the groups that hold
+        it and the expert appointments made over it follow, and edits.json
+        records the move. No movie, note or credit changes."""
+        new_key, error = _game_address_target(target, game, value)
+        if error is not None:
+            return error
+        game_dir = ARCHIVE / 'games' / target
+        run_files = sorted((game_dir / 'runs').glob('*/run.json'))
+        scoped = [ev for (holder, role, scope), ev in held_roles().items()
+                  if role == 'expert' and scope == target]
+        if dry_run:
+            return jsonify({'ok': True, 'dry_run': True, 'field': 'address',
+                            'from': target, 'to': new_key, 'runs_moved': len(run_files),
+                            'experts_following': [ev['user'] for ev in scoped]})
+        former = [k for k in (game.get('formerKeys') or []) if k != new_key]
+        if target not in former:
+            former.append(target)
+        game['formerKeys'] = former
+        (game_dir / 'game.json').write_text(json.dumps(game, indent=1) + '\n')
+        for run_json_path in run_files:
+            _point_run_at(run_json_path, new_key)
+        shutil.move(str(game_dir), str(ARCHIVE / 'games' / new_key))
+        groups_doc = load_groups()
+        if any(target in g.get('games', []) for g in groups_doc['groups']):
+            for group in groups_doc['groups']:
+                if target in group.get('games', []):
+                    group['games'] = sorted((set(group['games']) - {target}) | {new_key})
+            save_groups(groups_doc)
+        # a held scope must name a game that exists, so an appointment over
+        # this game moves with it: ended at the old address, given at the new
+        today = time.strftime('%Y-%m-%d', time.gmtime())
+        for ev in scoped:
+            for action, scope, why in (
+                    ('revoked', target, f'The game moved to {new_key}; the appointment follows it.'),
+                    ('granted', new_key, f'Follows the game from {target}, where it was held.')):
+                append_role_event({'user': ev['user'], 'role': 'expert', 'scope': scope,
+                                   'action': action, 'by': actor, 'date': today,
+                                   'at': now_iso(), 'reason': f'{why} {reason}'})
+        log_edit('game', target, 'address', target, new_key, actor, reason)
+        return target, new_key, [], None
+
     def _expert_game(actor, target, field, value, reason, dry_run, kind):
         """Apply one logged expert game correction within its jurisdiction."""
         target_match = re.fullmatch(r'([a-z0-9-]+)/([a-z0-9-]+)', target)
@@ -922,6 +1007,8 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         if not expert_covers(actor, target):
             return fail(f'{actor!r} is not an expert covering {target}', 403)
         game = json.loads(game_file.read_text())
+        if field == 'address':
+            return _expert_game_address(actor, target, game, value, reason, dry_run)
         handler = (_expert_game_title if field == 'title' else
                    _expert_game_property if field in GAME_PROPERTY_FIELDS else
                    _expert_game_thumbnail)
@@ -1180,8 +1267,11 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         log_edit('group', target.lower(), field, old_value, value, actor, reason)
         return old_value, value, [], None
 
-    def _notify_expert_edit(kind, actor, target, field, voided, reason, run_dir):
+    def _notify_expert_edit(kind, actor, target, field, voided, reason, run_dir, value=''):
         """Announce a committed expert correction with its affected run or page."""
+        if kind == 'game' and field == 'address':
+            # the game is said where it lives now; its old address forwards
+            target = value
         if kind == 'run':
             edited_run = json.loads((run_dir / 'run.json').read_text())
             what, where = (movie_md(edited_run) + in_category(edited_run),
@@ -1234,7 +1324,10 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                     f'From: {str(old_value)[:120]}\nTo: {value[:120]}\n'
                     f'By: {actor}\nReason: {reason}\nVia: archivist')
         # a run is said the way runs are said; anything else names its kind
-        _notify_expert_edit(kind, actor, target, field, voided, reason, run_dir)
+        _notify_expert_edit(kind, actor, target, field, voided, reason, run_dir, value)
+        if kind == 'game' and field == 'address':
+            # its forum home (the tag is the address) follows, best-effort
+            threading.Thread(target=move_game_tags, daemon=True).start()
         return True, (field, kind, old_value, target, value)
 
     @app.post('/api/expert/edit')

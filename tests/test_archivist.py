@@ -279,6 +279,38 @@ def main():
                                'at': '2026-08-20T22:27:28Z'}],
             'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=abc123DEF99'}],
             'submitted': '2026-08-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
+        # a game created under a wrong title (#119): its address was made
+        # from the misspelt one, and the title has since been corrected. It
+        # sits in a group, and an expert holds a scope over it alone.
+        md = seed / 'games/nes/movabel-game'
+        (md / 'runs/M900077').mkdir(parents=True)
+        (md / 'game.json').write_text(json.dumps(
+            {'title': 'Movable Game', 'system': 'nes', 'createdBy': 'eien86',
+             'createdAt': '2026-11-01'}, indent=1) + '\n')
+        (md / 'categories.json').write_text(json.dumps(
+            {'dimensions': [{'key': 'goal', 'name': 'Category', 'options': [
+                {'key': 'any', 'label': 'any%', 'rule': 'Finish.'}]}]}, indent=1) + '\n')
+        (md / 'runs/M900077/M900077.bk2').write_bytes(b'test')
+        (md / 'runs/M900077/run.json').write_text(json.dumps({
+            'id': 'M900077', 'game': 'nes/movabel-game', 'category': {'goal': 'any'},
+            'authors': [{'user': 'TestAuthor'}],
+            'movie': {'file': 'M900077.bk2', 'format': 'bk2', 'frames': 600,
+                      'rerecords': None, 'start': 'power-on'},
+            'contract': {'emulator': 'BizHawk 2.11'},
+            'status': {'reproduced': 'none', 'verified': 'none'},
+            'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=movabl77777'}],
+            'submitted': '2026-11-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
+        gdoc_ = json.loads((seed / 'groups.json').read_text())
+        gdoc_['groups'].append({'key': 'movables', 'title': 'Movables',
+                                'games': ['nes/movabel-game']})
+        (seed / 'groups.json').write_text(json.dumps(gdoc_, indent=1) + '\n')
+        rj_ = json.loads((seed / 'roles.json').read_text())
+        rj_['events'].append({'user': 'movexpert', 'role': 'expert', 'scope': 'nes/movabel-game',
+                              'action': 'granted', 'by': 'eien86', 'date': '2026-11-01',
+                              'reason': 'fixture: an expert over the misnamed game alone'})
+        (seed / 'roles.json').write_text(json.dumps(rj_, indent=1))
+        (seed / 'authors' / 'movexpert.json').write_text(json.dumps(
+            {'username': 'movexpert', 'claimed': True}, indent=1) + '\n')
         subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=seed, check=True)
         subprocess.run(['git', 'config', 'core.autocrlf', 'false'], cwd=seed, check=True)
         subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t',
@@ -2009,6 +2041,64 @@ def main():
                             'target': 'nes/pinball:any-percent', 'field': 'key',
                             'value': '100k-glitched', 'reason': 'renamed back for the tests that follow'})
             ck('renamed back', c == 200, str(r)[:120])
+            # a game moves to the address its corrected title makes (#119)
+            mv = {'key': KEY, 'kind': 'game', 'target': 'nes/movabel-game',
+                  'field': 'address', 'reason': 'the address still carried the old typo'}
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'pinexpert'})
+            ck('an expert who does not cover the game cannot move it', c == 403, str(r)[:160])
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'movexpert',
+                                                    'value': 'nes/somewhere-else'})
+            ck('an address is never typed in: it is the one the title makes', c == 400
+               and 'nes/movable-game' in r.get('error', ''), str(r)[:200])
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'movexpert', 'dry_run': '1'})
+            ck('a dry run names the new address, the runs and the experts that follow',
+               c == 200 and r.get('to') == 'nes/movable-game' and r.get('runs_moved') == 1
+               and r.get('experts_following') == ['movexpert'], str(r)[:200])
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'movexpert',
+                                                    'value': 'nes/movable-game'})
+            ck('the game-scoped expert moves the game', c == 200
+               and r.get('to') == 'nes/movable-game', str(r)[:200])
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            moved_dir = work / 'games/nes/movable-game'
+            ck('the folder moved whole', (moved_dir / 'runs/M900077/M900077.bk2').exists()
+               and not (work / 'games/nes/movabel-game').exists())
+            rj77 = json.loads((moved_dir / 'runs/M900077/run.json').read_text())
+            ck('its run names the new address, and nothing else in it changed',
+               rj77['game'] == 'nes/movable-game' and rj77['movie']['frames'] == 600
+               and rj77['authors'] == [{'user': 'TestAuthor'}], str(rj77)[:200])
+            gj77 = json.loads((moved_dir / 'game.json').read_text())
+            ck('game.json names the address it had', gj77.get('formerKeys') == ['nes/movabel-game'],
+               str(gj77))
+            grp77 = next(g for g in json.loads((work / 'groups.json').read_text())['groups']
+                         if g['key'] == 'movables')
+            ck('its group follows', grp77['games'] == ['nes/movable-game'], str(grp77))
+            ev77 = [e for e in json.loads((work / 'roles.json').read_text())['events']
+                    if e['user'] == 'movexpert']
+            ck('the appointment over it follows: ended at the old address, given at the new',
+               [(e['action'], e['scope']) for e in ev77[-2:]]
+               == [('revoked', 'nes/movabel-game'), ('granted', 'nes/movable-game')], str(ev77)[-300:])
+            ed77 = json.loads((work / 'edits.json').read_text())['events'][-1]
+            ck('the move is in the edit log', ed77.get('kind') == 'game'
+               and ed77.get('field') == 'address' and ed77.get('to') == 'nes/movable-game', str(ed77))
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'movexpert',
+                                                    'target': 'nes/movable-game'})
+            ck('the expert still covers the game at its new address, which is already its own',
+               c == 400 and 'already' in r.get('error', ''), str(r)[:160])
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'movexpert', 'kind': 'game',
+                            'target': 'nes/movable-game', 'field': 'title', 'value': 'Pinball',
+                            'reason': 'a title whose address is taken'})
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'eien86',
+                                                    'target': 'nes/movable-game'})
+            ck('a taken address is refused', c == 409, str(r)[:160])
+            c, r, _ = call(U + '/api/expert/edit',
+                           {'key': KEY, 'expert': 'eien86', 'kind': 'game',
+                            'target': 'nes/movable-game', 'field': 'title', 'value': 'Old Pinball',
+                            'reason': 'a title whose address forwards elsewhere'})
+            c, r, _ = call(U + '/api/expert/edit', {**mv, 'expert': 'eien86',
+                                                    'target': 'nes/movable-game'})
+            ck('an address another game had, and still forwards, is refused', c == 409
+               and 'nes/pinball' in r.get('error', ''), str(r)[:160])
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'eien86', 'kind': 'game', 'target': 'nes/pinball',
                             'field': 'rules', 'value': 'No cheats.\n\nUse **standard** settings.',
