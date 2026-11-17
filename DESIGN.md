@@ -869,15 +869,29 @@ shows the release date and the unofficial mark as chips beside the system,
 and the links as buttons in the header, opened apart and referrer-free.
 Group and system pages sort their cards by stars, views, title or release
 date (oldest first, undated last) and can hide unofficial games. The slug
-stays derived from the title and is not customisable: it is the archive
-path and every link into it. An accented letter keeps its letter (Pokémon
+is derived from the title and is never typed in: it is the archive path
+and every link into it, so the folder is the address and the archive reads
+without an index. An accented letter keeps its letter (Pokémon
 is `pokemon`, issue 114), in game, category and member addresses alike. A
-game that moved names the addresses it had in `game.json` (`formerKeys`;
+game created under a wrong name is fixed in the game editor: the expert
+corrects the title, and when the new title makes another address the editor
+offers to move the game there (#119), as the last step of the save so the
+save's other edits still find it. The move is one logged expert edit
+(`field=address`; the value can only be the address the title makes, and
+one that is another game's, or that still forwards to another game, is
+refused) and one commit: the folder moves whole, each of its runs' `game`
+field follows (that line alone changes), the groups holding it follow, and
+an expert appointment over the game alone is ended at the old address and
+given at the new in `roles.json`, because a held scope must name a game
+that exists. No movie, note or credit changes. A game that moved names the
+addresses it had in `game.json` (`formerKeys`;
 the validator refuses one that is a game's address today, or one two games
 claim): each keeps a page that forwards to the game and its log, what the
 edit log recorded under it is read as the game's history, and the
 archivist renames its forum tag to the new address, or merges the old tag
-into the new one when that exists already.
+into the new one when that exists already. Links to the old folder on
+GitHub, in forum posts written before a move, stop resolving; the site's
+own old address keeps forwarding.
 
 ### The game editor
 

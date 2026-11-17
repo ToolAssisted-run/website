@@ -13,6 +13,7 @@ import {
   initMetricsEd,
   setLastBtn,
   escapeHtml,
+  waitBuilt,
 } from './app.js';
 
 // ---- the game editor (covering experts): one local draft, one Save ----
@@ -21,11 +22,31 @@ import {
 // logged edits the archivist knows (title, properties, thumbnail, new
 // categories and subcategories, renames and rules, metrics, deletions,
 // orders), all under one public reason. The first failure stops the
+// the archivist's slugify (settings.py), letter for letter: accents come
+// off (Pokémon is pokemon), apostrophes vanish, anything else is a dash
+var PLAIN_LETTERS = {
+  ß: 'ss',
+  æ: 'ae',
+  œ: 'oe',
+  ø: 'o',
+  ł: 'l',
+  đ: 'd',
+  ð: 'd',
+  þ: 'th',
+  ı: 'i',
+};
 function slugify(s) {
   return (s || '')
     .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[ßæœøłđðþı]/g, function (c) {
+      return PLAIN_LETTERS[c];
+    })
+    .replace(/\p{Mn}/gu, '')
+    .replace(/['\u2019]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
 }
 
 var gameEditEl = document.getElementById('gameeditdata');
@@ -1688,8 +1709,40 @@ if (gameEditEl) {
             });
           }
         });
+      // the game's address last of all (#119): every edit above still
+      // finds the game where it was
+      var moveTo = titleAddress(title || base.title);
+      if (moveTo && byId('ge-move').checked)
+        ops.push({
+          what: 'address',
+          target: 'Game',
+          field: 'address',
+          kind: 'edit',
+          from: gameEditData.game,
+          to: moveTo,
+          run: function () {
+            return edit('game', gameEditData.game, 'address', moveTo);
+          },
+          done: function () {
+            movedTo = moveTo;
+            gameEditData.game = moveTo;
+          },
+        });
       return ops;
     }
+    // the address a title makes, when it is not the game's own already
+    function titleAddress(t) {
+      var slug = slugify(t);
+      var key = gameEditData.game.split('/')[0] + '/' + slug;
+      return slug && key !== gameEditData.game ? key : '';
+    }
+    function showMove() {
+      var to = titleAddress(byId('ge-title').value.trim() || base.title);
+      byId('ge-move-wrap').hidden = !to;
+      byId('ge-move-to').textContent = to;
+      if (!to) byId('ge-move').checked = false;
+    }
+    var movedTo = '';
     function form(kind, target, field, value) {
       var fd = new FormData();
       fd.append('kind', kind);
@@ -1708,6 +1761,7 @@ if (gameEditEl) {
     }
     var dirty = false;
     function refresh() {
+      showMove();
       var ops = plan();
       dirty = ops.length > 0;
       renderPendingChanges(ops);
@@ -1723,6 +1777,7 @@ if (gameEditEl) {
       'ge-rta',
       'ge-rules',
       'ge-thumb',
+      'ge-move',
     ].forEach(function (id) {
       byId(id).addEventListener('input', refresh);
       byId(id).addEventListener('change', refresh);
@@ -1779,6 +1834,28 @@ if (gameEditEl) {
         if (!ops.length) {
           setLastBtn(saveBtn);
           renderCards();
+          if (movedTo) {
+            // this page is the old address now: once the site has the game
+            // where it lives, its editor opens there
+            dirty = false;
+            noteBuilt(
+              msg,
+              'Saved ' +
+                n +
+                ' change' +
+                (n === 1 ? '' : 's') +
+                '. The game now lives at ' +
+                movedTo +
+                '.',
+              lastSerial,
+              'Opening it there…',
+              true
+            );
+            waitBuilt(lastSerial, function (live) {
+              if (live) location.href = '/games/' + movedTo + '/edit/';
+            });
+            return;
+          }
           noteBuilt(
             msg,
             'Saved ' + n + ' change' + (n === 1 ? '' : 's') + '.',
