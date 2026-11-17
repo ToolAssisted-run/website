@@ -1,5 +1,5 @@
 {# A run as a shelf card: thumbnail, game, category, authors, and the foot
-   line (length, stars, views, state). Shared by the home shelves and any
+   line (stars, views, state; the length is on the picture). Shared by the home shelves and any
    other horizontal row. #}
 {% macro run_card(r, prefix='runs/') %}
 {% set g = r['_game'] %}
@@ -13,5 +13,5 @@
    same game exists on several of them #}
 <span class="cbody"><span class="csys">{{ systems[g['system']]['name'] }}</span><b>{{ g['title'] }}</b>{% if is_unclassified(r) %}{% if r.get('goalDescription') %}<span class="ccat cgoal">{{ r['goalDescription'] }}</span>{% endif %}{% else %}<span class="ccat">{{ cat_label(r) }}</span>{% endif %}
 <span class="cauth">{{ r['authors']|map(attribute='user')|join(', ') }}</span>
-<span class="cfoot"><span>{% if r.get('videoOnly') or not r['movie'].get('frames') %}{{ run_clock(r) }}{% else %}{{ '{:,}'.format(r['movie']['frames']) }}f{% endif %}</span><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
+<span class="cfoot"><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
 {% endmacro %}

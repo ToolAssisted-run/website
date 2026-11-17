@@ -531,8 +531,8 @@ shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
 marks the part of the shelf in view, moving as it scrolls, and dragging it
 scrolls the shelf; the shelf cards
 are three parts picture to one part words (the system and the state on the
-picture; under it the title with its stars, then category · author with the
-frame count); Join in is one centred line; the ground is a faint pixel lattice and
+picture with the length; under it the title with its stars and views, then
+category · authors across the whole line, no frame count); Join in is one centred line; the ground is a faint pixel lattice and
 the bar's underline is the green playhead. Glows are dark-theme only, and the light theme draws its greens deeper than
 the accent for contrast on white. All of
 it is styling and decoration around the pages' unchanged elements.

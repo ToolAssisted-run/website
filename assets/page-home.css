@@ -396,11 +396,6 @@ a.stat .starglyph {
   display: contents;
 }
 
-.hrow .cfoot > span:nth-child(2) {
-  grid-row: 1;
-  grid-column: 3;
-}
-
 .hrow .cfoot .cview {
   grid-row: 1;
   grid-column: 4;
@@ -422,7 +417,7 @@ a.stat .starglyph {
 }
 
 .hrow .cauth {
-  grid-column: 2;
+  grid-column: 2 / 5;
 }
 
 .hrow .ccat + .cauth::before {
@@ -431,15 +426,8 @@ a.stat .starglyph {
 }
 
 .hrow .cfoot > span:first-child {
-  grid-row: 2;
-  grid-column: 3 / 5;
-  justify-self: end;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.7rem;
-  color: var(--faint);
-}
-
-.hrow .cfoot > span:nth-child(2) {
+  grid-row: 1;
+  grid-column: 3;
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.72rem;
   color: var(--faint);
