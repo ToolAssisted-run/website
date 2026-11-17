@@ -203,7 +203,7 @@ a {
   gap: 14px;
   padding: 13px 26px;
   background: var(--bg);
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
   flex-wrap: nowrap;
 }
 
@@ -369,7 +369,7 @@ a {
   margin-left: auto;
   width: 40px;
   height: 36px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   color: var(--ink);
@@ -392,7 +392,7 @@ a {
 
 .navsearch input {
   padding: 6px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
@@ -497,7 +497,7 @@ a {
 
 .pbar {
   height: 16px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 8px;
   overflow: hidden;
   margin: 16px 0 8px;
@@ -517,7 +517,7 @@ a {
   gap: 20px;
   flex-wrap: wrap;
   padding: 18px 0 16px;
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
   margin-bottom: 20px;
 }
 
@@ -551,7 +551,7 @@ a {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 10px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   background: #000;
   display: block;
 }
@@ -695,7 +695,7 @@ a {
   margin: 10px 0;
   border-radius: 10px;
   overflow: hidden;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
 }
 
 .notes-embed iframe {
@@ -798,7 +798,7 @@ a {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 10px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   background: #000;
   display: block;
 }
@@ -973,7 +973,7 @@ a {
 .heronews {
   display: flex;
   flex-direction: column;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   background: var(--panel);
   box-shadow: var(--shadow);
@@ -1025,7 +1025,7 @@ a {
 }
 
 .bpost {
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
   padding-bottom: 11px;
 }
 
@@ -1035,7 +1035,7 @@ a {
 }
 
 .dpost {
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
   padding: 14px 0;
 }
 
@@ -1085,7 +1085,7 @@ a {
 
 .dbody pre {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 8px;
   padding: 10px;
   overflow: auto;
@@ -1125,7 +1125,7 @@ a {
   gap: 9px;
   align-items: center;
   margin-top: 8px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   padding: 7px 9px;
   text-decoration: none;
@@ -1166,7 +1166,7 @@ a {
   padding: 16px 20px;
   text-align: center;
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   box-shadow: var(--shadow);
 }
@@ -1253,7 +1253,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow);
@@ -1274,7 +1274,7 @@ th {
 
 td {
   padding: 12px;
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
 }
 
 tr:last-child td {
@@ -1508,7 +1508,7 @@ tr.lead td:first-child {
 
 .card {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   overflow: hidden;
   text-decoration: none;
@@ -1532,7 +1532,7 @@ tr.lead td:first-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
 }
 
 .thumb .sys {
@@ -1649,7 +1649,7 @@ img.blurhash-loaded {
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   box-shadow: var(--shadow);
   margin-bottom: 6px;
   background: #000;
@@ -1835,7 +1835,7 @@ img.blurhash-loaded {
     width: 100%;
     flex-direction: column;
     gap: 0;
-    border-top: 3px solid var(--hair);
+    border-top: 4px solid var(--hair);
     padding-top: 8px;
     margin-top: 4px;
   }
@@ -1918,7 +1918,7 @@ img.blurhash-loaded {
 
 .notes {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   padding: 18px 20px;
   box-shadow: var(--shadow);
@@ -1944,7 +1944,7 @@ img.blurhash-loaded {
 
 .notes hr {
   border: none;
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
   margin: 12px 0;
 }
 
@@ -1954,7 +1954,7 @@ img.blurhash-loaded {
 
 .codebox {
   background: var(--panel);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   padding: 12px 14px;
   margin: 10px 0;
@@ -1987,7 +1987,7 @@ img.blurhash-loaded {
 
 .policy {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   padding: 20px 24px;
   box-shadow: var(--shadow);
@@ -2061,7 +2061,7 @@ img.blurhash-loaded {
 
 .act {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 10px;
   padding: 12px 14px;
   box-shadow: var(--shadow);
@@ -2114,7 +2114,7 @@ img.blurhash-loaded {
   max-width: 240px;
   max-height: 180px;
   border-radius: 8px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   display: block;
 }
 
@@ -2197,7 +2197,7 @@ img.blurhash-loaded {
 
 .actform {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   padding: 16px 18px;
   box-shadow: var(--shadow);
@@ -2255,7 +2255,7 @@ img.blurhash-loaded {
 .actform textarea {
   width: 100%;
   padding: 9px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   color: var(--ink);
@@ -2266,7 +2266,7 @@ img.blurhash-loaded {
 .actform select {
   width: 100%;
   padding: 9px 36px 9px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background-color: var(--panel);
   color: var(--ink);
@@ -2699,7 +2699,7 @@ input.bad {
   font-size: 0.8rem;
   background: var(--panel);
   color: var(--ink);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 7px;
   padding: 3px 6px;
 }
@@ -2771,7 +2771,7 @@ input.bad {
   display: flex;
   gap: 12px;
   padding: 8px 12px;
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
   margin-bottom: 4px;
 }
 
@@ -2837,7 +2837,7 @@ input.bad {
 .authpick,
 .gamepick {
   position: relative;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   padding: 6px;
@@ -3073,7 +3073,7 @@ input.bad {
   font-weight: 700;
   padding: 8px 12px;
   color: var(--accent-text);
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
   margin-bottom: 4px;
 }
 
@@ -3091,7 +3091,7 @@ input.bad {
 
 .am-theme {
   padding: 8px 12px;
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
   margin-top: 4px;
   display: flex;
   gap: 5px;
@@ -3260,7 +3260,7 @@ input.bad {
 
 .filters input {
   padding: 9px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--bg);
   color: var(--ink);
@@ -3272,7 +3272,7 @@ input.bad {
 
 .filters select {
   padding: 9px 36px 9px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background-color: var(--bg);
   color: var(--ink);
@@ -3393,7 +3393,7 @@ input.bad {
 .pag-size select {
   padding: 4px 26px 4px 8px;
   background-position: right 8px center;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 6px;
   background-color: var(--bg);
   color: var(--ink);
@@ -3457,7 +3457,7 @@ input.bad {
 
 .factbox {
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   padding: 13px 15px;
   box-shadow: var(--shadow);
@@ -3550,7 +3550,7 @@ input.bad {
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   box-shadow: var(--shadow);
   margin-bottom: 6px;
   max-width: 1160px;
@@ -3598,7 +3598,7 @@ input.bad {
 }
 
 footer {
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
   padding: 18px 26px;
   text-align: center;
   font-family: ui-monospace, monospace;
@@ -3743,7 +3743,7 @@ footer a {
   font-size: 0.88rem;
   color: var(--ink);
   background-color: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   box-sizing: border-box;
   font-family: inherit;
@@ -3965,7 +3965,7 @@ th .eyeic {
 /* the notes dialect's remaining pieces (#46): tabs as foldable sections,
    definition lists, footnotes, aligned images */
 .wtab {
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   margin: 10px 0;
   background: var(--panel);
@@ -3979,7 +3979,7 @@ th .eyeic {
 }
 
 .wtab[open] > summary {
-  border-bottom: 3px solid var(--hair);
+  border-bottom: 4px solid var(--hair);
 }
 
 .wtab > :not(summary) {
@@ -4062,7 +4062,7 @@ th .eyeic {
 .notes .toc {
   margin: 10px 0;
   padding: 8px 14px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
 }
@@ -4089,7 +4089,7 @@ th .eyeic {
 
 .notes .footnotes-sep {
   border: 0;
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
 }
 
 .notes .footnote-ref {
@@ -4432,7 +4432,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   align-items: center;
   width: 100%;
   padding: 8px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   box-sizing: border-box;
@@ -4547,7 +4547,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .formrule {
   border: 0;
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
   margin: 18px 0;
 }
 
@@ -4563,7 +4563,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   flex: 1;
   min-width: 12rem;
   padding: 8px 12px;
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   color: var(--ink);
@@ -4838,7 +4838,7 @@ input[type="radio"]:disabled {
 .importnote {
   margin: 24px 0 0;
   padding-top: 12px;
-  border-top: 3px solid var(--hair);
+  border-top: 4px solid var(--hair);
   color: var(--faint);
   font-size: 0.8rem;
 }
@@ -4890,7 +4890,7 @@ input[type="radio"]:disabled {
   font-family: inherit;
   background: var(--panel);
   color: var(--ink);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   box-sizing: border-box;
 }
@@ -4906,7 +4906,7 @@ input[type="radio"]:disabled {
   font-family: inherit;
   background-color: var(--panel);
   color: var(--ink);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 9px;
   box-sizing: border-box;
   cursor: pointer;
@@ -4940,7 +4940,7 @@ input[type="radio"]:disabled {
   font-family: inherit;
   background: var(--panel);
   color: var(--ink);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 8px;
   box-sizing: border-box;
 }
@@ -4958,7 +4958,7 @@ input[type="radio"]:disabled {
   width: 420px;
   max-width: 92vw;
   background: var(--panel);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 10px;
   box-shadow: var(--shadow);
   z-index: 1000;

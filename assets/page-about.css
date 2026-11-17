@@ -30,7 +30,7 @@
 .steps li {
   counter-increment: step;
   background: var(--bg);
-  border: 3px solid var(--hair);
+  border: 4px solid var(--hair);
   border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 13px 15px 15px;

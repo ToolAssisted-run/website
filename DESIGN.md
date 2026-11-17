@@ -1430,9 +1430,10 @@ archivist, module responsibilities). What matters designwise:
   data cells is typography and stays. Notifications are one-liners.
 - **Brand**: Signal Green `#22C55E` accent ("the color of a passing check");
   ink `#0F172A`/`#F1F5F9`; JetBrains Mono (technical/wordmark) + Inter (UI);
-  surfaces on a soft ground with bold delineation (panels 3 px, small boxes
-  2.5 px, in hairline tokens dark enough to read against the ground in both
-  themes; table rules stay finer); **frame-quantized
+  surfaces on a soft ground with bold delineation (panels and the bar's
+  rules 4 px, controls and small boxes 3 px, in hairline tokens dark enough
+  to read against the ground in both themes; table rules stay finer);
+  **frame-quantized
   motion**: CSS `steps()`, never easing. Assets in the `.github` repo's
   `branding/`.
 - **Responsive traps**: `.wide`/`.narrow` are text-swap classes
