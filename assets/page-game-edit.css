@@ -19,7 +19,7 @@
   aspect-ratio: 16 / 9;
   object-fit: contain;
   background: #000;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
 }
 
@@ -31,7 +31,7 @@
 .crop-panel {
   margin-top: 12px;
   padding: 14px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 10px;
   background: var(--ground);
 }
@@ -50,7 +50,7 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #070d17;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   touch-action: none;
 }
 
@@ -94,7 +94,7 @@
 
 /* the game editor's category cards */
 .gecard {
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   background: var(--panel);
   padding: 14px 18px;
@@ -129,7 +129,7 @@
 .gecard input:not([type="checkbox"]):not([type="radio"]),
 .gecard textarea {
   width: 100%;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   padding: 8px 12px;
   background: var(--bg);
@@ -139,7 +139,7 @@
 
 .gecard select {
   width: 100%;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   padding: 8px 36px 8px 12px;
   background-color: var(--bg);
@@ -221,7 +221,7 @@
 .gecard-body {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 2px solid var(--hair);
+  border-top: 2.5px solid var(--hair);
 }
 
 .gecard-toggle,
@@ -303,7 +303,7 @@
 /* the game editor's progressive rows (#50): name, value, Edit; the form
    unfolds beneath the row it belongs to, with its own message */
 .prop {
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 10px;
   background: var(--panel);
   padding: 10px 14px;
@@ -344,7 +344,7 @@
 .prop-form {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
 }
 
 .prop-form .btnrow {
@@ -379,7 +379,7 @@
 .subcats {
   margin: 18px 0;
   padding: 14px 16px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 10px;
   background: var(--bg);
 }
@@ -390,7 +390,7 @@
 }
 
 .gesubcard {
-  border: 2px solid var(--hair);
+  border: 2.5px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   padding: 10px 14px;
@@ -483,7 +483,7 @@
   margin: 8px 0 12px;
   max-height: 280px;
   overflow-y: auto;
-  border: 2px solid var(--hair);
+  border: 2.5px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
 }
@@ -505,7 +505,7 @@
   top: 0;
   z-index: 1;
   background: var(--bg);
-  border-bottom: 2.5px solid var(--hairs);
+  border-bottom: 3px solid var(--hairs);
 }
 
 .ge-pending-table td {

@@ -21,7 +21,7 @@
   font-weight: 600;
   padding: 8px 14px;
   border-radius: 9px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   background: var(--bg);
   color: var(--ink);
   cursor: pointer;
@@ -65,7 +65,7 @@
   font-family: ui-monospace, monospace;
   font-weight: 700;
   padding-left: 9px;
-  border-left: 2.5px solid var(--hair);
+  border-left: 3px solid var(--hair);
 }
 
 .nsfw-gate {
@@ -73,7 +73,7 @@
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   box-shadow: var(--shadow);
   margin-bottom: 16px;
   background: #000;
@@ -223,7 +223,7 @@
     flex: 0 0 auto;
     display: flex;
     flex-direction: row;
-    border: 2px solid var(--hair);
+    border: 2.5px solid var(--hair);
     border-radius: 10px;
     align-items: center;
     background: var(--bg);
@@ -327,7 +327,7 @@
 
 .agegate-box {
   background: var(--bg);
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 14px;
   padding: 26px 30px;
   max-width: 34rem;
@@ -387,7 +387,7 @@ html:has(.agegate) {
   max-width: 340px;
   min-width: 0;
   padding: 8px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 10px;
   background: var(--bg);
   box-shadow: 0 3px 0 var(--hairs);

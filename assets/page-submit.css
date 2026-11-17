@@ -84,7 +84,7 @@
   top: 100%;
   z-index: 30;
   background: var(--bg);
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 10px;
   box-shadow: var(--shadow);
   margin-top: 4px;
@@ -170,7 +170,7 @@
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 8px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
 }
 
 .enc-good {
@@ -288,7 +288,7 @@
   width: 5.5ch;
   text-align: center;
   font-family: ui-monospace, monospace;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   padding: 8px 4px;
   background: var(--panel);
@@ -528,7 +528,7 @@
 }
 
 .epanel {
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
   margin-top: 14px;
   padding-top: 10px;
 }
@@ -565,7 +565,7 @@
   font-family: inherit;
   background: var(--panel);
   color: var(--ink);
-  border: 2px solid var(--hairs);
+  border: 2.5px solid var(--hairs);
   border-radius: 8px;
   max-width: 100%;
   cursor: pointer;
@@ -685,7 +685,7 @@
   align-items: flex-start;
   margin: 8px 0;
   padding: 10px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 10px;
   background: var(--panel);
 }

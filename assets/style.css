@@ -13,8 +13,8 @@
   --accent: #22c55e;
   --accent-text: #15803d;
   --imported: #7c3aed;
-  --hair: #c6d2df;
-  --hairs: #97aac0;
+  --hair: #aebccc;
+  --hairs: #8193ab;
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(15, 23, 42, 0.05);
   --diff-add-bg: rgba(34, 197, 94, 0.1);
   --diff-add-border: rgba(34, 197, 94, 0.35);
@@ -39,8 +39,8 @@
     --faint: #64748b;
     --accent-text: #4ade80;
     --imported: #8b5cf6;
-    --hair: #31435f;
-    --hairs: #50698e;
+    --hair: #405678;
+    --hairs: #5d7aa4;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
     --diff-add-bg: rgba(34, 197, 94, 0.16);
     --diff-add-border: rgba(34, 197, 94, 0.4);
@@ -64,8 +64,8 @@
   --faint: #64748b;
   --accent-text: #4ade80;
   --imported: #8b5cf6;
-  --hair: #31435f;
-  --hairs: #50698e;
+  --hair: #405678;
+  --hairs: #5d7aa4;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
   --diff-add-bg: rgba(34, 197, 94, 0.16);
   --diff-add-border: rgba(34, 197, 94, 0.4);
@@ -139,7 +139,7 @@ select {
 
   ::picker(select) {
     background: var(--bg);
-    border: 2.5px solid var(--hairs);
+    border: 3px solid var(--hairs);
     border-radius: 10px;
     box-shadow: var(--shadow);
     padding: 4px;
@@ -369,7 +369,7 @@ a {
   margin-left: auto;
   width: 40px;
   height: 36px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   color: var(--ink);
@@ -392,7 +392,7 @@ a {
 
 .navsearch input {
   padding: 6px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
@@ -497,7 +497,7 @@ a {
 
 .pbar {
   height: 16px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 8px;
   overflow: hidden;
   margin: 16px 0 8px;
@@ -551,7 +551,7 @@ a {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 10px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   background: #000;
   display: block;
 }
@@ -611,7 +611,7 @@ a {
   font-size: 0.72rem;
   font-weight: 500;
   padding: 3px 9px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 6px;
   color: var(--muted);
 }
@@ -656,7 +656,7 @@ a {
 }
 
 .tick.none {
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   color: var(--faint);
   line-height: 17px;
 }
@@ -695,7 +695,7 @@ a {
   margin: 10px 0;
   border-radius: 10px;
   overflow: hidden;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
 }
 
 .notes-embed iframe {
@@ -798,7 +798,7 @@ a {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 10px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   background: #000;
   display: block;
 }
@@ -841,7 +841,7 @@ a {
 }
 
 .bmark.spin {
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-top-color: var(--accent);
   animation: busyspin 0.8s steps(8) infinite;
 }
@@ -973,7 +973,7 @@ a {
 .heronews {
   display: flex;
   flex-direction: column;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   background: var(--panel);
   box-shadow: var(--shadow);
@@ -1025,7 +1025,7 @@ a {
 }
 
 .bpost {
-  border-bottom: 2.5px solid var(--hair);
+  border-bottom: 3px solid var(--hair);
   padding-bottom: 11px;
 }
 
@@ -1035,7 +1035,7 @@ a {
 }
 
 .dpost {
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
   padding: 14px 0;
 }
 
@@ -1085,7 +1085,7 @@ a {
 
 .dbody pre {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 8px;
   padding: 10px;
   overflow: auto;
@@ -1125,7 +1125,7 @@ a {
   gap: 9px;
   align-items: center;
   margin-top: 8px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   padding: 7px 9px;
   text-decoration: none;
@@ -1166,7 +1166,7 @@ a {
   padding: 16px 20px;
   text-align: center;
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   box-shadow: var(--shadow);
 }
@@ -1253,7 +1253,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow);
@@ -1274,7 +1274,7 @@ th {
 
 td {
   padding: 12px;
-  border-bottom: 2.5px solid var(--hair);
+  border-bottom: 3px solid var(--hair);
 }
 
 tr:last-child td {
@@ -1328,7 +1328,7 @@ tr.lead td:first-child {
 .menufold > summary {
   display: inline-flex;
   padding: 9px 16px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 9px;
   background: var(--bg);
   box-shadow: 0 3px 0 var(--hairs);
@@ -1508,7 +1508,7 @@ tr.lead td:first-child {
 
 .card {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   overflow: hidden;
   text-decoration: none;
@@ -1532,7 +1532,7 @@ tr.lead td:first-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 2.5px solid var(--hair);
+  border-bottom: 3px solid var(--hair);
 }
 
 .thumb .sys {
@@ -1649,7 +1649,7 @@ img.blurhash-loaded {
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   box-shadow: var(--shadow);
   margin-bottom: 6px;
   background: #000;
@@ -1835,7 +1835,7 @@ img.blurhash-loaded {
     width: 100%;
     flex-direction: column;
     gap: 0;
-    border-top: 2.5px solid var(--hair);
+    border-top: 3px solid var(--hair);
     padding-top: 8px;
     margin-top: 4px;
   }
@@ -1918,7 +1918,7 @@ img.blurhash-loaded {
 
 .notes {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   padding: 18px 20px;
   box-shadow: var(--shadow);
@@ -1944,7 +1944,7 @@ img.blurhash-loaded {
 
 .notes hr {
   border: none;
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
   margin: 12px 0;
 }
 
@@ -1954,7 +1954,7 @@ img.blurhash-loaded {
 
 .codebox {
   background: var(--panel);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   padding: 12px 14px;
   margin: 10px 0;
@@ -1987,7 +1987,7 @@ img.blurhash-loaded {
 
 .policy {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   padding: 20px 24px;
   box-shadow: var(--shadow);
@@ -2061,7 +2061,7 @@ img.blurhash-loaded {
 
 .act {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 10px;
   padding: 12px 14px;
   box-shadow: var(--shadow);
@@ -2114,7 +2114,7 @@ img.blurhash-loaded {
   max-width: 240px;
   max-height: 180px;
   border-radius: 8px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   display: block;
 }
 
@@ -2142,7 +2142,7 @@ img.blurhash-loaded {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 9px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   box-shadow: var(--shadow);
   display: block;
   background: #000;
@@ -2197,7 +2197,7 @@ img.blurhash-loaded {
 
 .actform {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   padding: 16px 18px;
   box-shadow: var(--shadow);
@@ -2255,7 +2255,7 @@ img.blurhash-loaded {
 .actform textarea {
   width: 100%;
   padding: 9px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   color: var(--ink);
@@ -2266,7 +2266,7 @@ img.blurhash-loaded {
 .actform select {
   width: 100%;
   padding: 9px 36px 9px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background-color: var(--panel);
   color: var(--ink);
@@ -2327,7 +2327,7 @@ img.blurhash-loaded {
   align-items: center;
   gap: 9px;
   padding: 9px 16px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 9px;
   background: var(--bg);
   box-shadow: 0 3px 0 var(--hairs);
@@ -2462,7 +2462,7 @@ img.blurhash-loaded {
   display: inline-flex;
   align-items: center;
   border-radius: 6px;
-  border: 2px solid var(--hairs);
+  border: 2.5px solid var(--hairs);
   overflow: hidden;
   font-size: 0.72rem;
   line-height: 1.2;
@@ -2479,7 +2479,7 @@ img.blurhash-loaded {
   padding: 3px 8px;
   min-width: 54px;
   text-align: center;
-  border-right: 2px solid var(--hairs);
+  border-right: 2.5px solid var(--hairs);
   letter-spacing: 0.02em;
   font-size: 0.65rem;
   flex-shrink: 0;
@@ -2699,7 +2699,7 @@ input.bad {
   font-size: 0.8rem;
   background: var(--panel);
   color: var(--ink);
-  border: 2px solid var(--hair);
+  border: 2.5px solid var(--hair);
   border-radius: 7px;
   padding: 3px 6px;
 }
@@ -2771,7 +2771,7 @@ input.bad {
   display: flex;
   gap: 12px;
   padding: 8px 12px;
-  border-bottom: 2.5px solid var(--hair);
+  border-bottom: 3px solid var(--hair);
   margin-bottom: 4px;
 }
 
@@ -2837,7 +2837,7 @@ input.bad {
 .authpick,
 .gamepick {
   position: relative;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   padding: 6px;
@@ -3059,7 +3059,7 @@ input.bad {
   right: 0;
   min-width: 200px;
   background: var(--bg);
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 6px;
@@ -3073,7 +3073,7 @@ input.bad {
   font-weight: 700;
   padding: 8px 12px;
   color: var(--accent-text);
-  border-bottom: 2.5px solid var(--hair);
+  border-bottom: 3px solid var(--hair);
   margin-bottom: 4px;
 }
 
@@ -3091,7 +3091,7 @@ input.bad {
 
 .am-theme {
   padding: 8px 12px;
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
   margin-top: 4px;
   display: flex;
   gap: 5px;
@@ -3113,7 +3113,7 @@ input.bad {
   padding: 3px 8px;
   white-space: nowrap;
   border-radius: 7px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   background: var(--bg);
   color: var(--muted);
   cursor: pointer;
@@ -3229,7 +3229,7 @@ input.bad {
 
 .dimopt {
   padding: 7px 14px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 8px;
   background: var(--bg);
   color: var(--muted);
@@ -3260,7 +3260,7 @@ input.bad {
 
 .filters input {
   padding: 9px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--bg);
   color: var(--ink);
@@ -3272,7 +3272,7 @@ input.bad {
 
 .filters select {
   padding: 9px 36px 9px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background-color: var(--bg);
   color: var(--ink);
@@ -3338,7 +3338,7 @@ input.bad {
 
 .pag-btn {
   padding: 6px 12px;
-  border: 2px solid var(--hairs);
+  border: 2.5px solid var(--hairs);
   border-radius: 8px;
   background: var(--bg);
   box-shadow: 0 2px 0 var(--hairs);
@@ -3393,7 +3393,7 @@ input.bad {
 .pag-size select {
   padding: 4px 26px 4px 8px;
   background-position: right 8px center;
-  border: 2px solid var(--hair);
+  border: 2.5px solid var(--hair);
   border-radius: 6px;
   background-color: var(--bg);
   color: var(--ink);
@@ -3457,7 +3457,7 @@ input.bad {
 
 .factbox {
   background: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 12px;
   padding: 13px 15px;
   box-shadow: var(--shadow);
@@ -3550,7 +3550,7 @@ input.bad {
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   box-shadow: var(--shadow);
   margin-bottom: 6px;
   max-width: 1160px;
@@ -3743,7 +3743,7 @@ footer a {
   font-size: 0.88rem;
   color: var(--ink);
   background-color: var(--bg);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   box-sizing: border-box;
   font-family: inherit;
@@ -3783,7 +3783,7 @@ footer a {
   height: 38px;
   min-width: 38px;
   padding: 0 10px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 9px;
   font-size: 0.85rem;
   display: inline-flex;
@@ -3854,7 +3854,7 @@ input[type="checkbox"] {
   margin: 0;
   padding: 0;
   flex: none;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 6px;
   background: var(--bg);
   cursor: pointer;
@@ -3965,7 +3965,7 @@ th .eyeic {
 /* the notes dialect's remaining pieces (#46): tabs as foldable sections,
    definition lists, footnotes, aligned images */
 .wtab {
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   margin: 10px 0;
   background: var(--panel);
@@ -3979,7 +3979,7 @@ th .eyeic {
 }
 
 .wtab[open] > summary {
-  border-bottom: 2.5px solid var(--hair);
+  border-bottom: 3px solid var(--hair);
 }
 
 .wtab > :not(summary) {
@@ -4062,7 +4062,7 @@ th .eyeic {
 .notes .toc {
   margin: 10px 0;
   padding: 8px 14px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
 }
@@ -4089,7 +4089,7 @@ th .eyeic {
 
 .notes .footnotes-sep {
   border: 0;
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
 }
 
 .notes .footnote-ref {
@@ -4117,7 +4117,7 @@ th .eyeic {
   --shine: transparent;
   background: transparent;
   color: var(--ink);
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
 }
 
 .stat b .starglyph {
@@ -4222,7 +4222,7 @@ th .eyeic {
   gap: 10px;
   padding: 7px 12px;
   background: var(--panel);
-  border: 2px solid var(--hairs);
+  border: 2.5px solid var(--hairs);
   border-radius: 8px;
   font-size: 0.86rem;
 }
@@ -4343,7 +4343,7 @@ th .eyeic {
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 8px;
   background: var(--bg);
   box-shadow: 0 2px 0 var(--hairs);
@@ -4432,7 +4432,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   align-items: center;
   width: 100%;
   padding: 8px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   box-sizing: border-box;
@@ -4547,7 +4547,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .formrule {
   border: 0;
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
   margin: 18px 0;
 }
 
@@ -4563,7 +4563,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   flex: 1;
   min-width: 12rem;
   padding: 8px 12px;
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   background: var(--panel);
   color: var(--ink);
@@ -4585,7 +4585,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   --shine: transparent;
   background: var(--panel);
   color: var(--muted);
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
 }
 
 .btn.shade:hover {
@@ -4750,7 +4750,7 @@ ins.diff-inline {
 .dimrow select.dimdd,
 .dimrow select.subdd {
   padding: 8px 36px 8px 12px;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 8px;
   background-color: var(--bg);
   color: var(--ink);
@@ -4791,7 +4791,7 @@ input[type="radio"] {
   margin: 0;
   padding: 0;
   flex: none;
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 50%;
   background: var(--bg);
   cursor: pointer;
@@ -4838,7 +4838,7 @@ input[type="radio"]:disabled {
 .importnote {
   margin: 24px 0 0;
   padding-top: 12px;
-  border-top: 2.5px solid var(--hair);
+  border-top: 3px solid var(--hair);
   color: var(--faint);
   font-size: 0.8rem;
 }
@@ -4858,7 +4858,7 @@ input[type="radio"]:disabled {
 
 .rulesbox {
   background: var(--bg);
-  border: 2.5px solid var(--hairs);
+  border: 3px solid var(--hairs);
   border-radius: 14px;
   padding: 22px 26px;
   box-shadow: var(--shadow);
@@ -4890,7 +4890,7 @@ input[type="radio"]:disabled {
   font-family: inherit;
   background: var(--panel);
   color: var(--ink);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   box-sizing: border-box;
 }
@@ -4906,7 +4906,7 @@ input[type="radio"]:disabled {
   font-family: inherit;
   background-color: var(--panel);
   color: var(--ink);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 9px;
   box-sizing: border-box;
   cursor: pointer;
@@ -4940,7 +4940,7 @@ input[type="radio"]:disabled {
   font-family: inherit;
   background: var(--panel);
   color: var(--ink);
-  border: 2px solid var(--hair);
+  border: 2.5px solid var(--hair);
   border-radius: 8px;
   box-sizing: border-box;
 }
@@ -4958,7 +4958,7 @@ input[type="radio"]:disabled {
   width: 420px;
   max-width: 92vw;
   background: var(--panel);
-  border: 2.5px solid var(--hair);
+  border: 3px solid var(--hair);
   border-radius: 10px;
   box-shadow: var(--shadow);
   z-index: 1000;
