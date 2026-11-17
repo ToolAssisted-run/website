@@ -1,17 +1,21 @@
-{# A run as a shelf card: thumbnail, game, category, authors, and the foot
-   line (stars, views, state; the length is on the picture). Shared by the home shelves and any
-   other horizontal row. #}
-{% macro run_card(r, prefix='runs/') %}
+{# A run as a shelf card. Home shelves put stars and views on the thumbnail;
+   other horizontal rows keep them in the footer. #}
+{% macro run_card(r, prefix='runs/', counts_in_thumb=false) %}
 {% set g = r['_game'] %}
 {% set rs, vs = eff_state(r) %}
 <a class="card" href="{{ prefix }}{{ r['id'] }}/">
 {% set dur %}<span class="dur">{{ primary_metric_text(r) }}</span>{% endset %}
-{{ thumb_html(r, dur) }}
+{% set metrics -%}
+{%- if counts_in_thumb -%}
+<span class="card-metrics"><span class="card-likes"><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r), show_unknown=counts_in_thumb) }}</span>
+{%- endif -%}
+{%- endset %}
+{{ thumb_html(r, dur + metrics) }}
 {# an Unclassified run has no category to name: what it does is the thing
    worth reading, so its own description takes the slot (#75) #}
 {# the machine, above the title and quietly: a shelf mixes systems, and the
    same game exists on several of them #}
 <span class="cbody"><span class="csys">{{ systems[g['system']]['name'] }}</span><b>{{ g['title'] }}</b>{% if is_unclassified(r) %}{% if r.get('goalDescription') %}<span class="ccat cgoal">{{ r['goalDescription'] }}</span>{% endif %}{% else %}<span class="ccat">{{ cat_label(r) }}</span>{% endif %}
 <span class="cauth">{{ r['authors']|map(attribute='user')|join(', ') }}</span>
-<span class="cfoot"><span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% if is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
+<span class="cfoot">{% if not counts_in_thumb %}<span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% endif %}{% if is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
 {% endmacro %}

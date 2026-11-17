@@ -531,11 +531,14 @@ shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
 marks the part of the shelf in view, moving as it scrolls, and dragging it
 scrolls the shelf; the shelf cards
 are three parts picture to one part words (the system and the state on the
-picture with the length; under it the title with its stars and views, then
-category · authors across the whole line, no frame count); Join in is one centred line; the ground is a faint pixel lattice and
-the bar's underline is the green playhead. Glows are dark-theme only, and the light theme draws its greens deeper than
-the accent for contrast on white. All of
-it is styling and decoration around the pages' unchanged elements.
+picture, with the length at lower right and likes stacked above views at lower
+left; under it the title, then category · authors across the whole line, no
+frame count; when host visit data is unavailable, an eye with an em dash marks
+the view count unknown rather than implying zero); Join in is one centred line;
+the ground is a faint pixel lattice and the bar's underline is the green
+playhead. Glows are dark-theme only, and
+the light theme draws its greens deeper than the accent for contrast on white.
+All of it is styling and decoration around the pages' unchanged elements.
 
 Run encodes use a sticky floating player while reading long run pages. Playback
 activates the behavior when the provider confirms that it started; providers

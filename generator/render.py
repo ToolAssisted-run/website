@@ -266,15 +266,18 @@ SYSTEMS_ICON = _stat_icon('<rect x="6" y="6" width="12" height="12" rx="2"/>'
                           '<path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>')
 AUTHORS_ICON = _stat_icon('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>')
 
-def card_views(n):
-    """The little eye a card carries, zero included. Visit counts are host
-    state, absent on CI and the standby; only there does the eye vanish,
-    because an unknowable count shown as 0 would be a lie."""
-    if not visits_known:
+def card_views(n, show_unknown=False):
+    """The little eye a card carries. Home shelves keep its place when host
+    visit state is absent, marking the count unknown instead of claiming 0."""
+    if not visits_known and not show_unknown:
         return ''
-    return ('<span class="cview" title="number of visits">'
-            '<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>'.replace(chr(10), '')
-            + f'{n:,}</span>')
+    eye = ('<svg class="eyeic" viewBox="0 0 24 24" aria-hidden="true">'
+           '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>'
+           '<circle cx="12" cy="12" r="2.6"/></svg>')
+    if not visits_known:
+        return ('<span class="cview" title="Views" '
+                'aria-label="Views, count unknown">' + eye + '—</span>')
+    return '<span class="cview" title="number of visits">' + eye + f'{n:,}</span>'
 
 def chip_views(n):
     """The eye as a heading chip: cumulative visits for a band of games.

@@ -151,6 +151,9 @@ def main():
 
         rd = lambda p: (out / p).read_text(encoding='utf-8')
         home = rd('index.html')
+        ck('home cards mark unavailable views without claiming zero',
+           'title="Views" aria-label="Views, count unknown">' in home
+           and '</svg>—</span>' in home)
         ren = rd('runs/M900004/index.html')
         ck('wiki-relative links resolve to the site the notes were written on',
            'href="https://tasvideos.org/GameResources/NES/Pinball">the resource page</a>' in ren
