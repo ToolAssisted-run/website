@@ -17,5 +17,5 @@
    same game exists on several of them #}
 <span class="cbody"><span class="csys">{{ systems[g['system']]['name'] }}</span><b>{{ g['title'] }}</b>{% if is_unclassified(r) %}{% if r.get('goalDescription') %}<span class="ccat cgoal">{{ r['goalDescription'] }}</span>{% endif %}{% else %}<span class="ccat">{{ cat_label(r) }}</span>{% endif %}
 <span class="cauth">{{ r['authors']|map(attribute='user')|join(', ') }}</span>
-<span class="cfoot">{% if not counts_in_thumb %}<span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% endif %}{% if is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
+<span class="cfoot">{% if not counts_in_thumb %}<span><span class="starglyph">★</span>{{ nlikes(r) }}</span>{{ card_views(nvisits(r)) }}{% endif %}{% if counts_in_thumb %}{% if not is_unclassified(r) and not is_ranked(r) %}<span class="pendsm">Pending</span>{% endif %}{% elif is_unclassified(r) %}<span class="unclsm">Unclassified</span>{% elif is_ranked(r) %}<span class="versm">Verified</span>{% else %}<span class="pendsm">Pending</span>{% endif %}</span></span></a>
 {% endmacro %}

@@ -154,6 +154,9 @@ def main():
         ck('home cards mark unavailable views without claiming zero',
            'title="Views" aria-label="Views, count unknown">' in home
            and '</svg>—</span>' in home)
+        ck('home cards only show the pending state label',
+           'class="pendsm">Pending</span>' in home
+           and 'class="versm"' not in home and 'class="unclsm"' not in home)
         ren = rd('runs/M900004/index.html')
         ck('wiki-relative links resolve to the site the notes were written on',
            'href="https://tasvideos.org/GameResources/NES/Pinball">the resource page</a>' in ren

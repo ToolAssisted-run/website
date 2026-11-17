@@ -530,11 +530,12 @@ in the dark, a pale one in the light); every
 shelf title carries a ▶| mark over a frame ruler, and a dial on the ruler
 marks the part of the shelf in view, moving as it scrolls, and dragging it
 scrolls the shelf; the shelf cards
-are three parts picture to one part words (the system and the state on the
-picture, with the length at lower right and likes stacked above views at lower
-left; under it the title, then category · authors across the whole line, no
-frame count; when host visit data is unavailable, an eye with an em dash marks
-the view count unknown rather than implying zero); Join in is one centred line;
+are three parts picture to one part words (the system and Pending, when
+applicable, on the picture; Verified and Unclassified have no badge, leaving
+the upper right open. The length sits lower right, likes stacked above views
+lower left; under it the title, then category · authors across the whole line,
+no frame count; when host visit data is unavailable, an eye with an em dash
+marks the view count unknown rather than implying zero); Join in is one centred line;
 the ground is a faint pixel lattice and the bar's underline is the green
 playhead. Glows are dark-theme only, and
 the light theme draws its greens deeper than the accent for contrast on white.
