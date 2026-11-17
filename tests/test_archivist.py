@@ -283,22 +283,24 @@ def main():
         # from the misspelt one, and the title has since been corrected. It
         # sits in a group, and an expert holds a scope over it alone.
         md = seed / 'games/nes/movabel-game'
-        (md / 'runs/M900077').mkdir(parents=True)
+        (md / 'runs/M900007').mkdir(parents=True)
         (md / 'game.json').write_text(json.dumps(
             {'title': 'Movable Game', 'system': 'nes', 'createdBy': 'eien86',
              'createdAt': '2026-11-01'}, indent=1) + '\n')
         (md / 'categories.json').write_text(json.dumps(
             {'dimensions': [{'key': 'goal', 'name': 'Category', 'options': [
                 {'key': 'any', 'label': 'any%', 'rule': 'Finish.'}]}]}, indent=1) + '\n')
-        (md / 'runs/M900077/M900077.bk2').write_bytes(b'test')
-        (md / 'runs/M900077/run.json').write_text(json.dumps({
-            'id': 'M900077', 'game': 'nes/movabel-game', 'category': {'goal': 'any'},
+        (md / 'runs/M900007/M900007.bk2').write_bytes(b'test')
+        (md / 'runs/M900007/thumb.png').write_bytes(PNG)
+        (md / 'runs/M900007/run.json').write_text(json.dumps({
+            'id': 'M900007', 'game': 'nes/movabel-game', 'category': {'goal': 'any'},
             'authors': [{'user': 'TestAuthor'}],
-            'movie': {'file': 'M900077.bk2', 'format': 'bk2', 'frames': 600,
+            'movie': {'file': 'M900007.bk2', 'format': 'bk2', 'frames': 600,
                       'rerecords': None, 'start': 'power-on'},
+            'thumbnail': 'thumb.png',
             'contract': {'emulator': 'BizHawk 2.11'},
             'status': {'reproduced': 'none', 'verified': 'none'},
-            'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=movabl77777'}],
+            'encodes': [{'kind': 'youtube', 'url': 'https://www.youtube.com/watch?v=movabl00007'}],
             'submitted': '2026-11-01T10:00:00Z', 'submittedBy': 'TestAuthor'}, indent=1))
         gdoc_ = json.loads((seed / 'groups.json').read_text())
         gdoc_['groups'].append({'key': 'movables', 'title': 'Movables',
@@ -2060,9 +2062,9 @@ def main():
                and r.get('to') == 'nes/movable-game', str(r)[:200])
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             moved_dir = work / 'games/nes/movable-game'
-            ck('the folder moved whole', (moved_dir / 'runs/M900077/M900077.bk2').exists()
+            ck('the folder moved whole', (moved_dir / 'runs/M900007/M900007.bk2').exists()
                and not (work / 'games/nes/movabel-game').exists())
-            rj77 = json.loads((moved_dir / 'runs/M900077/run.json').read_text())
+            rj77 = json.loads((moved_dir / 'runs/M900007/run.json').read_text())
             ck('its run names the new address, and nothing else in it changed',
                rj77['game'] == 'nes/movable-game' and rj77['movie']['frames'] == 600
                and rj77['authors'] == [{'user': 'TestAuthor'}], str(rj77)[:200])
