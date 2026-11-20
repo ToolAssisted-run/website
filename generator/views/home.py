@@ -3,7 +3,7 @@ import hashlib
 import json
 
 from config import OUT
-from model import archived_at, games, nlikes, nvisits, runs
+from model import archived_at, games, is_unclassified, nlikes, nvisits, runs
 from views.game_pages import combo_iter, combo_section
 from render import (HOME_WALL_ROWS, SITE_URL, WALL_COLS, compose_wall, page, tpl,
                     wall_order, wall_slice)
@@ -47,6 +47,8 @@ def random_selection(all_runs, shown):
     members brought here, not the seeded corpus. Nor is anything but the
     best run of its category, the one its board puts first: an obsoleted
     run, a pending one or an author's slower entry is never picked.
+    Unclassified runs have no board to be beaten on, so every one of them
+    may be picked.
 
     The order written here is a hash of the run id, not chance. A build has
     to give the same bytes for the same archive (every suite leans on that,
@@ -56,7 +58,8 @@ def random_selection(all_runs, shown):
     """
     seen = {r['id'] for r in shown}
     best = category_leaders()
-    left = [r for r in all_runs if r['id'] not in seen and r['id'] in best
+    left = [r for r in all_runs if r['id'] not in seen
+            and (r['id'] in best or is_unclassified(r))
             and r.get('status', {}).get('reproduced') != 'imported']
     quiet = [r for r in left if not nlikes(r) and not nvisits(r)]
     loud = [r for r in left if nlikes(r) or nvisits(r)]

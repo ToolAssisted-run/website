@@ -465,6 +465,10 @@ def main():
                                             authors=['Bo'], submitted=d(200), **best_of))
         pick_runs.append(mkarchive.run_spec('M900392', game='nes/pick3', frames=100,
                                             authors=['Cy'], submitted=d(201)))
+        # an Unclassified run has no board to be beaten on: it may be picked
+        pick_runs.append(mkarchive.run_spec('M900393', game='nes/pick4', goal='unclassified',
+                                            frames=700, authors=['Di'], submitted=d(202),
+                                            goalDescription='Collect every coin.'))
         pick_runs[49]['likes'] = [{'user': 'Fan', 'date': d(1)}]
         imported10 = {f'M9004{40 + i}' for i in (0, 1)}
         for i in (0, 1):
@@ -494,6 +498,7 @@ def main():
            not (set(pool10) & not_best10) and not (set(picks10) & not_best10)
            and not (not_best10 & (set(fresh10) | set(liked10))),
            f'shards {sorted(pool10)} fresh {fresh10}')
+        ck('an Unclassified run may be a pick', 'M900393' in pool10, str(sorted(pool10)))
         ck('an imported run is never a pick',
            not (set(pool10) & imported10) and not (set(picks10) & imported10),
            f'shards {sorted(pool10)} picks {picks10}')

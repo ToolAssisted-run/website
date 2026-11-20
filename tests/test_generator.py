@@ -154,11 +154,10 @@ def main():
         ck('home cards mark unavailable views without claiming zero',
            'title="Views" aria-label="Views, count unknown">' in home
            and '</svg>—</span>' in home)
-        # Random picks hold only the best run of a category, so neither a
-        # pending run nor an Unclassified one is ever among them
+        # Random picks hold only the best run of a category (or an
+        # Unclassified run), so a pending run is never among them
         picks_sec = home.split('Random picks')[1].split('<section')[0] if 'Random picks' in home else ''
-        ck('the picks shelf never shows a pending or Unclassified card',
-           'class="pendsm"' not in picks_sec and 'class="unclsm"' not in picks_sec)
+        ck('the picks shelf never shows a pending card', 'class="pendsm"' not in picks_sec)
         ren = rd('runs/M900004/index.html')
         ck('wiki-relative links resolve to the site the notes were written on',
            'href="https://tasvideos.org/GameResources/NES/Pinball">the resource page</a>' in ren
