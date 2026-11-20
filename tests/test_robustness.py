@@ -55,14 +55,20 @@ def git(*args, cwd, check=True):
 
 
 def other_pushes(other, filename, text):
-    """Somebody else commits to the same branch, from their own clone."""
-    git('fetch', '-q', 'origin', cwd=other)
-    git('reset', '-q', '--hard', 'origin/main', cwd=other)
-    (other / filename).write_text(text, encoding='utf-8')
-    git('add', '-A', cwd=other)
-    git('-c', 'user.name=o', '-c', 'user.email=o@o', 'commit', '-qm',
-        f'other work: {filename}', cwd=other)
-    git('push', '-q', 'origin', 'main', cwd=other)
+    """Somebody else commits to the same branch, from their own clone. The
+    archivist pushes in the background, so like any other writer this one
+    may find origin moved under it, and simply tries again."""
+    for attempt in range(10):
+        git('fetch', '-q', 'origin', cwd=other)
+        git('reset', '-q', '--hard', 'origin/main', cwd=other)
+        (other / filename).write_text(text, encoding='utf-8')
+        git('add', '-A', cwd=other)
+        git('-c', 'user.name=o', '-c', 'user.email=o@o', 'commit', '-qm',
+            f'other work: {filename}', cwd=other)
+        if git('push', '-q', 'origin', 'main', cwd=other, check=False).returncode == 0:
+            return
+        time.sleep(0.5)
+    raise RuntimeError(f'could not push {filename} from outside')
 
 
 def main():
@@ -191,6 +197,8 @@ def main():
                len(set(ok_ids)) == len(ok_ids), str(sorted(ok_ids)))
 
             # ---------- a rejected request leaves nothing behind ----------
+            # writes go out to origin in the background: let the last ones land
+            ck('the writes so far reached origin', mkarchive.wait_pushed(work, origin))
             before = git('rev-parse', 'HEAD', cwd=other).stdout.strip()
             git('fetch', '-q', 'origin', cwd=other)
             before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
@@ -235,6 +243,7 @@ def main():
                 time.sleep(1)
             ck('the planted rule reached the checkout',
                'gatecanary' in (work / 'validate.py').read_text(encoding='utf-8'))
+            mkarchive.wait_pushed(work, origin)
             git('fetch', '-q', 'origin', cwd=other)
             before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
             code, r, _ = call(U + '/api/submit', dict(sub),
@@ -250,38 +259,50 @@ def main():
             git('fetch', '-q', 'origin', cwd=other)
             after = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
             ck('a refused write commits nothing', before == after,
-               f'{before[:8]} -> {after[:8]}')
+               f'{before[:8]} -> {after[:8]}: '
+               + git('log', '--format=%s', f'{before}..{after}', cwd=other).stdout.strip()[:300])
             # the refusal put the checkout back the way origin has it:
             # intake is healthy, not wedged, and takes the next write
             code, r, _ = call(U + '/api/submit', dict(sub),
                               files={'movie': ('m.bk2', mkarchive.unique_movie())})
             ck('intake still healthy after a refused write', code == 200, str(r)[:120])
 
-            # ---------- origin unreachable: a JSON refusal, not an HTML 500 ----------
-            # A revoked deploy key made checkout_branch's fetch raise
-            # CalledProcessError out of every write. Flask answered with an
-            # HTML page, the client parses every answer as JSON, and the site
-            # reported the archivist unreachable while it was healthy and only
-            # its credential had gone. The refusal has to be readable.
+            # ---------- origin unreachable: the write is kept, and goes out later ----------
+            # A write commits on the server and answers; GitHub is reached
+            # in the background. So an origin that cannot be reached (a
+            # revoked deploy key, a GitHub outage) refuses nothing: the act
+            # is committed and validated here, and goes out once origin
+            # answers again. Before, every write failed for as long as
+            # GitHub did.
+            mkarchive.wait_pushed(work, origin)
             git('fetch', '-q', 'origin', cwd=other)
             before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
             good_url = git('remote', 'get-url', 'origin', cwd=work).stdout.strip()
             git('remote', 'set-url', 'origin', str(td / 'no-such-origin.git'), cwd=work)
             code, r, _ = call(U + '/api/submit', dict(sub),
                               files={'movie': ('m.bk2', mkarchive.unique_movie())})
-            ck('a write is refused when origin cannot be reached', code == 503, str(r)[:200])
-            ck('and the refusal is JSON the page can read, not an HTML error',
-               'raw' not in r and r.get('ok') is False, str(r)[:200])
-            ck('and it says plainly that nothing was written',
-               'written' in str(r.get('error', '')), str(r)[:200])
-            git('remote', 'set-url', 'origin', good_url, cwd=work)
+            ck('a write is accepted while origin cannot be reached', code == 200, str(r)[:200])
+            held_id = r.get('id')
+            ck('and it is committed on the server',
+               held_id and git('log', '-1', '--format=%s', cwd=work).stdout.find(held_id) >= 0,
+               git('log', '-1', '--format=%s', cwd=work).stdout[:120])
+            time.sleep(2)
             git('fetch', '-q', 'origin', cwd=other)
-            ck('nothing was committed while origin was unreachable',
+            ck('nothing reached origin while it was unreachable',
                before == git('rev-parse', 'origin/main', cwd=other).stdout.strip())
+            health = json.loads(urllib.request.urlopen(U + '/api/health', timeout=10).read())
+            ck('the health check says commits are waiting, and why',
+               (health.get('sync') or {}).get('unpushed_since')
+               and (health.get('sync') or {}).get('error'), str(health.get('sync')))
+            git('remote', 'set-url', 'origin', good_url, cwd=work)
+            ck('the held write goes out once origin answers again',
+               mkarchive.wait_pushed(work, origin, timeout=90))
+            git('fetch', '-q', 'origin', cwd=other)
+            ck('and it is on origin',
+               held_id in git('log', '-3', '--format=%s', 'origin/main', cwd=other).stdout)
             code, r, _ = call(U + '/api/submit', dict(sub),
                               files={'movie': ('m.bk2', mkarchive.unique_movie())})
-            ck('intake recovers by itself once origin answers again',
-               code == 200, str(r)[:120])
+            ck('intake carries on', code == 200, str(r)[:120])
 
             # ---------- a file the service may not write: said, not a crash ----------
             # The deploy pulled the archive as root, so a file a direct push
@@ -296,6 +317,7 @@ def main():
             # else. A process that is root ignores the mode, so there is
             # nothing to refuse there.
             if os.name == 'nt' or os.geteuid() != 0:
+                mkarchive.wait_pushed(work, origin)
                 git('fetch', '-q', 'origin', cwd=other)
                 before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
                 systems_file = work / 'systems.json'
@@ -335,6 +357,7 @@ def main():
             # name, and it still has to answer in JSON, commit nothing, and
             # not leave what it half wrote to be read as the record.
             if os.name != 'nt' and os.geteuid() != 0:
+                mkarchive.wait_pushed(work, origin)
                 git('fetch', '-q', 'origin', cwd=other)
                 before = git('rev-parse', 'origin/main', cwd=other).stdout.strip()
                 objects = work / '.git' / 'objects'

@@ -550,6 +550,8 @@ def main():
                code == 400 and 'unpacks to more than 50 MB' in str(r), f'{code} {str(r)[:160]}')
 
             # ---------------- the archive is still sane ----------------
+            # writes go out to origin in the background: the check reads origin
+            ck('every write reached origin', mkarchive.wait_pushed(work, origin, timeout=120))
             check = td / 'check'
             # file:// forces the git transport instead of copying pack files out of
             # origin.git, which races with the archivist repacking it mid-push

@@ -569,11 +569,18 @@ def act_common(form):
 def health():
     """Observable health status of the live origin and its background site builder."""
     import sitebuild
+    import gitstore
+    st = dict(gitstore.sync_state)
+    for k in ('unpushed_since', 'last_push', 'last_fetch'):
+        if st.get(k):
+            st[k] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(st[k]))
     return jsonify({
         'ok': True,
         'build': sitebuild._last,
         'serial': current_serial(),
         'archive': str(ARCHIVE),
+        # writes commit here and go out to GitHub in the background
+        'sync': st,
     })
 
 @app.post('/api/build/rebuild')
@@ -1644,6 +1651,10 @@ if __name__ == '__main__':
     # waiting for the first reconcile pass
     threading.Thread(target=move_game_tags, daemon=True).start()
     replay_spool()   # notifications a restart interrupted mid-wait
+    # writes commit locally and answer; this pushes them, and fetches what
+    # arrives from elsewhere (gitstore.sync_once)
+    import gitstore
+    gitstore.start_syncer()
     import sitebuild
     sitebuild.start()   # publish the site from here, fresh on every commit
     # nginx terminates TLS and proxies to us over the loopback, so the

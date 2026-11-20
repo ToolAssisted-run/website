@@ -360,3 +360,29 @@ def make_archive(root, runs, systems=None, experts=None, authors_extra=None, rat
         (root / 'games' / sys_slug / gslug / 'categories.json').write_text(
             json.dumps(cats, indent=1) + '\n')
     return root
+
+
+def wait_pushed(work, origin, timeout=60):
+    """Wait until everything the archivist committed in `work` is on `origin`
+    (a bare repository). Writes commit locally and answer; the archivist
+    pushes them in the background, so a suite that reads origin waits for
+    the push the way a reader waits for the site. Returns True once they
+    agree."""
+    import subprocess as _sp
+    import time as _t
+    deadline = _t.time() + timeout
+    gitdir = pathlib.Path(work) / '.git'
+    while True:
+        # the branch, not HEAD: while the archivist puts its commits on top of
+        # something pushed from elsewhere, HEAD passes through origin's own
+        # commit and would match before the rebased commits are pushed
+        mid_rebase = (gitdir / 'rebase-merge').exists() or (gitdir / 'rebase-apply').exists()
+        head = _sp.run(['git', 'rev-parse', 'refs/heads/main'], cwd=str(work),
+                       capture_output=True, text=True).stdout.strip()
+        there = _sp.run(['git', '--git-dir', str(origin), 'rev-parse', 'main'],
+                        capture_output=True, text=True).stdout.strip()
+        if head and head == there and not mid_rebase:
+            return True
+        if _t.time() > deadline:
+            return False
+        _t.sleep(0.2)

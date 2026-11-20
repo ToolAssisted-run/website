@@ -1165,12 +1165,48 @@ archivist, module responsibilities). What matters designwise:
   what archives a correct submission and then breaks the archive, which
   happened twice in a day (a `.chimeraProject` movie, two `.wch` watch
   files). A member hears no at the door, in the words of the rule.
+- **A write answers once it is committed and validated on the server, and
+  goes out to GitHub behind the answer.** A like used to wait on a fetch, a
+  validation of the whole archive and a push, 4 to 6 seconds of git and
+  network for a one-line change. Now a write cleans the tree locally
+  (`checkout_branch`, no network), writes, validates, commits to the local
+  checkout (durable on disk) and answers, in about 0.4 s on a full-size
+  archive; the confirmation is the real one, never a guess the page might
+  take back. The **syncer** (`gitstore.sync_once`, a background thread)
+  pushes once writes pause (1.5 s with no new commit, ten at most, so a
+  burst of likes commits each at once and goes out together, never slowed
+  by a sync running beside it), fetches when a push is refused because
+  GitHub moved and every `REFRESH_MAX_AGE` seconds otherwise, and puts
+  whatever arrived from elsewhere under the commits not yet pushed (a
+  fast-forward, or a rebase of ours on top). It touches the network holding
+  no lock and takes the write lock only to change the tree, so a write never
+  waits on GitHub. A GitHub outage therefore refuses nothing: writes are
+  kept on the server and go out when it answers, and `/api/health` (`sync`)
+  says since when and why they wait. Commits waiting more than ten minutes,
+  or ours and a hand push changing the same file so the rebase stops, are
+  said on Discord once (and their recovery); the second needs a person, and
+  writes keep being accepted meanwhile. The deploy keeps a checkout's
+  unpushed commits (it moves the archive to GitHub's state only when nothing
+  waits), and the service pushes them as it starts. The cost of the design
+  is a window of seconds (longer while GitHub is down) in which a commit
+  exists only on the server's disk.
 - **A write that would break the archive's rules is refused, not reported.**
-  `gitstore.commit_push` stages, runs the archive's `validate.py` (about a
-  second and a half over the whole archive), and raises `ArchiveInvalid` if
-  the verdict names a path this request wrote; the endpoint answers 422 with
-  what the validator said, and `checkout_branch()` puts the tree back the way
-  origin has it, so nothing lands and nothing wedges. Refusal beats reporting
+  `gitstore.commit_push` stages, runs the archive's `validate.py`, and raises
+  `ArchiveInvalid` if the verdict names a path this request wrote; the
+  endpoint answers 422 with what the validator said, and `checkout_branch()`
+  puts the tree back to the last commit, so nothing lands and nothing wedges.
+  The validator runs with its result cache (`VALIDATE_CACHE`, kept in
+  `.git/validate-cache.json`, outside the worktree): a game whose files' git
+  blob ids are unchanged is replayed whole, a run's findings and a schema
+  verdict likewise while everything they read is unchanged, and the checks
+  across games always run in full; a game with unstaged or untracked files,
+  or with report ids (unique across runs), is always checked afresh. It runs
+  in a validator host, a Python that has already imported `jsonschema` and
+  forks a child per run, since a fresh interpreter cost as much as the
+  checks. So a write is validated in about 0.2 s instead of re-checking about
+  a thousand unchanged runs (2.7 s); the service warms the cache with one
+  full run as it starts, and CI and the daily sweep validate from scratch.
+  Refusal beats reporting
   because 2.8.2 forbids rewriting history: an invalid state that lands is in
   the archive for good. Only complaints about the paths this write touched
   can refuse it, since a gate that took the whole verdict would turn one bad
@@ -1178,17 +1214,14 @@ archivist, module responsibilities). What matters designwise:
   logged and left to the daily sweep, as is a validator that could not run at
   all (absent, no `jsonschema`, crashed, hung), which has said nothing about
   the content and so never blocks a member.
-- **A write that cannot reach origin says so in JSON.** Every write begins by
-  fetching origin, and a fetch that fails leaves the checkout possibly behind,
-  where committing would let two members overwrite each other. `checkout_branch`
-  raises `ArchiveUnreachable` and the endpoint answers **503** with git's own
-  complaint, having written nothing. It is a typed error for one reason: the
-  bare `CalledProcessError` reached Flask as an HTML page, the client parses
-  every answer as JSON, and so a revoked deploy key presented itself to members
-  as "the archivist is not reachable" while the service was healthy, answering
-  reads, and only its credential had gone. Reads are unaffected either way:
-  `refresh_archive` swallows a failed fetch and serves the tree it has, stale
-  being better than closed.
+- **Reads take what is on the server's disk.** Permissions are read out of
+  the working tree, so content pushed from elsewhere (an appointment, a role
+  event pushed by hand) arrives through the syncer's own fetch; a read that
+  finds the last fetch older than `REFRESH_MAX_AGE` wakes it and answers from
+  the tree it has, and `refresh_archive(0)` (publishing, the operator's
+  rebuild, the role reconcile) syncs before answering. `ArchiveUnreachable`
+  remains the typed, JSON-answered error for a fetch that fails where one is
+  awaited.
 - **Nothing under `/api/` answers in anything but JSON, whatever failed.**
   The two typed errors above are failures somebody had already met, and
   handling them one at a time only ever covers the last one. So
@@ -1206,9 +1239,9 @@ archivist, module responsibilities). What matters designwise:
   status; pages outside `/api/` keep the answer a browser expects. A write
   that fails this way has changed files it never committed, and reads decide
   from the working tree, so the handler calls `gitstore.distrust_checkout()`:
-  the next request, a read included, fetches, finds the tree dirty and puts
-  it back as origin has it, rather than reading a system that was never
-  created as "already here" for the next twenty seconds.
+  the next request, a read included, puts the tree back to the last commit
+  first, rather than reading a system that was never created as "already
+  here".
 - **The page tells an answer it cannot read from a request that never
   arrived.** `post()` and the import page's own fetch parse every answer as
   JSON. A body that is not JSON (a proxy's error page, or anything that slips
@@ -1224,7 +1257,7 @@ archivist, module responsibilities). What matters designwise:
 - **The archivist** (Flask, VPS, `/opt/archivist/`, systemd `archivist`) is
   the archive's single writer: validates mechanically (parse + schema, no
   emulation), runs the archive's own `validate.py` over the tree before it
-  commits, commits and pushes over SSH with a deploy key
+  commits, commits, and pushes in the background over SSH with a deploy key
   (`GIT_SSH_COMMAND` in `/etc/archivist.env`, so any fresh clone can push).
   Identity: session first, shared key + explicit username as operator
   fallback; cookie-authenticated writes are CSRF-guarded by Origin. Reads
