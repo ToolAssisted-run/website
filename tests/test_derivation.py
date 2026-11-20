@@ -326,6 +326,9 @@ def main():
         cards = re.findall(r'<a class="card" data-stars="(\d+)"', games_page)
         ck('system card star totals equal the sum of their games',
            sorted(int(x) for x in cards) == [1, 3], str(cards))
+        ck('the games page shows every system on one page by default (#118)',
+           re.search(r"systems: \{ p: 1, size: 0, sizes: GRID_SIZES", games_page)
+           and 'GRID_SIZES = [12, 24, 36, 48, 0]' in games_page and "(s || 'All')" in games_page)
         syspages = sorted(p.parent.name for p in (out / 'systems').glob('*/index.html'))
         ck('every system has its own page', len(syspages) == 2, str(syspages))
         sp = (out / 'systems' / syspages[0] / 'index.html').read_text()

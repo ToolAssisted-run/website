@@ -52,10 +52,12 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
 (function(){
   var sortMode = 'stars', view = 'systems';
   var TABLE_SIZES = [10, 20, 30, 40, 50];
-  var GRID_SIZES = [12, 24, 36, 48];
+  // 0 is "All": the systems are few enough to read on one page (#118), so
+  // that is where their view starts; the other views offer it
+  var GRID_SIZES = [12, 24, 36, 48, 0];
   var pagState = {
     groups: { p: 1, size: 12, sizes: GRID_SIZES, key: 'tar-pagesize-games-groups', label: 'group' },
-    systems: { p: 1, size: 12, sizes: GRID_SIZES, key: 'tar-pagesize-games-systems', label: 'system' },
+    systems: { p: 1, size: 0, sizes: GRID_SIZES, key: 'tar-pagesize-games-systems', label: 'system' },
     list: { p: 1, size: 10, sizes: TABLE_SIZES, key: 'tar-pagesize-games-list', label: 'game' }
   };
   ['groups', 'systems', 'list'].forEach(function(k){
@@ -80,12 +82,13 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
     if (!st) return;
     var items = getItems(k);
     var total = items.length;
-    var totalPages = Math.max(1, Math.ceil(total / st.size));
+    var per = st.size || Math.max(total, 1);
+    var totalPages = Math.max(1, Math.ceil(total / per));
     if (st.p > totalPages) st.p = totalPages;
     if (st.p < 1) st.p = 1;
 
-    var start = (st.p - 1) * st.size;
-    var end = start + st.size;
+    var start = (st.p - 1) * per;
+    var end = start + per;
     items.forEach(function(el, idx){
       el.hidden = !(idx >= start && idx < end);
     });
@@ -98,16 +101,17 @@ those no group has claimed yet are gathered under Uncategorized.</p></div>
     var endIdx = Math.min(end, total);
 
     var sizeOpts = st.sizes.map(function(s){
-      return '<option value="' + s + '"' + (s === st.size ? ' selected' : '') + '>' + s + '</option>';
+      return '<option value="' + s + '"' + (s === st.size ? ' selected' : '') + '>' + (s || 'All') + '</option>';
     }).join('');
 
     box.innerHTML = '<nav class="pag-bar" aria-label="' + st.label + ' pagination">' +
       '<div class="pag-info">Showing ' + startIdx + '–' + endIdx + ' of ' + total + ' ' + (total === 1 ? st.label : st.label + 's') + '</div>' +
+      (totalPages > 1 ?
       '<div class="pag-nav">' +
       '<button type="button" class="pag-btn prev-btn"' + (st.p <= 1 ? ' disabled' : '') + '>← Prev</button>' +
       '<span class="pag-cur">Page ' + st.p + ' of ' + totalPages + '</span>' +
       '<button type="button" class="pag-btn next-btn"' + (st.p >= totalPages ? ' disabled' : '') + '>Next →</button>' +
-      '</div>' +
+      '</div>' : '') +
       '<label class="pag-size">Per page: <select class="size-sel">' + sizeOpts + '</select></label>' +
       '</nav>';
 
