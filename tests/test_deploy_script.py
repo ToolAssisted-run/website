@@ -107,6 +107,30 @@ def main():
        any(l.strip().startswith('if ! as_archive_owner /usr/bin/python3 -c') and 'mdit_py_plugins' in l
            for l in code) and 'deps_failed' in last, last)
 
+    # ---------- a deploy cuts off no request it need not (issue 117) ----------
+    # Every content dispatch ran this script, and it ended in a restart that
+    # cut off whatever request was in flight: a verification landed and its
+    # member read "network error". A run with no new code restarts nothing,
+    # and the archive checkout is reset only while the service is stopped.
+    joined = '\n'.join(code)
+    early = re.search(r'if \[ "\$code_before" = "\$code_after" \] && systemctl is-active --quiet archivist; then'
+                      r'(.*?)\n^fi$', joined, re.S | re.M)
+    ck('a run that brings no new code leaves the running service alone',
+       bool(early) and re.search(r'^\s*exit\b', early.group(1), re.M)
+       and 'systemctl' not in early.group(1).replace('systemctl is-active', ''),
+       early.group(1) if early else 'no early exit')
+    ck('nothing restarts the service outright', 'systemctl restart archivist' not in joined)
+    stop_at = joined.find('systemctl stop archivist')
+    start_at = joined.find('systemctl start archivist')
+    resets = [m.start() for m in re.finditer(r'as_archive_owner git -C "\$archive" (reset|clean|fetch)', joined)]
+    ck('the archive checkout is reset only between the stop and the start',
+       stop_at > 0 and start_at > stop_at and resets
+       and all(stop_at < r < start_at for r in resets), f'{stop_at} {resets} {start_at}')
+    arch = (REPO / 'archivist' / 'archivist.py').read_text(encoding='utf-8')
+    ck('the archivist drains the write in flight on a stop before it exits',
+       'signal.signal(signal.SIGTERM, _drain_and_exit)' in arch
+       and re.search(r'def _drain_and_exit\(.*?lock\.acquire\(timeout=.*?os\._exit\(0\)', arch, re.S))
+
     as_owner = shell_function(text, 'as_archive_owner')
     strays = shell_function(text, 'archive_strays')
     ck('the two functions that decide who touches the archive are there to test',

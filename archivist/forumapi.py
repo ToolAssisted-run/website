@@ -86,7 +86,8 @@ def ensure_topic(run, game_title, system, slug, goal_label, authors, kind='submi
                 f'Authors: {who}\n\n'
                 f'[Run page]({SITE_URL}/runs/{run["id"]}/) · '
                 f'[files in the archive]({ARCHIVE_TREE_URL}/games/{system}/{slug}/runs/{run["id"]})\n\n'
-                f'Status: **pending**, awaiting verification.')
+                f'It awaits verification. The run page always shows where it stands, '
+                f'and the archivist says so here when it is verified.')
     try:
         req = urllib.request.Request(f'{DISCOURSE_URL}/posts.json', method='POST',
             headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'archivist',
@@ -498,6 +499,27 @@ def send_pm(username, title, body):
         return f'{username} was told by private message, which the forum emails on'
     except Exception as e:                                     # noqa: BLE001
         return f'could not tell {username} ({e})'
+
+def note_in_topic(topic_id, raw):
+    """A new post by the archivist in a run's topic, best-effort.
+
+    How a topic hears that its run changed: the opening post said what was
+    true when it was written and is never edited (forum posts are never
+    touched through us), so a change is a reply. Returns the post number,
+    or None."""
+    if not DISCOURSE_KEY or not topic_id:
+        return None
+    try:
+        req = urllib.request.Request(
+            f'{DISCOURSE_URL}/posts.json', method='POST',
+            headers={'Api-Key': DISCOURSE_KEY, 'Api-Username': 'archivist',
+                     'Content-Type': 'application/json'},
+            data=json.dumps({'topic_id': int(topic_id), 'raw': raw}).encode())
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read()).get('post_number')
+    except Exception as exc:                                  # noqa: BLE001
+        LOG.warning('forum note in topic %s: %s', topic_id, exc)
+        return None
 
 def close_announce_topic(topic_id, note):
     """A deleted run's own announce topic is closed with a system post

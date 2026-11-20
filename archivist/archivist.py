@@ -28,6 +28,7 @@ import pathlib
 import re
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -1619,7 +1620,24 @@ reading_routes.register(app,
     _search_index=_search_index,
 )
 
+def _drain_and_exit(signum, frame):
+    """A stop lets the write in progress finish and its answer go out.
+
+    Every code deploy ends in a restart, and a plain SIGTERM ended the
+    process wherever it stood: a verification committed and pushed, then
+    died before its answer, so the member read "network error" over an act
+    that had landed (website issue 117). The write lock is held for exactly
+    the span of a write, so taking it waits for the one in flight; a request
+    that has not reached it yet has written nothing and fails honestly. The
+    pause lets the finished request's answer leave before the process does.
+    """
+    lock.acquire(timeout=60)
+    time.sleep(1.5)
+    os._exit(0)
+
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGTERM, _drain_and_exit)
     if RECONCILE_SECONDS > 0:
         threading.Thread(target=reconcile_loop, daemon=True).start()
     # and once now, so a game moved while the service was down is not left

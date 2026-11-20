@@ -1982,6 +1982,27 @@ def main():
             ck('a run to edit', c == 200, str(r)[:200])
             vrun = r['id']
             c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'watcher', 'run': vrun})
+            # its topic opened saying it awaited verification: it hears, in a
+            # new post by the archivist, that it is verified now (#121)
+            subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
+            vtopic = (json.loads(next(work.glob(f'games/*/*/runs/{vrun}/run.json')).read_text())
+                      .get('forum') or {}).get('topicId')
+            said = []
+            for _ in range(30):
+                said = [p for p in FORUM_POSTS if p.get('topic_id') == vtopic
+                        and 'now **verified**' in (p.get('raw') or '')
+                        and f'/runs/{vrun}/' in p['raw']]
+                if said:
+                    break
+                time.sleep(0.1)
+            ck('a run\'s topic hears in a new post that it is verified (#121)',
+               bool(vtopic) and len(said) == 1 and 'watcher' in said[0]['raw'], f'{vtopic} {said}')
+            c, r, _ = call(U + '/api/verify', {'key': KEY, 'user': 'second', 'run': vrun})
+            time.sleep(0.5)
+            ck('a second verification does not say it again',
+               len([p for p in FORUM_POSTS if p.get('topic_id') == vtopic
+                    and 'now **verified**' in (p.get('raw') or '')
+                        and f'/runs/{vrun}/' in p['raw']]) == 1)
             c, r, _ = call(U + '/api/reproduce', {'key': KEY, 'user': 'helper', 'run': vrun, 'emulator': 'x'},
                            {'screenshot': ('end.png', PNG)})
             ck('verified and reproduced', c == 200 and r['status']['reproduced'] == 'community', str(r)[:200])

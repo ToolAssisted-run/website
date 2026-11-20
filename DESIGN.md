@@ -1343,7 +1343,11 @@ archivist, module responsibilities). What matters designwise:
 - **The forum** (Discourse, self-hosted): identity provider, discussion
   home, notifications. Every run gets a topic in the **Movies** category
   (id 13, `MOVIES_CATEGORY_ID`; created in the same commit as the archival,
-  so the pointer is never lost); every game gets an **anchor topic** in
+  so the pointer is never lost). Its opening post says the run awaits
+  verification and that the run page always shows where it stands; it is
+  never edited afterwards (forum posts are never touched through us), so
+  when the run's first verification lands the archivist says so in a new
+  post in the topic (#121). Every game gets an **anchor topic** in
   **Games** (id 12) under its tag, and the tag page across categories
   (`/tag/<system>-<slug>`) IS the game's forum home, run topics included
   (`max_tag_length` raised to 60); a game that moves takes its tag along
@@ -1648,8 +1652,8 @@ archivist, module responsibilities). What matters designwise:
   and the service is not, and whatever root's git rewrites comes back root's,
   which the service can read and never write, so every `git` in that checkout
   goes through `as_archive_owner`, which is `runuser` to whoever owns the
-  directory with that user's own `HOME`. The pull is only a head start for
-  the restart, since the service keeps its own checkout current, so a fetch
+  directory with that user's own `HOME`. The archive pull happens only on a
+  restart, between the stop and the start, and is only a head start, since the service keeps its own checkout current, so a fetch
   that fails is said and is not a failed deploy. What does fail the deploy is
   `archive_strays`: any entry in the checkout that is not its owner's is one
   the service will fail to rewrite when a member asks, so it is counted,
@@ -1663,7 +1667,17 @@ archivist, module responsibilities). What matters designwise:
   from the repo, install `archivist/*.py`, its Python package directories,
   and its templates in `/opt/archivist/`, and
   restart the archivist (whose startup build republishes the site and runs the
-  backfill). **The SSH path is the only one that deploys code.** GitHub's own
+  backfill). **Only a run that brings new code restarts anything**: most runs
+  are the content dispatches each archive write fires, and an unconditional
+  restart cut off whatever request was in flight, so a verification landed
+  while its member read "network error" (#117). When the website checkout
+  did not move and the service is running, the script checks the archive's
+  ownership and exits; the service brings content in itself (its reads and
+  reconcile pass refresh the checkout, and a refresh that moves HEAD
+  rebuilds the site). When it does restart, it stops the service, resets
+  the archive checkout while nothing writes to it, and starts it again; and
+  the archivist drains on SIGTERM, taking the write lock so the write in
+  flight finishes and its answer leaves before the process exits. **The SSH path is the only one that deploys code.** GitHub's own
   webhook reaches `POST /api/hooks/github` on the archivist, HMAC-verified
   (`X-Hub-Signature-256`, `GITHUB_HOOK_SECRET`), and it recognises exactly
   the condition code pushes need: a **successful `Build and deploy` run,

@@ -16,7 +16,7 @@ from identity import current_name, run_authors_now, session_user
 from gitstore import checkout_branch, commit_push, duplicate_of, find_run, load_game, lock, next_id, refresh_archive
 from notify import movie_md, member_md, notify_discord
 from records import append_role_event, covers_group, ensure_member, expert_covers, held_roles, is_uncl_run, load_groups, log_edit, save_groups, sync_status
-from forumapi import ensure_game_topic, ensure_topic, move_game_tags
+from forumapi import ensure_game_topic, ensure_topic, move_game_tags, note_in_topic
 
 
 def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EMPTY, REPRO_FIELDS, SCORING_FIELDS, act_common, attach_movie, auth_precheck, in_category, live_acts, notify_edit, option_in, pace_gate, parse_file_rows, parse_game_property, parse_metric_defs, parse_stated_time, place_subcategory, read_attachments, request_identity, split_notes_header, void_acts_for):
@@ -2282,6 +2282,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             entry['expert'] = True
         if (verification_form.get('notes') or '').strip():
             entry['notes'] = verification_form.get('notes').strip()
+        was_verified = (run.get('status') or {}).get('verified', 'none') != 'none'
         run.setdefault('verifications', []).append(entry)
         sync_status(run)
         if dry_run:
@@ -2298,6 +2299,14 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         notify_discord(f'\u2713 **{member_md(user)}** verified '
                        + movie_md(run) + in_category(run),
                        wait_for=f'{SITE_URL}/runs/{run["id"]}/')
+        # the run's topic opened saying it awaited verification; it hears,
+        # in a new post, the moment that stops being true (#121)
+        topic = (run.get('forum') or {}).get('topicId')
+        if topic and not was_verified:
+            threading.Thread(target=note_in_topic, daemon=True, args=(
+                topic, f'This run is now **verified**: {user} judged its goal met '
+                       f'from the encode. The [run page]({SITE_URL}/runs/{run["id"]}/) '
+                       f'always shows where it stands.')).start()
         return True, (run,)
 
     @app.post('/api/verify')
