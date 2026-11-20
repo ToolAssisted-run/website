@@ -494,8 +494,11 @@ reach: Most liked and Most viewed only show what already has attention, so a
 run nobody has starred or opened has nowhere else to appear once it leaves
 Freshly archived. Its pool is every run on none of the other shelves with no
 stars and no visits (the rest join, quiet ones first, only while fewer than
-72 quiet runs remain), and never an imported run: the shelf shows what
-members brought, not the seeded corpus. The build stays byte-identical for the same archive,
+72 quiet runs remain), and only ever the best run of a category, the one its
+board puts first (an obsoleted run, a pending one or an author's slower
+entry is never picked; Unclassified, which has no board of its own, has no
+pick), and never an imported run: the shelf shows what members brought, not
+the seeded corpus. The build stays byte-identical for the same archive,
 so the dice are the reader's: the pool is written as shard files of
 ready-made cards (`assets/picks/<n>.json`, at most 72 cards each, dealt round
 the pool so each mixes all of it, fetched under a stamp of their content

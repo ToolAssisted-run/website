@@ -451,9 +451,20 @@ def main():
         # the reader's browser draws from: the shard files hold all of it,
         # each run once, and the page ships a few of them for a reader
         # without scripting.
-        pick_runs = [mkarchive.run_spec(f'M9004{40 + i}', frames=5000 + i,
-                                        authors=['Ada'], submitted=d(60 - i))
+        # each the verified best of its own game's board: only a category's
+        # best run is ever a pick
+        best_of = dict(verifications=[{'user': 'Ver', 'date': d(70)}],
+                       status={'reproduced': 'none', 'verified': 'provisional'})
+        pick_runs = [mkarchive.run_spec(f'M9004{40 + i}', game=f'nes/pick{i}', frames=5000 + i,
+                                        authors=['Ada'], submitted=d(60 - i), **best_of)
                      for i in range(50)]
+        # never picks: beaten on its own board by M900442 (another author's
+        # slower run, which the board keeps as rank 2), and a pending run
+        not_best10 = {'M900391', 'M900392'}
+        pick_runs.append(mkarchive.run_spec('M900391', game='nes/pick2', frames=9000,
+                                            authors=['Bo'], submitted=d(200), **best_of))
+        pick_runs.append(mkarchive.run_spec('M900392', game='nes/pick3', frames=100,
+                                            authors=['Cy'], submitted=d(201)))
         pick_runs[49]['likes'] = [{'user': 'Fan', 'date': d(1)}]
         imported10 = {f'M9004{40 + i}' for i in (0, 1)}
         for i in (0, 1):
@@ -477,7 +488,12 @@ def main():
         liked10 = shelf_ids(home10, 'Most liked')
         picks10 = shelf_ids(home10, 'Random picks')
         pool10 = shard_ids(out10)
-        left10 = {r['id'] for r in pick_runs} - set(fresh10) - set(liked10) - imported10
+        left10 = ({r['id'] for r in pick_runs} - set(fresh10) - set(liked10) - imported10
+                  - not_best10)
+        ck('a run that is not the best of its category is never a pick',
+           not (set(pool10) & not_best10) and not (set(picks10) & not_best10)
+           and not (not_best10 & (set(fresh10) | set(liked10))),
+           f'shards {sorted(pool10)} fresh {fresh10}')
         ck('an imported run is never a pick',
            not (set(pool10) & imported10) and not (set(picks10) & imported10),
            f'shards {sorted(pool10)} picks {picks10}')
@@ -509,8 +525,8 @@ def main():
         # A large pool is split: no shard holds more than its share, every
         # quiet run is in exactly one, and a run with attention waits while
         # enough quiet ones remain.
-        many_runs = [mkarchive.run_spec(f'M901{i:03d}', frames=6000 + i,
-                                        authors=['Ada'], submitted=d(210 - i))
+        many_runs = [mkarchive.run_spec(f'M901{i:03d}', game=f'nes/many{i}', frames=6000 + i,
+                                        authors=['Ada'], submitted=d(210 - i), **best_of)
                      for i in range(200)]
         for i in range(12, 50):   # thirty-eight starred: Most liked holds thirty
             many_runs[i]['likes'] = [{'user': 'Fan', 'date': d(1)}]

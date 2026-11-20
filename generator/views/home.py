@@ -3,7 +3,8 @@ import hashlib
 import json
 
 from config import OUT
-from model import archived_at, nlikes, nvisits, runs
+from model import archived_at, games, nlikes, nvisits, runs
+from views.game_pages import combo_iter, combo_section
 from render import (HOME_WALL_ROWS, SITE_URL, WALL_COLS, compose_wall, page, tpl,
                     wall_order, wall_slice)
 
@@ -43,7 +44,9 @@ def random_selection(all_runs, shown):
     pool is every run with no stars and no visits, and only while fewer than
     two shelves' worth of those remain does it take in the rest as well,
     quiet ones first. Imported runs are never in it: the shelf shows what
-    members brought here, not the seeded corpus.
+    members brought here, not the seeded corpus. Nor is anything but the
+    best run of its category, the one its board puts first: an obsoleted
+    run, a pending one or an author's slower entry is never picked.
 
     The order written here is a hash of the run id, not chance. A build has
     to give the same bytes for the same archive (every suite leans on that,
@@ -52,7 +55,8 @@ def random_selection(all_runs, shown):
     the pool at random and keeps a random few of it (assets/page-home.js).
     """
     seen = {r['id'] for r in shown}
-    left = [r for r in all_runs if r['id'] not in seen
+    best = category_leaders()
+    left = [r for r in all_runs if r['id'] not in seen and r['id'] in best
             and r.get('status', {}).get('reproduced') != 'imported']
     quiet = [r for r in left if not nlikes(r) and not nvisits(r)]
     loud = [r for r in left if nlikes(r) or nvisits(r)]
@@ -61,6 +65,17 @@ def random_selection(all_runs, shown):
     if len(quiet) >= 2 * PICKS_SHOWN:
         return scramble(quiet)
     return scramble(quiet) + scramble(loud)
+
+def category_leaders():
+    """The ids of the run each category board puts first, read with the game
+    pages' own ranking so the shelf and the boards cannot disagree."""
+    out = set()
+    for g in games.values():
+        for combo in combo_iter(g['categories']['dimensions']):
+            table = combo_section(g, combo)['table_runs']
+            if table:
+                out.add(table[0]['id'])
+    return out
 
 def movie_totals(all_runs):
     """The emulator readout over the hero: every frame and every rerecord in
