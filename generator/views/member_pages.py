@@ -22,6 +22,7 @@ from model import (
     runs,
     runs_by_id,
     scope_words,
+    system_pages,
     systems,
     withdrawn_runs,
 )
@@ -175,6 +176,7 @@ def render_member_log(uname, a, st, role_rows):
         games=games,
         groups_by_key=groups_by_key,
         systems=systems,
+        system_pages=system_pages,
         diff_games=diff_games,
         REPORT_CHIPS=REPORT_CHIPS,
         REPORT_LABELS=REPORT_LABELS,

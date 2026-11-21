@@ -36,8 +36,10 @@
   {% endif %}
 {% elif e.kind == 'system' %}
   {% set s_ = systems.get(e.key) %}
-  {% if s_ %}
+  {% if s_ and e.key in system_pages %}
     <a href="{{ rel }}systems/{{ e.key }}/">{{ s_.name or e.key }}</a>
+  {% elif s_ %}
+    <span>{{ s_.name or e.key }}</span>
   {% else %}
     <span>System {{ e.key }}</span>
   {% endif %}

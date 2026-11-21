@@ -299,6 +299,26 @@ def main():
            pwall is not None and (out / pwall.group(1)).is_file() and 'pagewall' not in home,
            browse_page[browse_page.find('class="wrap'):browse_page.find('class="wrap') + 300])
 
+        # ---------------- a created system with no game yet ----------------
+        # A system has a page once a game is on it. A member who created one
+        # before any game names it is credited for it on their page, by name:
+        # a link would lead to a page that does not exist (MAME, 2026-11-21,
+        # which stopped every deploy on the dead-link check).
+        sys_made = dict(mkarchive.DEFAULT_SYSTEMS)
+        sys_made['nes'] = dict(sys_made['nes'], createdBy='Ada', createdAt='2026-01-02')
+        sys_made['newbox'] = {'name': 'New Box', 'fps': 60.0, 'createdBy': 'Ada',
+                              'createdAt': '2026-01-03'}
+        arch_sys = mkarchive.make_archive(td / 'a4y', [
+            mkarchive.run_spec('M900331', frames=5000, authors=['Ada'])], systems=sys_made)
+        out_sys = td / 'o4y'
+        build(arch_sys, out_sys)
+        ada_page = (out_sys / 'authors/ada/index.html').read_text()
+        ck('a created system with a game is credited with a link to its page',
+           'href="../../systems/nes/"' in ada_page and (out_sys / 'systems/nes/index.html').exists())
+        ck('a created system with no game yet is credited by name, unlinked',
+           'New Box' in ada_page and 'systems/newbox/' not in ada_page
+           and not (out_sys / 'systems/newbox').exists(), ada_page[ada_page.find('New Box') - 120:][:200])
+
         # ---------------- stars ----------------
         star_runs = [
             mkarchive.run_spec('M900321', frames=5000, authors=['Ada'],

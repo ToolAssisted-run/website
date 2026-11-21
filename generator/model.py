@@ -731,10 +731,15 @@ for gr in groups:
     if gr.get('createdBy') and not gr.get('removed'):
         award(gr['createdBy'], PT_CREATE_GROUP, 'created a group', None,
               gr.get('createdAt', ''), 'library', gr['title'], f'groups/{gr["key"]}/')
+# A system has a page once a game is on it (views/games_index.py makes one per
+# system its games name), so only then is it linked: a system created before
+# its first game is named, and a link to it would lead nowhere.
+system_pages = {g['system'] for g in games.values()}
 for skey, sdoc in systems.items():
     if sdoc.get('createdBy'):
         award(sdoc['createdBy'], PT_CREATE_SYSTEM, 'created a system', None,
-              sdoc.get('createdAt', ''), 'library', sdoc['name'], f'systems/{skey}/')
+              sdoc.get('createdAt', ''), 'library', sdoc['name'],
+              f'systems/{skey}/' if skey in system_pages else '')
 for _e in edit_events:
     # a category added is logged as an edit event on the game; a key with a
     # slash under the game is a subcategory. The game must still exist.
