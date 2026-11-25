@@ -936,11 +936,11 @@ def main():
                and 'system' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/game/create',
                            {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
-                            'title': "Solomon's Key",
+                            'title': "Chimera's Test Key",
                             'cat_label': 'fastest completion',
                             'cat_rule': 'Complete the game as fast as possible.'})
             ck('any member creates a game, first category born with it',
-               c == 200 and r['game'] == 'nes/solomons-key'
+               c == 200 and r['game'] == 'nes/chimeras-test-key'
                and r['category'] == 'fastest-completion', str(r))
             # an accent keeps its letter in the address (website issue 114):
             # Pokémon is pokemon, where it once became pok-mon
@@ -955,7 +955,7 @@ def main():
             # relocates and only run.json's structural home changes.
             c, r, _ = call(U + '/api/category/add',
                           {'key': KEY, 'user': 'TestAuthor',
-                           'game': 'nes/solomons-key', 'label': 'High score',
+                           'game': 'nes/chimeras-test-key', 'label': 'High score',
                            'rule': 'Earn as many points as possible.',
                            'metrics': json.dumps([{'key': 'score', 'label': 'Score',
                                                   'type': 'number',
@@ -967,43 +967,43 @@ def main():
             ck('the move fixture has a live old-goal verification',
                c == 200 and r['status']['verified'] == 'provisional', str(r))
             source_categories_before = (work / 'games/nes/pinball/categories.json').read_bytes()
-            target_categories_before = (work / 'games/nes/solomons-key/categories.json').read_bytes()
+            target_categories_before = (work / 'games/nes/chimeras-test-key/categories.json').read_bytes()
             c, r, _ = call(U + '/api/run/move',
                           {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
-                           'game': 'nes/solomons-key', 'goal': 'missing',
+                           'game': 'nes/chimeras-test-key', 'goal': 'missing',
                            'reason': 'testing an unknown destination category'})
             ck('a cross-game move rejects an unknown destination category',
                c == 400 and 'not a goal' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/run/move',
                            {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
-                            'game': 'nes/solomons-key', 'goal': 'high-score',
+                            'game': 'nes/chimeras-test-key', 'goal': 'high-score',
                             'reason': 'testing missing destination scoring values'})
             ck('a move cannot invent scoring required by the destination',
                c == 400 and 'Score' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/run/move',
                           {'key': KEY, 'expert': 'pinexpert', 'run': 'M900010',
-                           'game': 'nes/solomons-key', 'goal': 'fastest-completion',
+                           'game': 'nes/chimeras-test-key', 'goal': 'fastest-completion',
                            'reason': 'moving this run to its actual game'})
             ck('the expert must cover the destination game too',
-               c == 403 and 'solomons-key' in r.get('error', ''), str(r))
+               c == 403 and 'chimeras-test-key' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/run/move',
                           {'key': KEY, 'expert': 'Shelver', 'run': 'M900010',
-                           'game': 'nes/solomons-key', 'goal': 'fastest-completion',
+                           'game': 'nes/chimeras-test-key', 'goal': 'fastest-completion',
                            'reason': 'a former editor holds nothing now'})
             ck('a former editor cannot move a run between games', c == 403, str(r))
             c, r, _ = call(U + '/api/run/move',
                           {'key': KEY, 'expert': 'groupexpert', 'run': 'M900010',
-                           'game': 'nes/solomons-key', 'goal': 'fastest-completion',
+                           'game': 'nes/chimeras-test-key', 'goal': 'fastest-completion',
                            'reason': 'moving this run to its actual game'})
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
-            moved_dir = work / 'games/nes/solomons-key/runs/M900010'
+            moved_dir = work / 'games/nes/chimeras-test-key/runs/M900010'
             moved_doc = json.loads((moved_dir / 'run.json').read_text())
             ck('a covering expert moves the complete run folder between games',
                c == 200 and not (work / 'games/nes/pinball/runs/M900010').exists()
                and (moved_dir / 'M900010.bk2').exists()
                and (moved_dir / 'thumb.png').exists(), str(r))
             ck('the moved run names its new game and category',
-               moved_doc['game'] == 'nes/solomons-key'
+               moved_doc['game'] == 'nes/chimeras-test-key'
                and moved_doc['category'] == {'goal': 'fastest-completion'}
                and r.get('voided') == ['verifications']
                and moved_doc['status']['verified'] == 'none'
@@ -1013,7 +1013,7 @@ def main():
                check=True, capture_output=True, text=True).stdout.splitlines()
             ck('the move leaves both category definition files byte-for-byte alone',
                (work / 'games/nes/pinball/categories.json').read_bytes() == source_categories_before
-               and (work / 'games/nes/solomons-key/categories.json').read_bytes() == target_categories_before
+               and (work / 'games/nes/chimeras-test-key/categories.json').read_bytes() == target_categories_before
                and not any(path.endswith('categories.json') for path in changed_paths),
                str(changed_paths))
             move_events = json.loads((work / 'edits.json').read_text())['events']
@@ -1021,7 +1021,7 @@ def main():
                any(event['kind'] == 'run' and event['key'] == 'M900010'
                   and event['field'] == 'game/category'
                   and event['from'] == 'nes/pinball:100k-glitched'
-                  and event['to'] == 'nes/solomons-key:fastest-completion'
+                  and event['to'] == 'nes/chimeras-test-key:fastest-completion'
                   and event['reason'] == 'moving this run to its actual game'
                   for event in move_events), str(move_events[-2:]))
             # Restore this long-lived fixture run for the endpoint tests below.
@@ -1035,9 +1035,9 @@ def main():
                str(r))
             c, r, _ = call(U + '/api/game/create',
                            {'key': KEY, 'user': 'TestAuthor', 'system': 'nes',
-                            'title': "Solomon's Key Hack", 'released': '1990',
+                            'title': "Chimera's Test Key Hack", 'released': '1990',
                             'unofficial': 'yes', 'website': 'https://example.org/sk'})
-            gj = json.loads((work / 'games/nes/solomons-key-hack/game.json').read_text())
+            gj = json.loads((work / 'games/nes/chimeras-test-key-hack/game.json').read_text())
             ck('a game is created with its properties (#44)',
                c == 200 and gj.get('released') == '1990' and gj.get('unofficial') is True
                and gj.get('website') == 'https://example.org/sk' and 'discord' not in gj,
@@ -1192,7 +1192,7 @@ def main():
                c == 200 and r['run']['metrics'] == {'score': 1250.0}, str(r))
             ck('a dry run changes nothing, so it carries no publish serial',
                'serial' not in r, str(r))
-            newsub = dict(sub, game='nes/solomons-key', goal='fastest-completion')
+            newsub = dict(sub, game='nes/chimeras-test-key', goal='fastest-completion')
             del newsub['dry_run']
             c, r, _ = call(U + '/api/submit', newsub, uniq_files())
             ck('submission lands in the pre-created game', c == 200 and r.get('ok'), str(r))
@@ -2836,7 +2836,7 @@ def main():
             ck('a former editor corrects no category', c == 403, str(r))
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'Shelver', 'group': 'shelf',
-                            'title': 'Shelf', 'games': 'nes/solomons-key'})
+                            'title': 'Shelf', 'games': 'nes/chimeras-test-key'})
             ck('nor creates a group over games they hold no scope on', c == 403, str(r))
             c, r, _ = call(U + '/api/expert/edit',
                            {'key': KEY, 'expert': 'Shelver', 'kind': 'run',
@@ -2853,32 +2853,32 @@ def main():
             # --- moving a game between groups: one act, one home ---
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'eien86', 'group': 'uncategorized',
-                            'title': 'Sneaky', 'games': 'nes/solomons-key'})
+                            'title': 'Sneaky', 'games': 'nes/chimeras-test-key'})
             ck('the derived group keys cannot be claimed',
                c == 400 and 'reserved' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/group/create',
                            {'key': KEY, 'expert': 'eien86', 'group': 'movetest',
-                            'title': 'Move Test', 'games': 'nes/solomons-key'})
+                            'title': 'Move Test', 'games': 'nes/chimeras-test-key'})
             ck('a site expert gathers an ungrouped game', c == 200, str(r))
             c, r, _ = call(U + '/api/group/edit',
                            {'key': KEY, 'expert': 'eien86', 'group': 'test-family',
-                            'add': 'nes/solomons-key'})
+                            'add': 'nes/chimeras-test-key'})
             ck('add refuses a game that has a home; moving is explicit',
                c == 409 and 'move' in r.get('error', ''), str(r))
             c, r, _ = call(U + '/api/group/edit',
                            {'key': KEY, 'expert': 'eien86', 'group': 'test-family',
-                            'move': 'nes/solomons-key'})
+                            'move': 'nes/chimeras-test-key'})
             ck('a move lands the game here',
-               c == 200 and 'nes/solomons-key' in r['games'], str(r))
+               c == 200 and 'nes/chimeras-test-key' in r['games'], str(r))
             subprocess.run(['git', 'pull', '-q'], cwd=work, check=False)
             gdoc = json.loads((work / 'groups.json').read_text())['groups']
             ck('and pulls it out of the group that held it',
-               'nes/solomons-key' not in next(
+               'nes/chimeras-test-key' not in next(
                    g for g in gdoc if g['key'] == 'movetest')['games'], str(gdoc))
             c, r, _ = call(U + '/api/group/edit',
                            {'key': KEY, 'expert': 'eien86', 'group': 'movetest',
-                            'move': 'nes/solomons-key'})
-            ck('and back again', c == 200 and 'nes/solomons-key' in r['games'], str(r))
+                            'move': 'nes/chimeras-test-key'})
+            ck('and back again', c == 200 and 'nes/chimeras-test-key' in r['games'], str(r))
             c, r, _ = call(U + '/api/group/edit',
                            {'key': KEY, 'expert': 'eien86', 'group': 'movetest'})
             ck('an edit that changes nothing is refused', c == 400, str(r))
@@ -3215,7 +3215,7 @@ def main():
                    'verified [[NES] Pinball' in m and ('100000 points, glitched' in m or '100k glitched' in m or m.rstrip().endswith('glitched'))
                    for m in DISCORD_MSGS),
                str([m for m in DISCORD_MSGS if 'verified' in m][-2:]))
-            ghost = dict(sub, game='nes/solomons-key', goal='fastest-completion',
+            ghost = dict(sub, game='nes/chimeras-test-key', goal='fastest-completion',
                          authors='TestAuthor, GhostGuy')
             del ghost['dry_run']
             c, r, _ = call(U + '/api/submit', ghost, uniq_files())
@@ -3744,12 +3744,12 @@ def main():
                not (check / 'authors' / 'ssouser.json').exists())
             ck('and the claimed record is the member now',
                (check / 'authors' / 'renamedstar.json').exists())
-            gj = check / 'games/nes/solomons-key/game.json'
+            gj = check / 'games/nes/chimeras-test-key/game.json'
             ck('created game exists, real on arrival', gj.exists()
                and 'established' not in json.loads(gj.read_text()))
             ck('a submitted run carries its committed forum pointer',
                created_id and json.loads(
-                   (check / f'games/nes/solomons-key/runs/{created_id}/run.json')
+                   (check / f'games/nes/chimeras-test-key/runs/{created_id}/run.json')
                    .read_text()).get('forum', {}).get('topicId'),
                'the topic pointer must land in the archival commit itself: '
                'written after the push it was reset away, and the run page '
@@ -3758,11 +3758,11 @@ def main():
                json.loads((check / 'games/nes/brand-new-game/game.json').read_text())
                .get('forum', {}).get('topicId'),
                'games need an anchor so their tag page exists before the first run')
-            cj = json.loads((check / 'games/nes/solomons-key/categories.json').read_text())
+            cj = json.loads((check / 'games/nes/chimeras-test-key/categories.json').read_text())
             ck('created category is simply a category',
                'provisional' not in cj['dimensions'][0]['options'][0])
             ck('created run folder present',
-               created_id and (check / f'games/nes/solomons-key/runs/{created_id}/run.json').exists())
+               created_id and (check / f'games/nes/chimeras-test-key/runs/{created_id}/run.json').exists())
             irun = check / 'games/nes/pinball/runs/M910001'
             ck('imported run pushed', (irun / 'run.json').exists()
                and (irun / 'thumb.jpg').exists())
