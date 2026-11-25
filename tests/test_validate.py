@@ -14,12 +14,14 @@ read (validate.py and schema/ are copied out of it).
 Usage: tests/test_validate.py [real_archive_dir]
 """
 import hashlib
+import io
 import json
 import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import mkarchive  # noqa: E402
@@ -68,13 +70,19 @@ def baseline(root):
         mkarchive.run_spec('M900203', goal='unclassified', frames=900, authors=['Cy'],
                            goalDescription='A playaround.'),
         mkarchive.run_spec('M900204', frames=4000, authors=['Dee'],
-                           attachments=[{'file': 'attachments/config.txt', 'role': 'config'}],
+                           attachments=[{'file': 'attachments/config.txt', 'role': 'config'},
+                                        {'file': 'attachments/card.ps2', 'role': 'save'},
+                                        {'file': 'attachments/saves.zip', 'role': 'save'}],
                            contract={'emulator': 'BizHawk 2.11',
                                      'rom': {'name': 'Game (U).nes', 'sha1': ROM_SHA1}}),
     ])
     att = root / 'games/nes/testgame/runs/M900204/attachments'
     att.mkdir(parents=True, exist_ok=True)
     (att / 'config.txt').write_text('key = value\n')
+    # a save file and a zip of save files: the baseline being valid proves
+    # both are accepted
+    (att / 'card.ps2').write_bytes(b'Sony PS2 Memory Card Format ' + b'\0' * 1000)
+    (att / 'saves.zip').write_bytes(zip_of({'game.sav': b'\1' * 512, 'sub/slot.srm': b'\2' * 64}))
     # an alternate encode beside the main one, with the title, the description
     # and the selector thumbnail it may carry: the baseline being valid is the
     # proof that a well-formed one is accepted
@@ -92,6 +100,15 @@ def baseline(root):
     shutil.copy2(REAL_ARCHIVE / 'validate.py', root / 'validate.py')
     shutil.copytree(REAL_ARCHIVE / 'schema', root / 'schema', dirs_exist_ok=True)
     return root
+
+
+def zip_of(files, method=zipfile.ZIP_DEFLATED):
+    """A zip held in memory: name -> bytes."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', method) as z:
+        for name, data in files.items():
+            z.writestr(name, data)
+    return buf.getvalue()
 
 
 def run_validate(root):
@@ -233,6 +250,55 @@ def m_attachments_total(root):
         files.append({'file': f'attachments/big{i}.txt', 'role': 'x'})
     edit(root, 'M900204', lambda d: d.update(
         attachments=d['attachments'] + files))
+
+def _att(root, name, data, rid='M900204'):
+    """Add one declared attachment to a run."""
+    (rdir(root, rid) / 'attachments' / name).write_bytes(data)
+    edit(root, rid, lambda d: d.update(attachments=d['attachments']
+         + [{'file': f'attachments/{name}', 'role': 'save'}]))
+
+MIB = 1024 * 1024
+
+def m_save_too_big(root):
+    _att(root, 'huge.raw', b'\0' * (16 * MIB + 1))
+
+def m_saves_total(root):
+    for i in range(3):
+        _att(root, f'card{i}.raw', b'\0' * (16 * MIB))
+
+def m_save_zip_with_exe(root):
+    _att(root, 'bad.zip', zip_of({'game.sav': b'x', 'run.exe': b'MZ'}))
+
+def m_save_zip_bomb(root):
+    # 48 MiB of zeros packs to about 50 KB
+    _att(root, 'bomb.zip', zip_of({f'c{i}.raw': b'\0' * (16 * MIB) for i in range(3)}))
+
+def m_save_zip_one_big_file(root):
+    _att(root, 'bomb.zip', zip_of({'huge.raw': b'\0' * (200 * MIB)}))
+
+def m_save_zip_many_entries(root):
+    _att(root, 'many.zip', zip_of({f's{i}.sav': b'x' for i in range(17)}))
+
+def m_save_zip_traversal(root):
+    _att(root, 'trav.zip', zip_of({'../../evil.sav': b'x'}))
+
+def m_save_zip_absolute(root):
+    _att(root, 'abs.zip', zip_of({'/etc/evil.sav': b'x'}))
+
+def m_save_zip_not_a_zip(root):
+    _att(root, 'fake.zip', b'this is not a zip file')
+
+def m_save_zip_nested_zip(root):
+    _att(root, 'nest.zip', zip_of({'inner.zip': zip_of({'a.sav': b'x'})}))
+
+def m_save_zip_empty(root):
+    _att(root, 'empty.zip', zip_of({}))
+
+def m_save_7z_refused(root):
+    _att(root, 'saves.7z', b'7z\xbc\xaf\x27\x1c' + b'\0' * 40)
+
+def m_save_bin_refused(root):
+    _att(root, 'card.bin', b'\0' * 100)
 
 def m_self_reproduction(root):
     edit(root, 'M900202', lambda d: d.update(
@@ -512,6 +578,19 @@ CASES = [
     ('attachment extension allowlist', m_attachment_bad_ext, 'extension not allowed'),
     ('attachment may not be the ROM', m_attachment_is_rom, 'matches the declared ROM hash'),
     ('attachments total cap', m_attachments_total, 'text attachments exceed'),
+    ('a save file has its own size cap', m_save_too_big, 'save file'),
+    ('save files have a total cap per run', m_saves_total, 'save files exceed'),
+    ('a zip of saves may not hold other files', m_save_zip_with_exe, 'not a save file type'),
+    ('a zip of saves unpacking past the total is refused', m_save_zip_bomb, 'more than 32 MiB unpacked'),
+    ('a zip of saves holding one huge file is refused', m_save_zip_one_big_file, 'over 16 MiB'),
+    ('a zip of saves has an entry cap', m_save_zip_many_entries, 'more than 16 files'),
+    ('a zip of saves may not climb out of its folder', m_save_zip_traversal, 'unsafe name'),
+    ('a zip of saves may not hold an absolute name', m_save_zip_absolute, 'unsafe name'),
+    ('a .zip must be a zip', m_save_zip_not_a_zip, 'not a readable zip'),
+    ('a zip of saves may not hold another zip', m_save_zip_nested_zip, 'not a save file type'),
+    ('a zip of saves may not be empty', m_save_zip_empty, 'holds no files'),
+    ('.7z is not accepted', m_save_7z_refused, 'extension not allowed'),
+    ('.bin is not a save file type', m_save_bin_refused, 'extension not allowed'),
     ('no self-reproduction', m_self_reproduction, 'reproduction by'),
     ('no duplicate reproduction', m_duplicate_reproduction, 'duplicate reproduction'),
     ('no self-verification', m_self_verification, 'verification by'),
@@ -623,6 +702,22 @@ def main():
 
         for name, ok, detail in results:
             ck(f'rejects: {name}', ok, detail)
+
+        # the sizes the caps were chosen for are accepted exactly: a standard
+        # PS2 card (8,650,752 bytes), a GameCube card of 16 MiB, and a zip of both
+        work = td / 'cards-ok'
+        shutil.copytree(base, work)
+        _att(work, 'Bujingai.ps2', b'\0' * 8650752)
+        _att(work, 'gc.raw', b'\0' * (16 * MIB))
+        code, out = run_validate(work)
+        ck('a PS2 card and a 16 MiB GameCube card are accepted', code == 0, out.strip()[-300:])
+        shutil.rmtree(work)
+        work = td / 'zipcard-ok'
+        shutil.copytree(base, work)
+        _att(work, 'both.zip', zip_of({'Bujingai.ps2': b'\0' * 8650752}))
+        code, out = run_validate(work)
+        ck('a zip holding a PS2 card is accepted', code == 0, out.strip()[-300:])
+        shutil.rmtree(work)
 
         # an act recorded under a name later renamed away is still a member's
         # act: the record moved, the person did not

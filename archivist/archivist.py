@@ -49,10 +49,15 @@ from settings import (
     ACT_NOTES_MAX,
     ARCHIVE,
     allowed_attach_exts,
+    allowed_save_archive_exts,
+    allowed_save_exts,
     allowed_movie_exts,
     ATTACH_MAX_COUNT,
     ATTACH_MAX_EACH,
     ATTACH_NAME_MAX,
+    SAVE_MAX_TOTAL,
+    save_attachment_refusal,
+    save_weight_on_disk,
     ATTACH_MAX_TOTAL,
     BOT_USER,
     BRANCH,
@@ -611,30 +616,40 @@ def form():
     return render_template('submit.html', games=games)
 
 def _attachment_content(name, data, suffix, movie_exts, attach_exts):
-    """Check one upload's extension, size and text encoding before archiving."""
+    """Check one upload's extension, size and content before archiving.
+
+    Returns (kind, error, weight): kind is 'movie', 'text' or 'save'; weight
+    is what a save file counts toward the run's save total."""
     if suffix.lstrip('.') in movie_exts:
         oversize = movie_refusal(data)
         if oversize:
-            return None, fail(f'movie attachment {name!r}: {oversize}')
-        return True, None
+            return None, fail(f'movie attachment {name!r}: {oversize}'), 0
+        return 'movie', None, 0
     if suffix in attach_exts:
         if len(data) > ATTACH_MAX_EACH:
-            return None, fail(f'attachment {name!r} exceeds 128 KB')
+            return None, fail(f'attachment {name!r} exceeds 128 KB'), 0
         try:
             data.decode('utf-8')
         except UnicodeDecodeError:
-            return None, fail(f'attachment {name!r} is not valid UTF-8 text')
-        return False, None
-    return None, fail(f'attachment {name!r}: only text/config files or '
-                      f'movie formats are allowed')
+            return None, fail(f'attachment {name!r} is not valid UTF-8 text'), 0
+        return 'text', None, 0
+    if suffix in allowed_save_exts() or suffix in allowed_save_archive_exts():
+        problem, weight = save_attachment_refusal(name, data, suffix)
+        if problem:
+            return None, fail(problem), 0
+        return 'save', None, weight
+    return None, fail(f'attachment {name!r}: only text/config files, save files '
+                      f'or movie formats are allowed'), 0
 
-def read_attachments(existing=None):
+def read_attachments(existing=None, run_dir=None):
     """Validate the request's uploaded 'attachments': text configs (UTF-8,
-    size-capped) or additional movie files. `existing` counts a run's
-    current attachments against the caps. Returns ([(name, bytes)], error)."""
+    size-capped), save files and zips of them, or additional movie files.
+    `existing` counts a run's current attachments against the caps (their
+    files are under `run_dir`). Returns ([(name, bytes)], error)."""
     existing = existing or []
     attachments = []
     total = 0
+    saves = sum(save_weight_on_disk(run_dir / a['file']) for a in existing) if run_dir else 0
     # what this service can read, narrowed to what the archive will hold:
     # taking a file the archive refuses archives it and then breaks the
     # archive, so the door is the place to say no
@@ -651,11 +666,13 @@ def read_attachments(existing=None):
                               f'a shorter name and attach it again')
         suffix = pathlib.Path(name).suffix.lower()
         data = upload.read()
-        is_movie, error = _attachment_content(name, data, suffix, movie_exts, attach_exts)
+        kind, error, weight = _attachment_content(name, data, suffix, movie_exts, attach_exts)
         if error:
             return None, error
-        if is_movie:
+        if kind == 'movie':
             movie_atts += 1
+        elif kind == 'save':
+            saves += weight
         else:
             total += len(data)
         attachments.append((name, data))
@@ -665,6 +682,8 @@ def read_attachments(existing=None):
         return None, fail('too many movie attachments (max 4)')
     if total > ATTACH_MAX_TOTAL:
         return None, fail('text attachments exceed 512 KB total')
+    if saves > SAVE_MAX_TOTAL:
+        return None, fail(f'save files exceed {SAVE_MAX_TOTAL >> 20} MiB in total for one run')
     return attachments, None
 
 

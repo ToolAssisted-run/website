@@ -15,7 +15,7 @@
 <body>
   <h1>toolAssisted.run · submit a run</h1>
   <p class="note">Movie file + metadata only, never ROMs. Text attachments (configs) allowed,
-  128&nbsp;KB each. Your run is archived immediately, as pending.</p>
+  128&nbsp;KB each; save files and memory cards (and a .zip of them) up to 16&nbsp;MiB each. Your run is archived immediately, as pending.</p>
 
   <form method="post" action="api/submit" enctype="multipart/form-data">
     <label>Submitter key</label>
@@ -57,7 +57,7 @@
     <label><input type="checkbox" name="content_warnings" value="photosensitivity" style="width:auto"> Photosensitivity (flashing lights)</label>
     <label><input type="checkbox" name="content_warnings" value="strong-language" style="width:auto"> Strong language</label>
 
-    <label>Attachments (optional: text configs, or additional movie files)</label>
+    <label>Attachments (optional: text configs, additional movie files, or save files)</label>
     <input name="attachments" type="file" multiple>
 
     <label>Notes</label>

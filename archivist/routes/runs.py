@@ -1883,9 +1883,9 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                 remaining_existing.append(a)
         return remaining_existing, deleted_files_to_remove
 
-    def _add_revision_attachments(run, remaining_existing, changed):
+    def _add_revision_attachments(run, remaining_existing, changed, run_dir):
         """Validate and append new supplementary uploads."""
-        new_attachments, attachment_error = read_attachments(remaining_existing)
+        new_attachments, attachment_error = read_attachments(remaining_existing, run_dir)
         if attachment_error:
             return None, attachment_error
         if new_attachments:
@@ -1900,7 +1900,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
                 changed.append('attachments')
         return new_attachments, None
 
-    def _edit_attachments(run, is_author, changed, befores):
+    def _edit_attachments(run, run_dir, is_author, changed, befores):
         """Apply attachment removals and additions after validating ownership and limits."""
         attachments_delete = [
             re.sub(r'[^A-Za-z0-9._-]', '_', pathlib.Path(f).name)
@@ -1923,7 +1923,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
             if 'attachments' not in changed:
                 changed.append('attachments')
 
-        new_attachments, attachment_error = _add_revision_attachments(run, remaining_existing, changed)
+        new_attachments, attachment_error = _add_revision_attachments(run, remaining_existing, changed, run_dir)
         if attachment_error:
             return None, None, attachment_error
         return deleted_files_to_remove, new_attachments, None
@@ -2078,7 +2078,7 @@ def register(app, *, CW_ALLOWED, EXPERT_EDITABLE, GAME_PROPERTY_FIELDS, MOVIE_EM
         if error is not None:
             return error
         deleted_files_to_remove, new_attachments, error = _edit_attachments(
-            run, is_author, changed, befores)
+            run, run_dir, is_author, changed, befores)
         if error is not None:
             return error
         if not changed:

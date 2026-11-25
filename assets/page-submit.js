@@ -1011,6 +1011,31 @@ if (submitForm) {
       'ymv',
       'zmv',
     ]);
+    // Save files and memory cards (what emulators write for a save a run
+    // starts from), and the .zip that may hold them. The archive's
+    // validate.py is the authority; the service reads its list from there.
+    var ATTACH_SAVE_EXTS = new Set([
+      'dsv',
+      'eep',
+      'fla',
+      'gci',
+      'mc',
+      'mcd',
+      'mcr',
+      'ps2',
+      'raw',
+      'sav',
+      'sra',
+      'srm',
+    ]);
+    var ATTACH_SAVE_ARCHIVE_EXTS = new Set(['zip']);
+    // one save file: a GameCube card of the largest common size is 16 MiB
+    var SAVE_MAX_EACH = 16 * 1024 * 1024;
+    // all the save files of one run
+    var SAVE_MAX_TOTAL = 32 * 1024 * 1024;
+    function isSaveExt(e) {
+      return ATTACH_SAVE_EXTS.has(e) || ATTACH_SAVE_ARCHIVE_EXTS.has(e);
+    }
     function extOf(fn) {
       var p = (fn || '').split('.');
       return p.length > 1 ? p.pop().toLowerCase() : '';
@@ -1030,7 +1055,21 @@ if (submitForm) {
     }
     function isAttachExt(fn) {
       var e = extOf(fn);
-      return ATTACH_TEXT_EXTS.has(e) || ATTACH_MOVIE_EXTS.has(e);
+      return (
+        ATTACH_TEXT_EXTS.has(e) || ATTACH_MOVIE_EXTS.has(e) || isSaveExt(e)
+      );
+    }
+    // why this one file is too big for its kind, or ''
+    function attachSizeProblem(file) {
+      var e = extOf(file.name);
+      if (ATTACH_MOVIE_EXTS.has(e)) {
+        return file.size > 95 * 1024 * 1024 ? file.name + ' exceeds 95 MB' : '';
+      }
+      if (isSaveExt(e)) {
+        if (file.size > SAVE_MAX_EACH) return file.name + ' exceeds 16 MiB';
+        return '';
+      }
+      return file.size > 128 * 1024 ? file.name + ' exceeds 128 KB' : '';
     }
     function fmtFileSize(bytes) {
       if (!bytes && bytes !== 0) return '';
@@ -1277,6 +1316,16 @@ if (submitForm) {
           return ATTACH_MOVIE_EXTS.has(extOf(f.name));
         }).length;
 
+      // what the save files staged so far weigh (a .zip by its own size here;
+      // the service counts what is inside it)
+      var saveBytes = 0;
+      stagedAttachments.forEach(function (f) {
+        if (isSaveExt(extOf(f.name))) saveBytes += f.size;
+      });
+      replacedAttachments.forEach(function (f) {
+        if (isSaveExt(extOf(f.name))) saveBytes += f.size;
+      });
+
       Array.prototype.forEach.call(fileList, function (file) {
         if (!isAttachExt(file.name)) {
           errs.push(file.name + ': unsupported extension');
@@ -1287,12 +1336,14 @@ if (submitForm) {
           return;
         }
         var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
-        if (isMovie && file.size > 95 * 1024 * 1024) {
-          errs.push(file.name + ' exceeds 95 MB');
+        var sizeProblem = attachSizeProblem(file);
+        if (sizeProblem) {
+          errs.push(sizeProblem);
           return;
         }
-        if (!isMovie && file.size > 128 * 1024) {
-          errs.push(file.name + ' exceeds 128 KB');
+        var isSave = isSaveExt(extOf(file.name));
+        if (isSave && saveBytes + file.size > SAVE_MAX_TOTAL) {
+          errs.push('Save files exceed 32 MiB in total');
           return;
         }
         var inReplaced = false;
@@ -1322,6 +1373,7 @@ if (submitForm) {
         }
         activeCount++;
         if (isMovie) movieCount++;
+        if (isSave) saveBytes += file.size;
         stagedAttachments.push(file);
       });
       if (errs.length) {
@@ -1352,12 +1404,9 @@ if (submitForm) {
           return;
         }
         var isMovie = ATTACH_MOVIE_EXTS.has(extOf(file.name));
-        if (isMovie && file.size > 95 * 1024 * 1024) {
-          setAttError(file.name + ' exceeds 95 MB');
-          return;
-        }
-        if (!isMovie && file.size > 128 * 1024) {
-          setAttError(file.name + ' exceeds 128 KB');
+        var sizeProblem = attachSizeProblem(file);
+        if (sizeProblem) {
+          setAttError(sizeProblem);
           return;
         }
         var alreadyStaged = stagedAttachments.some(function (f) {

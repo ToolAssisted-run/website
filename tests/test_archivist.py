@@ -2397,6 +2397,23 @@ def main():
             ck('the replacement file content is updated on disk',
                (work / 'games/nes/pinball/runs/M900010/attachments/extra.txt').read_bytes() == b'replaced supplementary data')
 
+            # the 32 MiB per run counts the save files already on the run
+            for nm in ('c1.raw', 'c2.raw'):
+                c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010'},
+                               {'attachments': (nm, b'\0' * (16 * 1024 * 1024))})
+                ck(f'an author adds a 16 MiB card ({nm}) after the fact',
+                   c == 200 and r['changed'] == ['attachments'], str(r)[:300])
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010'},
+                           {'attachments': ('c3.ps2', b'\0' * 1000)})
+            ck('a third card is refused: the run already holds 32 MiB of saves',
+               c == 400 and 'save files exceed' in r.get('error', ''), str(r)[:300])
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'attachments_delete': 'c1.raw'})
+            c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
+                                             'attachments_delete': 'c2.raw'})
+            ck('the cards are removed again', c == 200
+               and not list((work / 'games/nes/pinball/runs/M900010/attachments').glob('c?.raw')), str(r)[:200])
+
             # deleting an attachment
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor',
                                              'run': 'M900010',
@@ -2428,6 +2445,52 @@ def main():
                            {'movie': ('t.bk2', BK2),
                             'attachments': ('data.txt', b'\xff\xfebinary')})
             ck('binary text attachment rejected', c == 400)
+
+            # --- save files and memory cards: binary, capped, zips read but never unpacked ---
+            def zipped(files):
+                import io as _io
+                buf = _io.BytesIO()
+                with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+                    for n, d in files.items():
+                        z.writestr(n, d)
+                return buf.getvalue()
+
+            def attach_try(name, data):
+                return call(U + '/api/submit', sub, dict(uniq_files(), attachments=(name, data)))
+            MIB = 1 << 20
+            c, r, _ = attach_try('Bujingai NTSC.ps2', b'\0' * 8650752)
+            ck('a standard PS2 memory card (8,650,752 bytes) is accepted as an attachment',
+               c == 200 and any(a['file'] == 'attachments/Bujingai_NTSC.ps2'
+                                for a in r['run']['attachments']), str(r)[:300])
+            c, r, _ = attach_try('gc.raw', b'\0' * (16 * MIB))
+            ck('a 16 MiB GameCube card is accepted', c == 200, str(r)[:300])
+            c, r, _ = attach_try('gc.raw', b'\0' * (16 * MIB + 1))
+            ck('a save file over 16 MiB is refused',
+               c == 400 and '16 MiB' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('card.bin', b'\0' * 100)
+            ck('.bin is not a save type', c == 400, str(r)[:300])
+            c, r, _ = attach_try('saves.zip', zipped({'Bujingai NTSC.ps2': b'\0' * 8650752, 'a/b.sav': b'x'}))
+            ck('a zip holding a PS2 card is accepted', c == 200, str(r)[:300])
+            c, r, _ = attach_try('saves.zip', zipped({'game.sav': b'x', 'run.exe': b'MZ'}))
+            ck('a zip holding an .exe is refused',
+               c == 400 and 'not a save file type' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('bomb.zip', zipped({f'c{i}.raw': b'\0' * (16 * MIB) for i in range(3)}))
+            ck('a zip that unpacks past 32 MiB is refused (a zip bomb)',
+               c == 400 and '32 MiB' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('bomb.zip', zipped({'huge.raw': b'\0' * (120 * MIB)}))
+            ck('a zip of one huge file is refused without unpacking it',
+               c == 400 and '16 MiB' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('many.zip', zipped({f's{i}.sav': b'x' for i in range(17)}))
+            ck('a zip with too many files is refused',
+               c == 400 and 'more than 16 files' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('trav.zip', zipped({'../../evil.sav': b'x'}))
+            ck('a zip with a path climbing out of its folder is refused',
+               c == 400 and 'unsafe name' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('fake.zip', b'not a zip at all')
+            ck('a .zip that is not a zip is refused',
+               c == 400 and 'not a readable zip' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('saves.7z', b'7z\xbc\xaf\x27\x1c' + b'\0' * 40)
+            ck('a .7z is refused', c == 400, str(r)[:300])
 
             # --- appointing experts: downward, in the open ---
             c, r, _ = call(U + '/api/expert/appoint',

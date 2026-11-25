@@ -1066,6 +1066,22 @@ def main():
                                   stext.split('ATTACH_EXTS = {')[1].split('}')[0]))
         ck('the archive accepts every text attachment intake does',
            ours_txt and not (ours_txt - arch_txt), str(sorted(ours_txt - arch_txt)[:6]))
+        # and the save files and zips of them: intake's fallback lists must
+        # never be wider than the archive's, or a save is archived and then
+        # fails the archive
+        for ours_name, theirs_name in (('SAVE_EXTS', 'SAVE_ATTACH_EXT'),
+                                       ('SAVE_ARCHIVE_EXTS', 'SAVE_ARCHIVE_EXT')):
+            theirs = set(re.findall(r"'(\.[a-z0-9]+)'",
+                                    vtext.split(theirs_name + ' = {')[1].split('}')[0]))
+            ours = set(re.findall(r"'(\.[a-z0-9]+)'",
+                                  stext.split(ours_name + ' = {')[1].split('}')[0]))
+            ck(f'the archive accepts every {theirs_name} type intake does',
+               ours and ours == theirs, str(sorted(ours ^ theirs)[:6]))
+        # a save type is never also a movie or text type: one extension, one rule
+        def roster(name):
+            return set(re.findall(r"'(\.[a-z0-9]+)'", vtext.split(name + ' = {')[1].split('}')[0]))
+        clash = roster('SAVE_ATTACH_EXT') & (arch_txt | roster('MOVIE_ATTACH_EXT'))
+        ck('no save type is also a movie or text attachment type', not clash, str(sorted(clash)))
     else:
         print('SKIP archive attachment roster: no archive checkout')
 

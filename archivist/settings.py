@@ -144,6 +144,16 @@ ATTACH_EXTS = {
     '.csv', '.log', '.diff', '.patch',
 }
 
+# Save files and memory cards, attached as they are (binary). The archive's
+# validate.py explains where each type comes from; this is the fallback for
+# when the archive has no validator to read, and the roster is read from it
+# the same way as the others so the two cannot drift. A .zip is accepted only
+# when every file inside is one of these (see save_attachment_refusal).
+SAVE_EXTS = {'.ps2', '.mcd', '.mcr', '.mc', '.sav', '.srm', '.eep', '.sra',
+             '.fla', '.gci', '.raw', '.dsv'}
+
+SAVE_ARCHIVE_EXTS = {'.zip'}
+
 # The archive is the authority on what it will hold, and its rules live in
 # its own validate.py. Intake reads them there rather than keeping a second
 # copy: the copies drift, and a drifted copy takes a member's correct
@@ -184,6 +194,16 @@ def allowed_attach_exts():
     theirs = _archive_roster('ALLOWED_ATTACH_EXT')
     return ATTACH_EXTS if theirs is None else ATTACH_EXTS & theirs
 
+def allowed_save_exts():
+    """Save-file types intake accepts, dotted, narrowed the same way."""
+    theirs = _archive_roster('SAVE_ATTACH_EXT')
+    return SAVE_EXTS if theirs is None else SAVE_EXTS & theirs
+
+def allowed_save_archive_exts():
+    """Containers of save files intake accepts, dotted, narrowed the same way."""
+    theirs = _archive_roster('SAVE_ARCHIVE_EXT')
+    return SAVE_ARCHIVE_EXTS if theirs is None else SAVE_ARCHIVE_EXTS & theirs
+
 
 MOVIE_MAX = 32 * 1024 * 1024        # accepted on raw size alone
 
@@ -198,6 +218,18 @@ ATTACH_MAX_EACH = 128 * 1024
 ATTACH_MAX_TOTAL = 512 * 1024
 
 ATTACH_MAX_COUNT = 8
+
+# One save file, or one file inside a .zip: a GameCube memory card of the
+# largest common size is exactly 16 MiB, a standard PS2 card 8,650,752 bytes.
+SAVE_MAX_EACH = 16 * 1024 * 1024
+
+# All the save files of one run, a .zip counted by what is inside it. The
+# archive is plain Git (no LFS); GitHub refuses a file over 100 MB and warns
+# over 50 MB, and 32 MiB for a whole run stays well under both.
+SAVE_MAX_TOTAL = 32 * 1024 * 1024
+
+# Files inside one .zip of saves.
+SAVE_ZIP_MAX_ENTRIES = 16
 
 # A run has one main encode: its thumbnail is the run's, and it is the one a
 # verifier judges. It may carry alternates beside it (another angle, a
@@ -250,6 +282,9 @@ MOVIE_RAW_MAX = max(MOVIE_MAX, _archive_cap('MOVIE_MAX', MOVIE_RAW_MAX))
 NOTES_MAX = _archive_cap('NOTES_MAX', NOTES_MAX)
 ATTACH_MAX_EACH = _archive_cap('ATTACH_MAX_EACH', ATTACH_MAX_EACH)
 ATTACH_MAX_TOTAL = _archive_cap('ATTACH_MAX_TOTAL', ATTACH_MAX_TOTAL)
+SAVE_MAX_EACH = _archive_cap('SAVE_MAX_EACH', SAVE_MAX_EACH)
+SAVE_MAX_TOTAL = _archive_cap('SAVE_MAX_TOTAL', SAVE_MAX_TOTAL)
+SAVE_ZIP_MAX_ENTRIES = _archive_cap('SAVE_ZIP_MAX_ENTRIES', SAVE_ZIP_MAX_ENTRIES)
 SHOT_MAX_EACH = _archive_cap('SHOT_MAX_EACH', SHOT_MAX_EACH)
 SHOT_MAX_TOTAL = _archive_cap('SHOT_MAX_TOTAL', SHOT_MAX_TOTAL)
 
@@ -302,6 +337,92 @@ def movie_refusal(data):
     if len(data) <= MOVIE_MAX:
         return None
     return movie_oversize(len(data), len(zlib.compress(data, 6)))
+
+
+def save_zip_check(data, save_exts):
+    """Check a .zip of save files without unpacking it to disk.
+
+    Returns (problem, unpacked_bytes): `problem` is why the zip is refused
+    (None when it may be archived), `unpacked_bytes` what its files add up
+    to. The listing is read first (entry count, names, types, declared
+    sizes), then every file is streamed through memory to count what really
+    comes out, because a header can lie about its size (a zip bomb).
+    """
+    import io
+    import zipfile
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data))
+    except (zipfile.BadZipFile, ValueError, NotImplementedError):
+        return 'is not a readable zip', 0
+    with zf:
+        everything = zf.infolist()
+        files = [i for i in everything if not i.is_dir()]
+        if len(everything) > SAVE_ZIP_MAX_ENTRIES * 4 or len(files) > SAVE_ZIP_MAX_ENTRIES:
+            return f'holds more than {SAVE_ZIP_MAX_ENTRIES} files', 0
+        if not files:
+            return 'holds no files', 0
+        declared = 0
+        for i in files:
+            name = i.filename
+            parts = re.split(r'[/\\]', name)
+            if (name.startswith(('/', '\\')) or ':' in name or '\x00' in name
+                    or any(p in ('', '.', '..') for p in parts)):
+                return f'has the unsafe name {name[:40]!r}', 0
+            if pathlib.PurePosixPath(parts[-1]).suffix.lower() not in save_exts:
+                return f'holds {name[:40]!r}, which is not a save file type', 0
+            if i.flag_bits & 0x1:
+                return f'holds {name[:40]!r}, which is encrypted', 0
+            if i.file_size > SAVE_MAX_EACH:
+                return f'holds {name[:40]!r}, over {SAVE_MAX_EACH >> 20} MiB', 0
+            declared += i.file_size
+            if declared > SAVE_MAX_TOTAL:
+                return f'holds more than {SAVE_MAX_TOTAL >> 20} MiB unpacked', 0
+        real = 0
+        try:
+            for i in files:
+                seen = 0
+                with zf.open(i) as f:
+                    while True:
+                        chunk = f.read(1 << 20)
+                        if not chunk:
+                            break
+                        seen += len(chunk)
+                        real += len(chunk)
+                        if seen > SAVE_MAX_EACH or real > SAVE_MAX_TOTAL:
+                            return 'holds more than it says: a zip bomb', 0
+        except (zipfile.BadZipFile, ValueError, NotImplementedError, EOFError, OSError):
+            return 'is damaged or uses a method this service does not read', 0
+    return None, real
+
+
+def save_attachment_refusal(name, data, suffix):
+    """For an upload whose type is a save file or a zip of them: why it is
+    refused, or None. Returns (problem, weight): `weight` counts toward the
+    run's SAVE_MAX_TOTAL (a zip by what is inside it)."""
+    if len(data) > SAVE_MAX_EACH:
+        return (f'save file {name!r} is {len(data) / (1 << 20):.1f} MiB, past the '
+                f'{SAVE_MAX_EACH >> 20} MiB one file may be'), 0
+    if suffix in allowed_save_archive_exts():
+        problem, unpacked = save_zip_check(data, allowed_save_exts())
+        if problem:
+            return (f'zip {name!r} {problem}; a zip may hold save files only '
+                    f'({", ".join(sorted(allowed_save_exts()))})'), 0
+        return None, unpacked
+    return None, len(data)
+
+
+def save_weight_on_disk(path):
+    """What an existing save attachment counts toward SAVE_MAX_TOTAL (0 when
+    it is not one, or cannot be read)."""
+    suffix = path.suffix.lower()
+    try:
+        if suffix in allowed_save_exts():
+            return path.stat().st_size
+        if suffix in allowed_save_archive_exts():
+            return save_zip_check(path.read_bytes(), allowed_save_exts())[1]
+    except OSError:
+        pass
+    return 0
 
 
 THUMB_MAX = 256 * 1024
