@@ -1029,10 +1029,10 @@ if (submitForm) {
       'srm',
     ]);
     var ATTACH_SAVE_ARCHIVE_EXTS = new Set(['zip']);
-    // one save file: a GameCube card of the largest common size is 16 MiB
-    var SAVE_MAX_EACH = 16 * 1024 * 1024;
+    // one save file: a larger PS2 card is 17,301,504 bytes, a GameCube card 16 MiB
+    var SAVE_MAX_EACH = 32 * 1024 * 1024;
     // all the save files of one run
-    var SAVE_MAX_TOTAL = 32 * 1024 * 1024;
+    var SAVE_MAX_TOTAL = 64 * 1024 * 1024;
     function isSaveExt(e) {
       return ATTACH_SAVE_EXTS.has(e) || ATTACH_SAVE_ARCHIVE_EXTS.has(e);
     }
@@ -1066,7 +1066,7 @@ if (submitForm) {
         return file.size > 95 * 1024 * 1024 ? file.name + ' exceeds 95 MB' : '';
       }
       if (isSaveExt(e)) {
-        if (file.size > SAVE_MAX_EACH) return file.name + ' exceeds 16 MiB';
+        if (file.size > SAVE_MAX_EACH) return file.name + ' exceeds 32 MiB';
         return '';
       }
       return file.size > 128 * 1024 ? file.name + ' exceeds 128 KB' : '';
@@ -1343,7 +1343,7 @@ if (submitForm) {
         }
         var isSave = isSaveExt(extOf(file.name));
         if (isSave && saveBytes + file.size > SAVE_MAX_TOTAL) {
-          errs.push('Save files exceed 32 MiB in total');
+          errs.push('Save files exceed 64 MiB in total');
           return;
         }
         var inReplaced = false;

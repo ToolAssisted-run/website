@@ -2397,15 +2397,15 @@ def main():
             ck('the replacement file content is updated on disk',
                (work / 'games/nes/pinball/runs/M900010/attachments/extra.txt').read_bytes() == b'replaced supplementary data')
 
-            # the 32 MiB per run counts the save files already on the run
+            # the 64 MiB per run counts the save files already on the run
             for nm in ('c1.raw', 'c2.raw'):
                 c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010'},
-                               {'attachments': (nm, b'\0' * (16 * 1024 * 1024))})
-                ck(f'an author adds a 16 MiB card ({nm}) after the fact',
+                               {'attachments': (nm, b'\0' * (32 * 1024 * 1024))})
+                ck(f'an author adds a 32 MiB card ({nm}) after the fact',
                    c == 200 and r['changed'] == ['attachments'], str(r)[:300])
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010'},
                            {'attachments': ('c3.ps2', b'\0' * 1000)})
-            ck('a third card is refused: the run already holds 32 MiB of saves',
+            ck('a third card is refused: the run already holds 64 MiB of saves',
                c == 400 and 'save files exceed' in r.get('error', ''), str(r)[:300])
             c, r, _ = call(U + '/api/edit', {'key': KEY, 'user': 'TestAuthor', 'run': 'M900010',
                                              'attachments_delete': 'c1.raw'})
@@ -2464,9 +2464,13 @@ def main():
                                 for a in r['run']['attachments']), str(r)[:300])
             c, r, _ = attach_try('gc.raw', b'\0' * (16 * MIB))
             ck('a 16 MiB GameCube card is accepted', c == 200, str(r)[:300])
-            c, r, _ = attach_try('gc.raw', b'\0' * (16 * MIB + 1))
-            ck('a save file over 16 MiB is refused',
-               c == 400 and '16 MiB' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('card16.ps2', b'\0' * 17301504)
+            ck('a 16 MB PS2 card (17,301,504 bytes) is accepted', c == 200, str(r)[:300])
+            c, r, _ = attach_try('exact.raw', b'\0' * (32 * MIB))
+            ck('a save file of exactly 32 MiB is accepted', c == 200, str(r)[:300])
+            c, r, _ = attach_try('gc.raw', b'\0' * (32 * MIB + 1))
+            ck('a save file over 32 MiB is refused',
+               c == 400 and '32 MiB' in r.get('error', ''), str(r)[:300])
             c, r, _ = attach_try('card.bin', b'\0' * 100)
             ck('.bin is not a save type', c == 400, str(r)[:300])
             c, r, _ = attach_try('saves.zip', zipped({'Bujingai NTSC.ps2': b'\0' * 8650752, 'a/b.sav': b'x'}))
@@ -2474,12 +2478,12 @@ def main():
             c, r, _ = attach_try('saves.zip', zipped({'game.sav': b'x', 'run.exe': b'MZ'}))
             ck('a zip holding an .exe is refused',
                c == 400 and 'not a save file type' in r.get('error', ''), str(r)[:300])
-            c, r, _ = attach_try('bomb.zip', zipped({f'c{i}.raw': b'\0' * (16 * MIB) for i in range(3)}))
-            ck('a zip that unpacks past 32 MiB is refused (a zip bomb)',
-               c == 400 and '32 MiB' in r.get('error', ''), str(r)[:300])
+            c, r, _ = attach_try('bomb.zip', zipped({f'c{i}.raw': b'\0' * (32 * MIB) for i in range(3)}))
+            ck('a zip that unpacks past 64 MiB is refused (a zip bomb)',
+               c == 400 and '64 MiB' in r.get('error', ''), str(r)[:300])
             c, r, _ = attach_try('bomb.zip', zipped({'huge.raw': b'\0' * (120 * MIB)}))
             ck('a zip of one huge file is refused without unpacking it',
-               c == 400 and '16 MiB' in r.get('error', ''), str(r)[:300])
+               c == 400 and '32 MiB' in r.get('error', ''), str(r)[:300])
             c, r, _ = attach_try('many.zip', zipped({f's{i}.sav': b'x' for i in range(17)}))
             ck('a zip with too many files is refused',
                c == 400 and 'more than 16 files' in r.get('error', ''), str(r)[:300])

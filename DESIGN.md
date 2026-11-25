@@ -348,14 +348,15 @@ UTF-8, ≤128 KB each/≤512 KB total/≤8 files, plus up to 4 extra movie
 files, plus the **save file or memory card** a run starts from (a short list
 of binary save types: PS2 `.ps2`, PS1 `.mcd` `.mcr` `.mc`, `.sav`, `.srm`,
 Nintendo 64 `.eep` `.sra` `.fla`, GameCube `.gci` `.raw`, DeSmuME `.dsv`;
-`.bin` is left out as too generic), each ≤16 MiB (a GameCube card of the largest
-common size is 16 MiB, a standard PS2 card 8,650,752 bytes) and ≤32 MiB per run;
+`.bin` is left out as too generic), each ≤32 MiB (a GameCube card of the largest
+common size is 16 MiB, a standard PS2 card 8,650,752 bytes, a larger PCSX2 card
+17,301,504) and ≤64 MiB per run;
 a `.zip` is accepted only when every file inside is a save type, read from its
 listing and streamed through memory, never written to disk (≤16 files, no path
-traversal or absolute names, no encryption, ≤32 MiB unpacked, so a zip bomb is
+traversal or absolute names, no encryption, ≤64 MiB unpacked, so a zip bomb is
 refused); `.7z` is not accepted because nothing the site depends on can read it.
 The archive is plain Git, no LFS: GitHub refuses a file over 100 MB and warns over
-50 MB, and the caps stay far under both. The archive's `validate.py` holds the
+50 MB, and no single file reaches either. The archive's `validate.py` holds the
 lists and caps and intake reads them from there; a name over 80 characters is refused, at the form and at the door,
 because the name is kept as given under a path the archive decides and
 Windows cannot copy a path over 260: the member shortens it, the archive

@@ -220,13 +220,15 @@ ATTACH_MAX_TOTAL = 512 * 1024
 ATTACH_MAX_COUNT = 8
 
 # One save file, or one file inside a .zip: a GameCube memory card of the
-# largest common size is exactly 16 MiB, a standard PS2 card 8,650,752 bytes.
-SAVE_MAX_EACH = 16 * 1024 * 1024
+# largest common size is exactly 16 MiB, a standard PS2 card 8,650,752 bytes
+# and the larger PCSX2 card 17,301,504 bytes; 32 MiB leaves room for all, and
+# stays under GitHub's 50 MB warning and 100 MB refusal.
+SAVE_MAX_EACH = 32 * 1024 * 1024
 
 # All the save files of one run, a .zip counted by what is inside it. The
 # archive is plain Git (no LFS); GitHub refuses a file over 100 MB and warns
-# over 50 MB, and 32 MiB for a whole run stays well under both.
-SAVE_MAX_TOTAL = 32 * 1024 * 1024
+# over 50 MB; no single file reaches either and 64 MiB a run allows two cards.
+SAVE_MAX_TOTAL = 64 * 1024 * 1024
 
 # Files inside one .zip of saves.
 SAVE_ZIP_MAX_ENTRIES = 16

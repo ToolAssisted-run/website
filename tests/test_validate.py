@@ -260,18 +260,18 @@ def _att(root, name, data, rid='M900204'):
 MIB = 1024 * 1024
 
 def m_save_too_big(root):
-    _att(root, 'huge.raw', b'\0' * (16 * MIB + 1))
+    _att(root, 'huge.raw', b'\0' * (32 * MIB + 1))
 
 def m_saves_total(root):
     for i in range(3):
-        _att(root, f'card{i}.raw', b'\0' * (16 * MIB))
+        _att(root, f'card{i}.raw', b'\0' * (32 * MIB))
 
 def m_save_zip_with_exe(root):
     _att(root, 'bad.zip', zip_of({'game.sav': b'x', 'run.exe': b'MZ'}))
 
 def m_save_zip_bomb(root):
     # 48 MiB of zeros packs to about 50 KB
-    _att(root, 'bomb.zip', zip_of({f'c{i}.raw': b'\0' * (16 * MIB) for i in range(3)}))
+    _att(root, 'bomb.zip', zip_of({f'c{i}.raw': b'\0' * (32 * MIB) for i in range(3)}))
 
 def m_save_zip_one_big_file(root):
     _att(root, 'bomb.zip', zip_of({'huge.raw': b'\0' * (200 * MIB)}))
@@ -581,8 +581,8 @@ CASES = [
     ('a save file has its own size cap', m_save_too_big, 'save file'),
     ('save files have a total cap per run', m_saves_total, 'save files exceed'),
     ('a zip of saves may not hold other files', m_save_zip_with_exe, 'not a save file type'),
-    ('a zip of saves unpacking past the total is refused', m_save_zip_bomb, 'more than 32 MiB unpacked'),
-    ('a zip of saves holding one huge file is refused', m_save_zip_one_big_file, 'over 16 MiB'),
+    ('a zip of saves unpacking past the total is refused', m_save_zip_bomb, 'more than 64 MiB unpacked'),
+    ('a zip of saves holding one huge file is refused', m_save_zip_one_big_file, 'over 32 MiB'),
     ('a zip of saves has an entry cap', m_save_zip_many_entries, 'more than 16 files'),
     ('a zip of saves may not climb out of its folder', m_save_zip_traversal, 'unsafe name'),
     ('a zip of saves may not hold an absolute name', m_save_zip_absolute, 'unsafe name'),
@@ -704,13 +704,14 @@ def main():
             ck(f'rejects: {name}', ok, detail)
 
         # the sizes the caps were chosen for are accepted exactly: a standard
-        # PS2 card (8,650,752 bytes), a GameCube card of 16 MiB, and a zip of both
+        # PS2 card (8,650,752 bytes), a 16 MB PS2 card (17,301,504), a GameCube card of 16 MiB, and a zip of a card
         work = td / 'cards-ok'
         shutil.copytree(base, work)
         _att(work, 'Bujingai.ps2', b'\0' * 8650752)
         _att(work, 'gc.raw', b'\0' * (16 * MIB))
+        _att(work, 'big.ps2', b'\0' * 17301504)
         code, out = run_validate(work)
-        ck('a PS2 card and a 16 MiB GameCube card are accepted', code == 0, out.strip()[-300:])
+        ck('a PS2 card, a 17,301,504-byte PS2 card and a 16 MiB GameCube card are accepted', code == 0, out.strip()[-300:])
         shutil.rmtree(work)
         work = td / 'zipcard-ok'
         shutil.copytree(base, work)
