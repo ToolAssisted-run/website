@@ -33,6 +33,12 @@ SITE_DIR = pathlib.Path(os.environ.get('SITE_DIR', str(ARCHIVE.parent / 'site'))
 BUILD_TIMEOUT = float(os.environ.get('SITE_BUILD_TIMEOUT', '300'))
 SITE_BUILD_LIMIT = int(os.environ.get('SITE_BUILD_LIMIT', '0'))
 
+# The commit a build reads, checked out where nothing writes: a git worktree
+# of the archive beside it (so the generator's neighbours, visits.json, are
+# the same ones). Writes never wait on a build.
+BUILD_TREE = pathlib.Path(os.environ.get('SITE_BUILD_TREE',
+                                         str(ARCHIVE.parent / (ARCHIVE.name + '-build'))))
+
 _wake = threading.Event()
 _serial = {'n': 0}          # monotonic build names within one process life
 _last = {'ok': None, 'when': 0.0, 'error': None}   # observable via /api/health
@@ -124,19 +130,55 @@ def _prune():
             shutil.rmtree(p, ignore_errors=True)
 
 
+def _snapshot():
+    """The archive as of its last commit, in BUILD_TREE, for the generator.
+
+    The commit is read under the write lock, which takes a moment; the
+    checkout happens without it, in a worktree of its own (its own index and
+    HEAD, the objects shared), so nothing a write does touches it. Builds
+    used to hold the write lock for the whole generator run so the tree
+    stayed still: 16 s on the host, and any write in that window waited for
+    all of it. Returns the tree to build from."""
+    import gitstore
+    with gitstore.lock:
+        sha = gitstore.sh('git', 'rev-parse', 'HEAD').stdout.strip()
+
+    def tree_git(*args):
+        return subprocess.run(['git', '-C', str(BUILD_TREE), *args], check=True,
+                              capture_output=True, text=True, timeout=120)
+    if not (BUILD_TREE / '.git').exists():
+        shutil.rmtree(BUILD_TREE, ignore_errors=True)
+        gitstore.sh('git', 'worktree', 'prune')
+        gitstore.sh('git', 'worktree', 'add', '-q', '--detach', str(BUILD_TREE), sha)
+    else:
+        tree_git('checkout', '-q', '-f', '--detach', sha)
+        tree_git('clean', '-qfdx')
+    return BUILD_TREE
+
+
 def _build_once():
     """Build and publish one site snapshot."""
     import gitstore
     _serial['n'] += 1
     out = SITE_DIR / f'build-{int(time.time())}-{_serial["n"]}'
     t0 = time.time()
-    # the lock keeps the tree still while the generator reads it, so a build
-    # never captures half of a concurrent write; builds take about a second,
-    # which a queued request can afford to wait out
-    with gitstore.lock:
+    try:
+        tree = _snapshot()
+        held = None
+    except Exception as e:                                     # noqa: BLE001
+        # no worktree to be had: build from the live checkout, holding the
+        # lock so the tree stays still, as before
+        LOG.warning('site build from the live checkout (no snapshot: %s)', e)
+        tree, held = ARCHIVE, gitstore.lock
+    if held:
+        held.acquire()
+    try:
         r = subprocess.run([sys.executable, '-X', 'utf8', str(WEBSITE_DIR / 'generator' / 'build.py'),
-                            str(ARCHIVE), str(out)],
+                            str(tree), str(out)],
                            capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+    finally:
+        if held:
+            held.release()
     if r.returncode != 0:
         shutil.rmtree(out, ignore_errors=True)
         raise RuntimeError(f'generator exited {r.returncode}: '

@@ -1228,6 +1228,31 @@ def main():
             ck('the served buildstamp reaches the write that made it',
                isinstance(stamp.get('serial'), int)
                and stamp['serial'] >= (created_serial or 0), str(stamp))
+            # --- a write never waits on a build: the build reads its own
+            #     checkout of the last commit, not the tree writes change ---
+            cur_link = lambda: (os.readlink(td / 'site' / 'current') if is_sym else None)
+            settled_end = time.time() + 120
+            while time.time() < settled_end:       # let any earlier build finish
+                was = cur_link()
+                time.sleep(2)
+                if cur_link() == was:
+                    break
+            before_build = cur_link()
+            c1, r1, _ = call(U + '/api/like', {'key': KEY, 'user': 'BuildRacer', 'run': created_id})
+            t0 = time.time()
+            c2, r2, _ = call(U + '/api/like', {'key': KEY, 'user': 'BuildRacer', 'run': created_id})
+            racer = time.time() - t0
+            build_end = time.time() + 120
+            while time.time() < build_end and cur_link() == before_build:
+                time.sleep(0.2)
+            build_took = time.time() - t0
+            ck('a write made while the site builds answers without waiting for the build',
+               c1 == 200 and c2 == 200 and r2.get('liked') is False
+               and racer < max(2.0, build_took / 2),
+               f'{c1} {c2} {racer:.2f}s against a {build_took:.2f}s build')
+            ck('and the build reads its own checkout, beside the archive',
+               (td / 'work-build' / '.git').exists() and (td / 'work-build' / 'systems.json').exists())
+
             # Once the publisher pipeline has been verified with a real build,
             # pause background rebuilds so remaining test writes aren't blocked by
             # redundant full-site builds while holding the git lock.

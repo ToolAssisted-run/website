@@ -1319,14 +1319,19 @@ archivist, module responsibilities). What matters designwise:
   on `/search/`. Run arrival dates come from
   git history (`fetch-depth: 0` in CI), falling back to
   `importedAt`/`submitted`.
-- **The pipeline**: the archivist is the publisher. The moment its push
-  lands, `archivist/sitebuild.py` rebuilds the whole site from the local
-  checkout (~1 s), refuses any incomplete build (the same guard CI applies:
-  every run has a page, core assets exist), and swaps an atomic `current`
-  symlink that host nginx serves. **Act-to-published is about a second**;
-  the read lock holds the tree still during the build, a burst of commits
-  coalesces into one rebuild, and a failed build keeps the previous site
-  serving (builder state and errors are observable via `GET /api/health`).
+- **The pipeline**: the archivist is the publisher. The moment a write
+  commits, `archivist/sitebuild.py` rebuilds the whole site (about 16 s on
+  the host for the current archive), refuses any incomplete build (the same
+  guard CI applies: every run has a page, core assets exist), and swaps an
+  atomic `current` symlink that host nginx serves. It builds from a snapshot:
+  the last commit is read under the write lock (a moment) and checked out in
+  a git worktree of its own beside the archive (`archive-build`, sharing the
+  objects; `SITE_BUILD_TREE`), which nothing writes, so **a write never waits
+  on a build**. Builds used to hold the write lock for the whole generator
+  run, and any write in that window waited for all of it (writes of 15 to
+  17 s in the timing log, 2026-11-21 to 26). A burst of commits coalesces
+  into one rebuild, and a failed build keeps the previous site serving
+  (builder state and errors are observable via `GET /api/health`).
   Content arriving from elsewhere is caught by the refresh loop
   (HEAD moved → rebuild). **GitHub Pages remains the hot standby**: the
   same push still fires the website's `deploy.yml` dispatch
