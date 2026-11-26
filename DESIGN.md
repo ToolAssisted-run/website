@@ -1325,9 +1325,11 @@ archivist, module responsibilities). What matters designwise:
   guard CI applies: every run has a page, core assets exist), and swaps an
   atomic `current` symlink that host nginx serves. It builds from a snapshot:
   the last commit is read under the write lock (a moment) and checked out in
-  a git worktree of its own beside the archive (`archive-build`, sharing the
-  objects; `SITE_BUILD_TREE`), which nothing writes, so **a write never waits
-  on a build**. Builds used to hold the write lock for the whole generator
+  a git worktree of its own in the builder's directory (`site/.archive`,
+  sharing the objects; `SITE_BUILD_TREE`; the archive's parent is root's, so
+  nothing can be made beside it), which nothing writes, so **a write never
+  waits on a build**. The generator is told where `visits.json` is, since it
+  would otherwise look beside the tree it reads. Builds used to hold the write lock for the whole generator
   run, and any write in that window waited for all of it (writes of 15 to
   17 s in the timing log, 2026-11-21 to 26). A burst of commits coalesces
   into one rebuild, and a failed build keeps the previous site serving

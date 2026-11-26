@@ -21,7 +21,7 @@ import sys
 import threading
 import time
 
-from settings import ARCHIVE, LOG
+from settings import ARCHIVE, LOG, VISITS_FILE
 
 WEBSITE_DIR = pathlib.Path(os.environ.get('WEBSITE_DIR',
                                           str(ARCHIVE.parent / 'website')))
@@ -34,10 +34,11 @@ BUILD_TIMEOUT = float(os.environ.get('SITE_BUILD_TIMEOUT', '300'))
 SITE_BUILD_LIMIT = int(os.environ.get('SITE_BUILD_LIMIT', '0'))
 
 # The commit a build reads, checked out where nothing writes: a git worktree
-# of the archive beside it (so the generator's neighbours, visits.json, are
-# the same ones). Writes never wait on a build.
-BUILD_TREE = pathlib.Path(os.environ.get('SITE_BUILD_TREE',
-                                         str(ARCHIVE.parent / (ARCHIVE.name + '-build'))))
+# of the archive in the builder's own directory (the service may not create
+# anything beside the archive, whose parent is root's). Writes never wait on
+# a build. The generator looks for visits.json beside the archive it is
+# given, so it is told where the archivist keeps it.
+BUILD_TREE = pathlib.Path(os.environ.get('SITE_BUILD_TREE', str(SITE_DIR / '.archive')))
 
 _wake = threading.Event()
 _serial = {'n': 0}          # monotonic build names within one process life
@@ -175,7 +176,8 @@ def _build_once():
     try:
         r = subprocess.run([sys.executable, '-X', 'utf8', str(WEBSITE_DIR / 'generator' / 'build.py'),
                             str(tree), str(out)],
-                           capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+                           capture_output=True, text=True, timeout=BUILD_TIMEOUT,
+                           env={**os.environ, 'SITE_VISITS_FILE': str(VISITS_FILE)})
     finally:
         if held:
             held.release()

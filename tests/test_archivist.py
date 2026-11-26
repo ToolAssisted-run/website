@@ -1250,8 +1250,9 @@ def main():
                c1 == 200 and c2 == 200 and r2.get('liked') is False
                and racer < max(2.0, build_took / 2),
                f'{c1} {c2} {racer:.2f}s against a {build_took:.2f}s build')
-            ck('and the build reads its own checkout, beside the archive',
-               (td / 'work-build' / '.git').exists() and (td / 'work-build' / 'systems.json').exists())
+            ck('and the build reads its own checkout, in the builder\'s directory',
+               (td / 'site' / '.archive' / '.git').exists()
+               and (td / 'site' / '.archive' / 'systems.json').exists())
 
             # Once the publisher pipeline has been verified with a real build,
             # pause background rebuilds so remaining test writes aren't blocked by
